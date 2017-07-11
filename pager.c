@@ -109,6 +109,14 @@ int main()
 	setlocale(LC_ALL, "");
 
 	initscr();
+
+	start_color();
+	use_default_colors();
+
+	init_pair(1, -1, -1);
+	init_pair(2, COLOR_BLACK, COLOR_WHITE);
+	init_pair(3, COLOR_WHITE, COLOR_BLACK);
+
 	clear();
 	cbreak();
 	keypad(stdscr, TRUE);
@@ -119,21 +127,21 @@ int main()
 	getmaxyx(stdscr, maxy, maxx);
 
 	topbar = newwin(1, 0, 0, 0);
-	wbkgd(topbar, A_REVERSE | A_DIM);
+	wbkgd(topbar, COLOR_PAIR(2));
 	wrefresh(topbar);
 
 	botbar = newwin(1, 0, maxy - 1, 0);
 
-	wattron(botbar, A_BOLD);
-	mvwaddstr(botbar, 0, 0, " Q");
-	wattroff(botbar, A_BOLD);
-	wattron(botbar, A_REVERSE | A_DIM);
+	wattron(botbar, A_BOLD | COLOR_PAIR(3));
+	mvwaddstr(botbar, 0, 1, "Q");
+	wattroff(botbar, A_BOLD | COLOR_PAIR(3));
+	wattron(botbar, COLOR_PAIR(2));
 	mvwprintw(botbar, 0, 2, "%-4s", "uit");
-	wattroff(botbar, A_REVERSE | A_DIM);
+	wattroff(botbar, COLOR_PAIR(2));
 	wrefresh(botbar);
 
 	rows = newpad(200, maxx);
-	wbkgd(rows, A_DIM);
+	wbkgd(rows, COLOR_PAIR(1));
 
 	scrollok(rows, true);
 
@@ -144,13 +152,13 @@ int main()
 
 	fixluc = newwin(FIX_ROWS, FIX_COLS+1, 1, 0);
 	copywin(rows, fixluc, 0, 0, 0, 0, FIX_ROWS-1, FIX_COLS, false);
-	mvwchgat(fixluc, 1, 1, FIX_COLS - 1, A_NORMAL, 0, 0);
+	mvwchgat(fixluc, 1, 1, FIX_COLS - 1, A_BOLD, 0, 0);
 	wrefresh(fixluc);
 
 	fixcols = newpad(nrows+1, FIX_COLS+1);
 	copywin(rows, fixcols, 0, 0, 0, 0, nrows, FIX_COLS, false);
 	for (i = 0; i < nrows; i++)
-		mvwchgat(fixcols, i, 1, FIX_COLS - 2, A_NORMAL, 0, 0);
+		mvwchgat(fixcols, i, 1, FIX_COLS - 2, A_BOLD, 0, 0);
 
 	fixrows = newpad(FIX_ROWS + 1, ncols+1);
 	copywin(rows, fixrows, 0, FIX_COLS+1, 0, 0, FIX_ROWS, ncols - FIX_COLS, false);
@@ -170,11 +178,11 @@ int main()
 			continue;
 		}
 
-		mvwchgat(fixrows, 1, i, 1, A_NORMAL, 0, 0);
+		mvwchgat(fixrows, 1, i, 1, A_BOLD, 0, 0);
 	}
 
-	mvwchgat(rows, cursor_row + FIX_ROWS, 0, -1, A_STANDOUT, 1, 0);
-	mvwchgat(fixcols, cursor_row + FIX_ROWS, 0, -1, A_STANDOUT, 1, 0);
+	mvwchgat(rows, cursor_row + FIX_ROWS, 0, -1, 0, 2, 0);
+	mvwchgat(fixcols, cursor_row + FIX_ROWS, 0, -1, 0, 2, 0);
 
 	prefresh(fixcols, FIX_ROWS, 0, FIX_ROWS + 1, 0, maxy - 2, FIX_COLS);
 	prefresh(fixrows, 0, 0, 1, FIX_COLS+1, FIX_ROWS, maxx - 1);
@@ -313,37 +321,36 @@ int main()
 
 		if (prev_cursor_row != cursor_row || refresh_scr)
 		{
-			mvwchgat(rows, prev_cursor_row + FIX_ROWS, 0, -1, A_DIM, 1, 0);
-			mvwchgat(rows, cursor_row + FIX_ROWS, 0, -1, A_STANDOUT, 1, 0);
+			mvwchgat(rows, prev_cursor_row + FIX_ROWS, 0, -1, 0, 1, 0);
+			mvwchgat(rows, cursor_row + FIX_ROWS, 0, -1, 0, 2, 0);
 
-			mvwchgat(fixcols, prev_cursor_row + FIX_ROWS, 0, FIX_COLS+1, A_DIM, 1, 0);
-			mvwchgat(fixcols, prev_cursor_row + FIX_ROWS, 1, FIX_COLS - 1, A_NORMAL, 1, 0);
-
-			mvwchgat(fixcols, cursor_row + FIX_ROWS, 0, -1, A_STANDOUT, 1, 0);
+			mvwchgat(fixcols, prev_cursor_row + FIX_ROWS, 1, - 1, A_BOLD, 1, 0);
+			mvwchgat(fixcols, prev_cursor_row + FIX_ROWS, 0, 1, 0, 1, 0);
+			mvwchgat(fixcols, cursor_row + FIX_ROWS, 0, -1, A_BOLD, 2, 0);
 		}
 
 		if (refresh_scr)
 		{
 			delwin(topbar);
 			topbar = newwin(1, 0, 0, 0);
-			wbkgd(topbar, A_REVERSE | A_DIM);
+			wbkgd(topbar, COLOR_PAIR(2));
 			wrefresh(topbar);
 
 			delwin(botbar);
 			botbar = newwin(1, 0, maxy - 1, 0);
 
-			wattron(botbar, A_BOLD);
-			mvwaddstr(botbar, 0, 0, " Q");
-			wattroff(botbar, A_BOLD);
-			wattron(botbar, A_REVERSE | A_DIM);
+			wattron(botbar, A_BOLD | COLOR_PAIR(3));
+			mvwaddstr(botbar, 0, 1, "Q");
+			wattroff(botbar, A_BOLD | COLOR_PAIR(3));
+			wattron(botbar, COLOR_PAIR(2));
 			mvwprintw(botbar, 0, 2, "%-4s", "uit");
-			wattroff(botbar, A_REVERSE | A_DIM);
+			wattroff(botbar, COLOR_PAIR(2));
 			wrefresh(botbar);
 
 			delwin(fixluc);
 			fixluc = newwin(FIX_ROWS, FIX_COLS+1, 1, 0);
 			copywin(rows, fixluc, 0, 0, 0, 0, FIX_ROWS-1, FIX_COLS, false);
-			mvwchgat(fixluc, 1, 1, FIX_COLS - 1, A_NORMAL, 0, 0);
+			mvwchgat(fixluc, 1, 1, FIX_COLS - 1, A_BOLD, 0, 0);
 			wrefresh(fixluc);
 		}
 
