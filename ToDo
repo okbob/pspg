@@ -1,0 +1,23 @@
+ToDo
+
+* resizing support
+* start, end 
+* mc, FoxPro, Black&White style
+* enforce outer border - for FoxPro style
+* hide outer border
+* hide inner borders
+* replace ascii borders by unicode
+* when result is wider than screen, first column is locked
+* input format automatic detection (based on left upper corner char)
+* drow scrollbars FoxPro style
+* CSV support
+* regexp marking (green background, only pattern, whole row)
+* mc
+* something like -X option of less
+* row select, column select, export to file, copy to clipboard
+* mouse support for range select
+* large dataset support - memory optimization, cache implementation
+* support fetched data - columns width can be different
+
+
+* similar projects tless, ngrid, muhmud/lessql
