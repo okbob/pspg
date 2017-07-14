@@ -12,29 +12,36 @@
 #define BORDER_BOOTOM_ROW	345
 #define STYLE			1
 
-/*
- * Columns separators, used for searching. Usually we don't like to
- * bold these symbols.
- */
-const char	   *col1 = "\342\224\202";
-const char	   *col2 = "\342\225\221";
-const char	   *col3 = "|";
-
-typedef struct {
-  int		border_top_row;			/* nrow of bootom outer border or -1 */
-  int		border_head_row;		/* nrow of head outer (required) */
-  int		border_bottom_row;		/* nrow of bottom outer border or -1 */
-  int		border_style;			/* detected PostgreSQL border style */
-  char		title[64];				/* detected title (trimmed) or NULL */
-  char	   *filename[64];			/* parsed filename */
-  WINDOW   *rows;					/* pointer to holding ncurses pad */
-  int		maxy;					/* maxy of used pad area with data */
-  int		maxx;					/* maxx of used pad area with data */
-  int		maxbytes;				/* max length of line in bytes */
-  char	   *headline;				/* header separator line */
-  int		headline_size;			/* size of headerline in bytes */
-  int		last_data_row;			/* last line of data row */
+typedef struct
+{
+	int		border_top_row;			/* nrow of bootom outer border or -1 */
+	int		border_head_row;		/* nrow of head outer (required) */
+	int		border_bottom_row;		/* nrow of bottom outer border or -1 */
+	char	title[64];				/* detected title (trimmed) or NULL */
+	char	filename[64];			/* filename (printed on top bar) */
+	WINDOW *rows;					/* pointer to holding ncurses pad */
+	int		maxy;					/* maxy of used pad area with data */
+	int		maxx;					/* maxx of used pad area with data */
+	int		maxbytes;				/* max length of line in bytes */
+	char   *headline;				/* header separator line */
+	int		headline_size;			/* size of headerline in bytes */
+	int		last_data_row;			/* last line of data row */
 } DataDesc;
+
+typedef struct
+{
+	int		fix_rows_maxy;			/* maxy of fixed rows */
+	int		fix_cols_maxx;			/* maxx of fixed colums */
+	WINDOW *luc;					/* pad for left upper corner */
+	WINDOW *fix_rows;				/* pad for fixed rows */
+	WINDOW *fix_columns;			/* pad for fixed columns */
+	WINDOW *rows;					/* pad for data */
+	WINDOW *top_bar;				/* top bar window */
+	WINDOW *bottom_bar;				/* bottom bar window */
+	int		cursor_y;				/* y pos of virtual cursor */
+	int		cursor_x;				/* x pos of virtual cursor */
+	int		theme;					/* color theme number */
+} ScrDesc;
 
 /*
  * Returns true, if char is related to data (no border) position.
@@ -51,6 +58,69 @@ isDataPosChar(char *str)
 	if (str[0] == ' ' || str[0] == '+')
 		return false;
 
+	if (strncmp(str, u1, 3) == 0)
+		return true;
+	if (strncmp(str, u2, 3) == 0)
+		return true;
+
+	return false;
+}
+
+/*
+ * Returns true when char is left upper corner
+ */
+static bool
+isTopLeftChar(char *str)
+{
+	const char *u1 = "\342\224\214";
+	const char *u2 = "\342\225\224";
+
+	if (str[0] == '+')
+		return true;
+	if (strncmp(str, u1, 3) == 0)
+		return true;
+	if (strncmp(str, u2, 3) == 0)
+		return true;
+
+	return false;
+}
+
+/*
+ * Returns true when char is top left header char
+ */
+static bool
+isHeadLeftChar(char *str)
+{
+	const char *u1 = "\342\224\200";
+	const char *u2 = "\342\225\220";
+	const char *u3 = "\342\225\236";
+	const char *u4 = "\342\225\241";
+
+	if (str[0] == '+' || str[0] == '-')
+		return true;
+	if (strncmp(str, u1, 3) == 0)
+		return true;
+	if (strncmp(str, u2, 3) == 0)
+		return true;
+	if (strncmp(str, u3, 3) == 0)
+		return true;
+	if (strncmp(str, u4, 3) == 0)
+		return true;
+
+	return false;
+}
+
+/*
+ * Returns true when char is bottom left corner
+ */
+static bool
+isBottomLeftChar(char *str)
+{
+	const char *u1 = "\342\224\224";
+	const char *u2 = "\342\225\232";
+
+	if (str[0] == '+')
+		return true;
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
@@ -92,12 +162,65 @@ utf8charlen(char ch)
 }
 
 /*
+ * Copy trimmed string
+ */
+static void
+strncpytrim(char *dest, const char *src,
+			size_t ndest, size_t nsrc)
+{
+	const char *endptr;
+
+	endptr = src + nsrc - 1;
+
+	/* skip trailing spaces */
+	while (*src == ' ')
+	{
+		if (nsrc-- <= 0)
+			break;
+		src++;
+	}
+
+	/* skip ending spaces */
+	while (*endptr == ' ')
+	{
+		if (nsrc-- <= 0)
+			break;
+		endptr--;
+	}
+
+	while(nsrc > 0)
+	{
+		int	clen;
+
+		if (*src == '\0')
+			break;
+
+		clen = utf8charlen(*src);
+		if (clen <= ndest && clen <= nsrc)
+		{
+			int		i;
+
+			for (i = 0; i < clen; i++)
+			{
+				*dest++ = *src++;
+				ndest--;
+				nsrc--;
+			}
+		}
+		else
+			break;
+	}
+
+	*dest = '\0';
+}
+
+/*
  * Set color pairs based on style
  */
 static void
-initialize_color_pairs(int style)
+initialize_color_pairs(int theme)
 {
-	if (style == 0)
+	if (theme == 0)
 	{
 		use_default_colors();
 
@@ -108,7 +231,7 @@ initialize_color_pairs(int style)
 		init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 		init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
 	}
-	else if (style == 1)
+	else if (theme == 1)
 	{
 		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
@@ -119,7 +242,7 @@ initialize_color_pairs(int style)
 		init_pair(5, COLOR_YELLOW, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
 	}
-	else if (style == 2)
+	else if (theme == 2)
 	{
 		assume_default_colors(COLOR_WHITE, COLOR_CYAN);
 
@@ -164,6 +287,7 @@ readfile(DataDesc *desc , int *rows, int *cols)
 	desc->last_data_row = BORDER_BOOTOM_ROW - 2;
 
 	desc->maxbytes = -1;
+	desc->maxx = -1;
 
 	*cols = -1;
 
@@ -180,8 +304,10 @@ readfile(DataDesc *desc , int *rows, int *cols)
 		if ((int) clen > *cols)
 		{
 			*cols = clen;
-			desc->maxx = clen;
 		}
+
+		if ((int) clen > desc->maxx)
+			desc->maxx = clen;
 
 		nmaxx = clen > maxx ? clen + 100 : maxx;
 		nmaxy = nrows > maxy - 1 ? nrows  * 2 : maxy;
@@ -286,7 +412,7 @@ refresh_cursor(WINDOW *fixcols, WINDOW *rows,
 			else
 			{
 				if (style == 2)
-					set_bold_row(rows, prevrow + FIX_ROWS, desc, 0, rows_maxx, 1, rows_maxx, 0, 1);
+					set_bold_row(rows, prevrow + FIX_ROWS, desc, 0, desc->maxx, 1, desc->maxx, 0, 1);
 				else
 					mvwchgat(rows, prevrow + FIX_ROWS, 0, -1, 0, 1, 0);
 
@@ -296,12 +422,12 @@ refresh_cursor(WINDOW *fixcols, WINDOW *rows,
 
 		if (nrow + FIX_ROWS > desc->last_data_row)
 		{
-			mvwchgat(rows, nrow + FIX_ROWS, 0, -1, 0, 6, 0);
-			mvwchgat(fixcols, nrow + FIX_ROWS, 0, -1, 0, 6, 0);
+			mvwchgat(rows, nrow + FIX_ROWS, 0, desc->maxx, 0, 6, 0);
+			mvwchgat(fixcols, nrow + FIX_ROWS, 0,  fixc_maxx, 0, 6, 0);
 		}
 		else
 		{
-			set_bold_row(rows, nrow + FIX_ROWS, desc, 0, rows_maxx, 6, rows_maxx, 0, style == 2 ? 1 : 6);
+			set_bold_row(rows, nrow + FIX_ROWS, desc, 0, desc->maxx, 6, desc->maxx, 0, style == 2 ? 1 : 6);
 			set_bold_row(fixcols, nrow + FIX_ROWS, desc, 0, fixc_maxx, 5, fixc_maxx, 0, style == 2 ? 1 : 6);
 		}
 	}
@@ -448,7 +574,7 @@ main()
 						slen = mvwinnstr(desc.rows, desc.border_head_row, FIX_COLS + i, str, 4);
 
 						/* when we didn't find separator in limit */
-						if (++nchars > 20)
+						if (++nchars > 30)
 							break;
 
 						if (!isDataPosChar(str))
@@ -472,11 +598,11 @@ main()
 					char   *ptr;
 					int		nchar = 0;
 
-					slen = mvwinnstr(desc.rows, desc.border_head_row, FIX_COLS + cursor_col + 1, str, 80);
+					slen = mvwinnstr(desc.rows, desc.border_head_row, FIX_COLS + cursor_col + 1, str, 120);
 
 					for(ptr = str; ptr < str + slen; )
 					{
-						if (++nchar > 20)
+						if (++nchar > 30)
 							break;
 
 						if (!isDataPosChar(ptr))
