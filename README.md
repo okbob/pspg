@@ -8,3 +8,6 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 
 ## State
 I wrote proof concept. It can be compiled and tested as interactive application.
+
+see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
+
