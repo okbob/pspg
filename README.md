@@ -7,4 +7,4 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 * possibility to use fancy colors - like `mcview` or `FoxPro`
 
 ## State
-I wrote proof concept. It can be compiled and tested as interactive application. Attention - it doesn't work as pager.
+I wrote proof concept. It can be compiled and tested as interactive application.
