@@ -432,8 +432,6 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 		desc->title[0] = '\0';
 	}
 
-
-
 	*rows = nrows;
 
 	freopen("/dev/tty", "rw", stdin);
@@ -551,7 +549,7 @@ static void
 refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 				 int fixCol, int fixRows,
 				 int cursor_col, int first_row,
-				 int theme)
+				 int theme, int maxx)
 {
 	char	*str = desc->headline;
 	int		nchars = desc->headline_size;
@@ -559,6 +557,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	bool	found = false;
 	int		nchar = 0;
 	int		i;
+	bool	use_default_fixCol = false;
 
 	scrdesc->rows = desc->rows;
 	scrdesc->theme = theme;
@@ -570,6 +569,12 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 		nchars -= clen;
 		str += clen;
 		nchar = 1;
+	}
+
+	if (fixCol == -1)
+	{
+		use_default_fixCol = true;
+		fixCol = 1;
 	}
 
 	while (nchars > 0)
@@ -587,7 +592,12 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	scrdesc->fix_cols_cols = found ? nchar + 1 : 0;
-	if (fixRows != -1)	
+
+	/* disable default fixCols when is not possible draw in screen */
+	if (use_default_fixCol && scrdesc->fix_cols_cols > maxx)
+		scrdesc->fix_cols_cols = 0;
+
+	if (fixRows != -1)
 		scrdesc->fix_rows_rows = fixRows;
 	else
 		scrdesc->fix_rows_rows = desc->border_head_row != -1 ? desc->border_head_row + 1 : 0;
@@ -711,7 +721,7 @@ main(int argc, char *argv[])
 	int		style = STYLE;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
-	int		columns = 1;
+	int		columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
 
@@ -793,7 +803,7 @@ main(int argc, char *argv[])
 	readfile(fp, &desc, &nrows, &ncols);
 	rows = desc.rows;
 
-	refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style);
+	refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
 
 	if (scrdesc.theme == 2)
 		wattron(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
@@ -812,11 +822,15 @@ main(int argc, char *argv[])
 	while (true)
 	{
 		bool		refresh_scr = false;
+		int			fixed_columns;
 
 		refresh();
 
+		/* width of displayed fixed columns cannot be larger than screen */
+		fixed_columns = maxx > scrdesc.fix_cols_cols ? scrdesc.fix_cols_cols : maxx;
+
 		if (scrdesc.luc)
-			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, scrdesc.fix_cols_cols - 1);
+			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, fixed_columns - 1);
 
 		prefresh(rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
 
@@ -824,7 +838,7 @@ main(int argc, char *argv[])
 			prefresh(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, 1, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows - desc.title_rows, maxx - 1);
 
 		if (scrdesc.fix_columns)
-			prefresh(scrdesc.fix_columns, first_row + scrdesc.fix_rows_rows, 0, scrdesc.fix_rows_rows - desc.title_rows + 1, 0, maxy - 2, scrdesc.fix_cols_cols - 1);
+			prefresh(scrdesc.fix_columns, first_row + scrdesc.fix_rows_rows, 0, scrdesc.fix_rows_rows - desc.title_rows + 1, 0, maxy - 2, fixed_columns - 1);
 
 		refresh();
 
@@ -1026,7 +1040,7 @@ main(int argc, char *argv[])
 		if (refresh_scr)
 		{
 			refresh_aux_windows(&scrdesc);
-			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style);
+			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
 			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc);
 			refresh_scr = false;
 		}
