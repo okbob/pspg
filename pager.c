@@ -818,9 +818,6 @@ main(int argc, char *argv[])
 		if (scrdesc.luc)
 			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, scrdesc.fix_cols_cols - 1);
 
-	  mvwprintw(scrdesc.luc, 1, 1, "%5d ", first_row);
-	  prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, scrdesc.fix_cols_cols - 1);
-
 		prefresh(rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
 
 		if (scrdesc.fix_rows)
