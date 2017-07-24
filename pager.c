@@ -386,7 +386,12 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 			getmaxyx(pp, maxy, maxx);
 		}
 
-		mvwprintw(pp, nrows++, 0, "%s", line);
+		wmove(pp, nrows++, 0);
+		waddstr(pp, line);
+		/*
+		 * attention - mvprintw trims lines with lot of multibytes chars
+		 * Don't use it: mvwprintw(pp, nrows++, 0, "%s", line);
+		 */
 	}
 
 	if (!use_stdin)
@@ -701,7 +706,6 @@ refresh_aux_windows(ScrDesc *scrdesc)
 	mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " C.Freeze ");
 	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
 	wrefresh(scrdesc->bottom_bar);
-
 }
 
 int
@@ -794,7 +798,7 @@ main(int argc, char *argv[])
 	getmaxyx(stdscr, maxy, maxx);
 
 
-	rows = newpad(10000, maxx+1000);
+	rows = newpad(10000, 3000);
 	desc.rows = rows;
 	wbkgd(desc.rows, COLOR_PAIR(1));
 
