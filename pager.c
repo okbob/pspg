@@ -426,8 +426,8 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 		desc->headline_char_size;
 
 		/* there are not a data set */
-		desc->last_row = nrows + 1;
-		desc->last_data_row = nrows + 1;
+		desc->last_row = nrows;
+		desc->last_data_row = nrows;
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
@@ -784,7 +784,7 @@ main(int argc, char *argv[])
 	getmaxyx(stdscr, maxy, maxx);
 
 
-	rows = newpad(10000, maxx);
+	rows = newpad(10000, maxx+1000);
 	desc.rows = rows;
 	wbkgd(desc.rows, COLOR_PAIR(1));
 
@@ -817,6 +817,9 @@ main(int argc, char *argv[])
 
 		if (scrdesc.luc)
 			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, scrdesc.fix_cols_cols - 1);
+
+	  mvwprintw(scrdesc.luc, 1, 1, "%5d ", first_row);
+	  prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, scrdesc.fix_cols_cols - 1);
 
 		prefresh(rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
 
@@ -868,6 +871,8 @@ main(int argc, char *argv[])
 						first_row += 1;
 
 					max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+					if (max_first_row < 0)
+						max_first_row = 0;
 					if (first_row > max_first_row)
 						first_row = max_first_row;
 				}
@@ -979,6 +984,8 @@ main(int argc, char *argv[])
 						first_row += 1;
 
 					max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+					if (max_first_row < 0)
+						max_first_row = 0;
 					if (first_row > max_first_row)
 						first_row = max_first_row;
 				}
