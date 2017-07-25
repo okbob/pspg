@@ -6,6 +6,9 @@
 #include <locale.h>
 #include <unistd.h>
 
+#include <signal.h>
+#include <sys/ioctl.h>
+
 #include <sys/param.h>
 
 #define FILENAME		"pg_class.txt"
@@ -846,7 +849,7 @@ main(int argc, char *argv[])
 
 		refresh();
 
-		c = getch();
+		c =getch();
 		if (c == 'q')
 			break;
 
@@ -1007,9 +1010,6 @@ main(int argc, char *argv[])
 				break;
 
 			case KEY_RESIZE:
-				refresh();
-				getmaxyx(stdscr, maxy, maxx);
-
 				refresh_scr = true;
 			break;
 
@@ -1043,7 +1043,15 @@ main(int argc, char *argv[])
 
 		if (refresh_scr)
 		{
+			endwin();
+			refresh();
+			clear();
+			getmaxyx(stdscr, maxy, maxx);
 			refresh_aux_windows(&scrdesc);
+
+			mvwprintw(scrdesc.top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ", columns + 1, cursor_col + scrdesc.fix_cols_cols - 1, ncols, cursor_row, nrows - scrdesc.fix_rows_rows, (cursor_row+1)/((double) (nrows-scrdesc.fix_rows_rows + 1))*100.0);
+			wrefresh(scrdesc.top_bar);
+
 			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
 			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc);
 			refresh_scr = false;
