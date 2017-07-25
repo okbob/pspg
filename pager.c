@@ -542,7 +542,8 @@ set_bold_row(WINDOW *win, int nrow,
 static void
 refresh_cursor(int nrow, int prevrow,
 			   bool force,
-			   DataDesc *desc, ScrDesc *scrdesc)
+			   DataDesc *desc, ScrDesc *scrdesc,
+			   int prev_first_row, int first_row)
 {
 	if (prevrow != nrow || force)
 	{
@@ -573,7 +574,7 @@ refresh_cursor(int nrow, int prevrow,
 				set_bold_row(scrdesc->fix_columns, prevrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 4, fixc_maxx, 0, 1);
 			}
 
-			mvwchgat(stdscr, prevrow + scrdesc->fix_rows_rows, desc->headline_char_size + 1, -1, 0, 1, 0);
+			mvwchgat(stdscr, prevrow + scrdesc->fix_rows_rows + 1 - desc->title_rows - prev_first_row, desc->headline_char_size + 1, -1, 0, 1, 0);
 		}
 
 		if (nrow + scrdesc->fix_rows_rows > desc->last_data_row)
@@ -591,7 +592,7 @@ refresh_cursor(int nrow, int prevrow,
 		if (desc->headline_char_size < rows_maxx)
 			mvwchgat(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc->headline_char_size, -1, 0, 6, 0);
 
-		mvwchgat(stdscr, nrow + scrdesc->fix_rows_rows, desc->headline_char_size + 1,  -1, 0, 6, 0);
+		mvwchgat(stdscr, nrow + scrdesc->fix_rows_rows + 1 - desc->title_rows - first_row, desc->headline_char_size + 1,  -1, 0, 6, 0);
 	}
 }
 
@@ -652,21 +653,29 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	else
 		scrdesc->fix_rows_rows = desc->border_head_row != -1 ? desc->border_head_row + 1 : 0;
 
-	for (i = 0; i <= desc->last_data_row; i++)
+	/*
+	 * When there are not headline, then highlight text only for theme 2.
+	 * This part should be redesigned because the content without headline
+	 * will be moved to footer.
+	 */
+	if (desc->border_head_row != -1 || scrdesc->theme == 2)
 	{
-		if (i == desc->border_top_row ||
-			i == desc->border_head_row ||
-			i == desc->border_bottom_row)
-			continue;
+		for (i = 0; i <= desc->last_data_row; i++)
+		{
+			if (i == desc->border_top_row ||
+				i == desc->border_head_row ||
+				i == desc->border_bottom_row)
+				continue;
 
-			if (i < scrdesc->fix_rows_rows)
-			{
-				set_bold_row(scrdesc->rows, i, desc, 0, desc->maxx, 4, desc->maxx, 4, 1);
-			}
-			else
-			{
-				set_bold_row(scrdesc->rows, i, desc, 0, scrdesc->theme != 2 ? scrdesc->fix_cols_cols : desc->maxx, 4, desc->maxx, 1, 1);
-			}
+				if (i < scrdesc->fix_rows_rows)
+				{
+					set_bold_row(scrdesc->rows, i, desc, 0, desc->maxx, 4, desc->maxx, 4, 1);
+				}
+				else
+				{
+					set_bold_row(scrdesc->rows, i, desc, 0, scrdesc->theme != 2 ? scrdesc->fix_cols_cols - 1 : desc->maxx, 4, desc->maxx, 1, 1);
+				}
+		}
 	}
 
 	/*
@@ -780,6 +789,7 @@ main(int argc, char *argv[])
 	int		cursor_col = 0;
 	int		prev_cursor_row;
 	int		first_row = 0;
+	int		prev_first_row;
 	int		i;
 	char   str[120];
 	int		style = STYLE;
@@ -872,7 +882,7 @@ main(int argc, char *argv[])
 		wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
 	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
-	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc);
+	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc, prev_first_row, first_row);
 
 	while (true)
 	{
@@ -902,6 +912,7 @@ main(int argc, char *argv[])
 			break;
 
 		prev_cursor_row = cursor_row;
+		prev_first_row = first_row;
 
 		switch (c)
 		{
@@ -1085,21 +1096,20 @@ main(int argc, char *argv[])
 			wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
 		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
-		refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc);
+		refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc, prev_first_row, first_row);
 
 		if (refresh_scr)
 		{
-			//endwin();
 			refresh();
-			//clear();
 			getmaxyx(stdscr, maxy, maxx);
 			refresh_aux_windows(&scrdesc);
 			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
 			print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
-			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc);
+			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc, prev_first_row, first_row);
 			refresh_scr = false;
 		}
 	}
 
 	endwin();
 }
+

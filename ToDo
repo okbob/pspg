@@ -7,10 +7,6 @@ ToDo
 Known bugs
 ==========
 * resize inside psql doesn't work
-* \pset border 0, 1 .. cursor artefacts
-* \pset border 0 .. highlighting is not correct
-* cursor - top position for not relational data (classic pager)
-
 
 Possible ToDo
 =============
