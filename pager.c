@@ -11,8 +11,26 @@
 
 #include <sys/param.h>
 
-#define FILENAME		"pg_class.txt"
+#define FILENAME		"pg_proc.txt"
 #define STYLE			1
+
+typedef struct LineBuffer
+{
+	int		first_row;
+	int		nrows;
+	char   *rows[1000];
+	struct LineBuffer *next;
+} LineBuffer;
+
+/*
+ * Available formats of headline chars
+ *
+ *  O   .. outer border
+ *  +   .. plus
+ *  I   .. inner border
+ *  ' ' .. space
+ *  d   .. data
+ */
 
 typedef struct
 {
@@ -22,11 +40,15 @@ typedef struct
 	char	title[65];				/* detected title (trimmed) or NULL */
 	int		title_rows;				/* number of rows used as table title (skipped later) */
 	char	filename[65];			/* filename (printed on top bar) */
-	WINDOW *rows;					/* pointer to holding ncurses pad */
+	LineBuffer rows;				/* list of rows buffers */
 	int		maxy;					/* maxy of used pad area with data */
 	int		maxx;					/* maxx of used pad area with data */
+	LineBuffer footer;				/* footer rows */
+	int		footer_maxy;			/* maxy of used pad area for footer */
+	int		footer_maxx;			/* maxx of used pad area for footer */
 	int		maxbytes;				/* max length of line in bytes */
 	char   *headline;				/* header separator line */
+	char   *headline_types;			/* formats for of chars in headline */
 	int		headline_size;			/* size of headerline in bytes */
 	int		headline_char_size;		/* size of headerline in chars */
 	int		last_data_row;			/* last line of data row */
@@ -41,12 +63,14 @@ typedef struct
 	WINDOW *fix_rows;				/* pad for fixed rows */
 	WINDOW *fix_columns;			/* pad for fixed columns */
 	WINDOW *rows;					/* pad for data */
+	WINDOW *footer;					/* pad for footer */
 	WINDOW *top_bar;				/* top bar window */
 	WINDOW *bottom_bar;				/* bottom bar window */
 	int		cursor_y;				/* y pos of virtual cursor */
 	int		cursor_x;				/* x pos of virtual cursor */
 	int		theme;					/* color theme number */
 } ScrDesc;
+
 
 /*
  * Returns true, if char is related to data (no border) position.
@@ -267,17 +291,15 @@ initialize_color_pairs(int theme)
  * pad when it it necessary
  */
 static int
-readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
+readfile(FILE *fp, DataDesc *desc)
 {
 	char	   *line = NULL;
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
-	int			maxx, maxy;
-	WINDOW	   *pp;
 	bool		use_stdin = false;
-
-	pp = desc->rows;
+	LineBuffer *rows;
+	LineBuffer *footer;
 
 	/* safe reset */
 	desc->filename[0] = '\0';
@@ -320,14 +342,23 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 	desc->maxbytes = -1;
 	desc->maxx = -1;
 
-	*cols = -1;
-
-	getmaxyx(pp, maxy, maxx);
+	memset(&desc->rows, 0, sizeof(LineBuffer));
+	rows = &desc->rows;
 
 	while (( read = getline(&line, &len, fp)) != -1)
 	{
 		int		nmaxx, nmaxy;
 		int		clen = utf8len(line);
+
+		if (rows->nrows == 1000)
+		{
+			LineBuffer *newrows = malloc(sizeof(LineBuffer));
+			memset(newrows, 0, sizeof(LineBuffer));
+			rows->next = newrows;
+			rows = newrows;
+		}
+
+		rows->rows[rows->nrows++] = strdup(line);
 
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
@@ -359,49 +390,18 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 		if ((int) len > desc->maxbytes)
 			desc->maxbytes = (int) len;
 
-		if ((int) clen > *cols)
-			*cols = clen;
-
-		if ((int) clen > desc->maxx)
-			desc->maxx = clen;
+		if ((int) clen > desc->maxx + 1)
+			desc->maxx = clen - 1;
 
 		if ((int) clen > 0)
 			desc->last_row = nrows;
 
-		nmaxx = clen > maxx ? clen + 100 : maxx;
-		nmaxy = nrows > maxy - 1 ? nrows  * 2 : maxy;
-
-		/*
-		 * Is necessary to resize main pad? 
-		 * Attention: doesn't work well. Maybe ncurses bug?
-		 */
-		if (nmaxx > maxx || nmaxy > maxy)
-		{
-			WINDOW *np = newpad(nmaxy, nmaxx);
-
-			copywin(pp, np, 0, 0, 0, 0, nrows - 1, clen, true);
-			delwin(pp);
-			pp = np;
-
-			/*
-			 * wresize doesn't work - it does unwantd artefacts
-			 */
-			getmaxyx(pp, maxy, maxx);
-		}
-
-		wmove(pp, nrows++, 0);
-		waddstr(pp, line);
-		/*
-		 * attention - mvprintw trims lines with lot of multibytes chars
-		 * Don't use it: mvwprintw(pp, nrows++, 0, "%s", line);
-		 */
+		nrows += 1;
 	}
 
 	if (!use_stdin)
 		fclose(fp);
 
-
-	desc->rows = pp;
 	desc->maxy = nrows - 1;
 
 	if (desc->border_head_row != -1)
@@ -410,8 +410,7 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 		int		last_not_spc = -1;
 		char   *c;
 
-		desc->headline = malloc(desc->maxbytes + 1);
-		desc->headline_size = mvwinnstr(desc->rows, desc->border_head_row, 0, desc->headline, desc->maxbytes);
+		desc->headline = desc->rows.rows[desc->border_head_row];
 
 		c = desc->headline;
 		while (*c != '\0')
@@ -424,6 +423,8 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 
 		desc->headline_char_size = last_not_spc;
 
+		desc->headline_size = strlen(desc->headline);
+
 		if (desc->last_data_row == -1)
 			desc->last_data_row = desc->last_row - 1;
 	}
@@ -431,7 +432,7 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 	{
 		desc->headline = NULL;
 		desc->headline_size = 0;
-		desc->headline_char_size;
+		desc->headline_char_size = 0;
 
 		/* there are not a data set */
 		desc->last_row = nrows;
@@ -440,11 +441,48 @@ readfile(FILE *fp, DataDesc *desc , int *rows, int *cols)
 		desc->title[0] = '\0';
 	}
 
-	*rows = nrows;
-
 	freopen("/dev/tty", "rw", stdin);
 
 	return 0;
+}
+
+/*
+ * Create and fill a pad with row data.
+ */
+static void
+refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
+{
+	LineBuffer *rows;
+	int			nrows = 0;
+	int			current_row = 0;
+
+	rows = &desc->rows;
+
+	if (scrdesc->rows != NULL)
+		delwin(scrdesc->rows);
+
+	scrdesc->rows = newpad(desc->maxy + 2, desc->maxx + 1);
+	wbkgd(scrdesc->rows, COLOR_PAIR(1));
+	scrollok(scrdesc->rows, true);
+
+	for (nrows = 0; nrows <= desc->maxy; nrows++)
+	{
+		if (current_row == 1000)
+		{
+			rows = rows->next;
+			current_row = 0;
+		}
+
+		if (rows == NULL)
+		{
+			endwin();
+			printf("fatal error");
+			exit(1);
+		}
+
+		wmove(scrdesc->rows, nrows, 0);
+		waddstr(scrdesc->rows, rows->rows[current_row++]);
+	}
 }
 
 /*
@@ -534,6 +572,8 @@ refresh_cursor(int nrow, int prevrow,
 
 				set_bold_row(scrdesc->fix_columns, prevrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 4, fixc_maxx, 0, 1);
 			}
+
+			mvwchgat(stdscr, prevrow + scrdesc->fix_rows_rows, desc->headline_char_size + 1, -1, 0, 1, 0);
 		}
 
 		if (nrow + scrdesc->fix_rows_rows > desc->last_data_row)
@@ -543,12 +583,15 @@ refresh_cursor(int nrow, int prevrow,
 		}
 		else
 		{
-			set_bold_row(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc, 0, rows_maxx, 6, rows_maxx, 0, scrdesc->theme == 2 ? 1 : 6);
+			set_bold_row(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc, 0, desc->headline_char_size, 6, desc->headline_char_size, 0, scrdesc->theme == 2 ? 1 : 6);
 			set_bold_row(scrdesc->fix_columns, nrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 5, fixc_maxx, 0, scrdesc->theme == 2 ? 1 : 6);
 		}
 
-		if (desc->maxx < rows_maxx)
-			mvwchgat(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc->headline_char_size + 1, -1, 0, 6, 0);
+
+		if (desc->headline_char_size < rows_maxx)
+			mvwchgat(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc->headline_char_size, -1, 0, 6, 0);
+
+		mvwchgat(stdscr, nrow + scrdesc->fix_rows_rows, desc->headline_char_size + 1,  -1, 0, 6, 0);
 	}
 }
 
@@ -567,7 +610,6 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	int		i;
 	bool	use_default_fixCol = false;
 
-	scrdesc->rows = desc->rows;
 	scrdesc->theme = theme;
 
 	/* when there are outer border, starts on 1 position */
@@ -639,7 +681,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
 		scrdesc->luc = newpad(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols);
-		copywin(desc->rows, scrdesc->luc, 0, 0, 0, 0, scrdesc->fix_rows_rows - 1, scrdesc->fix_cols_cols - 1, false);
+		copywin(scrdesc->rows, scrdesc->luc, 0, 0, 0, 0, scrdesc->fix_rows_rows - 1, scrdesc->fix_cols_cols - 1, false);
 	}
 
 	/*
@@ -654,7 +696,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	if (scrdesc->fix_rows_rows > 0)
 	{
 		scrdesc->fix_rows = newpad(scrdesc->fix_rows_rows, desc->maxx + 1);
-		copywin(desc->rows, scrdesc->fix_rows, 0, 0, 0, 0, scrdesc->fix_rows_rows - 1, desc->maxx, false);
+		copywin(scrdesc->rows, scrdesc->fix_rows, 0, 0, 0, 0, scrdesc->fix_rows_rows - 1, desc->maxx, false);
 	}
 
 	if (scrdesc->fix_columns != NULL)
@@ -666,7 +708,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	if (scrdesc->fix_cols_cols > 0)
 	{
 		scrdesc->fix_columns = newpad(desc->maxy + 1, scrdesc->fix_cols_cols);
-		copywin(desc->rows, scrdesc->fix_columns, 0, 0, 0, 0, desc->maxy, scrdesc->fix_cols_cols - 1, false);
+		copywin(scrdesc->rows, scrdesc->fix_columns, 0, 0, 0, 0, desc->maxy, scrdesc->fix_cols_cols - 1, false);
 	}
 
 }
@@ -711,12 +753,27 @@ refresh_aux_windows(ScrDesc *scrdesc)
 	wrefresh(scrdesc->bottom_bar);
 }
 
+static void
+print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
+						 int columns, int cursor_row, int cursor_col)
+{
+	int		maxy, maxx;
+
+	getmaxyx(scrdesc->top_bar, maxy, maxx);
+
+	mvwprintw(scrdesc->top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ",
+					 columns + 1,
+					 cursor_col + scrdesc->fix_cols_cols - 1,
+					 desc->maxx + 1,
+					 cursor_row + 1,
+					 desc->maxy - scrdesc->fix_rows_rows,
+					 ((cursor_row + 1 + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0);
+	wrefresh(scrdesc->top_bar);
+}
+
 int
 main(int argc, char *argv[])
 {
-	WINDOW *rows;
-	int		nrows;
-	int		ncols;
 	int		maxx, maxy;
 	int		c;
 	int		cursor_row = 0;
@@ -800,15 +857,8 @@ main(int argc, char *argv[])
 	refresh_aux_windows(&scrdesc);
 	getmaxyx(stdscr, maxy, maxx);
 
-
-	rows = newpad(10000, 3000);
-	desc.rows = rows;
-	wbkgd(desc.rows, COLOR_PAIR(1));
-
-	scrollok(rows, true);
-
-	readfile(fp, &desc, &nrows, &ncols);
-	rows = desc.rows;
+	readfile(fp, &desc);
+	refresh_data_pad(&scrdesc, &desc);
 
 	refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
 
@@ -821,9 +871,7 @@ main(int argc, char *argv[])
 	if (scrdesc.theme == 2)
 		wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
-	mvwprintw(scrdesc.top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ", columns + 1, cursor_col + scrdesc.fix_cols_cols - 1, ncols, cursor_row, nrows - scrdesc.fix_rows_rows, (cursor_row+1)/((double) (nrows-scrdesc.fix_rows_rows + 1))*100.0);
-	wrefresh(scrdesc.top_bar);
-
+	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
 	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc);
 
 	while (true)
@@ -839,7 +887,7 @@ main(int argc, char *argv[])
 		if (scrdesc.luc)
 			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, fixed_columns - 1);
 
-		prefresh(rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
+		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
 
 		if (scrdesc.fix_rows)
 			prefresh(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, 1, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows - desc.title_rows, maxx - 1);
@@ -849,7 +897,7 @@ main(int argc, char *argv[])
 
 		refresh();
 
-		c =getch();
+		c = getch();
 		if (c == 'q')
 			break;
 
@@ -906,7 +954,7 @@ main(int argc, char *argv[])
 
 					for (i = cursor_col - 1; i >= 0; i--)
 					{
-						slen = mvwinnstr(desc.rows, desc.border_head_row, scrdesc.fix_cols_cols + i - 1, str, 4);
+						slen = mvwinnstr(scrdesc.rows, desc.border_head_row, scrdesc.fix_cols_cols + i - 1, str, 4);
 
 						/* when we didn't find separator in limit */
 						if (++nchars > 30)
@@ -934,7 +982,7 @@ main(int argc, char *argv[])
 					int		nchar = 0;
 					int		max_cursor_col;
 
-					slen = mvwinnstr(desc.rows, desc.border_head_row, scrdesc.fix_cols_cols + cursor_col, str, 120);
+					slen = mvwinnstr(scrdesc.rows, desc.border_head_row, scrdesc.fix_cols_cols + cursor_col, str, 120);
 
 					for(ptr = str; ptr < str + slen; )
 					{
@@ -950,7 +998,7 @@ main(int argc, char *argv[])
 					cursor_col += nchar;
 
 					if (desc.headline != NULL)
-						max_cursor_col = desc.headline_char_size - maxx + 1;
+						max_cursor_col = desc.headline_char_size - maxx;
 					else
 						max_cursor_col = desc.maxx - maxx - 1;
 
@@ -1019,7 +1067,7 @@ main(int argc, char *argv[])
 
 			case KEY_END:
 					if (desc.headline != NULL)
-						cursor_col = desc.headline_char_size - maxx + 1;
+						cursor_col = desc.headline_char_size - maxx;
 					else
 						cursor_col = desc.maxx - maxx - 1;
 
@@ -1036,23 +1084,18 @@ main(int argc, char *argv[])
 		if (scrdesc.theme == 2)
 			wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
-		mvwprintw(scrdesc.top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ", columns + 1, cursor_col + scrdesc.fix_cols_cols - 1, ncols, cursor_row, nrows - scrdesc.fix_rows_rows, (cursor_row+1)/((double) (nrows-scrdesc.fix_rows_rows + 1))*100.0);
-		wrefresh(scrdesc.top_bar);
-
+		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
 		refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc);
 
 		if (refresh_scr)
 		{
-			endwin();
+			//endwin();
 			refresh();
-			clear();
+			//clear();
 			getmaxyx(stdscr, maxy, maxx);
 			refresh_aux_windows(&scrdesc);
-
-			mvwprintw(scrdesc.top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ", columns + 1, cursor_col + scrdesc.fix_cols_cols - 1, ncols, cursor_row, nrows - scrdesc.fix_rows_rows, (cursor_row+1)/((double) (nrows-scrdesc.fix_rows_rows + 1))*100.0);
-			wrefresh(scrdesc.top_bar);
-
 			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
+			print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
 			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc);
 			refresh_scr = false;
 		}
