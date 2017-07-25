@@ -1,4 +1,18 @@
 ToDo
+====
+* independent horizontal scrolling for footer lines
+* faster headline character processing
+* expanded format (\x output) 
+
+Known bugs
+==========
+* resize inside psql doesn't work
+* \pset border 0, 1 .. cursor artefacts
+* \pset border 0 .. highlighting is not correct
+
+
+Possible ToDo
+=============
 
 * enforce outer border - for FoxPro style
 * hide outer border
