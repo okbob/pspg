@@ -928,6 +928,7 @@ main(int argc, char *argv[])
 		switch (c)
 		{
 			case KEY_UP:
+			case 'k':
 				if (cursor_row > 0)
 				{
 					cursor_row -= 1;
@@ -947,6 +948,7 @@ main(int argc, char *argv[])
 				break;
 
 			case KEY_DOWN:
+			case 'j':
 				{
 					int		max_cursor_row;
 					int		max_first_row;
@@ -967,6 +969,7 @@ main(int argc, char *argv[])
 				break;
 
 			case KEY_LEFT:
+			case 'h':
 				{
 					int		slen;
 					int		nchars = 0;
@@ -998,6 +1001,7 @@ main(int argc, char *argv[])
 				break;
 
 			case KEY_RIGHT:
+			case 'l':
 				{
 					int		slen;
 					char   *ptr;
@@ -1032,11 +1036,13 @@ main(int argc, char *argv[])
 				break;
 
 			case 538:		/* CTRL HOME */
+			case 'g':
 				cursor_row = 0;
 				first_row = 0;
 				break;
 
 			case 533:		/* CTRL END */
+			case 'G':
 				cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
 				first_row = desc.last_row - maxy + 2 - desc.title_rows;
 				break;
