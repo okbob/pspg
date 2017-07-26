@@ -1,7 +1,10 @@
 all: compile run
 
 compile: pager.c
-	gcc -lncursesw pager.c -o pager
+	gcc -lncursesw pager.c -o pspg
 
 run:
-	./pager -d
+	./pspg -d
+
+clean:
+	rm ./pspg

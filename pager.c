@@ -1,4 +1,5 @@
 #include <curses.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 
 #include <sys/param.h>
 
-#define FILENAME		"pg_proc.txt"
+#define FILENAME		"pg_class.txt"
 #define STYLE			1
 
 typedef struct LineBuffer
@@ -345,6 +346,8 @@ readfile(FILE *fp, DataDesc *desc)
 	memset(&desc->rows, 0, sizeof(LineBuffer));
 	rows = &desc->rows;
 
+	errno = 0;
+
 	while (( read = getline(&line, &len, fp)) != -1)
 	{
 		int		nmaxx, nmaxy;
@@ -358,7 +361,7 @@ readfile(FILE *fp, DataDesc *desc)
 			rows = newrows;
 		}
 
-		rows->rows[rows->nrows++] = strdup(line);
+		rows->rows[rows->nrows++] = line;
 
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
@@ -397,6 +400,14 @@ readfile(FILE *fp, DataDesc *desc)
 			desc->last_row = nrows;
 
 		nrows += 1;
+		line = NULL;
+	}
+
+	if (errno != 0)
+	{
+		endwin();
+		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
+		exit(1);
 	}
 
 	if (!use_stdin)
@@ -476,7 +487,7 @@ refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
 		if (rows == NULL)
 		{
 			endwin();
-			printf("fatal error");
+			fprintf(stderr, "fatal error\n");
 			exit(1);
 		}
 
@@ -832,7 +843,7 @@ main(int argc, char *argv[])
 				fp = fopen(FILENAME, "r");
 				if (fp == NULL)
 				{
-					fprintf(stderr, "cannot to read file: %s", FILENAME);
+					fprintf(stderr, "cannot to read file: %s\n", FILENAME);
 					exit(1);
 				}
 				break;
@@ -840,7 +851,7 @@ main(int argc, char *argv[])
 				fp = fopen(optarg, "r");
 				if (fp == NULL)
 				{
-					fprintf(stderr, "cannot to read file: %s", FILENAME);
+					fprintf(stderr, "cannot to read file: %s\n", FILENAME);
 					exit(1);
 				}
 				break;
@@ -1112,4 +1123,3 @@ main(int argc, char *argv[])
 
 	endwin();
 }
-
