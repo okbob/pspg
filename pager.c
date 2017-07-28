@@ -898,6 +898,7 @@ main(int argc, char *argv[])
 	while (true)
 	{
 		bool		refresh_scr = false;
+		bool		resize_scr = false;
 		int			fixed_columns;
 
 		refresh();
@@ -1087,6 +1088,7 @@ main(int argc, char *argv[])
 
 			case KEY_RESIZE:
 				refresh_scr = true;
+				resize_scr = true;
 			break;
 
 			case KEY_HOME:
@@ -1117,6 +1119,23 @@ main(int argc, char *argv[])
 
 		if (refresh_scr)
 		{
+			if (resize_scr)
+			{
+				struct winsize size;
+
+				/*
+				 * Workaround - the variables COLS, LINES are not refreshed
+				 * when pager is resized and executed inside psql.
+				 */
+				if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
+				{
+					resize_term(size.ws_row, size.ws_col);
+					clear();
+				}
+
+				resize_scr = false;
+			}
+
 			refresh();
 			getmaxyx(stdscr, maxy, maxx);
 			refresh_aux_windows(&scrdesc);

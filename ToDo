@@ -2,11 +2,10 @@ ToDo
 ====
 * independent horizontal scrolling for footer lines
 * faster headline character processing
-* expanded format (\x output) 
+* expanded format (\x output) support
 
 Known bugs
 ==========
-* resize inside psql doesn't work
 
 Possible ToDo
 =============
