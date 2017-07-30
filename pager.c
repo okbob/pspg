@@ -33,11 +33,17 @@ typedef struct LineBuffer
  *  d   .. data
  */
 
+/*
+ * This structure should be immutable
+ */
 typedef struct
 {
 	int		border_top_row;			/* nrow of bootom outer border or -1 */
 	int		border_head_row;		/* nrow of head outer (required) */
 	int		border_bottom_row;		/* nrow of bottom outer border or -1 */
+	int		border_type;			/* detected type of border: 0, 1, 2 */
+	char	linestyle;				/* detected linestyle: a, o, u */
+	bool	is_expanded_mode;		/* true when data are in expanded mode */
 	char	title[65];				/* detected title (trimmed) or NULL */
 	int		title_rows;				/* number of rows used as table title (skipped later) */
 	char	filename[65];			/* filename (printed on top bar) */
@@ -56,6 +62,9 @@ typedef struct
 	int		last_row;				/* last not empty row */
 } DataDesc;
 
+/*
+ * This structure can be muttable - depends on displayed data
+ */
 typedef struct
 {
 	int		fix_rows_rows;			/* number of fixed rows in pad rows */
@@ -285,6 +294,29 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(7, COLOR_YELLOW, COLOR_WHITE);
 	}
+	else if (theme == 3)
+	{
+		assume_default_colors(COLOR_BLACK, COLOR_CYAN);
+
+		init_pair(1, -1, -1);
+		init_pair(2, COLOR_BLACK, COLOR_WHITE);
+		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(4, COLOR_WHITE, COLOR_CYAN);
+		init_pair(5, COLOR_WHITE, COLOR_BLACK);
+		init_pair(6, COLOR_CYAN, COLOR_BLACK);
+	}
+	else if (theme == 4)
+	{
+		assume_default_colors(COLOR_BLACK, COLOR_WHITE);
+
+		init_pair(1, -1, -1);
+		init_pair(2, COLOR_WHITE, COLOR_BLUE);
+		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(4, COLOR_BLACK, COLOR_WHITE);
+		init_pair(5, COLOR_WHITE, COLOR_BLUE);
+		init_pair(6, COLOR_WHITE, COLOR_BLUE);
+	}
+
 }
 
 /*
@@ -809,6 +841,7 @@ main(int argc, char *argv[])
 	int		columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
+	int		stacked_mouse_event = -1;
 
 	int		opt;
 
@@ -823,9 +856,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 2)
+				if (n < 0 || n > 4)
 				{
-					fprintf(stderr, "Only color schemas 0, 1, 2 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 4 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
@@ -874,6 +907,9 @@ main(int argc, char *argv[])
 	curs_set(0);
 	noecho();
 
+	mousemask(ALL_MOUSE_EVENTS, NULL);
+	mouseinterval(50);
+
 	memset(&scrdesc, sizeof(ScrDesc), 0);
 	refresh_aux_windows(&scrdesc);
 	getmaxyx(stdscr, maxy, maxx);
@@ -919,7 +955,16 @@ main(int argc, char *argv[])
 
 		refresh();
 
-		c = getch();
+recheck_event:
+
+		if (stacked_mouse_event != -1)
+		{
+			c = stacked_mouse_event;
+			stacked_mouse_event = -1;
+		}
+		else
+			c = getch();
+
 		if (c == 'q')
 			break;
 
@@ -1103,6 +1148,50 @@ main(int argc, char *argv[])
 
 					cursor_col = cursor_col > 0 ? cursor_col : 0;
 				break;
+
+			case KEY_MOUSE:
+				{
+					MEVENT		event;
+
+					if (getmouse(&event) == OK)
+					{
+						int		x = event.bstate;
+
+						if (event.bstate & BUTTON5_PRESSED)
+						{
+							stacked_mouse_event = KEY_DOWN;
+							goto recheck_event;
+						}
+						else if (event.bstate & BUTTON4_PRESSED)
+						{
+							stacked_mouse_event = KEY_UP;
+							goto recheck_event;
+						}
+						else if (event.bstate & BUTTON1_PRESSED)
+						{
+							int		max_cursor_row;
+							int		max_first_row;
+
+							cursor_row = event.y - scrdesc.fix_rows_rows - 1 + first_row;
+							if (cursor_row < 0)
+								cursor_row = 0;
+
+							max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+							if (cursor_row > max_cursor_row)
+								cursor_row = max_cursor_row;
+
+							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+								first_row += 1;
+
+							max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+							if (max_first_row < 0)
+								max_first_row = 0;
+							if (first_row > max_first_row)
+								first_row = max_first_row;
+						}
+					}
+				}
+				break;
 		}
 
 		if (scrdesc.theme == 2)
@@ -1147,4 +1236,6 @@ main(int argc, char *argv[])
 	}
 
 	endwin();
+
+	return 0;
 }
