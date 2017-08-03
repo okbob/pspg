@@ -26,11 +26,11 @@ typedef struct LineBuffer
 /*
  * Available formats of headline chars
  *
- *  O   .. outer border
- *  +   .. plus
- *  I   .. inner border
- *  ' ' .. space
- *  d   .. data
+ *  L, R   .. outer border
+ *  +      .. plus
+ *  I      .. inner border
+ *  ' '    .. space
+ *  d      .. data
  */
 
 /*
@@ -55,8 +55,8 @@ typedef struct
 	int		footer_maxx;			/* maxx of used pad area for footer */
 	int		maxbytes;				/* max length of line in bytes */
 	char   *headline;				/* header separator line */
-	char   *headline_types;			/* formats for of chars in headline */
 	int		headline_size;			/* size of headerline in bytes */
+	char   *headline_transl;		/* translated headline */
 	int		headline_char_size;		/* size of headerline in chars */
 	int		last_data_row;			/* last line of data row */
 	int		last_row;				/* last not empty row */
@@ -102,6 +102,174 @@ isDataPosChar(char *str)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
 		return true;
+
+	return false;
+}
+
+/*
+ * Translate from UTF8 to semantic characters.
+ */
+static bool
+translate_bottom_line(DataDesc *desc)
+{
+	char   *transl;
+	char   *srcptr;
+	char   *destptr;
+	char   *last_black_char = NULL;
+	bool	broken_format = false;
+	int		processed_chars = 0;
+
+	srcptr = desc->headline;
+	destptr = malloc(desc->headline_size + 1);
+	desc->headline_transl = destptr;
+
+	desc->linestyle = 'a';
+	desc->border_type = 0;
+
+	while (*srcptr != '\0')
+	{
+		if (*srcptr == '\n' || *srcptr == '\r')
+		{
+			srcptr += 1;
+			continue;
+		}
+
+		/* only spaces can be after known right border */
+		if (last_black_char != NULL && *last_black_char == 'R')
+		{
+			if (*srcptr != ' ')
+			{
+				broken_format = true;
+				break;
+			}
+		}
+
+		if (*srcptr != ' ')
+			last_black_char = destptr;
+
+		if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
+		    strncmp(srcptr, "\342\225\237", 3) == 0 ||
+		    strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
+		    strncmp(srcptr, "\342\225\240", 3) == 0)
+		{
+			if (processed_chars > 0)
+			{
+				broken_format = true;
+				break;
+			}
+			desc->linestyle = 'u';
+			desc->border_type = 2;
+			*destptr++ = 'L';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\244", 3) == 0 || /* ┤╢ */
+		         strncmp(srcptr, "\342\225\242", 3) == 0 ||
+		         strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
+		         strncmp(srcptr, "\342\225\243", 3) == 0)
+		{
+			if (desc->linestyle != 'u' || desc->border_type != 2)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'R';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\274", 3) == 0 || /* ┼╪ */
+		         strncmp(srcptr, "\342\225\252", 3) == 0 ||
+		         strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
+		         strncmp(srcptr, "\342\225\254", 3) == 0)
+		{
+			if (desc->linestyle != 'u')
+			{
+				broken_format = true;
+				break;
+			}
+			if (desc->border_type == 0)
+				desc->border_type = 1;
+			*destptr++ = 'I';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\200", 3) == 0 || /* ─ */
+		         strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
+		{
+			if (processed_chars == 0)
+			{
+				desc->linestyle = 'u';
+			}
+			else if (desc->linestyle != 'u')
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'd';
+			srcptr += 3;
+		}
+		else if (*srcptr == '+')
+		{
+			if (processed_chars == 0)
+			{
+				*destptr++ = 'L';
+				desc->linestyle = 'a';
+				desc->border_type = 2;
+			}
+			else
+			{
+				if (desc->linestyle != 'a')
+				{
+					broken_format = true;
+					break;
+				}
+				if (desc->border_type == 0)
+					desc->border_type = 1;
+
+				*destptr++ = (srcptr[1] == '-') ? 'I' : 'R';
+			}
+			srcptr += 1;
+		}
+		else if (*srcptr == '-')
+		{
+			if (processed_chars == 0)
+			{
+				desc->linestyle = 'a';
+			}
+			else if (desc->linestyle != 'a')
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'd';
+			srcptr += 1;
+		}
+		else if (*srcptr == ' ')
+		{
+			if (desc->border_type != 0)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'I';
+			srcptr += 1;
+		}
+		else
+		{
+			broken_format = true;
+			exit;
+		}
+		processed_chars += 1;
+	}
+
+	/* trim ending spaces */
+	if (!broken_format && last_black_char != 0)
+	{
+		last_black_char[1] = '\0';
+		desc->headline_char_size = strlen(desc->headline_transl);
+
+		return true;
+	}
+
+	free(desc->headline_transl);
+	desc->headline_transl = NULL;
 
 	return false;
 }
@@ -540,22 +708,20 @@ set_bold_row(WINDOW *win, int nrow,
 			 int cp3)
 {
 
-	if (desc->headline != NULL)
+	if (desc->headline_transl != NULL)
 	{
 		char   *cur;
 		int		xpos = 0;
-		int		unprocessed = desc->headline_size;
+		int		unprocessed = desc->headline_char_size;
 
-		cur = desc->headline;
+		cur = desc->headline_transl;
 
 		while (unprocessed > 0 && xpos <= maxx2)
 		{
-			int		chlen;
-
 			if (xpos >= start)
 			{
 				/* apply colors for data or for borders */
-				if (isDataPosChar(cur))
+				if (*cur == 'd')
 				{
 					if (xpos <= maxx1)
 						mvwchgat(win, nrow, xpos, 1, A_BOLD, cp1, 0);
@@ -566,9 +732,8 @@ set_bold_row(WINDOW *win, int nrow,
 					mvwchgat(win, nrow, xpos, 1, 0, cp3, 0);
 			}
 
-			chlen = utf8charlen(*cur);
-			cur += chlen;
-			unprocessed -= chlen;
+			cur += 1;
+			unprocessed -= 1;
 			xpos += 1;
 		}
 	}
@@ -842,6 +1007,7 @@ main(int argc, char *argv[])
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
 	int		stacked_mouse_event = -1;
+	bool	detected_format;
 
 	int		opt;
 
@@ -915,6 +1081,17 @@ main(int argc, char *argv[])
 	getmaxyx(stdscr, maxy, maxx);
 
 	readfile(fp, &desc);
+	detected_format = translate_bottom_line(&desc);
+
+	if (detected_format && desc.border_type != 2)
+	{
+		if (desc.border_bottom_row == -1)
+		{
+			desc.border_bottom_row = desc.last_data_row;
+			desc.last_data_row -= 1;
+		}
+	}
+
 	refresh_data_pad(&scrdesc, &desc);
 
 	refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
@@ -965,7 +1142,7 @@ recheck_event:
 		else
 			c = getch();
 
-		if (c == 'q')
+		if (c == 'q' || c == KEY_F(10))
 			break;
 
 		prev_cursor_row = cursor_row;
