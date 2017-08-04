@@ -691,17 +691,26 @@ readfile(FILE *fp, DataDesc *desc)
 		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
 		{
 			desc->border_head_row = nrows;
+
+			if (!desc->is_expanded_mode)
+				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
+
 			/* title surelly doesn't it there */
-			if (nrows == 1)
+			if ((!desc->is_expanded_mode && nrows == 1) ||
+			    (desc->is_expanded_mode && nrows == 0))
 			{
 				desc->title[0] = '\0';
 				desc->title_rows = 0;
 			}
-			if (!desc->is_expanded_mode)
-				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 		}
-		else if (desc->border_bottom_row == -1 && isBottomLeftChar(line))
+		else if (!desc->is_expanded_mode && desc->border_bottom_row == -1 && isBottomLeftChar(line))
 		{
+			desc->border_bottom_row = nrows;
+			desc->last_data_row = nrows - 1;
+		}
+		else if (desc->is_expanded_mode && isBottomLeftChar(line))
+		{
+			/* Outer border is repeated in expanded mode, use last detected row */
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
 		}
@@ -782,6 +791,12 @@ refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
 		delwin(scrdesc->rows);
 
 	scrdesc->rows = newpad(desc->maxy + 2, desc->maxx + 1);
+	if (scrdesc->rows == NULL)
+	{
+		endwin();
+		fprintf(stderr, "fatal: out of memory\n");
+		exit(1);
+	}
 	wbkgd(scrdesc->rows, COLOR_PAIR(1));
 	scrollok(scrdesc->rows, true);
 
@@ -962,7 +977,6 @@ refresh_cursor(int nrow, int prevrow,
 
 				is_exp_header = is_expanded_header(row, &ei_minx, &ei_maxx);
 			}
-		
 			set_bold_row(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc, 0, desc->headline_char_size, 6, desc->headline_char_size, 0, scrdesc->theme == 2 ? 1 : 6,
 						 is_exp_header, ei_minx, ei_maxx, 6, 9);
 			set_bold_row(scrdesc->fix_columns, nrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 5, fixc_maxx, 0, scrdesc->theme == 2 ? 1 : 6,

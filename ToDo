@@ -5,8 +5,7 @@ ToDo
 
 Known bugs
 ==========
-* expanded mode, border 1
-* expanded mode, linestyle ascii
+* select * from pg_proc v exp mode (related to memory expensive pads)
 
 Possible ToDo
 =============
