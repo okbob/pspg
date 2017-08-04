@@ -27,9 +27,7 @@ typedef struct LineBuffer
  * Available formats of headline chars
  *
  *  L, R   .. outer border
- *  +      .. plus
  *  I      .. inner border
- *  ' '    .. space
  *  d      .. data
  */
 
@@ -42,8 +40,9 @@ typedef struct
 	int		border_head_row;		/* nrow of head outer (required) */
 	int		border_bottom_row;		/* nrow of bottom outer border or -1 */
 	int		border_type;			/* detected type of border: 0, 1, 2 */
-	char	linestyle;				/* detected linestyle: a, o, u */
+	char	linestyle;				/* detected linestyle: a, u */
 	bool	is_expanded_mode;		/* true when data are in expanded mode */
+	int		expanded_info_minx;		/* begin of info in \x mode .. RECORD x */
 	char	title[65];				/* detected title (trimmed) or NULL */
 	int		title_rows;				/* number of rows used as table title (skipped later) */
 	char	filename[65];			/* filename (printed on top bar) */
@@ -82,10 +81,28 @@ typedef struct
 } ScrDesc;
 
 /*
+ * Returns length of utf8 char in bytes
+ */
+static int
+utf8charlen(char ch)
+{
+	if ((ch & 0xF0) == 0xF0)
+		return 4;
+
+	if ((ch & 0xE0) == 0xE0)
+		return 3;
+
+	if ((ch & 0xC0) == 0xC0)
+		return 2;
+
+	return 1;
+}
+
+/*
  * Translate from UTF8 to semantic characters.
  */
 static bool
-translate_bottom_line(DataDesc *desc)
+translate_headline(DataDesc *desc)
 {
 	char   *transl;
 	char   *srcptr;
@@ -93,13 +110,17 @@ translate_bottom_line(DataDesc *desc)
 	char   *last_black_char = NULL;
 	bool	broken_format = false;
 	int		processed_chars = 0;
+	bool	is_expanded_info = false;
 
 	srcptr = desc->headline;
 	destptr = malloc(desc->headline_size + 1);
+	memset(destptr, 0, desc->headline_size + 1);
 	desc->headline_transl = destptr;
 
 	desc->linestyle = 'a';
 	desc->border_type = 0;
+
+	desc->expanded_info_minx = -1;
 
 	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
 	{
@@ -116,10 +137,76 @@ translate_bottom_line(DataDesc *desc)
 		if (*srcptr != ' ')
 			last_black_char = destptr;
 
-		if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
-		    strncmp(srcptr, "\342\225\237", 3) == 0 ||
-		    strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
-		    strncmp(srcptr, "\342\225\240", 3) == 0)
+		if (desc->is_expanded_mode && *srcptr == '[')
+		{
+			if (desc->expanded_info_minx != -1)
+			{
+				broken_format = true;
+				break;
+			}
+
+			/* entry to expanded info mode */
+			is_expanded_info = true;
+			desc->expanded_info_minx = processed_chars;
+
+			*destptr++ = 'd';
+			srcptr += utf8charlen(*srcptr);
+		}
+		else if (is_expanded_info)
+		{
+			if (*srcptr == ']')
+			{
+				is_expanded_info = false;
+			}
+			*destptr++ = 'd';
+			srcptr += utf8charlen(*srcptr);
+		}
+		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
+		         strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
+		{
+			/* should be expanded mode */
+			if (processed_chars > 0 || !desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			desc->linestyle = 'u';
+			desc->border_type = 2;
+			*destptr++ = 'L';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\220", 3) == 0 || /* ┐ */
+		         strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
+		{
+			if (desc->linestyle != 'u' || desc->border_type != 2 ||
+				!desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'R';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\254", 3) == 0 || /* ┬╤ */
+			     strncmp(srcptr, "\342\225\244", 3) == 0 ||
+			     strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
+			     strncmp(srcptr, "\342\225\246", 3) == 0)
+		{
+			if (desc->linestyle != 'u' || !desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			if (desc->border_type == 0)
+				desc->border_type = 1;
+
+			*destptr++ = 'I';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
+		         strncmp(srcptr, "\342\225\237", 3) == 0 ||
+		         strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
+		         strncmp(srcptr, "\342\225\240", 3) == 0)
 		{
 			if (processed_chars > 0)
 			{
@@ -223,17 +310,22 @@ translate_bottom_line(DataDesc *desc)
 		else
 		{
 			broken_format = true;
-			exit;
+			break;
 		}
 		processed_chars += 1;
 	}
+
+	/* should not be - unclosed header */
+	if (is_expanded_info)
+		broken_format = true;
+	else if (desc->is_expanded_mode && desc->expanded_info_minx == -1)
+		broken_format = true;
 
 	/* trim ending spaces */
 	if (!broken_format && last_black_char != 0)
 	{
 		last_black_char[1] = '\0';
 		desc->headline_char_size = strlen(desc->headline_transl);
-		desc->is_expanded_mode = false;
 
 		return true;
 	}
@@ -308,6 +400,63 @@ isBottomLeftChar(char *str)
 }
 
 /*
+ * detect different faces of headline in extended mode
+ */
+static bool
+is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
+{
+	int		pos = 0;
+
+	if (*str == '+')
+	{
+		str += 1;
+		pos += 1;
+	}
+	else if (strncmp(str, "\342\224\214", 3) == 0 || /* ┌ */
+	         strncmp(str, "\342\225\224", 3) == 0 || /* ╔ */
+	         strncmp(str, "\342\224\234", 3) == 0 || /* ├╟ */
+	         strncmp(str, "\342\225\237", 3) == 0 ||
+	         strncmp(str, "\342\225\236", 3) == 0 || /* ╞╠ */
+	         strncmp(str, "\342\225\240", 3) == 0)
+	{
+		str += 3;
+		pos += 1;
+	}
+
+	if (*str == '-')
+	{
+		str += 1;
+		pos += 1;
+	}
+	else if (strncmp(str, "\342\224\200", 3) == 0 || /* ─ */
+	         strncmp(str, "\342\225\220", 3) == 0) /* ═ */
+	{
+		str += 3;
+		pos += 1;
+	}
+
+	if (strncmp(str, "[ ", 2) != 0)
+		return false;
+
+	if (ei_minx != NULL && ei_maxx != NULL)
+	{
+		pos += 2;
+		str += 2;
+		*ei_minx = pos - 1;
+
+		while (*str != ']' && *str != '\0')
+		{
+			pos += 1;
+			str += utf8charlen(*str);
+		}
+
+		*ei_maxx = pos - 1;
+	}
+
+	return true;
+}
+
+/*
  * Returns length of utf8 string in chars.
  */
 static size_t
@@ -321,23 +470,6 @@ utf8len(char *s)
 	return len;
 }
 
-/*
- * Returns length of utf8 char in bytes
- */
-static int
-utf8charlen(char ch)
-{
-	if ((ch & 0xF0) == 0xF0)
-		return 4;
-
-	if ((ch & 0xE0) == 0xE0)
-		return 3;
-
-	if ((ch & 0xC0) == 0xC0)
-		return 2;
-
-	return 1;
-}
 
 /*
  * Copy trimmed string
@@ -408,6 +540,8 @@ initialize_color_pairs(int theme)
 		init_pair(4, -1, -1);							/* fix rows, columns */
 		init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 		init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
+		init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
+		init_pair(9, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 	}
 	else if (theme == 1)
 	{
@@ -419,6 +553,8 @@ initialize_color_pairs(int theme)
 		init_pair(4, COLOR_YELLOW, COLOR_BLUE);
 		init_pair(5, COLOR_YELLOW, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
+		init_pair(8, COLOR_RED, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 2)
 	{
@@ -431,6 +567,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(7, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 3)
 	{
@@ -442,6 +580,8 @@ initialize_color_pairs(int theme)
 		init_pair(4, COLOR_WHITE, COLOR_CYAN);
 		init_pair(5, COLOR_WHITE, COLOR_BLACK);
 		init_pair(6, COLOR_CYAN, COLOR_BLACK);
+		init_pair(8, COLOR_WHITE, COLOR_CYAN);
+		init_pair(9, COLOR_WHITE, COLOR_BLACK);
 	}
 	else if (theme == 4)
 	{
@@ -453,6 +593,8 @@ initialize_color_pairs(int theme)
 		init_pair(4, COLOR_BLACK, COLOR_WHITE);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_BLUE);
 	}
 
 }
@@ -509,6 +651,7 @@ readfile(FILE *fp, DataDesc *desc)
 	desc->border_head_row = -1;
 	desc->border_bottom_row = -1;
 	desc->last_data_row = -1;
+	desc->is_expanded_mode = false;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -540,9 +683,10 @@ readfile(FILE *fp, DataDesc *desc)
 			desc->title_rows = 1;
 		}
 
-		if (desc->border_top_row == -1 && isTopLeftChar(line))
+		if (desc->border_head_row == -1 && desc->border_top_row == -1 && isTopLeftChar(line))
 		{
 			desc->border_top_row = nrows;
+			desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 		}
 		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
 		{
@@ -553,6 +697,8 @@ readfile(FILE *fp, DataDesc *desc)
 				desc->title[0] = '\0';
 				desc->title_rows = 0;
 			}
+			if (!desc->is_expanded_mode)
+				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 		}
 		else if (desc->border_bottom_row == -1 && isBottomLeftChar(line))
 		{
@@ -585,17 +731,22 @@ readfile(FILE *fp, DataDesc *desc)
 
 	desc->maxy = nrows - 1;
 
+	desc->headline_char_size = 0;
+
 	if (desc->border_head_row != -1)
 	{
 		int		i = 0;
 
 		desc->headline = desc->rows.rows[desc->border_head_row];
-		desc->headline_char_size = 0;
-
 		desc->headline_size = strlen(desc->headline);
 
 		if (desc->last_data_row == -1)
 			desc->last_data_row = desc->last_row - 1;
+	}
+	else if (desc->is_expanded_mode && desc->border_top_row != -1)
+	{
+		desc->headline = desc->rows.rows[desc->border_top_row];
+		desc->headline_size = strlen(desc->headline);
 	}
 	else
 	{
@@ -655,6 +806,31 @@ refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
 }
 
 /*
+ * Returns n-th row
+ */
+static char *
+get_row(DataDesc *desc, int nrow)
+{
+	if (nrow <= desc->last_data_row)
+	{
+		LineBuffer *lnb = &desc->rows;
+
+		while (nrow > 1000)
+		{
+			lnb = lnb->next;
+			nrow -= 1000;
+		}
+
+		return lnb->rows[nrow];
+	}
+	else
+	{
+		fprintf(stderr, "fatal error\n");
+		exit(1);
+	}
+}
+
+/*
  * Set bold attributes for char in line. Skip border chars
  */
 static void
@@ -663,9 +839,11 @@ set_bold_row(WINDOW *win, int nrow,
 			 int start,
 			 int maxx1, int cp1,
 			 int maxx2, int cp2,
-			 int cp3)
+			 int cp3,
+			 bool is_expanded_head_line,
+			 int ei_minx, int ei_maxx,
+			 int cp4, int cp5)
 {
-
 	if (desc->headline_transl != NULL)
 	{
 		char   *cur;
@@ -674,25 +852,33 @@ set_bold_row(WINDOW *win, int nrow,
 
 		cur = desc->headline_transl;
 
-		while (unprocessed > 0 && xpos <= maxx2)
+		if (!is_expanded_head_line)
 		{
-			if (xpos >= start)
+			while (unprocessed > 0 && xpos <= maxx2)
 			{
-				/* apply colors for data or for borders */
-				if (*cur == 'd')
+				if (xpos >= start)
 				{
-					if (xpos <= maxx1)
-						mvwchgat(win, nrow, xpos, 1, A_BOLD, cp1, 0);
+					if (*cur == 'd')
+					{
+						if (xpos <= maxx1)
+							mvwchgat(win, nrow, xpos, 1, A_BOLD, cp1, 0);
+						else
+							mvwchgat(win, nrow, xpos, 1, 0, cp2, 0);
+					}
 					else
-						mvwchgat(win, nrow, xpos, 1, 0, cp2, 0);
+						mvwchgat(win, nrow, xpos, 1, 0, cp3, 0);
 				}
-				else
-					mvwchgat(win, nrow, xpos, 1, 0, cp3, 0);
-			}
 
-			cur += 1;
-			unprocessed -= 1;
-			xpos += 1;
+				cur += 1;
+				unprocessed -= 1;
+				xpos += 1;
+			}
+		}
+		else
+		{
+			mvwchgat(win, nrow, 0, -1, 0, cp4, 0);
+			mvwchgat(win, nrow, ei_minx,
+			                    ei_maxx - ei_minx + 1, A_BOLD, cp5, 0);
 		}
 	}
 	else
@@ -715,6 +901,8 @@ refresh_cursor(int nrow, int prevrow,
 	{
 		int		rows_maxy, rows_maxx;
 		int		fixc_maxy, fixc_maxx;
+		int		ei_minx, ei_maxx;
+		bool	is_exp_header = false;
 
 		getmaxyx(scrdesc->rows, rows_maxy, rows_maxx);
 		getmaxyx(scrdesc->fix_columns, fixc_maxy, fixc_maxx);
@@ -729,15 +917,33 @@ refresh_cursor(int nrow, int prevrow,
 			}
 			else
 			{
-				if (scrdesc->theme == 2)
+				if (desc->is_expanded_mode)
 				{
-					set_bold_row(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, desc, 0, rows_maxx, 1, rows_maxx, 0, 1);
-					mvwchgat(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, desc->maxx, -1, 0, 1, 0);
+					char *row = get_row(desc, prevrow + scrdesc->fix_rows_rows);
+
+					is_exp_header = is_expanded_header(row, &ei_minx, &ei_maxx);
+				}
+
+				if (is_exp_header)
+				{
+					set_bold_row(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, desc, 0, 0, 0, 1, 1, 1, true, ei_minx, ei_maxx, 1, 8);
+					set_bold_row(scrdesc->fix_columns, prevrow + scrdesc->fix_rows_rows, desc, 0, 0, 0, 0, 0, 0,
+								 true, ei_minx, ei_maxx, 1, 8);
 				}
 				else
-					mvwchgat(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, 0, -1, 0, 1, 0);
+				{
+					if (scrdesc->theme == 2)
+					{
+						set_bold_row(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, desc, 0, rows_maxx, 1, rows_maxx, 0, 1,
+									 false, 0, 0, 0, 0);
+						mvwchgat(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, desc->maxx, -1, 0, 1, 0);
+					}
+					else
+						mvwchgat(scrdesc->rows, prevrow + scrdesc->fix_rows_rows, 0, -1, 0, 1, 0);
 
-				set_bold_row(scrdesc->fix_columns, prevrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 4, fixc_maxx, 0, 1);
+					set_bold_row(scrdesc->fix_columns, prevrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 4, fixc_maxx, 0, 1,
+								 false, 0, 0, 0, 0);
+					}
 			}
 
 			mvwchgat(stdscr, prevrow + scrdesc->fix_rows_rows + 1 - desc->title_rows - prev_first_row, desc->headline_char_size + 1, -1, 0, 1, 0);
@@ -750,8 +956,17 @@ refresh_cursor(int nrow, int prevrow,
 		}
 		else
 		{
-			set_bold_row(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc, 0, desc->headline_char_size, 6, desc->headline_char_size, 0, scrdesc->theme == 2 ? 1 : 6);
-			set_bold_row(scrdesc->fix_columns, nrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 5, fixc_maxx, 0, scrdesc->theme == 2 ? 1 : 6);
+			if (desc->is_expanded_mode)
+			{
+				char *row = get_row(desc, nrow + scrdesc->fix_rows_rows);
+
+				is_exp_header = is_expanded_header(row, &ei_minx, &ei_maxx);
+			}
+		
+			set_bold_row(scrdesc->rows, nrow + scrdesc->fix_rows_rows, desc, 0, desc->headline_char_size, 6, desc->headline_char_size, 0, scrdesc->theme == 2 ? 1 : 6,
+						 is_exp_header, ei_minx, ei_maxx, 6, 9);
+			set_bold_row(scrdesc->fix_columns, nrow + scrdesc->fix_rows_rows, desc, 0, fixc_maxx, 5, fixc_maxx, 0, scrdesc->theme == 2 ? 1 : 6,
+						 is_exp_header, ei_minx, ei_maxx, 6, 9);
 		}
 
 
@@ -807,8 +1022,18 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 
 	if (fixRows != -1)
 		scrdesc->fix_rows_rows = fixRows;
+	else if (desc->is_expanded_mode)
+	{
+		scrdesc->fix_rows_rows = desc->title_rows;
+	}
 	else
 		scrdesc->fix_rows_rows = desc->border_head_row != -1 ? desc->border_head_row + 1 : 0;
+
+	if (scrdesc->fix_rows_rows == 0)
+	{
+		desc->title_rows = 0;
+		desc->title[0] = '\0';
+	}
 
 	/*
 	 * When there are not headline, then highlight text only for theme 2.
@@ -818,22 +1043,50 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	if (desc->border_head_row != -1 || scrdesc->theme == 2)
 	{
 		int		i;
+		LineBuffer *rows = &desc->rows;
+		int			current_row = 0;
+		bool			is_exp_header = false;
+		int			minx, maxx;
 
 		for (i = 0; i <= desc->last_data_row; i++)
 		{
-			if (i == desc->border_top_row ||
-				i == desc->border_head_row ||
-				i == desc->border_bottom_row)
+			char   *row;
+
+			if (current_row == 1000)
+			{
+				rows = rows->next;
+				current_row = 0;
+			}
+			row = rows->rows[current_row++];
+
+			if (!desc->is_expanded_mode && (
+					i == desc->border_top_row ||
+					i == desc->border_head_row ||
+					i == desc->border_bottom_row))
 				continue;
 
-				if (i < scrdesc->fix_rows_rows)
-				{
-					set_bold_row(scrdesc->rows, i, desc, 0, desc->maxx, 4, desc->maxx, 4, 1);
-				}
-				else
-				{
-					set_bold_row(scrdesc->rows, i, desc, 0, scrdesc->theme != 2 ? scrdesc->fix_cols_cols - 1 : desc->maxx, 4, desc->maxx, 1, 1);
-				}
+			if (desc->is_expanded_mode)
+			{
+				if (i == desc->border_bottom_row)
+					continue;
+
+				is_exp_header = is_expanded_header(row, &minx, &maxx);
+			}
+
+			if (is_exp_header)
+			{
+				set_bold_row(scrdesc->rows, i, desc, 0, 0, 0, 1, 1, 1, true, minx, maxx, 1, 8);
+			}
+			else if (i < scrdesc->fix_rows_rows)
+			{
+				set_bold_row(scrdesc->rows, i, desc, 0, desc->maxx, 4, desc->maxx, 4, 1,
+				false, 0, 0, 0, 0);
+			}
+			else
+			{
+				set_bold_row(scrdesc->rows, i, desc, 0, scrdesc->theme != 2 ? scrdesc->fix_cols_cols - 1 : desc->maxx, 4, desc->maxx, 1, 1,
+							 false, 0, 0, 0, 0);
+			}
 		}
 	}
 
@@ -885,7 +1138,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
  * Rewresh aux windows like top bar or bottom bar.
  */
 static void
-refresh_aux_windows(ScrDesc *scrdesc)
+refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 {
 	int		maxy, maxx;
 
@@ -912,30 +1165,95 @@ refresh_aux_windows(ScrDesc *scrdesc)
 	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
 	wrefresh(scrdesc->bottom_bar);
 
-	wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
-	mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
-	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
-	mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
-	wrefresh(scrdesc->bottom_bar);
+	if (desc->headline_transl != NULL)
+	{
+		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
+		mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
+		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
+		wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+		mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
+		wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+		wrefresh(scrdesc->bottom_bar);
+	}
+}
+
+static int
+number_width(int num)
+{
+	if (num < 10)
+		return 1;
+	if (num < 100)
+		return 2;
+	if (num < 1000)
+		return 3;
+	if (num < 10000)
+		return 4;
+	if (num < 100000)
+		return 5;
+	if (num < 1000000)
+		return 6;
+	if (num < 10000000)
+		return 7;
+}
+
+static int
+min_int(int a, int b)
+{
+	if (a < b)
+		return a;
+	else
+		return b;
 }
 
 static void
 print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
-						 int columns, int cursor_row, int cursor_col)
+						 int columns, int cursor_row, int cursor_col, int first_row)
 {
 	int		maxy, maxx;
+	int		smaxy, smaxx;
+	char	buffer[200];
 
 	getmaxyx(scrdesc->top_bar, maxy, maxx);
+	getmaxyx(stdscr, smaxy, smaxx);
 
-	mvwprintw(scrdesc->top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%  ",
+	if (desc->headline_transl)
+	{
+		snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d]  %3.0f%%",
+							number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+							number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+							number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+							number_width(desc->headline_char_size), desc->headline_char_size,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
+							number_width(smaxy), cursor_row - first_row,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), cursor_row + 1,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), desc->maxy - scrdesc->fix_rows_rows,
+							((cursor_row + 1 + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0);
+	}
+	else
+	{
+		snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d]  %3.0f%%",
+							number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
+							number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
+							number_width(desc->maxx), desc->maxx,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
+							number_width(smaxy), cursor_row - first_row,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), cursor_row,
+							number_width(desc->maxy - scrdesc->fix_rows_rows), desc->maxy - scrdesc->fix_rows_rows,
+							((cursor_row + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0);
+	}
+
+	mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
+
+/*
+
+
+	mvwprintw(scrdesc->top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%                                  xxx ",
 					 columns + 1,
 					 cursor_col + scrdesc->fix_cols_cols - 1,
 					 desc->maxx + 1,
 					 cursor_row + 1,
 					 desc->maxy - scrdesc->fix_rows_rows,
-					 ((cursor_row + 1 + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0);
+					 ((cursor_row + 1 + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0); */
 	wrefresh(scrdesc->top_bar);
 }
 
@@ -958,7 +1276,7 @@ main(int argc, char *argv[])
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
 	int		stacked_mouse_event = -1;
-	bool	detected_format;
+	bool	detected_format = false;
 
 	int		opt;
 
@@ -1027,19 +1345,50 @@ main(int argc, char *argv[])
 	mousemask(ALL_MOUSE_EVENTS, NULL);
 	mouseinterval(50);
 
+	readfile(fp, &desc);
+	if (desc.headline != NULL)
+		detected_format = translate_headline(&desc);
+
 	memset(&scrdesc, sizeof(ScrDesc), 0);
-	refresh_aux_windows(&scrdesc);
+	refresh_aux_windows(&scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
 
-	readfile(fp, &desc);
-	detected_format = translate_bottom_line(&desc);
-
-	if (detected_format && desc.border_type != 2)
+	/* some corrections */
+	if (detected_format)
 	{
-		if (desc.border_bottom_row == -1)
+		if (desc.is_expanded_mode)
 		{
-			desc.border_bottom_row = desc.last_data_row;
-			desc.last_data_row -= 1;
+			if (strchr(desc.headline_transl,'I') == NULL)
+			{
+				char *str = desc.rows.rows[desc.title_rows + 1];
+				int pos = 0;
+
+				/* fallback point, didn't find separator already */
+				while (pos < 40)
+				{
+					if ((desc.linestyle == 'a' && *str == '|' && pos > 1) ||
+					    (desc.linestyle == 'u' && pos > 1 &&
+					    (strncmp(str, /* │ */ "\342\224\202", 3) == 0 ||
+					     strncmp(str, /* ║ */ "\342\225\221", 3) == 0)))
+					{
+						desc.headline_transl[pos] = 'I';
+						break;
+					}
+					pos += 1;
+					str += utf8charlen(*str);
+				}
+			}
+		}
+		else
+		{
+			if (desc.border_type != 2)
+			{
+				if (desc.border_bottom_row == -1)
+				{
+					desc.border_bottom_row = desc.last_data_row;
+					desc.last_data_row -= 1;
+				}
+			}
 		}
 	}
 
@@ -1056,7 +1405,7 @@ main(int argc, char *argv[])
 	if (scrdesc.theme == 2)
 		wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
-	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
+	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
 	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc, prev_first_row, first_row);
 
 	while (true)
@@ -1073,7 +1422,8 @@ main(int argc, char *argv[])
 		if (scrdesc.luc)
 			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, fixed_columns - 1);
 
-		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
+		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col,
+		                       scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
 
 		if (scrdesc.fix_rows)
 			prefresh(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, 1, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows - desc.title_rows, maxx - 1);
@@ -1332,7 +1682,7 @@ recheck_event:
 		if (scrdesc.theme == 2)
 			wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
-		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
+		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
 		refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc, prev_first_row, first_row);
 
 		if (refresh_scr)
@@ -1356,9 +1706,9 @@ recheck_event:
 
 			refresh();
 			getmaxyx(stdscr, maxy, maxx);
-			refresh_aux_windows(&scrdesc);
+			refresh_aux_windows(&scrdesc, &desc);
 			refresh_main_pads(&scrdesc, &desc, columns, fixedRows, cursor_col, first_row, style, maxx);
-			print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col);
+			print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
 			refresh_cursor(cursor_row, prev_cursor_row, true, &desc, &scrdesc, prev_first_row, first_row);
 			refresh_scr = false;
 		}

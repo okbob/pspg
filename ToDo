@@ -1,11 +1,12 @@
 ToDo
 ====
 * independent horizontal scrolling for footer lines
-* faster headline character processing
-* expanded format (\x output) support
+* PgDn, PgUp in expanded format should be aligned per record (like columns scrolling)
 
 Known bugs
 ==========
+* expanded mode, border 1
+* expanded mode, linestyle ascii
 
 Possible ToDo
 =============
