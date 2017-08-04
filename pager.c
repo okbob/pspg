@@ -81,31 +81,6 @@ typedef struct
 	int		theme;					/* color theme number */
 } ScrDesc;
 
-
-/*
- * Returns true, if char is related to data (no border) position.
- * It should be tested on border_head_row line.
- */
-static bool
-isDataPosChar(char *str)
-{
-	const char *u1 = "\342\224\200";
-	const char *u2 = "\342\225\220";
-
-	if (str[0] == '-')
-		return true;
-
-	if (str[0] == ' ' || str[0] == '+')
-		return false;
-
-	if (strncmp(str, u1, 3) == 0)
-		return true;
-	if (strncmp(str, u2, 3) == 0)
-		return true;
-
-	return false;
-}
-
 /*
  * Translate from UTF8 to semantic characters.
  */
@@ -126,14 +101,8 @@ translate_bottom_line(DataDesc *desc)
 	desc->linestyle = 'a';
 	desc->border_type = 0;
 
-	while (*srcptr != '\0')
+	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
 	{
-		if (*srcptr == '\n' || *srcptr == '\r')
-		{
-			srcptr += 1;
-			continue;
-		}
-
 		/* only spaces can be after known right border */
 		if (last_black_char != NULL && *last_black_char == 'R')
 		{
@@ -264,6 +233,7 @@ translate_bottom_line(DataDesc *desc)
 	{
 		last_black_char[1] = '\0';
 		desc->headline_char_size = strlen(desc->headline_transl);
+		desc->is_expanded_mode = false;
 
 		return true;
 	}
@@ -618,21 +588,9 @@ readfile(FILE *fp, DataDesc *desc)
 	if (desc->border_head_row != -1)
 	{
 		int		i = 0;
-		int		last_not_spc = -1;
-		char   *c;
 
 		desc->headline = desc->rows.rows[desc->border_head_row];
-
-		c = desc->headline;
-		while (*c != '\0')
-		{
-			if (*c != ' ')
-				last_not_spc = i;
-			c += utf8charlen(*c);
-			i++;
-		}
-
-		desc->headline_char_size = last_not_spc;
+		desc->headline_char_size = 0;
 
 		desc->headline_size = strlen(desc->headline);
 
@@ -811,24 +769,10 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 				 int cursor_col, int first_row,
 				 int theme, int maxx)
 {
-	char	*str = desc->headline;
-	int		nchars = desc->headline_size;
-	int		clen;
 	bool	found = false;
-	int		nchar = 0;
-	int		i;
 	bool	use_default_fixCol = false;
 
 	scrdesc->theme = theme;
-
-	/* when there are outer border, starts on 1 position */
-	if (desc->border_top_row != -1)
-	{
-		clen = utf8charlen(*str);
-		nchars -= clen;
-		str += clen;
-		nchar = 1;
-	}
 
 	if (fixCol == -1)
 	{
@@ -836,21 +780,26 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 		fixCol = 1;
 	}
 
-	while (nchars > 0)
+	scrdesc->fix_cols_cols = 0;
+
+	/* search end of fixCol'th column */
+	if (desc->headline_transl != NULL && fixCol > 0)
 	{
-		if (!isDataPosChar(str) && fixCol-- == 1)
+		char *c = desc->headline_transl;
+
+		while (*c != 0)
 		{
-			found = true;
-			break;
+			if (*c == 'I' && --fixCol == 0)
+			{
+				found = true;
+				break;
+			}
+			c += 1;
 		}
 
-		clen = utf8charlen(*str);
-		nchars -= clen;
-		str += clen;
-		nchar += 1;
+		if (found)
+			scrdesc->fix_cols_cols = c - desc->headline_transl + 1;
 	}
-
-	scrdesc->fix_cols_cols = found ? nchar + 1 : 0;
 
 	/* disable default fixCols when is not possible draw in screen */
 	if (use_default_fixCol && scrdesc->fix_cols_cols > maxx)
@@ -868,6 +817,8 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	 */
 	if (desc->border_head_row != -1 || scrdesc->theme == 2)
 	{
+		int		i;
+
 		for (i = 0; i <= desc->last_data_row; i++)
 		{
 			if (i == desc->border_top_row ||
@@ -965,7 +916,7 @@ refresh_aux_windows(ScrDesc *scrdesc)
 	mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
 	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
 	wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
-	mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " C.Freeze ");
+	mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
 	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
 	wrefresh(scrdesc->bottom_bar);
 }
@@ -1194,30 +1145,31 @@ recheck_event:
 			case KEY_LEFT:
 			case 'h':
 				{
-					int		slen;
-					int		nchars = 0;
+					int		move_left = 30;
 
 					if (cursor_col == 0)
 						break;
 
-					for (i = cursor_col - 1; i >= 0; i--)
+					if (desc.headline_transl != NULL)
 					{
-						slen = mvwinnstr(scrdesc.rows, desc.border_head_row, scrdesc.fix_cols_cols + i - 1, str, 4);
+						int		i;
 
-						/* when we didn't find separator in limit */
-						if (++nchars > 30)
-							break;
-
-						if (!isDataPosChar(str))
+						for (i = 1; i <= 30; i++)
 						{
-							if (nchars == 1)
-								continue;
+							int		pos = scrdesc.fix_cols_cols + cursor_col - i;
 
-							break;
+							if (pos < 0)
+								break;
+
+							if (desc.headline_transl[i] == 'I')
+							{
+								move_left = i;
+								break;
+							}
 						}
 					}
 
-					cursor_col -= nchars;
+					cursor_col -= move_left;
 					if (cursor_col < 3)
 						cursor_col = 0;
 				}
@@ -1226,27 +1178,27 @@ recheck_event:
 			case KEY_RIGHT:
 			case 'l':
 				{
-					int		slen;
-					char   *ptr;
-					int		nchar = 0;
+					int		move_right = 30;
 					int		max_cursor_col;
 
-					slen = mvwinnstr(scrdesc.rows, desc.border_head_row, scrdesc.fix_cols_cols + cursor_col, str, 120);
-
-					for(ptr = str; ptr < str + slen; )
+					if (desc.headline_transl != NULL)
 					{
-						if (++nchar > 30)
-							break;
+						int		i;
+						char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
 
-						if (!isDataPosChar(ptr))
-							break;
-
-						ptr += utf8charlen(*ptr);
+						for (i = 1; i <= 30; i++)
+						{
+							if (str[i] == 'I')
+							{
+								move_right = i + 1;
+								break;
+							}
+						}
 					}
 
-					cursor_col += nchar;
+					cursor_col += move_right;
 
-					if (desc.headline != NULL)
+					if (desc.headline_transl != NULL)
 						max_cursor_col = desc.headline_char_size - maxx;
 					else
 						max_cursor_col = desc.maxx - maxx - 1;
