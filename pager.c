@@ -98,6 +98,8 @@ utf8charlen(char ch)
 	return 1;
 }
 
+#define MOUSE_WHEEL_BUTTONS			1
+
 /*
  * Translate from UTF8 to semantic characters.
  */
@@ -1638,6 +1640,8 @@ recheck_event:
 					{
 						int		x = event.bstate;
 
+#ifdef MOUSE_WHEEL_BUTTONS
+
 						if (event.bstate & BUTTON5_PRESSED)
 						{
 							stacked_mouse_event = KEY_DOWN;
@@ -1648,7 +1652,10 @@ recheck_event:
 							stacked_mouse_event = KEY_UP;
 							goto recheck_event;
 						}
-						else if (event.bstate & BUTTON1_PRESSED)
+						else
+#endif
+
+						if (event.bstate & BUTTON1_PRESSED)
 						{
 							int		max_cursor_row;
 							int		max_first_row;
