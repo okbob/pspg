@@ -738,7 +738,7 @@ readfile(FILE *fp, DataDesc *desc)
 	if (!use_stdin)
 		fclose(fp);
 
-	desc->maxy = nrows - 1;
+	desc->maxy = nrows ;
 
 	desc->headline_char_size = 0;
 
@@ -1145,7 +1145,6 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 		scrdesc->fix_columns = newpad(desc->maxy + 1, scrdesc->fix_cols_cols);
 		copywin(scrdesc->rows, scrdesc->fix_columns, 0, 0, 0, 0, desc->maxy, scrdesc->fix_cols_cols - 1, false);
 	}
-
 }
 
 /*
@@ -1232,7 +1231,7 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 
 	if (desc->headline_transl)
 	{
-		snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d]  %3.0f%%",
+		snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
 							number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
 							number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
 							number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
@@ -1245,7 +1244,7 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 	}
 	else
 	{
-		snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d]  %3.0f%%",
+		snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
 							number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
 							number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
 							number_width(desc->maxx), desc->maxx,
@@ -1257,17 +1256,6 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
-
-/*
-
-
-	mvwprintw(scrdesc->top_bar, 0, maxx - 35, "C%d: [%3d/%d] L: [%3d/%d] %4.0f%%                                  xxx ",
-					 columns + 1,
-					 cursor_col + scrdesc->fix_cols_cols - 1,
-					 desc->maxx + 1,
-					 cursor_row + 1,
-					 desc->maxy - scrdesc->fix_rows_rows,
-					 ((cursor_row + 1 + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows + 1))) * 100.0); */
 	wrefresh(scrdesc->top_bar);
 }
 
