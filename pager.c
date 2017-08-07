@@ -777,6 +777,70 @@ readfile(FILE *fp, DataDesc *desc)
 	return 0;
 }
 
+static void
+window_fill(WINDOW *win, int srcy, int srcx, DataDesc *desc)
+{
+	int		maxy, maxx;
+	int		row = 0;
+	LineBuffer *lnb = &desc->rows;
+	int			effective_row;
+
+	char		*firstchar;
+
+	werase(win);
+	getmaxyx(win, maxy, maxx);
+
+	while (row + 1000 - 1 < srcy)
+	{
+		lnb = lnb->next;
+		row += 1000;
+	}
+
+	effective_row = srcy - row;
+	row = 0;
+
+	while (row <= maxx)
+	{
+		int		skipx;
+		int		bytes;
+		int		nchars;
+		char	*ptr;
+		
+		if (effective_row == 1000)
+		{
+			lnb = lnb->next;
+			effective_row = 0;
+		}
+
+		firstchar = lnb->rows[effective_row++];
+		if (firstchar == NULL)
+			break;
+		skipx = srcx;
+
+		while (skipx-- > 0 && *firstchar != '\0')
+		{
+			firstchar += utf8charlen(*firstchar);
+		}
+
+		nchars = maxx + 1;
+
+		ptr = firstchar;
+		bytes = 0;
+		while (nchars-- > 0 && *ptr != '\0')
+		{
+			int len = utf8charlen(*ptr);
+			ptr += len;
+			bytes += len;
+		}
+
+		wmove(win, row++, 0);
+		waddnstr(win, firstchar, bytes);
+	}
+
+}
+
+
+
 /*
  * Create and fill a pad with row data.
  */
@@ -792,7 +856,7 @@ refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
 	if (scrdesc->rows != NULL)
 		delwin(scrdesc->rows);
 
-	scrdesc->rows = newpad(desc->maxy + 2, desc->maxx + 1);
+	scrdesc->rows = newpad(11, desc->maxx + 1);
 	if (scrdesc->rows == NULL)
 	{
 		endwin();
@@ -802,7 +866,7 @@ refresh_data_pad(ScrDesc *scrdesc, DataDesc *desc)
 	wbkgd(scrdesc->rows, COLOR_PAIR(1));
 	scrollok(scrdesc->rows, true);
 
-	for (nrows = 0; nrows <= desc->maxy; nrows++)
+	for (nrows = 0; nrows < 10; nrows++)
 	{
 		if (current_row == 1000)
 		{
@@ -1056,7 +1120,7 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 	 * This part should be redesigned because the content without headline
 	 * will be moved to footer.
 	 */
-	if (desc->border_head_row != -1 || scrdesc->theme == 2)
+	if (false)//desc->border_head_row != -1 || scrdesc->theme == 2)
 	{
 		int		i;
 		LineBuffer *rows = &desc->rows;
@@ -1136,17 +1200,17 @@ refresh_main_pads(ScrDesc *scrdesc, DataDesc *desc,
 		copywin(scrdesc->rows, scrdesc->fix_rows, 0, 0, 0, 0, scrdesc->fix_rows_rows - 1, desc->maxx, false);
 	}
 
-	if (scrdesc->fix_columns != NULL)
-	{
-		delwin(scrdesc->fix_columns);
-		scrdesc->fix_columns = NULL;
-	}
+//	if (scrdesc->fix_columns != NULL)
+//	{
+//		delwin(scrdesc->fix_columns);
+//		scrdesc->fix_columns = NULL;
+//	}
 
-	if (scrdesc->fix_cols_cols > 0)
-	{
-		scrdesc->fix_columns = newpad(desc->maxy + 1, scrdesc->fix_cols_cols);
-		copywin(scrdesc->rows, scrdesc->fix_columns, 0, 0, 0, 0, desc->maxy, scrdesc->fix_cols_cols - 1, false);
-	}
+//	if (scrdesc->fix_cols_cols > 0)
+//	{
+//		scrdesc->fix_columns = newpad(desc->maxy + 1, scrdesc->fix_cols_cols);
+//		copywin(scrdesc->rows, scrdesc->fix_columns, 0, 0, 0, 0, desc->maxy, scrdesc->fix_cols_cols - 1, false);
+//	}
 }
 
 /*
@@ -1282,6 +1346,9 @@ main(int argc, char *argv[])
 	int		stacked_mouse_event = -1;
 	bool	detected_format = false;
 
+WINDOW *win;
+WINDOW *win2;
+
 	int		opt;
 
 	while ((opt = getopt(argc, argv, "bs:c:df:")) != -1)
@@ -1412,6 +1479,9 @@ main(int argc, char *argv[])
 	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
 	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc, prev_first_row, first_row);
 
+win = newwin(maxy - scrdesc.fix_rows_rows - 2, maxx + 1 - scrdesc.fix_cols_cols, scrdesc.fix_rows_rows + 1, scrdesc.fix_cols_cols);
+win2 = newwin(maxy - scrdesc.fix_rows_rows - 2, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows + 1, 0);
+
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -1426,14 +1496,23 @@ main(int argc, char *argv[])
 		if (scrdesc.luc)
 			prefresh(scrdesc.luc, desc.title_rows, 0, 1, 0, scrdesc.fix_rows_rows - desc.title_rows, fixed_columns - 1);
 
-		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col,
-		                       scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
+//		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col,
+//		                       scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
+//
+
+		window_fill(win, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, &desc);
+
+		wrefresh(win);
+
+		window_fill(win2, scrdesc.fix_rows_rows + first_row, 0, &desc);
+		
+		wrefresh(win2);
 
 		if (scrdesc.fix_rows)
 			prefresh(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, 1, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows - desc.title_rows, maxx - 1);
 
-		if (scrdesc.fix_columns)
-			prefresh(scrdesc.fix_columns, first_row + scrdesc.fix_rows_rows, 0, scrdesc.fix_rows_rows - desc.title_rows + 1, 0, maxy - 2, fixed_columns - 1);
+//		if (scrdesc.fix_columns)
+//			prefresh(scrdesc.fix_columns, first_row + scrdesc.fix_rows_rows, 0, scrdesc.fix_rows_rows - desc.title_rows + 1, 0, maxy - 2, fixed_columns - 1);
 
 		refresh();
 
