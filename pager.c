@@ -78,6 +78,7 @@ typedef struct
 	int		cursor_y;				/* y pos of virtual cursor */
 	int		cursor_x;				/* x pos of virtual cursor */
 	int		theme;					/* color theme number */
+	char	searchterm[256];		/* currently active search input */
 } ScrDesc;
 
 /*
@@ -1662,17 +1663,17 @@ recheck_event:
 				break;
 
 			case '/':
-				{
-					char input[256];
-					int current_row = scrdesc.fix_rows_rows;
-					int nrows;
-					LineBuffer *rows = &desc.rows;
-
 					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "/");
 					wclrtoeol(scrdesc.bottom_bar);
 					echo();
-					wgetnstr(scrdesc.bottom_bar, input, sizeof(input) - 1);
+					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
 					noecho();
+					/* continue to find next: */
+			case 'n':
+				{
+					int current_row = scrdesc.fix_rows_rows;
+					int nrows;
+					LineBuffer *rows = &desc.rows;
 
 					for (nrows = 0; nrows <= desc.last_data_row - scrdesc.fix_rows_rows; nrows++, current_row++)
 					{
@@ -1684,7 +1685,7 @@ recheck_event:
 
 						if (nrows <= cursor_row) /* skip to start */
 							continue;
-						if (!strstr(rows->rows[current_row], input))
+						if (!strstr(rows->rows[current_row], scrdesc.searchterm))
 							continue;
 
 						cursor_row = nrows;
