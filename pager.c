@@ -1578,6 +1578,16 @@ recheck_event:
 				first_row = desc.last_row - maxy + 2 - desc.title_rows;
 				break;
 
+			case 'H':
+				cursor_row = first_row;
+				break;
+			case 'L':
+				cursor_row = first_row + maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
+				break;
+			case 'M':
+				cursor_row = first_row + (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3 >> 1);
+				break;
+
 			case KEY_PPAGE:
 			case 2:		/* CTRL B */
 				if (first_row > 0)
