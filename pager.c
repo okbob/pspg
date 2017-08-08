@@ -557,6 +557,8 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
 		init_pair(8, COLOR_RED, COLOR_BLUE);
 		init_pair(9, COLOR_WHITE, COLOR_CYAN);
+		init_pair(10, COLOR_WHITE, COLOR_RED);
+
 	}
 	else if (theme == 2)
 	{
@@ -781,62 +783,100 @@ static void
 window_fill(WINDOW *win, int srcy, int srcx, DataDesc *desc)
 {
 	int		maxy, maxx;
+
 	int		row = 0;
 	LineBuffer *lnb = &desc->rows;
-	int			effective_row;
+	int			lnb_row;
 
 	char		*firstchar;
 
-	werase(win);
 	getmaxyx(win, maxy, maxx);
 
-	while (row + 1000 - 1 < srcy)
+	/* skip first x LineBuffers */
+	while (srcy > 1000)
 	{
 		lnb = lnb->next;
-		row += 1000;
+		srcy -= 1000;
 	}
 
-	effective_row = srcy - row;
-	row = 0;
+	lnb_row = srcy;
 
-	while (row <= maxx)
+	getmaxyx(win, maxy, maxx);
+
+	while (row <= maxy )
 	{
-		int		skipx;
 		int		bytes;
-		int		nchars;
 		char	*ptr;
-		
-		if (effective_row == 1000)
+		char	   *rowstr;
+
+		if (lnb_row == 1000)
 		{
 			lnb = lnb->next;
-			effective_row = 0;
+			lnb_row = 0;
 		}
+		if (lnb != NULL && lnb_row < lnb->nrows)
+			rowstr = lnb->rows[lnb_row++];
+		else
+			rowstr = NULL;
 
-		firstchar = lnb->rows[effective_row++];
-		if (firstchar == NULL)
-			break;
-		skipx = srcx;
-
-		while (skipx-- > 0 && *firstchar != '\0')
+		if (rowstr != NULL)
 		{
-			firstchar += utf8charlen(*firstchar);
+			int		i;
+
+			/* skip first srcx chars */
+			for (i = 0; i < srcx; i++)
+			{
+				if (*rowstr != '\0')
+					rowstr += utf8charlen(*rowstr);
+				else
+					break;
+			}
+
+			ptr = rowstr;
+			bytes = 0;
+			if (*ptr != '\0')
+			{
+			for (i = 0; i < maxx; i++)
+			{
+				int len;
+				
+				if (*ptr != '\0')
+				{
+					len  = utf8charlen(*ptr);
+					ptr += len;
+					bytes += len;
+				}
+				else
+					break;
+			}
+			}
+/*			if (bytes == 0 || bytes < 0)
+			{
+				endwin();
+				exit(0);
+			}
+
+			if (*rowstr == '\0')
+				rowstr = "**************************";
+*/
+			wmove(win, row++, 0);
+			waddnstr(win, rowstr, bytes);
+
+			if (i < maxx)
+			{
+//			endwin();
+//			exit(0);
+				wclrtoeol(win);
+			}
 		}
-
-		nchars = maxx + 1;
-
-		ptr = firstchar;
-		bytes = 0;
-		while (nchars-- > 0 && *ptr != '\0')
+		else
 		{
-			int len = utf8charlen(*ptr);
-			ptr += len;
-			bytes += len;
+		endwin();
+		exit(0);
+			wmove(win, row++, 0);
+			wclrtoeol(win);
 		}
-
-		wmove(win, row++, 0);
-		waddnstr(win, firstchar, bytes);
 	}
-
 }
 
 
@@ -1477,10 +1517,13 @@ WINDOW *win2;
 		wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
 	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
-	refresh_cursor(cursor_row, -1, false, &desc, &scrdesc, prev_first_row, first_row);
+	//refresh_cursor(cursor_row, -1, false, &desc, &scrdesc, prev_first_row, first_row);
 
-win = newwin(maxy - scrdesc.fix_rows_rows - 2, maxx + 1 - scrdesc.fix_cols_cols, scrdesc.fix_rows_rows + 1, scrdesc.fix_cols_cols);
+win = newwin(maxy - scrdesc.fix_rows_rows - 2, maxx - scrdesc.fix_cols_cols, scrdesc.fix_rows_rows + 1, scrdesc.fix_cols_cols);
 win2 = newwin(maxy - scrdesc.fix_rows_rows - 2, scrdesc.fix_cols_cols, scrdesc.fix_rows_rows + 1, 0);
+
+//wbkgd(win, COLOR_PAIR(2));
+//wbkgd(win2, COLOR_PAIR(10));
 
 	while (true)
 	{
@@ -1498,14 +1541,12 @@ win2 = newwin(maxy - scrdesc.fix_rows_rows - 2, scrdesc.fix_cols_cols, scrdesc.f
 
 //		prefresh(scrdesc.rows, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col,
 //		                       scrdesc.fix_rows_rows - desc.title_rows + 1, scrdesc.fix_cols_cols, maxy - 2, maxx - 1);
-//
+
 
 		window_fill(win, scrdesc.fix_rows_rows + first_row, scrdesc.fix_cols_cols + cursor_col, &desc);
-
 		wrefresh(win);
 
 		window_fill(win2, scrdesc.fix_rows_rows + first_row, 0, &desc);
-		
 		wrefresh(win2);
 
 		if (scrdesc.fix_rows)
@@ -1771,7 +1812,7 @@ recheck_event:
 			wattroff(scrdesc.top_bar, A_BOLD | COLOR_PAIR(7));
 
 		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
-		refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc, prev_first_row, first_row);
+		//refresh_cursor(cursor_row, prev_cursor_row, refresh_scr, &desc, &scrdesc, prev_first_row, first_row);
 
 		if (refresh_scr)
 		{
