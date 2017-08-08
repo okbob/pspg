@@ -1624,10 +1624,12 @@ recheck_event:
 			break;
 
 			case KEY_HOME:
+			case '^':
 				cursor_col = 0;
 				break;
 
 			case KEY_END:
+			case '$':
 					if (desc.headline != NULL)
 						cursor_col = desc.headline_char_size - maxx;
 					else
