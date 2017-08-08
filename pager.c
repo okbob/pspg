@@ -598,7 +598,19 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_WHITE, COLOR_BLUE);
 	}
+	else if (theme == 5)
+	{
+		use_default_colors();
 
+		init_pair(1, -1, -1);
+		init_pair(2, COLOR_GREEN, COLOR_BLUE);
+		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(4, COLOR_CYAN, -1);
+		init_pair(5, COLOR_BLACK, COLOR_CYAN);
+		init_pair(6, COLOR_BLACK, COLOR_CYAN);
+		init_pair(8, COLOR_BLACK, COLOR_BLUE);
+		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+	}
 }
 
 /*
@@ -1295,9 +1307,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 4)
+				if (n < 0 || n > 5)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 4 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 5 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
