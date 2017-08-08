@@ -98,7 +98,9 @@ utf8charlen(char ch)
 	return 1;
 }
 
+#if NCURSES_MOUSE_VERSION > 1
 #define MOUSE_WHEEL_BUTTONS			1
+#endif
 
 /*
  * Translate from UTF8 to semantic characters.
