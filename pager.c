@@ -1661,6 +1661,43 @@ recheck_event:
 					cursor_col = cursor_col > 0 ? cursor_col : 0;
 				break;
 
+			case '/':
+				{
+					char input[256];
+					int current_row = scrdesc.fix_rows_rows;
+					int nrows;
+					LineBuffer *rows = &desc.rows;
+
+					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "/");
+					wclrtoeol(scrdesc.bottom_bar);
+					echo();
+					wgetnstr(scrdesc.bottom_bar, input, sizeof(input) - 1);
+					noecho();
+
+					for (nrows = 0; nrows <= desc.last_data_row - scrdesc.fix_rows_rows; nrows++, current_row++)
+					{
+						if (current_row == 1000)
+						{
+							rows = rows->next;
+							current_row = 0;
+						}
+
+						if (nrows <= cursor_row) /* skip to start */
+							continue;
+						if (!strstr(rows->rows[current_row], input))
+							continue;
+
+						cursor_row = nrows;
+
+						int bottom_row = cursor_row - (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3);
+						if (first_row < bottom_row)
+							first_row = bottom_row;
+						break;
+					}
+					refresh_scr = true;
+				}
+				break;
+
 			case KEY_MOUSE:
 				{
 					MEVENT		event;
