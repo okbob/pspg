@@ -1579,6 +1579,7 @@ recheck_event:
 				break;
 
 			case KEY_PPAGE:
+			case 2:		/* CTRL B */
 				if (first_row > 0)
 				{
 					first_row -= maxy - 4;
@@ -1594,6 +1595,7 @@ recheck_event:
 				break;
 
 			case KEY_NPAGE:
+			case 6:		/* CTRL F */
 				{
 					int		max_cursor_row;
 					int		max_first_row;
