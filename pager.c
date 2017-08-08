@@ -614,7 +614,6 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_BLACK, COLOR_BLUE);
 		init_pair(9, COLOR_BLACK, COLOR_CYAN);
 	}
-
 }
 
 /*
