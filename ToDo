@@ -5,11 +5,9 @@ ToDo
 
 Known bugs
 ==========
-* select * from pg_proc v exp mode (related to memory expensive pads)
 
 Possible ToDo
 =============
-
 * enforce outer border - for FoxPro style
 * hide outer border
 * hide inner borders
@@ -21,8 +19,11 @@ Possible ToDo
 * something like -X option of less
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
-* large dataset support - memory optimization, cache implementation
 * support fetched data - columns width can be different
+* scrolling and cursor optimization
 
-
-* similar projects tless, ngrid, muhmud/lessql
+Similar projects
+================
+* tless
+* ngrid
+* muhmud/lessql
