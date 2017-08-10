@@ -1367,12 +1367,14 @@ main(int argc, char *argv[])
 		bool		refresh_scr = false;
 		bool		resize_scr = false;
 		int			fixed_columns;
+		bool		generic_pager = desc.headline_transl == NULL;
 
 		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | A_BOLD, 0, 0, 0, 0, 10);
 		window_fill(scrdesc.rows, scrdesc.fix_rows_rows + first_row + desc.title_rows, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row, &desc,
-					scrdesc.theme == 2 ? COLOR_PAIR(1) | A_BOLD : COLOR_PAIR(1), 0,
+					scrdesc.theme == 2 ? COLOR_PAIR(1) | A_BOLD : COLOR_PAIR(1),
+					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(6) | A_BOLD, COLOR_PAIR(6),
+					COLOR_PAIR(6) | A_BOLD, generic_pager ? A_BOLD | COLOR_PAIR(6) : COLOR_PAIR(6),
 					COLOR_PAIR(6) | A_BOLD);
 		window_fill(scrdesc.fix_cols, scrdesc.fix_rows_rows + first_row + desc.title_rows, 0, cursor_row - first_row, &desc,
 					COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
