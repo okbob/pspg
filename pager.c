@@ -85,6 +85,7 @@ typedef struct
 	int		cursor_y;				/* y pos of virtual cursor */
 	int		cursor_x;				/* x pos of virtual cursor */
 	int		theme;					/* color theme number */
+	char	searchterm[256];		/* currently active search input */
 } ScrDesc;
 
 static int
@@ -128,7 +129,10 @@ utf8charlen(char ch)
 	return 1;
 }
 
+#if NCURSES_MOUSE_VERSION > 1
 #define MOUSE_WHEEL_BUTTONS			1
+#endif
+
 //#define DEBUG_COLORS				1
 
 /*
@@ -1532,7 +1536,18 @@ recheck_event:
 				first_row = desc.last_row - maxy + 2 - desc.title_rows;
 				break;
 
+			case 'H':
+				cursor_row = first_row;
+				break;
+			case 'L':
+				cursor_row = first_row + maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
+				break;
+			case 'M':
+				cursor_row = first_row + (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3 >> 1);
+				break;
+
 			case KEY_PPAGE:
+			case 2:		/* CTRL B */
 				if (first_row > 0)
 				{
 					first_row -= maxy - 4;
@@ -1548,6 +1563,7 @@ recheck_event:
 				break;
 
 			case KEY_NPAGE:
+			case 6:		/* CTRL F */
 				{
 					int		max_cursor_row;
 					int		max_first_row;
@@ -1576,16 +1592,55 @@ recheck_event:
 			break;
 
 			case KEY_HOME:
+			case '^':
 				cursor_col = 0;
 				break;
 
 			case KEY_END:
+			case '$':
 					if (desc.headline != NULL)
 						cursor_col = desc.headline_char_size - maxx;
 					else
 						cursor_col = desc.maxx - maxx - 1;
 
 					cursor_col = cursor_col > 0 ? cursor_col : 0;
+				break;
+
+			case '/':
+					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "/");
+					wclrtoeol(scrdesc.bottom_bar);
+					echo();
+					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
+					noecho();
+					/* continue to find next: */
+			case 'n':
+				{
+					int current_row = scrdesc.fix_rows_rows;
+					int nrows;
+					LineBuffer *rows = &desc.rows;
+
+					for (nrows = 0; nrows <= desc.last_data_row - scrdesc.fix_rows_rows; nrows++, current_row++)
+					{
+						if (current_row == 1000)
+						{
+							rows = rows->next;
+							current_row = 0;
+						}
+
+						if (nrows <= cursor_row) /* skip to start */
+							continue;
+						if (!strstr(rows->rows[current_row], scrdesc.searchterm))
+							continue;
+
+						cursor_row = nrows;
+
+						int bottom_row = cursor_row - (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3);
+						if (first_row < bottom_row)
+							first_row = bottom_row;
+						break;
+					}
+					refresh_scr = true;
+				}
 				break;
 
 			case KEY_MOUSE:
