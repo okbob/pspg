@@ -1295,6 +1295,13 @@ main(int argc, char *argv[])
 
 	initscr();
 
+	if(!has_colors())
+	{
+		endwin();
+		fprintf(stderr, "Your terminal does not support color\n");
+		exit(1);
+	}
+
 	start_color();
 	initialize_color_pairs(style);
 
