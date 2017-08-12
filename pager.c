@@ -675,6 +675,7 @@ readfile(FILE *fp, DataDesc *desc)
 	desc->border_bottom_row = -1;
 	desc->last_data_row = -1;
 	desc->is_expanded_mode = false;
+	desc->headline_transl = NULL;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -1315,6 +1316,7 @@ main(int argc, char *argv[])
 	mouseinterval(50);
 
 	readfile(fp, &desc);
+
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
 
@@ -1398,16 +1400,7 @@ main(int argc, char *argv[])
 
 		refresh();
 
-recheck_event:
-
-		if (stacked_mouse_event != -1)
-		{
-			c = stacked_mouse_event;
-			stacked_mouse_event = -1;
-		}
-		else
-			c = getch();
-
+		c = getch();
 		if (c == 'q' || c == KEY_F(10))
 			break;
 
@@ -1551,13 +1544,13 @@ recheck_event:
 			case 2:		/* CTRL B */
 				if (first_row > 0)
 				{
-					first_row -= maxy - 4;
+					first_row -= maxy - scrdesc.fix_rows_rows - 2;
 					if (first_row < 0)
 						first_row = 0;
 				}
 				if (cursor_row > 0)
 				{
-					cursor_row -= maxy - 4;
+					cursor_row -= maxy - scrdesc.fix_rows_rows - 2;
 					if (cursor_row < 0)
 						cursor_row = 0;
 				}
@@ -1656,13 +1649,55 @@ recheck_event:
 
 						if (event.bstate & BUTTON5_PRESSED)
 						{
-							stacked_mouse_event = KEY_DOWN;
-							goto recheck_event;
+							int		max_cursor_row;
+							int		max_first_row;
+							int		offset = 1;
+
+							max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+							if (max_first_row < 0)
+								max_first_row = 0;
+
+							if (desc.headline_transl != NULL)
+								offset = (maxy - scrdesc.fix_rows_rows - 2) / 3;
+
+							if (first_row + offset > max_first_row)
+								offset = 1;
+
+							first_row += offset;
+							cursor_row += offset;
+
+							max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+							if (cursor_row > max_cursor_row)
+								cursor_row = max_cursor_row;
+
+							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+								first_row += 1;
+
+							if (first_row > max_first_row)
+								first_row = max_first_row;
 						}
 						else if (event.bstate & BUTTON4_PRESSED)
 						{
-							stacked_mouse_event = KEY_UP;
-							goto recheck_event;
+							int		offset = 1;
+
+							if (desc.headline_transl != NULL)
+								offset = (maxy - scrdesc.fix_rows_rows - 2) / 3;
+
+							if (first_row <= offset)
+								offset = 1;
+
+							if (first_row > 0)
+							{
+								first_row -= offset;
+								if (first_row < 0)
+									first_row = 0;
+							}
+							if (cursor_row > 0)
+							{
+								cursor_row -= offset;
+								if (cursor_row < 0)
+									cursor_row = 0;
+							}
 						}
 						else
 #endif
