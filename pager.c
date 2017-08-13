@@ -17,6 +17,8 @@
 
 #include <sys/param.h>
 
+#include <ncurses/term.h>
+
 #define FILENAME		"pg_class.txt"
 #define STYLE			1
 
@@ -754,7 +756,6 @@ readfile(FILE *fp, DataDesc *desc)
 
 	if (errno != 0)
 	{
-		endwin();
 		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
 		exit(1);
 	}
@@ -1170,7 +1171,7 @@ number_width(int num)
 
 static void
 print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
-						 int columns, int cursor_row, int cursor_col, int first_row)
+						 int cursor_row, int cursor_col, int first_row)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
@@ -1235,20 +1236,26 @@ main(int argc, char *argv[])
 	int		style = STYLE;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
-	int		columns = -1;			/* default will be 1 if screen width will be enough */
+	int		_columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
 	int		stacked_mouse_event = -1;
 	bool	detected_format = false;
+	bool	no_alternate_screen = false;
+
+	char	buffer[2048];
 
 	int		opt;
 
-	while ((opt = getopt(argc, argv, "bs:c:df:")) != -1)
+	while ((opt = getopt(argc, argv, "bs:c:df:X")) != -1)
 	{
 		int		n;
 
 		switch (opt)
 		{
+			case 'X':
+				no_alternate_screen = true;
+				break;
 			case 'b':
 				style = 0;
 				break;
@@ -1268,7 +1275,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "fixed columns should be between 0 and 4.\n");
 					exit(EXIT_FAILURE);
 				}
-				columns = n;
+				_columns = n;
 				break;
 			case 'd':
 				fp = fopen(FILENAME, "r");
@@ -1287,14 +1294,30 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [file...]\n", argv[0]);
+				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [file...] [-X]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
 
 	setlocale(LC_ALL, "");
 
+	readfile(fp, &desc);
+
 	initscr();
+
+
+	/*
+	 * Possible ToDo - prevent to clean screen when exiting
+	 *
+	 * It doesn't work well in Gnome-terminal - the mouse handling
+	 * is not fully returned back
+	 */
+	if (no_alternate_screen)
+	{
+		refresh();
+		enter_ca_mode = 0;
+		exit_ca_mode = 0;
+	}
 
 	if(!has_colors())
 	{
@@ -1315,7 +1338,6 @@ main(int argc, char *argv[])
 	mousemask(ALL_MOUSE_EVENTS, NULL);
 	mouseinterval(50);
 
-	readfile(fp, &desc);
 
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
@@ -1364,10 +1386,10 @@ main(int argc, char *argv[])
 		}
 	}
 
-	create_layout_dimensions(&scrdesc, &desc, columns, fixedRows, maxy, maxx);
+	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc);
 
-	print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
+	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
 	while (true)
 	{
@@ -1424,7 +1446,7 @@ main(int argc, char *argv[])
 			case '2':
 			case '3':
 			case '4':
-				columns = c - '0';
+				_columns = c - '0';
 				cursor_col = 0;
 				refresh_scr = true;
 				break;
@@ -1729,7 +1751,7 @@ main(int argc, char *argv[])
 				break;
 		}
 
-		print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
+		print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
 		if (refresh_scr)
 		{
@@ -1753,9 +1775,9 @@ main(int argc, char *argv[])
 			getmaxyx(stdscr, maxy, maxx);
 
 			refresh_aux_windows(&scrdesc, &desc);
-			create_layout_dimensions(&scrdesc, &desc, columns, fixedRows, maxy, maxx);
+			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc);
-			print_top_window_context(&scrdesc, &desc, columns, cursor_row, cursor_col, first_row);
+			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
 			refresh_scr = false;
 		}
