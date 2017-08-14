@@ -22,6 +22,8 @@
 #define FILENAME		"pg_class.txt"
 #define STYLE			1
 
+//#define COLORIZED_NO_ALTERNATE_SCREEN
+
 typedef struct LineBuffer
 {
 	int		first_row;
@@ -992,6 +994,281 @@ window_fill(WINDOW *win,
 	}
 }
 
+static void
+ansi_colors(int pairno, short int *fc, short int *bc)
+{
+	pair_content(pairno, fc, bc);
+	*fc = *fc != -1 ? *fc + 30 : 39;
+	*bc = *bc != -1 ? *bc + 40 : 49;
+}
+
+static char *
+ansi_attr(attr_t attr)
+{
+	static char result[20];
+	int		pairno;
+	short int fc, bc;
+
+#ifndef COLORIZED_NO_ALTERNATE_SCREEN
+
+	return "";
+
+#else
+
+	pairno = PAIR_NUMBER(attr);
+	ansi_colors(pairno, &fc, &bc);
+
+	if ((attr & A_BOLD) != 0)
+	{
+		snprintf(result, 20, "\e[1;%d;%dm", fc, bc);
+	}
+	else
+		snprintf(result, 20, "\e[0;%d;%dm", fc, bc);
+
+	return result;
+
+#endif
+
+}
+
+/*
+ * Print data to primary screen without ncurses
+ */
+static void
+draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
+			int maxy, int maxx,				/* size of visible rectangle */
+			int srcy, int srcx,				/* offset to displayed data */
+			DataDesc *desc,
+			attr_t data_attr,				/* colors for data (alphanums) */
+			attr_t line_attr,				/* colors for borders */
+			attr_t expi_attr,				/* colors for expanded headers */
+			bool clreoln)					/* force clear to eoln */
+{
+	int			row;
+	LineBuffer *lnb = &desc->rows;
+	int			lnb_row;
+	attr_t		active_attr;
+	int			srcy_bak = srcy;
+
+	/* skip first x LineBuffers */
+	while (srcy > 1000)
+	{
+		lnb = lnb->next;
+		srcy -= 1000;
+	}
+
+	lnb_row = srcy;
+	row = 0;
+
+	if (offsety)
+		printf("\e[%dB", offsety);
+
+	while (row < maxy )
+	{
+		int			bytes;
+		char	   *ptr;
+		char	   *rowstr;
+
+		if (lnb_row == 1000)
+		{
+			lnb = lnb->next;
+			lnb_row = 0;
+		}
+
+		if (lnb != NULL && lnb_row < lnb->nrows)
+			rowstr = lnb->rows[lnb_row++];
+		else
+			rowstr = NULL;
+
+		active_attr = line_attr;
+		printf("%s", ansi_attr(active_attr));
+
+		row += 1;
+
+		if (rowstr != NULL)
+		{
+			int		i;
+			int		effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
+			bool	fix_line_attr_style;
+			bool	is_expand_head;
+			int		ei_min, ei_max;
+
+			if (desc->is_expanded_mode)
+			{
+				fix_line_attr_style = effective_row >= desc->border_bottom_row;
+				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
+			}
+			else
+			{
+				fix_line_attr_style = effective_row == desc->border_top_row ||
+											effective_row == desc->border_head_row ||
+											effective_row >= desc->border_bottom_row;
+				is_expand_head = false;
+			}
+
+			if (offsetx != 0)
+				printf("\e[%dC", offsetx);
+
+			/* skip first srcx chars */
+			for (i = 0; i < srcx; i++)
+			{
+				if (*rowstr != '\0' && *rowstr != '\n')
+					rowstr += utf8charlen(*rowstr);
+				else
+					break;
+			}
+
+			ptr = rowstr;
+			bytes = 0;
+
+			/* find length of maxx characters */
+			if (*ptr != '\0' && *ptr != '\n')
+			{
+				for (i = 0; i < maxx; i++)
+				{
+					if (is_expand_head)
+					{
+						int		pos = srcx + i;
+						int		new_attr;
+
+						new_attr = pos >= ei_min && pos <= ei_max ? expi_attr : line_attr;
+
+						if (new_attr != active_attr)
+						{
+							if (bytes > 0)
+							{
+								printf("%.*s", bytes, rowstr);
+								rowstr += bytes;
+								bytes = 0;
+							}
+
+							/* active new style */
+							active_attr = new_attr;
+							printf("%s", ansi_attr(active_attr));
+						}
+					}
+					else if (!fix_line_attr_style && desc->headline_transl != NULL)
+					{
+						int htrpos = srcx + i;
+
+						if (htrpos < desc->headline_char_size)
+						{
+							int		new_attr;
+
+							new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+
+							if (new_attr != active_attr)
+							{
+								if (bytes > 0)
+								{
+									//waddnstr(win, rowstr, bytes);
+									printf("%.*s", bytes, rowstr);
+									rowstr += bytes;
+									bytes = 0;
+								}
+
+								/* active new style */
+								active_attr = new_attr;
+								printf("%s", ansi_attr(active_attr));
+							}
+						}
+					}
+
+					if (*ptr != '\0' && *ptr != '\n')
+					{
+						int len  = utf8charlen(*ptr);
+						ptr += len;
+						bytes += len;
+					}
+					else
+						break;
+				}
+			}
+
+			if (bytes > 0)
+			{
+				printf("%.*s", bytes, rowstr);
+				if (clreoln)
+					printf("\e[K");
+				printf("\n");
+			}
+		}
+		else
+			break;
+	}
+}
+
+static void
+draw_data(ScrDesc *scrdesc, DataDesc *desc,
+		  int first_row, int cursor_col)
+{
+	struct winsize size;
+	int		i;
+	short int		fc, bc;
+
+	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
+	{
+
+		for (i = 0; i < min_int(size.ws_row - 2, desc->last_row); i++)
+			printf("\eD");
+
+		/* Go wit cursor to up */
+		printf("\e[%dA", min_int(size.ws_row - 2, desc->last_row));
+
+		/* Save cursor */
+		printf("\e[s");
+
+		if (scrdesc->fix_cols_cols > 0)
+		{
+			draw_rectange(scrdesc->fix_rows_rows, 0,
+						  min_int(size.ws_row - 2, desc->last_row)  - scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
+						  scrdesc->fix_rows_rows + desc->title_rows + first_row, 0,
+						  desc,
+						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
+						  false);
+
+			printf("\e[u\e[s");
+		}
+
+		if (scrdesc->fix_rows_rows > 0)
+		{
+			draw_rectange(0, scrdesc->fix_cols_cols,
+						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
+						  desc->title_rows, scrdesc->fix_cols_cols + cursor_col,
+						  desc,
+						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
+						  true);
+
+			printf("\e[u\e[s");
+		}
+
+		if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
+		{
+			draw_rectange(0, 0,
+						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
+						  desc->title_rows, 0,
+						  desc,
+						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
+						  false);
+
+			printf("\e[u\e[s");
+		}
+
+		draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
+					  min_int(size.ws_row - 2, desc->last_row) - scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
+					  scrdesc->fix_rows_rows + desc->title_rows + first_row, scrdesc->fix_cols_cols + cursor_col,
+					  desc,
+					  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
+					  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
+					  COLOR_PAIR(8) | A_BOLD,
+					  true);
+
+		/* reset */
+		printf("\e[0m\r");
+	}
+}
+
+
 /*
  * Prepare dimensions of windows layout
  */
@@ -1169,6 +1446,7 @@ number_width(int num)
 }
 
 
+
 static void
 print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 						 int cursor_row, int cursor_col, int first_row)
@@ -1305,20 +1583,6 @@ main(int argc, char *argv[])
 
 	initscr();
 
-
-	/*
-	 * Possible ToDo - prevent to clean screen when exiting
-	 *
-	 * It doesn't work well in Gnome-terminal - the mouse handling
-	 * is not fully returned back
-	 */
-	if (no_alternate_screen)
-	{
-		refresh();
-		enter_ca_mode = 0;
-		exit_ca_mode = 0;
-	}
-
 	if(!has_colors())
 	{
 		endwin();
@@ -1337,7 +1601,6 @@ main(int argc, char *argv[])
 
 	mousemask(ALL_MOUSE_EVENTS, NULL);
 	mouseinterval(50);
-
 
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
@@ -1390,6 +1653,11 @@ main(int argc, char *argv[])
 	create_layout(&scrdesc, &desc);
 
 	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
+
+	if (no_alternate_screen)
+	{
+		endwin();
+	}
 
 	while (true)
 	{
@@ -1784,6 +2052,11 @@ main(int argc, char *argv[])
 	}
 
 	endwin();
+
+	if (no_alternate_screen)
+	{
+		draw_data(&scrdesc, &desc, first_row, cursor_col);
+	}
 
 	return 0;
 }

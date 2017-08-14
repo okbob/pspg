@@ -16,7 +16,6 @@ Possible ToDo
 * CSV support
 * regexp marking (green background, only pattern, whole row)
 * mc
-* something like -X option of less
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
 * support fetched data - columns width can be different
