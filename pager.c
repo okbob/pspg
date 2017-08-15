@@ -601,17 +601,6 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_CYAN, COLOR_BLACK);
 		init_pair(8, COLOR_WHITE, COLOR_CYAN);
 	}
-	else if (theme == 4)
-	{
-		assume_default_colors(COLOR_BLACK, COLOR_WHITE);
-
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
-		init_pair(4, COLOR_BLACK, COLOR_WHITE);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-	}
 	else if (theme == 5)
 	{
 		use_default_colors();
@@ -623,6 +612,17 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_BLACK, COLOR_CYAN);
 		init_pair(8, COLOR_BLACK, COLOR_BLUE);
 		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+	}
+	else if (theme == 6)
+	{
+		assume_default_colors(COLOR_WHITE, COLOR_BLACK);
+
+		init_pair(2, COLOR_BLACK, COLOR_CYAN);
+		init_pair(3, COLOR_CYAN, COLOR_BLACK);
+		init_pair(4, COLOR_CYAN, COLOR_BLACK);
+		init_pair(5, COLOR_WHITE, COLOR_BLUE);
+		init_pair(6, COLOR_WHITE, COLOR_BLUE);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 	}
 }
 
@@ -1539,9 +1539,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 5)
+				if (n < 0 || n > 6)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 5 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 6 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
