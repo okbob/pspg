@@ -1847,6 +1847,7 @@ main(int argc, char *argv[])
 				break;
 
 			case KEY_NPAGE:
+			case ' ':
 			case 6:		/* CTRL F */
 				{
 					int		max_cursor_row;
