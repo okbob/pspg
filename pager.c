@@ -17,8 +17,6 @@
 
 #include <sys/param.h>
 
-#include <ncurses/term.h>
-
 #define FILENAME		"pg_class.txt"
 #define STYLE			1
 
