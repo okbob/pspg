@@ -644,6 +644,17 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_WHITE, COLOR_GREEN);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 	}
+	else if (theme == 8)
+	{
+		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+
+		init_pair(2, COLOR_WHITE, COLOR_BLUE);
+		init_pair(3, COLOR_WHITE, COLOR_BLUE);
+		init_pair(4, COLOR_WHITE, COLOR_BLUE);
+		init_pair(5, COLOR_WHITE, COLOR_CYAN);
+		init_pair(6, COLOR_WHITE, COLOR_CYAN);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+	}
 
 }
 
@@ -1560,9 +1571,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 7)
+				if (n < 0 || n > 8)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 7 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 8 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
