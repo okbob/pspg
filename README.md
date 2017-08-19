@@ -11,7 +11,18 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 
 ![Screenshot](screenshots/theme3.gif)
 
+## Themes
 
+0. black & white
+1. Midnight Commander like
+2. FoxPro like
+3. Pdmenu like
+4. White theme
+5. Mutt like
+6. PCFand like
+7. Green theme
+8. Blue theme
+9. Word Perfect like
 
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
