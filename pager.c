@@ -2073,12 +2073,6 @@ main(int argc, char *argv[])
 								first_row = max_first_row;
 						}
 					}
-if (cursor_row < 0)
-{
-endwin();
-printf("<<<%d<<<\n", cursor_row);
-exit(0);
-}
 				}
 				break;
 		}
