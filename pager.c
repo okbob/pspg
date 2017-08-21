@@ -670,7 +670,7 @@ initialize_color_pairs(int theme)
 	{
 		assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
+		init_pair(2, COLOR_BLUE, COLOR_CYAN);
 		init_pair(3, COLOR_WHITE, COLOR_BLACK);
 		init_pair(4, COLOR_WHITE, COLOR_CYAN);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
