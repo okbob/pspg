@@ -8,7 +8,9 @@ Known bugs
 
 Possible ToDo
 =============
-* enforce outer border - for FoxPro style
+* hide top/bottom bar (fullscreen)
+* tail mode
+* 256 colours + custom colour schemas
 * hide outer border
 * hide inner borders
 * replace ascii borders by unicode
