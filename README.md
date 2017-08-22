@@ -27,3 +27,15 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
+# Note
+
+If you like it, send a postcard to address
+
+    Pavel Stehule
+    Skalice 12
+    256 01 Benesov u Prahy
+    Czech Republic
+
+
+I invite any questions, comments, bug reports, patches on mail address pavel.stehule@gmail.com
+
