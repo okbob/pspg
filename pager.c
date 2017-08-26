@@ -1972,9 +1972,10 @@ main(int argc, char *argv[])
 					/* continue to find next: */
 			case 'n':
 				{
-					int current_row = scrdesc.fix_rows_rows;
-					int nrows;
-					LineBuffer *rows = &desc.rows;
+					int		current_row = scrdesc.fix_rows_rows;
+					int		nrows;
+					int		max_first_row;
+					LineBuffer   *rows = &desc.rows;
 					bool	found = false;
 
 					for (nrows = 0; nrows < desc.last_row - scrdesc.fix_rows_rows; nrows++, current_row++)
@@ -1990,12 +1991,18 @@ main(int argc, char *argv[])
 						if (!strstr(rows->rows[current_row], scrdesc.searchterm))
 							continue;
 
-						cursor_row = nrows;
+						cursor_row = nrows - desc.title_rows;
 						found = true;
 
-						int bottom_row = cursor_row - (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3);
-						if (first_row < bottom_row)
-							first_row = bottom_row;
+						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+							first_row += maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
+
+						max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+						if (max_first_row < 0)
+							max_first_row = 0;
+						if (first_row > max_first_row)
+							first_row = max_first_row;
+
 						break;
 					}
 
@@ -2008,9 +2015,9 @@ main(int argc, char *argv[])
 						refresh();
 
 						c2 = getch();
+						refresh_scr = true;
 					}
 
-					refresh_scr = true;
 				}
 				break;
 
