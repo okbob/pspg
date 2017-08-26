@@ -1569,6 +1569,7 @@ main(int argc, char *argv[])
 {
 	int		maxx, maxy;
 	int		c;
+	int		c2 = 0;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		prev_cursor_row;
@@ -1754,8 +1755,14 @@ main(int argc, char *argv[])
 			wrefresh(scrdesc.fix_rows);
 
 		refresh();
-
-		c = getch();
+		if (c2 != 0)
+		{
+			c = c2;
+			c2 = 0;
+		}
+		else
+			c = getch();
+		
 		if (c == 'q' || c == KEY_F(10))
 			break;
 
@@ -1968,8 +1975,9 @@ main(int argc, char *argv[])
 					int current_row = scrdesc.fix_rows_rows;
 					int nrows;
 					LineBuffer *rows = &desc.rows;
+					bool	found = false;
 
-					for (nrows = 0; nrows <= desc.last_data_row - scrdesc.fix_rows_rows; nrows++, current_row++)
+					for (nrows = 0; nrows < desc.last_row - scrdesc.fix_rows_rows; nrows++, current_row++)
 					{
 						if (current_row == 1000)
 						{
@@ -1983,12 +1991,25 @@ main(int argc, char *argv[])
 							continue;
 
 						cursor_row = nrows;
+						found = true;
 
 						int bottom_row = cursor_row - (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3);
 						if (first_row < bottom_row)
 							first_row = bottom_row;
 						break;
 					}
+
+					if (!found)
+					{
+						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Not found ");
+						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						wrefresh(scrdesc.bottom_bar);
+						refresh();
+
+						c2 = getch();
+					}
+
 					refresh_scr = true;
 				}
 				break;
