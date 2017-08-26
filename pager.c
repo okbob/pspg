@@ -1994,8 +1994,8 @@ main(int argc, char *argv[])
 						cursor_row = nrows - desc.title_rows;
 						found = true;
 
-						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
-							first_row += maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
+						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 1)
+							first_row += cursor_row - maxy - scrdesc.fix_rows_rows - 1;
 
 						max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
 						if (max_first_row < 0)
@@ -2015,9 +2015,9 @@ main(int argc, char *argv[])
 						refresh();
 
 						c2 = getch();
-						refresh_scr = true;
 					}
 
+					refresh_scr = true;
 				}
 				break;
 
