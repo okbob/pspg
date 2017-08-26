@@ -1995,7 +1995,7 @@ main(int argc, char *argv[])
 						found = true;
 
 						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
-							first_row += cursor_row - maxy + scrdesc.fix_rows_rows + 3;
+							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + 3;
 
 						max_first_row = desc.last_row - maxy + 2;
 						if (max_first_row < 0)
