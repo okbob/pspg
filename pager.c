@@ -1801,7 +1801,7 @@ main(int argc, char *argv[])
 					if (++cursor_row > max_cursor_row)
 						cursor_row = max_cursor_row;
 
-					if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+					if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
 						first_row += 1;
 
 					max_first_row = desc.last_row - maxy + 2;
