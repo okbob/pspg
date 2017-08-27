@@ -559,7 +559,7 @@ initialize_color_pairs(int theme)
 		use_default_colors();
 
 		init_pair(2, COLOR_BLACK, COLOR_WHITE);			/* top bar colors */
-		init_pair(3, COLOR_WHITE, COLOR_BLACK);
+		init_pair(3, -1, -1);							/* data alphanumeric */
 		init_pair(4, -1, -1);							/* fix rows, columns */
 		init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 		init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
@@ -570,7 +570,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(3, COLOR_WHITE, COLOR_BLUE);
 		init_pair(4, COLOR_YELLOW, COLOR_BLUE);
 		init_pair(5, COLOR_YELLOW, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
@@ -581,7 +581,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_WHITE, COLOR_CYAN);
 
 		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_BLACK, COLOR_WHITE);
+		init_pair(3, COLOR_WHITE, COLOR_CYAN);
 		init_pair(4, COLOR_WHITE, COLOR_CYAN);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
@@ -593,7 +593,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_BLACK, COLOR_CYAN);
 
 		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(3, COLOR_BLACK, COLOR_CYAN);
 		init_pair(4, COLOR_WHITE, COLOR_CYAN);
 		init_pair(5, COLOR_WHITE, COLOR_BLACK);
 		init_pair(6, COLOR_CYAN, COLOR_BLACK);
@@ -604,7 +604,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_BLACK, COLOR_WHITE);
 
 		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(3, COLOR_BLACK, COLOR_WHITE);
 		init_pair(4, COLOR_BLACK, COLOR_WHITE);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
@@ -615,7 +615,7 @@ initialize_color_pairs(int theme)
 		use_default_colors();
 
 		init_pair(2, COLOR_GREEN, COLOR_BLUE);
-		init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+		init_pair(3, -1, -1);
 		init_pair(4, COLOR_CYAN, -1);
 		init_pair(5, COLOR_BLACK, COLOR_CYAN);
 		init_pair(6, COLOR_BLACK, COLOR_CYAN);
@@ -627,7 +627,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_WHITE, COLOR_BLACK);
 
 		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_CYAN, COLOR_BLACK);
+		init_pair(3, COLOR_WHITE, COLOR_BLACK);
 		init_pair(4, COLOR_CYAN, COLOR_BLACK);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
@@ -660,7 +660,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_WHITE, COLOR_BLACK);
+		init_pair(3, COLOR_WHITE, COLOR_BLUE);
 		init_pair(4, COLOR_CYAN, COLOR_BLUE);
 		init_pair(5, COLOR_WHITE, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
@@ -671,7 +671,7 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
 		init_pair(2, COLOR_BLUE, COLOR_CYAN);
-		init_pair(3, COLOR_WHITE, COLOR_BLACK);
+		init_pair(3, COLOR_BLUE, COLOR_CYAN);
 		init_pair(4, COLOR_WHITE, COLOR_CYAN);
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
@@ -682,10 +682,21 @@ initialize_color_pairs(int theme)
 		assume_default_colors(COLOR_CYAN, COLOR_BLACK);
 
 		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_BLACK, COLOR_RED);
+		init_pair(3, COLOR_CYAN, COLOR_BLACK);
 		init_pair(4, COLOR_CYAN, COLOR_BLACK);
 		init_pair(5, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(6, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+	}
+	else if (theme == 12)
+	{
+		assume_default_colors(COLOR_BLUE, COLOR_CYAN);
+
+		init_pair(2, COLOR_BLUE, COLOR_CYAN);
+		init_pair(3, COLOR_WHITE, COLOR_CYAN);
+		init_pair(4, COLOR_BLUE, COLOR_CYAN);
+		init_pair(5, COLOR_WHITE, COLOR_BLUE);
+		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 	}
 
@@ -1605,7 +1616,7 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 11)
+				if (n < 0 || n > 12)
 				{
 					fprintf(stderr, "Only color schemas 0 .. 11 are supported.\n");
 					exit(EXIT_FAILURE);
@@ -1732,18 +1743,18 @@ main(int argc, char *argv[])
 		int			fixed_columns;
 		bool		generic_pager = desc.headline_transl == NULL;
 
-		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | A_BOLD, 0, 0, 0, 0, 10);
+		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10);
 		window_fill(scrdesc.rows, scrdesc.fix_rows_rows + first_row + desc.title_rows, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row, &desc,
-					scrdesc.theme == 2 ? 0 | A_BOLD : 0,
+					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0),
 					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(6) | A_BOLD, generic_pager ? A_BOLD | COLOR_PAIR(6) : COLOR_PAIR(6),
 					COLOR_PAIR(6) | A_BOLD);
 		window_fill(scrdesc.fix_cols, scrdesc.fix_rows_rows + first_row + desc.title_rows, 0, cursor_row - first_row, &desc,
-					COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
+					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) | A_BOLD, COLOR_PAIR(6),
 					COLOR_PAIR(6) | A_BOLD);
-		window_fill(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | A_BOLD, 0, 0, 0, 0, 0);
+		window_fill(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0);
 
 		if (scrdesc.luc != NULL)
 			wrefresh(scrdesc.luc);

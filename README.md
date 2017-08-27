@@ -24,6 +24,8 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 8. Blue theme
 9. Word Perfect like
 10. Low contrast blue theme
+11. Dark cyan/black mode
+12. Paradox like
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
