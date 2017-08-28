@@ -1974,11 +1974,69 @@ main(int argc, char *argv[])
 					cursor_col = cursor_col > 0 ? cursor_col : 0;
 				break;
 
+			case 's':
+				{
+					char	buffer[1024];
+					FILE   *fp;
+					bool	ok = false;
+
+					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "log file: ");
+					wclrtoeol(scrdesc.bottom_bar);
+					curs_set(1);
+					echo();
+					wgetnstr(scrdesc.bottom_bar, buffer, sizeof(buffer) - 1);
+					curs_set(0);
+					noecho();
+
+					fp = fopen(buffer, "w");
+					if (fp != NULL)
+					{
+						LineBuffer *lnb = &desc.rows;
+						int			lnb_row;
+
+						ok = true;
+
+						while (lnb != NULL)
+						{
+							for (i = 0; i < lnb->nrows; i++)
+							{
+								fprintf(fp, "%s", lnb->rows[i]);
+								if (errno != 0)
+								{
+									ok = false;
+									goto exit;
+								}
+							}
+							lnb = lnb->next;
+						}
+
+						fclose(fp);
+					}
+exit:
+
+					if (!ok)
+					{
+						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Cannot write to %s ", buffer);
+						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						wrefresh(scrdesc.bottom_bar);
+						refresh();
+
+						c2 = getch();
+					}
+
+					refresh_scr = true;
+
+					break;
+				}
+
 			case '/':
 					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "/");
 					wclrtoeol(scrdesc.bottom_bar);
+					curs_set(1);
 					echo();
 					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
+					curs_set(0);
 					noecho();
 					/* continue to find next: */
 			case 'n':
