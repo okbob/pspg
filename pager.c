@@ -2017,7 +2017,7 @@ exit:
 					if (!ok)
 					{
 						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Cannot write to %s ", buffer);
+						mvwprintw(scrdesc.bottom_bar, 0, 0, " Cannot write to %s ", buffer);
 						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
 						wrefresh(scrdesc.bottom_bar);
 						refresh();
