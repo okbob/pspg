@@ -28,6 +28,7 @@ typedef struct LineBuffer
 	int		nrows;
 	char   *rows[1000];
 	struct LineBuffer *next;
+	struct LineBuffer *prev;
 } LineBuffer;
 
 /*
@@ -56,9 +57,6 @@ typedef struct
 	LineBuffer rows;				/* list of rows buffers */
 	int		maxy;					/* maxy of used pad area with data */
 	int		maxx;					/* maxx of used pad area with data */
-	LineBuffer footer;				/* footer rows */
-	int		footer_maxy;			/* maxy of used pad area for footer */
-	int		footer_maxx;			/* maxx of used pad area for footer */
 	int		maxbytes;				/* max length of line in bytes */
 	char   *headline;				/* header separator line */
 	int		headline_size;			/* size of headerline in bytes */
@@ -703,8 +701,7 @@ initialize_color_pairs(int theme)
 }
 
 /*
- * Read data from file and fill ncurses pad. Increase
- * pad when it it necessary
+ * Read data from file and fill DataDesc.
  */
 static int
 readfile(FILE *fp, DataDesc *desc)
@@ -715,7 +712,6 @@ readfile(FILE *fp, DataDesc *desc)
 	int			nrows = 0;
 	bool		use_stdin = false;
 	LineBuffer *rows;
-	LineBuffer *footer;
 
 	/* safe reset */
 	desc->filename[0] = '\0';
@@ -762,6 +758,7 @@ readfile(FILE *fp, DataDesc *desc)
 
 	memset(&desc->rows, 0, sizeof(LineBuffer));
 	rows = &desc->rows;
+	desc->rows.prev = NULL;
 
 	errno = 0;
 
@@ -775,6 +772,7 @@ readfile(FILE *fp, DataDesc *desc)
 			LineBuffer *newrows = malloc(sizeof(LineBuffer));
 			memset(newrows, 0, sizeof(LineBuffer));
 			rows->next = newrows;
+			newrows->prev = rows;
 			rows = newrows;
 		}
 
@@ -2018,6 +2016,7 @@ exit:
 					{
 						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
 						mvwprintw(scrdesc.bottom_bar, 0, 0, " Cannot write to %s ", buffer);
+						wclrtoeol(scrdesc.bottom_bar);
 						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
 						wrefresh(scrdesc.bottom_bar);
 						refresh();
@@ -2079,6 +2078,74 @@ exit:
 					{
 						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
 						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Not found ");
+						wclrtoeol(scrdesc.bottom_bar);
+						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						wrefresh(scrdesc.bottom_bar);
+						refresh();
+
+						c2 = getch();
+					}
+
+					refresh_scr = true;
+				}
+				break;
+
+			case '?':
+					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "?");
+					wclrtoeol(scrdesc.bottom_bar);
+					curs_set(1);
+					echo();
+					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
+					curs_set(0);
+					noecho();
+					/* continue to find next: */
+			case 'p':
+				{
+					int		max_first_row;
+					
+					int		rowidx;
+					int		search_row;
+
+					LineBuffer   *rows = &desc.rows;
+					bool	found = false;
+
+					rowidx = cursor_row + scrdesc.fix_rows_rows + desc.title_rows - 1;
+					search_row = cursor_row - 1;
+
+					while (rowidx > 1000)
+					{
+						rows = rows->next;
+						rowidx -= 1000;
+					}
+
+					while (search_row > 0)
+					{
+						if (rowidx < 0)
+						{
+							rows = rows->prev;
+							rowidx = 1000;
+							continue;
+						}
+
+						if (strstr(rows->rows[rowidx], scrdesc.searchterm) != NULL)
+						{
+							cursor_row = search_row;
+							if (first_row > cursor_row)
+								first_row = cursor_row;
+
+							found = true;
+							break;
+						}
+
+						rowidx -= 1;
+						search_row -= 1;
+					}
+
+					if (!found)
+					{
+						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
+						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Not found ");
+						wclrtoeol(scrdesc.bottom_bar);
 						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
 						wrefresh(scrdesc.bottom_bar);
 						refresh();
