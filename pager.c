@@ -2074,7 +2074,7 @@ recheck_left:
 					{
 						int		move_left = 30;
 
-						if (cursor_col == 0)
+						if (cursor_col == 0 && scrdesc.footer_rows > 0)
 						{
 							_is_footer_cursor = true;
 							goto recheck_left;
@@ -2256,7 +2256,7 @@ recheck_home:
 					{
 						if (footer_cursor_col > 0)
 							footer_cursor_col = 0;
-						else
+						else if (scrdesc.rows_rows > 0)
 						{
 							footer_cursor_col = 0;
 							_is_footer_cursor = false;
@@ -2267,7 +2267,7 @@ recheck_home:
 					{
 						if (cursor_col > 0)
 							cursor_col = 0;
-						else
+						else if (scrdesc.footer_rows > 0)
 						{
 							cursor_col = 0;
 							_is_footer_cursor = true;
@@ -2292,7 +2292,7 @@ recheck_end:
 					{
 						if (footer_cursor_col < desc.footer_char_size - maxx)
 							footer_cursor_col = desc.footer_char_size - maxx;
-						else
+						else if (scrdesc.rows_rows > 0)
 						{
 							footer_cursor_col = desc.footer_char_size - maxx;
 							_is_footer_cursor = false;
@@ -2311,7 +2311,7 @@ recheck_end:
 						new_cursor_col = new_cursor_col > 0 ? new_cursor_col : 0;
 						if (new_cursor_col > cursor_col)
 							cursor_col = new_cursor_col;
-						else
+						else if (scrdesc.footer_rows > 0)
 						{
 							_is_footer_cursor = true;
 							cursor_col = new_cursor_col;
