@@ -2051,17 +2051,34 @@ main(int argc, char *argv[])
 			case KEY_LEFT:
 			case 'h':
 				{
-					if (is_footer_cursor(cursor_row, &scrdesc, &desc))
+					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+					int		recheck_count = 0;
+
+recheck_left:
+
+					if (++recheck_count > 2)
+						break;
+
+					if (_is_footer_cursor)
 					{
 						if (footer_cursor_col > 0)
 							footer_cursor_col -= 1;
+						else if (scrdesc.rows_rows > 0)
+						{
+							_is_footer_cursor = false;
+							footer_cursor_col = 0;
+							goto recheck_left;
+						}
 					}
 					else
 					{
 						int		move_left = 30;
 
 						if (cursor_col == 0)
-							break;
+						{
+							_is_footer_cursor = true;
+							goto recheck_left;
+						}
 
 						if (desc.headline_transl != NULL)
 						{
@@ -2092,18 +2109,32 @@ main(int argc, char *argv[])
 			case KEY_RIGHT:
 			case 'l':
 				{
-					if (is_footer_cursor(cursor_row, &scrdesc, &desc))
+					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+					int		recheck_count = 0;
+
+recheck_right:
+
+					if (++recheck_count > 2)
+						break;
+
+					if (_is_footer_cursor)
 					{
 						int max_cursor_col = desc.footer_char_size - maxx;
 
-						footer_cursor_col += 1;
-						if (footer_cursor_col > max_cursor_col)
+						if (footer_cursor_col + 1 >= max_cursor_col && scrdesc.rows_rows > 0)
+						{
+							_is_footer_cursor = false;
 							footer_cursor_col = max_cursor_col;
+							goto recheck_right;
+						}
+						else
+							footer_cursor_col += 1;
 					}
 					else
 					{
 						int		move_right = 30;
 						int		max_cursor_col;
+						int		new_cursor_col = cursor_col;
 
 						if (desc.headline_transl != NULL)
 						{
@@ -2120,7 +2151,7 @@ main(int argc, char *argv[])
 							}
 						}
 
-						cursor_col += move_right;
+						new_cursor_col += move_right;
 
 						if (desc.headline_transl != NULL)
 							max_cursor_col = desc.headline_char_size - maxx;
@@ -2129,8 +2160,15 @@ main(int argc, char *argv[])
 
 						max_cursor_col = max_cursor_col > 0 ? max_cursor_col : 0;
 
-						if (cursor_col > max_cursor_col)
-							cursor_col = max_cursor_col;
+						if (new_cursor_col > max_cursor_col)
+							new_cursor_col = max_cursor_col;
+
+						if (new_cursor_col == cursor_col && scrdesc.footer_rows > 0)
+						{
+							_is_footer_cursor = true;
+							goto recheck_right;
+						}
+						cursor_col = new_cursor_col;
 					}
 				}
 				break;
@@ -2205,31 +2243,83 @@ main(int argc, char *argv[])
 
 			case KEY_HOME:
 			case '^':
-				if (is_footer_cursor(cursor_row, &scrdesc, &desc))
 				{
-					footer_cursor_col = 0;
+					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+					int		recheck_count = 0;
+
+recheck_home:
+
+					if (++recheck_count > 2)
+						break;
+
+					if (_is_footer_cursor)
+					{
+						if (footer_cursor_col > 0)
+							footer_cursor_col = 0;
+						else
+						{
+							footer_cursor_col = 0;
+							_is_footer_cursor = false;
+							goto recheck_home;
+						}
+					}
+					else
+					{
+						if (cursor_col > 0)
+							cursor_col = 0;
+						else
+						{
+							cursor_col = 0;
+							_is_footer_cursor = true;
+							goto recheck_home;
+						}
+					}
+					break;
 				}
-				else
-					cursor_col = 0;
-				break;
 
 			case KEY_END:
 			case '$':
-				if (is_footer_cursor(cursor_row, &scrdesc, &desc))
 				{
-					footer_cursor_col = desc.footer_char_size - maxx;
-				}
-				else
-				{
-					if (desc.headline != NULL)
-						cursor_col = desc.headline_char_size - maxx;
+					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+					int		recheck_count = 0;
+
+recheck_end:
+
+					if (++recheck_count > 2)
+						break;
+
+					if (_is_footer_cursor)
+					{
+						if (footer_cursor_col < desc.footer_char_size - maxx)
+							footer_cursor_col = desc.footer_char_size - maxx;
+						else
+						{
+							footer_cursor_col = desc.footer_char_size - maxx;
+							_is_footer_cursor = false;
+							goto recheck_end;
+						}
+					}
 					else
-						cursor_col = desc.maxx - maxx - 1;
+					{
+						int		new_cursor_col;
 
-					cursor_col = cursor_col > 0 ? cursor_col : 0;
+						if (desc.headline != NULL)
+							new_cursor_col = desc.headline_char_size - maxx;
+						else
+							new_cursor_col = desc.maxx - maxx - 1;
+
+						new_cursor_col = new_cursor_col > 0 ? new_cursor_col : 0;
+						if (new_cursor_col > cursor_col)
+							cursor_col = new_cursor_col;
+						else
+						{
+							_is_footer_cursor = true;
+							cursor_col = new_cursor_col;
+							goto recheck_end;
+						}
+					}
+					break;
 				}
-				break;
-
 			case 's':
 				{
 					char	buffer[1024];
