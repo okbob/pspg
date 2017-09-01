@@ -62,10 +62,14 @@ typedef struct
 	int		headline_size;			/* size of headerline in bytes */
 	char   *headline_transl;		/* translated headline */
 	int		headline_char_size;		/* size of headerline in chars */
+	int		first_data_row;			/* fist data row line (starts by zero) */
 	int		last_data_row;			/* last line of data row */
 	int		footer_row;				/* nrow of first footer row or -1 */
 	int		footer_char_size;		/* width of footer */
 	int		last_row;				/* last not empty row */
+	int		fixed_rows;				/* number of fixed rows */
+	int		data_rows;				/* number of data rows */
+	int		footer_rows;			/* number of footer rows */
 } DataDesc;
 
 /*
