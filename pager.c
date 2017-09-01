@@ -63,6 +63,8 @@ typedef struct
 	char   *headline_transl;		/* translated headline */
 	int		headline_char_size;		/* size of headerline in chars */
 	int		last_data_row;			/* last line of data row */
+	int		footer_row;				/* nrow of first footer row or -1 */
+	int		footer_char_size;		/* width of footer */
 	int		last_row;				/* last not empty row */
 } DataDesc;
 
@@ -73,6 +75,8 @@ typedef struct
 {
 	int		fix_rows_rows;			/* number of fixed rows in window rows */
 	int		fix_cols_cols;			/* number of fixed colums in window rows */
+	int		rows_rows;				/* current number of data rows */
+	int		footer_rows;			/* current number of footer rows */
 	int		maxy;					/* max y size of screen */
 	int		maxx;					/* max x size of screen */
 	WINDOW *luc;					/* window for left upper corner */
@@ -374,6 +378,64 @@ translate_headline(DataDesc *desc)
 }
 
 /*
+ * Trim footer rows - We should to trim footer rows and calculate footer_char_size
+ */
+static void
+trim_footer_rows(DataDesc *desc)
+{
+	if (desc->headline_transl != NULL && desc->footer_row != -1)
+	{
+		LineBuffer *rows = &desc->rows;
+		int			rowidx = 0;
+		int			rownum;
+
+		desc->footer_char_size = 0;
+
+		for (rownum = 0, rowidx = 0; rownum < desc->footer_row; rownum++, rowidx++)
+		{
+			if (rowidx == 1000)
+			{
+				rows = rows->next;
+				rowidx = 0;
+			}
+		}
+
+		while (rows != NULL && rowidx < rows->nrows)
+		{
+			char   *line;
+			char   *endptr;
+			int		len;
+
+			if (rowidx == 1000)
+			{
+				rows = rows->next;
+				rowidx = 0;
+				continue;
+			}
+
+			line = rows->rows[rowidx++];
+			endptr = line + strlen(line) - 1;
+
+			while (endptr > line)
+			{
+				if (*endptr != ' ')
+				{
+					endptr[1] = '\0';
+					break;
+				}
+				endptr -= 1;
+			}
+
+			len = utf8len(line);
+			if (len > desc->footer_char_size)
+				desc->footer_char_size = len;
+		}
+	}
+	else
+		desc->footer_char_size = desc->maxx;
+}
+
+/*
  * Returns true when char is left upper corner
  */
 static bool
@@ -552,6 +614,13 @@ strncpytrim(char *dest, const char *src,
 static void
 initialize_color_pairs(int theme)
 {
+		init_pair(9, -1, -1);							/* footer */
+		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
+
+		init_pair(11, COLOR_BLACK, COLOR_GREEN);
+		init_pair(12, COLOR_BLACK, COLOR_MAGENTA);
+		init_pair(13, COLOR_BLACK, COLOR_YELLOW);
+
 	if (theme == 0)
 	{
 		use_default_colors();
@@ -562,6 +631,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 		init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
 		init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
+		init_pair(9, -1, -1);							/* footer */
+		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
 	}
 	else if (theme == 1)
 	{
@@ -573,6 +644,9 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_YELLOW, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
 		init_pair(8, COLOR_RED, COLOR_BLUE);
+		init_pair(9, COLOR_CYAN, COLOR_BLUE);
+		init_pair(10, COLOR_WHITE, COLOR_CYAN);
+
 	}
 	else if (theme == 2)
 	{
@@ -585,6 +659,9 @@ initialize_color_pairs(int theme)
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(7, COLOR_YELLOW, COLOR_WHITE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_BLUE, COLOR_CYAN);
+		init_pair(10, COLOR_WHITE, COLOR_BLUE);
+
 	}
 	else if (theme == 3)
 	{
@@ -596,6 +673,9 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLACK);
 		init_pair(6, COLOR_CYAN, COLOR_BLACK);
 		init_pair(8, COLOR_WHITE, COLOR_CYAN);
+		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(10, COLOR_CYAN, COLOR_BLACK);
+
 	}
 	else if (theme == 4)
 	{
@@ -607,6 +687,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_BLACK, COLOR_WHITE);
+		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 5)
 	{
@@ -618,7 +700,9 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_BLACK, COLOR_CYAN);
 		init_pair(6, COLOR_BLACK, COLOR_CYAN);
 		init_pair(8, COLOR_BLACK, COLOR_BLUE);
-		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(9, -1, -1);
+		init_pair(10, COLOR_BLACK, COLOR_CYAN);
+
 	}
 	else if (theme == 6)
 	{
@@ -630,6 +714,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_CYAN, COLOR_BLACK);
+		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 7)
 	{
@@ -641,6 +727,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_GREEN);
 		init_pair(6, COLOR_WHITE, COLOR_GREEN);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_CYAN, COLOR_BLACK);
+		init_pair(10, COLOR_WHITE, COLOR_GREEN);
 	}
 	else if (theme == 8)
 	{
@@ -652,6 +740,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_BLUE);
+		init_pair(10, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 9)
 	{
@@ -663,6 +753,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_CYAN);
 		init_pair(6, COLOR_WHITE, COLOR_CYAN);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_BLUE);
+		init_pair(10, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 10)
 	{
@@ -674,6 +766,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 11)
 	{
@@ -685,6 +779,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(6, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_WHITE, COLOR_BLACK);
+		init_pair(10, COLOR_WHITE, COLOR_MAGENTA);
 	}
 	else if (theme == 12)
 	{
@@ -696,6 +792,8 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 
 }
@@ -752,6 +850,7 @@ readfile(FILE *fp, DataDesc *desc)
 	desc->last_data_row = -1;
 	desc->is_expanded_mode = false;
 	desc->headline_transl = NULL;
+	desc->footer_row = -1;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -809,6 +908,10 @@ readfile(FILE *fp, DataDesc *desc)
 		{
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+		}
+		else if (!desc->is_expanded_mode && desc->border_bottom_row != -1 && desc->footer_row == -1)
+		{
+			desc->footer_row = nrows;
 		}
 		else if (desc->is_expanded_mode && isBottomLeftChar(line))
 		{
@@ -886,7 +989,8 @@ window_fill(WINDOW *win,
 			attr_t expi_attr,				/* colors for expanded headers */
 			attr_t cursor_data_attr,		/* colors for cursor on data positions */
 			attr_t cursor_line_attr,		/* colors for cursor on border position */
-			attr_t cursor_expi_attr)		/* colors for cursor on expanded headers */
+			attr_t cursor_expi_attr,		/* colors for cursor on expanded headers */
+			bool is_footer)					/* true if window is footer */
 {
 	int			maxy, maxx;
 	int			row;
@@ -931,7 +1035,11 @@ window_fill(WINDOW *win,
 		else
 			rowstr = NULL;
 
-		active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+		if (!is_footer)
+			active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+		else
+			active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+
 		wattron(win, active_attr);
 
 		wmove(win, row++, 0);
@@ -951,9 +1059,13 @@ window_fill(WINDOW *win,
 			}
 			else
 			{
-				fix_line_attr_style = effective_row == desc->border_top_row ||
-											effective_row == desc->border_head_row ||
-											effective_row >= desc->border_bottom_row;
+				if (!is_footer)
+					fix_line_attr_style = effective_row == desc->border_top_row ||
+												effective_row == desc->border_head_row ||
+												effective_row >= desc->border_bottom_row;
+				else
+					fix_line_attr_style = false;
+
 				is_expand_head = false;
 			}
 
@@ -1001,7 +1113,7 @@ window_fill(WINDOW *win,
 							wattron(win, active_attr);
 						}
 					}
-					else if (!fix_line_attr_style && desc->headline_transl != NULL)
+					else if (!fix_line_attr_style)
 					{
 						int htrpos = srcx + i;
 
@@ -1009,10 +1121,15 @@ window_fill(WINDOW *win,
 						{
 							int		new_attr;
 
-							if (is_cursor_row)
-								new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
+							if (!is_footer)
+							{
+								if (is_cursor_row)
+									new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
+								else
+									new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+							}
 							else
-								new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+								new_attr = is_cursor_row ? cursor_data_attr : data_attr;
 
 							if (new_attr != active_attr)
 							{
@@ -1274,7 +1391,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 static void
 draw_data(ScrDesc *scrdesc, DataDesc *desc,
-		  int first_row, int cursor_col)
+		  int first_row, int cursor_col, int footer_cursor_col)
 {
 	struct winsize size;
 	int		i;
@@ -1295,50 +1412,64 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 		if (scrdesc->fix_cols_cols > 0)
 		{
 			draw_rectange(scrdesc->fix_rows_rows, 0,
-						  min_int(size.ws_row - 2, desc->last_row)  - scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
+						  scrdesc->rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows + desc->title_rows + first_row, 0,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
-
-			printf("\e[u\e[s");
 		}
-
 		if (scrdesc->fix_rows_rows > 0)
 		{
+			printf("\e[u\e[s");
+
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  desc->title_rows, scrdesc->fix_cols_cols + cursor_col,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  true);
-
-			printf("\e[u\e[s");
 		}
 
 		if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 		{
+			printf("\e[u\e[s");
+
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  desc->title_rows, 0,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
-
-			printf("\e[u\e[s");
 		}
 
-		draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
-					  min_int(size.ws_row - 2, desc->last_row) - scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
-					  scrdesc->fix_rows_rows + desc->title_rows + first_row, scrdesc->fix_cols_cols + cursor_col,
-					  desc,
-					  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
-					  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
-					  COLOR_PAIR(8) | A_BOLD,
-					  true);
+		if (scrdesc->rows_rows > 0)
+		{
+			printf("\e[u\e[s");
+
+			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
+						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
+						  scrdesc->fix_rows_rows + desc->title_rows + first_row, scrdesc->fix_cols_cols + cursor_col,
+						  desc,
+						  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
+						  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
+						  COLOR_PAIR(8) | A_BOLD,
+						  true);
+		}
+
+		if (scrdesc->footer != NULL)
+		{
+			printf("\e[u\e[s");
+
+			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
+						  scrdesc->footer_rows, scrdesc->maxx,
+						  scrdesc->fix_rows_rows + desc->title_rows + first_row + scrdesc->rows_rows, footer_cursor_col,
+						  desc,
+						  COLOR_PAIR(9), 0, 0, true);
+		}
 
 		/* reset */
 		printf("\e[0m\r");
+
 	}
 }
 
@@ -1376,6 +1507,7 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	scrdesc->fix_rows_rows = 0;
+	scrdesc->footer_rows = 0;
 
 	if (fixRows != -1)
 	{
@@ -1399,10 +1531,12 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
+
+
 }
 
 static void
-create_layout(ScrDesc *scrdesc, DataDesc *desc)
+create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 {
 	if (scrdesc->luc != NULL)
 	{
@@ -1425,23 +1559,60 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc)
 		scrdesc->rows = NULL;
 	}
 
+	if (scrdesc->footer != NULL)
+	{
+		delwin(scrdesc->footer);
+		scrdesc->footer = NULL;
+	}
+
+	if (desc->headline_transl != NULL && desc->footer_row > 0)
+	{
+		scrdesc->rows_rows = min_int(desc->footer_row - scrdesc->fix_rows_rows - first_row - desc->title_rows,
+									 scrdesc->maxy - scrdesc->fix_rows_rows - 2);
+
+		if (scrdesc->rows_rows < 0)
+			scrdesc->rows_rows = 0;
+
+		if (scrdesc->rows_rows < scrdesc->maxy - scrdesc->fix_rows_rows - 2)
+		{
+			scrdesc->footer_rows = min_int(scrdesc->maxy - scrdesc->fix_rows_rows - 2 - scrdesc->rows_rows,
+										   desc->last_row - desc->footer_row);
+			scrdesc->footer = newwin(scrdesc->footer_rows,
+									scrdesc->maxx, scrdesc->fix_rows_rows + 1 + scrdesc->rows_rows, 0);
+		}
+	}
+	else
+	{
+		scrdesc->rows_rows = 0;
+		scrdesc->footer_rows = min_int(scrdesc->maxy - scrdesc->fix_rows_rows - 2 - scrdesc->rows_rows,
+									   desc->last_row - desc->last_data_row);
+		scrdesc->footer = newwin(scrdesc->footer_rows,
+								scrdesc->maxx, scrdesc->fix_rows_rows + 1 + scrdesc->rows_rows, 0);
+	}
+
 	if (scrdesc->fix_rows_rows > 0)
 	{
 		scrdesc->fix_rows = newwin(scrdesc->fix_rows_rows,
 								   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
 								   1, scrdesc->fix_cols_cols);
 	}
-	if (scrdesc->fix_cols_cols > 0)
+
+	if (scrdesc->fix_cols_cols > 0 && scrdesc->rows_rows > 0)
 	{
-		scrdesc->fix_cols = newwin(scrdesc->maxy - scrdesc->fix_rows_rows - 2, scrdesc->fix_cols_cols, scrdesc->fix_rows_rows + 1, 0);
+		scrdesc->fix_cols = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols, scrdesc->fix_rows_rows + 1, 0);
 	}
+
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
 		scrdesc->luc = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, 1, 0);
 	}
-	scrdesc->rows = newwin(scrdesc->maxy - scrdesc->fix_rows_rows - 2,
-						   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
-						   scrdesc->fix_rows_rows + 1, scrdesc->fix_cols_cols);
+
+	if (scrdesc->rows_rows > 0)
+	{
+		scrdesc->rows = newwin(scrdesc->rows_rows,
+							   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
+							   scrdesc->fix_rows_rows + 1, scrdesc->fix_cols_cols);
+	}
 
 #ifdef DEBUG_COLORS
 
@@ -1453,6 +1624,11 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc)
 		wbkgd(scrdesc->fix_cols, COLOR_PAIR(11));
 	if (scrdesc->fix_rows != NULL)
 		wbkgd(scrdesc->fix_rows, COLOR_PAIR(12));
+	if (scrdesc->footer != NULL)
+	{
+		wbkgd(scrdesc->footer, COLOR_PAIR(13));
+		wrefresh(scrdesc->footer);
+	}
 
 #endif
 }
@@ -1519,7 +1695,19 @@ number_width(int num)
 		return 7;
 }
 
+/*
+ * returns true when cursor is on footer window
+ */
+static bool
+is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
+{
+	if (scrdesc->footer == NULL)
+		return false;
+	else if (scrdesc->rows_rows == 0)
+		return true;
 
+	return cursor_row + scrdesc->fix_rows_rows + desc->title_rows + 1 > desc->footer_row;
+}
 
 static void
 print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
@@ -1573,6 +1761,18 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 	wrefresh(scrdesc->top_bar);
 }
 
+static int
+if_in_int(int v, int *s, int v1, int v2)
+{
+	while(*s != -1)
+	{
+		if (v == *s)
+			return v1;
+		s += 1;
+	}
+	return v2;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1581,6 +1781,7 @@ main(int argc, char *argv[])
 	int		c2 = 0;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
+	int		footer_cursor_col = 0;
 	int		prev_cursor_row;
 	int		first_row = 0;
 	int		prev_first_row;
@@ -1647,7 +1848,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [file...] [-X]\n", argv[0]);
+				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [file] [-X]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -1679,6 +1880,8 @@ main(int argc, char *argv[])
 
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
+
+	trim_footer_rows(&desc);
 
 	memset(&scrdesc, sizeof(ScrDesc), 0);
 	scrdesc.theme = style;
@@ -1725,7 +1928,7 @@ main(int argc, char *argv[])
 	}
 
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
-	create_layout(&scrdesc, &desc);
+	create_layout(&scrdesc, &desc, first_row);
 
 	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
@@ -1741,18 +1944,36 @@ main(int argc, char *argv[])
 		int			fixed_columns;
 		bool		generic_pager = desc.headline_transl == NULL;
 
-		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10);
+		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
 		window_fill(scrdesc.rows, scrdesc.fix_rows_rows + first_row + desc.title_rows, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row, &desc,
 					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0),
 					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(6) | A_BOLD, generic_pager ? A_BOLD | COLOR_PAIR(6) : COLOR_PAIR(6),
-					COLOR_PAIR(6) | A_BOLD);
+					COLOR_PAIR(6) | A_BOLD,
+					false);
 		window_fill(scrdesc.fix_cols, scrdesc.fix_rows_rows + first_row + desc.title_rows, 0, cursor_row - first_row, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) | A_BOLD, COLOR_PAIR(6),
-					COLOR_PAIR(6) | A_BOLD);
-		window_fill(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0);
+					COLOR_PAIR(6) | A_BOLD,
+					false);
+		window_fill(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
+
+		if (scrdesc.footer != NULL)
+		{
+			int		color;
+
+			if (!generic_pager)
+				color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
+			else
+				color = COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0);
+
+			window_fill(scrdesc.footer,
+								scrdesc.fix_rows_rows + first_row + desc.title_rows + scrdesc.rows_rows, footer_cursor_col,
+								cursor_row - first_row - scrdesc.rows_rows, &desc,
+								color, 0, 0,
+								COLOR_PAIR(10) | A_BOLD, 0, 0, true);
+		}
 
 		if (scrdesc.luc != NULL)
 			wrefresh(scrdesc.luc);
@@ -1762,6 +1983,8 @@ main(int argc, char *argv[])
 			wrefresh(scrdesc.fix_cols);
 		if (scrdesc.fix_rows != NULL)
 			wrefresh(scrdesc.fix_rows);
+		if (scrdesc.footer != NULL)
+			wrefresh(scrdesc.footer);
 
 		refresh();
 		if (c2 != 0)
@@ -1824,68 +2047,87 @@ main(int argc, char *argv[])
 			case KEY_LEFT:
 			case 'h':
 				{
-					int		move_left = 30;
-
-					if (cursor_col == 0)
-						break;
-
-					if (desc.headline_transl != NULL)
+					if (is_footer_cursor(cursor_row, &scrdesc, &desc))
 					{
-						int		i;
+						if (footer_cursor_col > 0)
+							footer_cursor_col -= 1;
+					}
+					else
+					{
+						int		move_left = 30;
 
-						for (i = 1; i <= 30; i++)
+						if (cursor_col == 0)
+							break;
+
+						if (desc.headline_transl != NULL)
 						{
-							int		pos = scrdesc.fix_cols_cols + cursor_col - i;
+							int		i;
 
-							if (pos < 0)
-								break;
-
-							if (desc.headline_transl[i] == 'I')
+							for (i = 1; i <= 30; i++)
 							{
-								move_left = i;
-								break;
+								int		pos = scrdesc.fix_cols_cols + cursor_col - i;
+
+								if (pos < 0)
+									break;
+
+								if (desc.headline_transl[i] == 'I')
+								{
+									move_left = i;
+									break;
+								}
 							}
 						}
-					}
 
-					cursor_col -= move_left;
-					if (cursor_col < 3)
-						cursor_col = 0;
+						cursor_col -= move_left;
+						if (cursor_col < 3)
+							cursor_col = 0;
+					}
 				}
 				break;
 
 			case KEY_RIGHT:
 			case 'l':
 				{
-					int		move_right = 30;
-					int		max_cursor_col;
-
-					if (desc.headline_transl != NULL)
+					if (is_footer_cursor(cursor_row, &scrdesc, &desc))
 					{
-						int		i;
-						char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
+						int max_cursor_col = desc.footer_char_size - maxx;
 
-						for (i = 1; i <= 30; i++)
+						footer_cursor_col += 1;
+						if (footer_cursor_col > max_cursor_col)
+							footer_cursor_col = max_cursor_col;
+					}
+					else
+					{
+						int		move_right = 30;
+						int		max_cursor_col;
+
+						if (desc.headline_transl != NULL)
 						{
-							if (str[i] == 'I')
+							int		i;
+							char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
+
+							for (i = 1; i <= 30; i++)
 							{
-								move_right = i + 1;
-								break;
+								if (str[i] == 'I')
+								{
+									move_right = i + 1;
+									break;
+								}
 							}
 						}
+
+						cursor_col += move_right;
+
+						if (desc.headline_transl != NULL)
+							max_cursor_col = desc.headline_char_size - maxx;
+						else
+							max_cursor_col = desc.maxx - maxx - 1;
+
+						max_cursor_col = max_cursor_col > 0 ? max_cursor_col : 0;
+
+						if (cursor_col > max_cursor_col)
+							cursor_col = max_cursor_col;
 					}
-
-					cursor_col += move_right;
-
-					if (desc.headline_transl != NULL)
-						max_cursor_col = desc.headline_char_size - maxx;
-					else
-						max_cursor_col = desc.maxx - maxx - 1;
-
-					max_cursor_col = max_cursor_col > 0 ? max_cursor_col : 0;
-
-					if (cursor_col > max_cursor_col)
-						cursor_col = max_cursor_col;
 				}
 				break;
 
@@ -1959,17 +2201,29 @@ main(int argc, char *argv[])
 
 			case KEY_HOME:
 			case '^':
-				cursor_col = 0;
+				if (is_footer_cursor(cursor_row, &scrdesc, &desc))
+				{
+					footer_cursor_col = 0;
+				}
+				else
+					cursor_col = 0;
 				break;
 
 			case KEY_END:
 			case '$':
+				if (is_footer_cursor(cursor_row, &scrdesc, &desc))
+				{
+					footer_cursor_col = desc.footer_char_size - maxx;
+				}
+				else
+				{
 					if (desc.headline != NULL)
 						cursor_col = desc.headline_char_size - maxx;
 					else
 						cursor_col = desc.maxx - maxx - 1;
 
 					cursor_col = cursor_col > 0 ? cursor_col : 0;
+				}
 				break;
 
 			case 's':
@@ -2099,7 +2353,7 @@ exit:
 					curs_set(0);
 					noecho();
 					/* continue to find next: */
-			case 'p':
+			case 'N':
 				{
 					int		max_first_row;
 					
@@ -2254,6 +2508,21 @@ exit:
 
 		print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
+		if (first_row != prev_first_row)
+		{
+			/* now, maybe more/less rows from footer should be displayed */
+			if (desc.headline_transl != NULL && desc.footer_row > 0)
+			{
+				int		rows_rows;
+
+				rows_rows = min_int(desc.footer_row - scrdesc.fix_rows_rows - first_row - desc.title_rows,
+									 scrdesc.maxy - scrdesc.fix_rows_rows - 2);
+
+				if (!refresh_scr)
+					refresh_scr = scrdesc.rows_rows != rows_rows;
+			}
+		}
+
 		if (refresh_scr)
 		{
 			if (resize_scr)
@@ -2277,7 +2546,7 @@ exit:
 
 			refresh_aux_windows(&scrdesc, &desc);
 			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
-			create_layout(&scrdesc, &desc);
+			create_layout(&scrdesc, &desc, first_row);
 			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
 			refresh_scr = false;
@@ -2288,7 +2557,7 @@ exit:
 
 	if (no_alternate_screen)
 	{
-		draw_data(&scrdesc, &desc, first_row, cursor_col);
+		draw_data(&scrdesc, &desc, first_row, cursor_col, footer_cursor_col);
 	}
 
 	return 0;

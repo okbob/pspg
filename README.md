@@ -29,6 +29,29 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
+## Keyboard commands
+
+* 0, 1, 2, 3, 4 - freeze first N columns
+* KEY_UP, k - navigate backward by one line
+* KEY_DOWN, j - navigate forward by one line
+* KEY_LEFT, h - scroll to left
+* KEY_RIGHT, l - scroll to right
+* Ctrl Home, g - go to the start of file
+* Ctrl End, G - go to the end of file
+* H - go to first line of current window
+* M - go to half of current window
+* L - go to end of current window
+* PPAGE, Ctrl B - backward one window
+* NPAGE, Ctrl F, space - forward one window
+* HOME, ^ - go to begin of line, first column
+* END, $ - go to end of line, last column
+* s - save content to file
+* / - search for a pattern which will take you to the next occurrence
+* ? - search for a pattern which will take you to the previous occurrence
+* n - for next match in backward direction
+* N - for previous match in forward direction
+
+
 # Note
 
 If you like it, send a postcard to address
