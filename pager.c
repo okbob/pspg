@@ -68,6 +68,7 @@ typedef struct
 	int		footer_char_size;		/* width of footer */
 	int		last_row;				/* last not empty row */
 	int		fixed_rows;				/* number of fixed rows */
+	int		fixed_columns;			/* number of fixed columns */
 	int		data_rows;				/* number of data rows */
 	int		footer_rows;			/* number of footer rows */
 } DataDesc;
@@ -77,12 +78,16 @@ typedef struct
  */
 typedef struct
 {
-	int		fix_rows_rows;			/* number of fixed rows in window rows */
-	int		fix_cols_cols;			/* number of fixed colums in window rows */
+	int		fix_rows_rows;			/* current number of fixed rows in window rows */
+	int		fix_cols_cols;			/* current number of fixed colums in window rows */
 	int		rows_rows;				/* current number of data rows */
 	int		footer_rows;			/* current number of footer rows */
 	int		maxy;					/* max y size of screen */
 	int		maxx;					/* max x size of screen */
+	int		main_maxy;				/* max y size of main place (fixed + data + footer rows) */
+	int		main_maxx;				/* max x size of main place (should be same like maxx) */
+	int		main_start_y;			/* y position of first row of main place */
+	int		main_start_x;			/* x position of first row of main place */
 	WINDOW *luc;					/* window for left upper corner */
 	WINDOW *fix_rows;				/* window for fixed rows */
 	WINDOW *fix_cols;				/* window for fixed columns */
@@ -90,8 +95,6 @@ typedef struct
 	WINDOW *footer;					/* window for footer */
 	WINDOW *top_bar;				/* top bar window */
 	WINDOW *bottom_bar;				/* bottom bar window */
-	int		cursor_y;				/* y pos of virtual cursor */
-	int		cursor_x;				/* x pos of virtual cursor */
 	int		theme;					/* color theme number */
 	char	searchterm[256];		/* currently active search input */
 } ScrDesc;
