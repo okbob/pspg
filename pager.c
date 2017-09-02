@@ -739,7 +739,7 @@ initialize_color_pairs(int theme)
 	}
 	else if (theme == 8)
 	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+		assume_default_colors(COLOR_CYAN, COLOR_BLUE);
 
 		init_pair(2, COLOR_WHITE, COLOR_BLUE);
 		init_pair(3, COLOR_WHITE, COLOR_BLUE);
@@ -773,7 +773,7 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(9, COLOR_BLUE, COLOR_CYAN);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 11)
@@ -799,7 +799,7 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_WHITE, COLOR_BLUE);
 		init_pair(6, COLOR_WHITE, COLOR_BLUE);
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLACK, COLOR_CYAN);
+		init_pair(9, COLOR_BLUE, COLOR_CYAN);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
 	}
 
