@@ -815,6 +815,7 @@ readfile(FILE *fp, DataDesc *desc)
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
+	int			trimmed_nrows = 0;
 	bool		use_stdin = false;
 	LineBuffer *rows;
 
@@ -854,6 +855,7 @@ readfile(FILE *fp, DataDesc *desc)
 	desc->border_top_row = -1;
 	desc->border_head_row = -1;
 	desc->border_bottom_row = -1;
+	desc->first_data_row = -1;
 	desc->last_data_row = -1;
 	desc->is_expanded_mode = false;
 	desc->headline_transl = NULL;
@@ -883,6 +885,7 @@ readfile(FILE *fp, DataDesc *desc)
 		}
 
 		rows->rows[rows->nrows++] = line;
+
 
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
@@ -933,10 +936,14 @@ readfile(FILE *fp, DataDesc *desc)
 		if ((int) clen > desc->maxx + 1)
 			desc->maxx = clen - 1;
 
-		if ((int) clen > 0)
+		if ((int) clen > 1 || (clen == 1 && *line != '\n'))
 			desc->last_row = nrows;
 
 		nrows += 1;
+
+		if (*line != '\0')
+			trimmed_nrows = nrows;
+
 		line = NULL;
 	}
 
@@ -949,7 +956,7 @@ readfile(FILE *fp, DataDesc *desc)
 	if (!use_stdin)
 		fclose(fp);
 
-	desc->maxy = nrows ;
+	desc->maxy = trimmed_nrows ;
 
 	desc->headline_char_size = 0;
 
@@ -975,8 +982,8 @@ readfile(FILE *fp, DataDesc *desc)
 		desc->headline_char_size = 0;
 
 		/* there are not a data set */
-		desc->last_row = nrows;
-		desc->last_data_row = nrows;
+		desc->last_row = trimmed_nrows;
+		desc->last_data_row = trimmed_nrows;
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
@@ -1398,7 +1405,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 static void
 draw_data(ScrDesc *scrdesc, DataDesc *desc,
-		  int first_row, int cursor_col, int footer_cursor_col)
+		  int first_data_row, int first_row, int cursor_col,
+		  int footer_cursor_col, int fix_rows_offset)
 {
 	struct winsize size;
 	int		i;
@@ -1420,7 +1428,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 		{
 			draw_rectange(scrdesc->fix_rows_rows, 0,
 						  scrdesc->rows_rows, scrdesc->fix_cols_cols,
-						  scrdesc->fix_rows_rows + desc->title_rows + first_row, 0,
+						  first_data_row + first_row - fix_rows_offset , 0,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
@@ -1431,7 +1439,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
-						  desc->title_rows, scrdesc->fix_cols_cols + cursor_col,
+						  desc->title_rows + fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  true);
@@ -1443,7 +1451,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
-						  desc->title_rows, 0,
+						  desc->title_rows + fix_rows_offset, 0,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
@@ -1455,7 +1463,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
-						  scrdesc->fix_rows_rows + desc->title_rows + first_row, scrdesc->fix_cols_cols + cursor_col,
+						  first_data_row + first_row - fix_rows_offset , scrdesc->fix_cols_cols + cursor_col,
 						  desc,
 						  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
 						  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
@@ -1469,7 +1477,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
 						  scrdesc->footer_rows, scrdesc->maxx,
-						  scrdesc->fix_rows_rows + desc->title_rows + first_row + scrdesc->rows_rows, footer_cursor_col,
+						  first_data_row + first_row + scrdesc->rows_rows - fix_rows_offset, footer_cursor_col,
 						  desc,
 						  COLOR_PAIR(9), 0, 0, true);
 		}
@@ -1539,11 +1547,11 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 		desc->title[0] = '\0';
 	}
 
-
+	desc->fixed_rows = scrdesc->fix_rows_rows;
 }
 
 static void
-create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_row)
+create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
 {
 	if (scrdesc->luc != NULL)
 	{
@@ -1574,24 +1582,36 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
 	{
-		scrdesc->rows_rows = min_int(desc->footer_row - scrdesc->fix_rows_rows - first_row - desc->title_rows,
-									 scrdesc->maxy - scrdesc->fix_rows_rows - 2);
+		int		rows_rows = desc->footer_row - first_row - first_data_row;
+		int		data_rows;
 
-		if (scrdesc->rows_rows < 0)
-			scrdesc->rows_rows = 0;
-
-		if (scrdesc->rows_rows < scrdesc->maxy - scrdesc->fix_rows_rows - 2)
+		if (rows_rows > 0)
 		{
-			scrdesc->footer_rows = min_int(scrdesc->maxy - scrdesc->fix_rows_rows - 2 - scrdesc->rows_rows,
-										   desc->last_row - desc->footer_row);
+			data_rows = scrdesc->main_maxy - desc->fixed_rows;
+			scrdesc->rows_rows = min_int(rows_rows, data_rows);
+		}
+		else
+		{
+			int		new_fix_rows_rows = scrdesc->fix_rows_rows + rows_rows - 1;
+
+			scrdesc->fix_rows_rows = new_fix_rows_rows > 0 ? new_fix_rows_rows : 0;
+			scrdesc->rows_rows = new_fix_rows_rows >= 0 ? 1 : 0;
+			data_rows = scrdesc->main_maxy - scrdesc->fix_rows_rows;
+		}
+
+		scrdesc->footer_rows = min_int(data_rows - scrdesc->rows_rows,
+									   desc->last_row - desc->footer_row + 1);
+
+		if (scrdesc->footer_rows > 0)
+		{
 			scrdesc->footer = newwin(scrdesc->footer_rows,
-									scrdesc->maxx, scrdesc->fix_rows_rows + 1 + scrdesc->rows_rows, 0);
+									scrdesc->maxx, scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows, 0);
 		}
 	}
 	else
 	{
 		scrdesc->rows_rows = 0;
-		scrdesc->footer_rows = min_int(scrdesc->maxy - scrdesc->fix_rows_rows - 2 - scrdesc->rows_rows,
+		scrdesc->footer_rows = min_int(scrdesc->main_maxy - scrdesc->fix_rows_rows - scrdesc->rows_rows,
 									   desc->last_row - desc->last_data_row);
 		scrdesc->footer = newwin(scrdesc->footer_rows,
 								scrdesc->maxx, scrdesc->fix_rows_rows + 1 + scrdesc->rows_rows, 0);
@@ -1611,14 +1631,14 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
-		scrdesc->luc = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, 1, 0);
+		scrdesc->luc = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->rows_rows > 0)
 	{
 		scrdesc->rows = newwin(scrdesc->rows_rows,
 							   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
-							   scrdesc->fix_rows_rows + 1, scrdesc->fix_cols_cols);
+							   scrdesc->fix_rows_rows + scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
 
 #ifdef DEBUG_COLORS
@@ -1680,6 +1700,22 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 		mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
 		wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
 		wrefresh(scrdesc->bottom_bar);
+	}
+
+	scrdesc->main_maxy = maxy;
+	scrdesc->main_maxx = maxx;
+	scrdesc->main_start_y = 0;
+	scrdesc->main_start_x = 0;
+
+	if (scrdesc->top_bar != NULL)
+	{
+		scrdesc->main_maxy -= 1;
+		scrdesc->main_start_y = 1;
+	}
+
+	if (scrdesc->bottom_bar != NULL)
+	{
+		scrdesc->main_maxy -= 1;
 	}
 }
 
@@ -1745,11 +1781,11 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 							number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
 							number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
 							number_width(desc->headline_char_size), desc->headline_char_size,
-							number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
+							number_width(desc->maxy - desc->fixed_rows), first_row + 1,
 							number_width(smaxy), cursor_row - first_row,
-							number_width(desc->maxy - scrdesc->fix_rows_rows - 1), cursor_row + 1,
-							number_width(desc->maxy - scrdesc->fix_rows_rows - 1), desc->maxy - scrdesc->fix_rows_rows - 1,
-							(cursor_row + 1) / ((double) (desc->maxy - scrdesc->fix_rows_rows - 1)) * 100.0);
+							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
+							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy - desc->fixed_rows - desc->title_rows,
+							(cursor_row + 1) / ((double) (desc->maxy - desc->fixed_rows - desc->title_rows)) * 100.0);
 	}
 	else
 	{
@@ -1792,6 +1828,7 @@ main(int argc, char *argv[])
 	int		prev_cursor_row;
 	int		first_row = 0;
 	int		prev_first_row;
+	int		first_data_row;
 	int		i;
 	char   str[120];
 	int		style = STYLE;
@@ -1803,6 +1840,8 @@ main(int argc, char *argv[])
 	int		stacked_mouse_event = -1;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
+	int		fix_rows_offset = 0;
+
 
 	char	buffer[2048];
 
@@ -1888,6 +1927,15 @@ main(int argc, char *argv[])
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
 
+	if (desc.headline_transl != NULL)
+		desc.first_data_row = desc.border_head_row + 1;
+	else if (desc.title_rows > 0)
+		desc.first_data_row = desc.title_rows;
+	else
+		desc.first_data_row = 0;
+
+	first_data_row = desc.first_data_row;
+
 	trim_footer_rows(&desc);
 
 	memset(&scrdesc, sizeof(ScrDesc), 0);
@@ -1935,7 +1983,7 @@ main(int argc, char *argv[])
 	}
 
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
-	create_layout(&scrdesc, &desc, first_row);
+	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
 	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
@@ -1951,20 +1999,22 @@ main(int argc, char *argv[])
 		int			fixed_columns;
 		bool		generic_pager = desc.headline_transl == NULL;
 
-		window_fill(scrdesc.luc, desc.title_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
-		window_fill(scrdesc.rows, scrdesc.fix_rows_rows + first_row + desc.title_rows, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row, &desc,
+		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
+
+		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
+		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0),
 					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(6) | A_BOLD, generic_pager ? A_BOLD | COLOR_PAIR(6) : COLOR_PAIR(6),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
-		window_fill(scrdesc.fix_cols, scrdesc.fix_rows_rows + first_row + desc.title_rows, 0, cursor_row - first_row, &desc,
+		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) | A_BOLD, COLOR_PAIR(6),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
-		window_fill(scrdesc.fix_rows, desc.title_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
+		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
 
 		if (scrdesc.footer != NULL)
 		{
@@ -1976,8 +2026,9 @@ main(int argc, char *argv[])
 				color = COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0);
 
 			window_fill(scrdesc.footer,
-								scrdesc.fix_rows_rows + first_row + desc.title_rows + scrdesc.rows_rows, footer_cursor_col,
-								cursor_row - first_row - scrdesc.rows_rows, &desc,
+								first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
+								footer_cursor_col,
+								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
 								COLOR_PAIR(10) | A_BOLD, 0, 0, true);
 		}
@@ -2036,14 +2087,15 @@ main(int argc, char *argv[])
 					int		max_cursor_row;
 					int		max_first_row;
 
-					max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+					max_cursor_row = desc.last_row - desc.first_data_row;
+
 					if (++cursor_row > max_cursor_row)
 						cursor_row = max_cursor_row;
 
-					if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
+					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 						first_row += 1;
 
-					max_first_row = desc.last_row - maxy + 2;
+					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 					if (max_first_row < 0)
 						max_first_row = 0;
 					if (first_row > max_first_row)
@@ -2122,16 +2174,19 @@ recheck_right:
 
 					if (_is_footer_cursor)
 					{
-						int max_cursor_col = desc.footer_char_size - maxx;
+						int max_footer_cursor_col = desc.footer_char_size - maxx;
 
-						if (footer_cursor_col + 1 >= max_cursor_col && scrdesc.rows_rows > 0)
+						if (footer_cursor_col + 1 >= max_footer_cursor_col && scrdesc.rows_rows > 0)
 						{
 							_is_footer_cursor = false;
-							footer_cursor_col = max_cursor_col;
+							footer_cursor_col = max_footer_cursor_col;
 							goto recheck_right;
 						}
 						else
 							footer_cursor_col += 1;
+
+						if (footer_cursor_col > max_footer_cursor_col)
+							footer_cursor_col = max_footer_cursor_col;
 					}
 					else
 					{
@@ -2184,8 +2239,8 @@ recheck_right:
 
 			case 533:		/* CTRL END */
 			case 'G':
-				cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
-				first_row = desc.last_row - maxy + 2 - desc.title_rows;
+				cursor_row = desc.last_row - desc.first_data_row;
+				first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 				break;
 
 			case 'H':
@@ -2202,13 +2257,13 @@ recheck_right:
 			case 2:		/* CTRL B */
 				if (first_row > 0)
 				{
-					first_row -= maxy - scrdesc.fix_rows_rows - 2;
+					first_row -= scrdesc.main_maxy - scrdesc.fix_rows_rows;
 					if (first_row < 0)
 						first_row = 0;
 				}
 				if (cursor_row > 0)
 				{
-					cursor_row -= maxy - scrdesc.fix_rows_rows - 2;
+					cursor_row -= scrdesc.main_maxy - scrdesc.fix_rows_rows;
 					if (cursor_row < 0)
 						cursor_row = 0;
 				}
@@ -2221,17 +2276,17 @@ recheck_right:
 					int		max_cursor_row;
 					int		max_first_row;
 
-					first_row += maxy - scrdesc.fix_rows_rows - 2;
-					cursor_row += maxy - scrdesc.fix_rows_rows - 2;
+					first_row += scrdesc.main_maxy - scrdesc.fix_rows_rows;
+					cursor_row += scrdesc.main_maxy - scrdesc.fix_rows_rows;
 
-					max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+					max_cursor_row = desc.last_row - desc.first_data_row;
 					if (cursor_row > max_cursor_row)
 						cursor_row = max_cursor_row;
 
-					if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 						first_row += 1;
 
-					max_first_row = desc.last_row - maxy + 2;
+					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 					if (max_first_row < 0)
 						max_first_row = 0;
 					if (first_row > max_first_row)
@@ -2416,7 +2471,7 @@ exit:
 						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
 							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + 3;
 
-						max_first_row = desc.last_row - maxy + 2;
+						max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 						if (max_first_row < 0)
 							max_first_row = 0;
 						if (first_row > max_first_row)
@@ -2524,12 +2579,12 @@ exit:
 							int		max_first_row;
 							int		offset = 1;
 
-							max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 							if (max_first_row < 0)
 								max_first_row = 0;
 
 							if (desc.headline_transl != NULL)
-								offset = (maxy - scrdesc.fix_rows_rows - 2) / 3;
+								offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
 
 							if (first_row + offset > max_first_row)
 								offset = 1;
@@ -2537,11 +2592,11 @@ exit:
 							first_row += offset;
 							cursor_row += offset;
 
-							max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+							max_cursor_row = desc.last_row - desc.first_data_row;
 							if (cursor_row > max_cursor_row)
 								cursor_row = max_cursor_row;
 
-							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 								first_row += 1;
 
 							if (first_row > max_first_row)
@@ -2552,7 +2607,7 @@ exit:
 							int		offset = 1;
 
 							if (desc.headline_transl != NULL)
-								offset = (maxy - scrdesc.fix_rows_rows - 2) / 3;
+								offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
 
 							if (first_row <= offset)
 								offset = 1;
@@ -2571,6 +2626,7 @@ exit:
 							}
 						}
 						else
+
 #endif
 
 						if (event.bstate & BUTTON1_PRESSED)
@@ -2578,21 +2634,21 @@ exit:
 							int		max_cursor_row;
 							int		max_first_row;
 
-							cursor_row = event.y - scrdesc.fix_rows_rows - 1 + first_row;
+							cursor_row = event.y - scrdesc.fix_rows_rows - 1 + first_row - fix_rows_offset;
 							if (cursor_row < 0)
 								cursor_row = 0;
 
-							if (cursor_row < first_row)
+							if (cursor_row + fix_rows_offset < first_row)
 								first_row = cursor_row;
 
-							max_cursor_row = desc.last_row - scrdesc.fix_rows_rows - 1;
+							max_cursor_row = desc.last_row - desc.first_data_row;
 							if (cursor_row > max_cursor_row)
 								cursor_row = max_cursor_row;
 
-							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows + desc.title_rows - 3)
+							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset)
 								first_row += 1;
 
-							max_first_row = desc.last_row - maxy + 2 - desc.title_rows;
+							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 							if (max_first_row < 0)
 								max_first_row = 0;
 							if (first_row > max_first_row)
@@ -2613,7 +2669,7 @@ exit:
 				int		rows_rows;
 
 				rows_rows = min_int(desc.footer_row - scrdesc.fix_rows_rows - first_row - desc.title_rows,
-									 scrdesc.maxy - scrdesc.fix_rows_rows - 2);
+									 scrdesc.main_maxy - scrdesc.fix_rows_rows);
 
 				if (!refresh_scr)
 					refresh_scr = scrdesc.rows_rows != rows_rows;
@@ -2643,7 +2699,7 @@ exit:
 
 			refresh_aux_windows(&scrdesc, &desc);
 			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
-			create_layout(&scrdesc, &desc, first_row);
+			create_layout(&scrdesc, &desc, first_data_row, first_row);
 			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
 
 			refresh_scr = false;
@@ -2654,7 +2710,8 @@ exit:
 
 	if (no_alternate_screen)
 	{
-		draw_data(&scrdesc, &desc, first_row, cursor_col, footer_cursor_col);
+		draw_data(&scrdesc, &desc, first_data_row, first_row, cursor_col,
+				  footer_cursor_col, fix_rows_offset);
 	}
 
 	return 0;
