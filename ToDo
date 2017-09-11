@@ -1,6 +1,5 @@
 ToDo
 ====
-* independent horizontal scrolling for footer lines
 * PgDn, PgUp in expanded format should be aligned per record (like columns scrolling)
 
 Known bugs

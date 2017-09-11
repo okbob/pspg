@@ -939,10 +939,11 @@ readfile(FILE *fp, DataDesc *desc)
 		if ((int) clen > 1 || (clen == 1 && *line != '\n'))
 			desc->last_row = nrows;
 
-		nrows += 1;
-
 		if (*line != '\0')
 			trimmed_nrows = nrows;
+
+		nrows += 1;
+
 
 		line = NULL;
 	}
@@ -1608,13 +1609,17 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 									scrdesc->maxx, scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows, 0);
 		}
 	}
+	else if (desc->headline_transl != NULL)
+	{
+		scrdesc->rows_rows = min_int(scrdesc->main_maxy - scrdesc->fix_rows_rows,
+									 desc->last_row - desc->first_data_row);
+	}
 	else
 	{
 		scrdesc->rows_rows = 0;
-		scrdesc->footer_rows = min_int(scrdesc->main_maxy - scrdesc->fix_rows_rows - scrdesc->rows_rows,
-									   desc->last_row - desc->last_data_row);
-		scrdesc->footer = newwin(scrdesc->footer_rows,
-								scrdesc->maxx, scrdesc->fix_rows_rows + 1 + scrdesc->rows_rows, 0);
+		scrdesc->fix_rows_rows = 0;
+		scrdesc->footer_rows = min_int(scrdesc->main_maxy, desc->last_row + 1);
+		scrdesc->footer = newwin(scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0)
@@ -1795,9 +1800,9 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 							number_width(desc->maxx), desc->maxx,
 							number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
 							number_width(smaxy), cursor_row - first_row,
-							number_width(desc->maxy - scrdesc->fix_rows_rows), cursor_row,
-							number_width(desc->maxy - scrdesc->fix_rows_rows), desc->maxy - scrdesc->fix_rows_rows - 1,
-							((cursor_row) / ((double) (desc->maxy - scrdesc->fix_rows_rows - 1))) * 100.0);
+							number_width(desc->last_row), cursor_row + 1,
+							number_width(desc->last_row), desc->last_row + 1,
+							((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
 	}
 
 	mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
@@ -2096,6 +2101,7 @@ main(int argc, char *argv[])
 						first_row += 1;
 
 					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+
 					if (max_first_row < 0)
 						max_first_row = 0;
 					if (first_row > max_first_row)
