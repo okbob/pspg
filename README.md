@@ -51,6 +51,10 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * n - for next match in backward direction
 * N - for previous match in forward direction
 
+# Recommended psql configuration
+
+* linestyle unicode
+* border 2
 
 # Note
 
