@@ -470,7 +470,7 @@ isHeadLeftChar(char *str)
 	const char *u1 = "\342\224\200";
 	const char *u2 = "\342\225\220";
 	const char *u3 = "\342\225\236";
-	const char *u4 = "\342\225\241";
+	const char *u4 = "\342\224\234";
 
 	if (str[0] == '+' || str[0] == '-')
 		return true;
