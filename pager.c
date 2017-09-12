@@ -471,6 +471,8 @@ isHeadLeftChar(char *str)
 	const char *u2 = "\342\225\220";
 	const char *u3 = "\342\225\236";
 	const char *u4 = "\342\224\234";
+	const char *u5 = "\342\225\240";
+	const char *u6 = "\342\225\237";
 
 	if (str[0] == '+' || str[0] == '-')
 		return true;
@@ -482,6 +484,11 @@ isHeadLeftChar(char *str)
 		return true;
 	if (strncmp(str, u4, 3) == 0)
 		return true;
+	if (strncmp(str, u5, 3) == 0)
+		return true;
+	if (strncmp(str, u6, 3) == 0)
+		return true;
+
 
 	return false;
 }
