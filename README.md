@@ -56,6 +56,16 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * linestyle unicode
 * border 2
 
+# Note - compilation issue
+
+Some linker issues can be fixed by:
+<pre>
+I changed 
+gcc -lncursesw pager.c -o pspg -ggdb 
+to 
+gcc pager.c -o pspg -ggdb -lncursesw
+</pre>
+
 # Note
 
 If you like it, send a postcard to address
