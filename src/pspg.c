@@ -312,14 +312,10 @@ utf8_to_unicode(const unsigned char *c)
 }
 
 static int
-utf_dsplen(const unsigned char *s)
+utf_dsplen(const char *s)
 {
-	return ucs_wcwidth(utf8_to_unicode(s));
+	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
-
-#if NCURSES_MOUSE_VERSION > 1
-#define MOUSE_WHEEL_BUTTONS			1
-#endif
 
 //#define DEBUG_COLORS				1
 
@@ -329,7 +325,6 @@ utf_dsplen(const unsigned char *s)
 static bool
 translate_headline(DataDesc *desc)
 {
-	char   *transl;
 	char   *srcptr;
 	char   *destptr;
 	char   *last_black_char = NULL;
@@ -1056,7 +1051,6 @@ readfile(FILE *fp, DataDesc *desc)
 
 	while (( read = getline(&line, &len, fp)) != -1)
 	{
-		int		nmaxx, nmaxy;
 		int		clen = utf8len(line);
 
 		if (rows->nrows == 1000)
@@ -1147,8 +1141,6 @@ readfile(FILE *fp, DataDesc *desc)
 
 	if (desc->border_head_row != -1)
 	{
-		int		i = 0;
-
 		desc->headline = desc->rows.rows[desc->border_head_row];
 		desc->headline_size = strlen(desc->headline);
 
@@ -1173,7 +1165,11 @@ readfile(FILE *fp, DataDesc *desc)
 		desc->title[0] = '\0';
 	}
 
-	freopen("/dev/tty", "rw", stdin);
+	if (freopen("/dev/tty", "rw", stdin) == NULL)
+	{
+		fprintf(stderr, "cannot to reopen stdin: %s\n", strerror(errno));
+		exit(1);
+	}
 
 	return 0;
 }
@@ -1391,6 +1387,8 @@ window_fill(WINDOW *win,
 	}
 }
 
+#ifdef COLORIZED_NO_ALTERNATE_SCREEN
+
 static void
 ansi_colors(int pairno, short int *fc, short int *bc)
 {
@@ -1399,18 +1397,21 @@ ansi_colors(int pairno, short int *fc, short int *bc)
 	*bc = *bc != -1 ? *bc + 40 : 49;
 }
 
+#endif
+
 static char *
 ansi_attr(attr_t attr)
 {
-	static char result[20];
-	int		pairno;
-	short int fc, bc;
 
 #ifndef COLORIZED_NO_ALTERNATE_SCREEN
 
 	return "";
 
 #else
+
+	static char result[20];
+	int		pairno;
+	short int fc, bc;
 
 	pairno = PAIR_NUMBER(attr);
 	ansi_colors(pairno, &fc, &bc);
@@ -1608,7 +1609,6 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 {
 	struct winsize size;
 	int		i;
-	short int		fc, bc;
 
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
@@ -1938,6 +1938,8 @@ number_width(int num)
 		return 6;
 	if (num < 10000000)
 		return 7;
+
+	return 8;
 }
 
 /*
@@ -1964,6 +1966,8 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 
 	getmaxyx(scrdesc->top_bar, maxy, maxx);
 	getmaxyx(stdscr, smaxy, smaxx);
+
+	(void) maxy;
 
 	if (scrdesc->theme == 2)
 		wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
@@ -2027,30 +2031,23 @@ main(int argc, char *argv[])
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
-	int		prev_cursor_row;
 	int		first_row = 0;
 	int		prev_first_row;
 	int		first_data_row;
 	int		i;
-	char   str[120];
 	int		style = STYLE;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	int		_columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automaticly */
 	FILE   *fp = NULL;
-	int		stacked_mouse_event = -1;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
 	int		fix_rows_offset = 0;
 
-
-
-	char	buffer[2048];
-
 	int		opt;
 
-	while ((opt = getopt(argc, argv, "bs:c:df:X")) != -1)
+	while ((opt = getopt(argc, argv, "bs:c:f:X")) != -1)
 	{
 		int		n;
 
@@ -2080,14 +2077,6 @@ main(int argc, char *argv[])
 				}
 				_columns = n;
 				break;
-			case 'd':
-				fp = fopen(FILENAME, "r");
-				if (fp == NULL)
-				{
-					fprintf(stderr, "cannot to read file: %s\n", FILENAME);
-					exit(1);
-				}
-				break;
 			case 'f':
 				fp = fopen(optarg, "r");
 				if (fp == NULL)
@@ -2097,7 +2086,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [file] [-X]\n", argv[0]);
+				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -2141,7 +2130,7 @@ main(int argc, char *argv[])
 
 	trim_footer_rows(&desc);
 
-	memset(&scrdesc, sizeof(ScrDesc), 0);
+	memset(&scrdesc, 0, sizeof(ScrDesc));
 	scrdesc.theme = style;
 	refresh_aux_windows(&scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
@@ -2199,7 +2188,6 @@ main(int argc, char *argv[])
 	{
 		bool		refresh_scr = false;
 		bool		resize_scr = false;
-		int			fixed_columns;
 		bool		generic_pager = desc.headline_transl == NULL;
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
@@ -2259,7 +2247,6 @@ main(int argc, char *argv[])
 		if (c == 'q' || c == KEY_F(10))
 			break;
 
-		prev_cursor_row = cursor_row;
 		prev_first_row = first_row;
 
 		switch (c)
@@ -2454,7 +2441,7 @@ recheck_right:
 				cursor_row = first_row + maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
 				break;
 			case 'M':
-				cursor_row = first_row + (maxy - scrdesc.fix_rows_rows + desc.title_rows - 3 >> 1);
+				cursor_row = first_row + ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
 				break;
 
 			case KEY_PPAGE:
@@ -2600,7 +2587,6 @@ recheck_end:
 					if (fp != NULL)
 					{
 						LineBuffer *lnb = &desc.rows;
-						int			lnb_row;
 
 						ok = true;
 
@@ -2711,8 +2697,6 @@ exit:
 					/* continue to find next: */
 			case 'N':
 				{
-					int		max_first_row;
-					
 					int		rowidx;
 					int		search_row;
 
@@ -2773,9 +2757,8 @@ exit:
 
 					if (getmouse(&event) == OK)
 					{
-						int		x = event.bstate;
 
-#ifdef MOUSE_WHEEL_BUTTONS
+#if NCURSES_MOUSE_VERSION > 1
 
 						if (event.bstate & BUTTON5_PRESSED)
 						{

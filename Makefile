@@ -1,17 +1,21 @@
+
+all:
+
+# Include setting from the configure script
+-include config.make
+
 all: pspg
 
-compile-ncursesw:
-	gcc -lncursesw pager.c -o pspg -ggdb
-
-compile-ncurses:
-	$(warning "try to use ncurses without wide chars support")
-	gcc -lncurses pager.c -o pspg -ggdb
-
-pspg: pager.c
-	${MAKE} compile-ncursesw || ${MAKE} compile-ncurses
-
-run:
-	./pspg -d
+pspg: src/pspg.c
+	$(CC) src/pspg.c -o pspg $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm ./pspg
+	
+distclean: clean
+	$(RM) -r autom4te.cache
+	$(RM) aclocal.m4 configure
+	$(RM) config.h config.log config.make config.status config.h.in
+
+install: all
+	tools/install.sh bin pspg "$(DESTDIR)$(bindir)"
