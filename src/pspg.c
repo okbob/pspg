@@ -17,7 +17,6 @@
 
 #include <sys/param.h>
 
-#define FILENAME		"pg_class.txt"
 #define STYLE			1
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
@@ -1193,6 +1192,7 @@ window_fill(WINDOW *win,
 	int			lnb_row;
 	attr_t		active_attr;
 	int			srcy_bak = srcy;
+	char		*free_row;
 
 	/* fast leaving */
 	if (win == NULL)
@@ -1246,6 +1246,7 @@ window_fill(WINDOW *win,
 			bool	fix_line_attr_style;
 			bool	is_expand_head;
 			int		ei_min, ei_max;
+			int		left_spaces;							/* aux left spaces */
 
 			if (desc->is_expanded_mode)
 			{
@@ -1266,16 +1267,36 @@ window_fill(WINDOW *win,
 
 			/* skip first srcx chars */
 			i = srcx;
+			left_spaces = 0;
 			while(i > 0)
 			{
 				if (*rowstr != '\0' && *rowstr != '\n')
 				{
 					i -= utf_dsplen(rowstr);
 					rowstr += utf8charlen(*rowstr);
+					if (i < 0)
+						left_spaces = -i;
 				}
 				else
 					break;
 			}
+
+			/* Fix too hungry cutting when some multichar char is removed */
+			if (left_spaces > 0)
+			{
+				char *p;
+
+				free_row = malloc(left_spaces + strlen(rowstr) + 1);
+				p = free_row;
+				while (left_spaces-- > 0)
+				{
+					*p++ = ' ';
+				}
+				strcpy(p, rowstr);
+				rowstr = free_row;
+			}
+			else
+				free_row = NULL;
 
 			ptr = rowstr;
 			bytes = 0;
@@ -1376,6 +1397,12 @@ window_fill(WINDOW *win,
 			/* draw cursor line to screan end of line */
 			if (is_cursor_row && i < maxx)
 				mvwchgat(win, row - 1, i - 1, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+
+			if (free_row != NULL)
+			{
+				free(free_row);
+				free_row = NULL;
+			}
 		}
 		else
 		{
@@ -1490,6 +1517,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			bool	fix_line_attr_style;
 			bool	is_expand_head;
 			int		ei_min, ei_max;
+			int		left_spaces;
+			char   *free_row;
 
 			if (desc->is_expanded_mode)
 			{
@@ -1509,16 +1538,36 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 			/* skip first srcx chars */
 			i = srcx;
+			left_spaces = 0;
 			while(i > 0)
 			{
 				if (*rowstr != '\0' && *rowstr != '\n')
 				{
 					i -= utf_dsplen(rowstr);
 					rowstr += utf8charlen(*rowstr);
+					if (i < 0)
+						left_spaces = -i;
 				}
 				else
 					break;
 			}
+
+			/* Fix too hungry cutting when some multichar char is removed */
+			if (left_spaces > 0)
+			{
+				char *p;
+
+				free_row = malloc(left_spaces + strlen(rowstr) + 1);
+				p = free_row;
+				while (left_spaces-- > 0)
+				{
+					*p++ = ' ';
+				}
+				strcpy(p, rowstr);
+				rowstr = free_row;
+			}
+			else
+				free_row = NULL;
 
 			ptr = rowstr;
 			bytes = 0;
@@ -1595,6 +1644,12 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 				if (clreoln)
 					printf("\e[K");
 				printf("\n");
+			}
+
+			if (free_row != NULL)
+			{
+				free(free_row);
+				free_row = NULL;
 			}
 		}
 		else
@@ -2081,7 +2136,7 @@ main(int argc, char *argv[])
 				fp = fopen(optarg, "r");
 				if (fp == NULL)
 				{
-					fprintf(stderr, "cannot to read file: %s\n", FILENAME);
+					fprintf(stderr, "cannot to read file: %s\n", optarg);
 					exit(1);
 				}
 				break;

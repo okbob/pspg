@@ -6,8 +6,8 @@ all:
 
 all: pspg
 
-pspg: src/pspg.c
-	$(CC) src/pspg.c -o pspg $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
+pspg: src/pspg.c config.make
+	$(CC) src/pspg.c -o pspg $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm ./pspg
