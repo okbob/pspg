@@ -2118,7 +2118,7 @@ main(int argc, char *argv[])
 				n = atoi(optarg);
 				if (n < 0 || n > 12)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 11 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 12 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;

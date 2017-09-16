@@ -11,6 +11,14 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 
 ![Screenshot](screenshots/theme3.gif)
 
+## Options
+
+* -b       black/white theme
+* -X       doesn't clean screen on the end
+* -s N     use theme (default theme is mc theme)
+* -c N     freeze first N columns
+* -f file  open file (default stdin)
+
 ## Themes
 
 0. black & white
