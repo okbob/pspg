@@ -20,6 +20,7 @@
 #define STYLE			1
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
+//#define DEBUG_COLORS				1
 
 typedef struct LineBuffer
 {
@@ -64,6 +65,7 @@ typedef struct
 	int		first_data_row;			/* fist data row line (starts by zero) */
 	int		last_data_row;			/* last line of data row */
 	int		footer_row;				/* nrow of first footer row or -1 */
+	int		alt_footer_row;			/* alternative footer row (used when border = 1) */
 	int		footer_char_size;		/* width of footer */
 	int		last_row;				/* last not empty row */
 	int		fixed_rows;				/* number of fixed rows */
@@ -316,7 +318,6 @@ utf_dsplen(const char *s)
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
 
-//#define DEBUG_COLORS				1
 
 /*
  * Translate from UTF8 to semantic characters.
@@ -1038,6 +1039,7 @@ readfile(FILE *fp, DataDesc *desc)
 	desc->is_expanded_mode = false;
 	desc->headline_transl = NULL;
 	desc->footer_row = -1;
+	desc->alt_footer_row = -1;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -1105,6 +1107,13 @@ readfile(FILE *fp, DataDesc *desc)
 			/* Outer border is repeated in expanded mode, use last detected row */
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+		}
+
+		if (!desc->is_expanded_mode && desc->border_head_row != -1 && desc->border_head_row < nrows
+			 && desc->alt_footer_row == -1)
+		{
+			if (*line != '\0' && *line != ' ')
+				desc->alt_footer_row = nrows;
 		}
 
 		if ((int) len > desc->maxbytes)
@@ -1231,7 +1240,12 @@ window_fill(WINDOW *win,
 			rowstr = NULL;
 
 		if (!is_footer)
-			active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+		{
+			if (desc->border_type == 2)
+				active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+			else
+				active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+		}
 		else
 			active_attr = is_cursor_row ? cursor_data_attr : data_attr;
 
@@ -1256,9 +1270,11 @@ window_fill(WINDOW *win,
 			else
 			{
 				if (!is_footer)
+				{
 					fix_line_attr_style = effective_row == desc->border_top_row ||
 												effective_row == desc->border_head_row ||
-												effective_row >= desc->border_bottom_row;
+												effective_row == desc->border_bottom_row;
+				}
 				else
 					fix_line_attr_style = false;
 
@@ -1352,6 +1368,35 @@ window_fill(WINDOW *win,
 							}
 							else
 								new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+
+							if (new_attr != active_attr)
+							{
+								if (bytes > 0)
+								{
+									waddnstr(win, rowstr, bytes);
+									rowstr += bytes;
+									bytes = 0;
+								}
+
+								/* disable current style */
+								wattroff(win, active_attr);
+
+								/* active new style */
+								active_attr = new_attr;
+								wattron(win, active_attr);
+							}
+						}
+					}
+					else
+					{
+						if (!is_footer)
+						{
+							int		new_attr;
+
+							if (is_cursor_row)
+								new_attr = cursor_line_attr;
+							else
+								new_attr = line_attr;
 
 							if (new_attr != active_attr)
 							{
@@ -2220,11 +2265,22 @@ main(int argc, char *argv[])
 		{
 			if (desc.border_type != 2)
 			{
-				if (desc.border_bottom_row == -1)
+				if (desc.border_bottom_row == -1 && desc.footer_row == -1)
 				{
-					desc.border_bottom_row = desc.last_data_row;
-					desc.last_data_row -= 1;
+					if (desc.alt_footer_row != -1 && desc.border_type == 1)
+					{
+						desc.footer_row = desc.alt_footer_row;
+						desc.last_data_row = desc.footer_row - 1;
+					}
+					else
+					{
+						/* fallback */
+						desc.last_data_row = desc.last_row - 1;
+						desc.footer_row = desc.last_row;
+					}
 				}
+
+				trim_footer_rows(&desc);
 			}
 		}
 	}
