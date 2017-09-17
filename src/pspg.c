@@ -1441,7 +1441,7 @@ window_fill(WINDOW *win,
 
 			/* draw cursor line to screan end of line */
 			if (is_cursor_row && i < maxx)
-				mvwchgat(win, row - 1, i - 1, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+				mvwchgat(win, row - 1, i + 1, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
 
 			if (free_row != NULL)
 			{
