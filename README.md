@@ -1,15 +1,20 @@
 # pspg - Postgres Pager
 
-Everybody who uses `psql` uses `less` pager. It is working well, but there is not any support for tabular data. I found few projects, but no one was well specialized for this purpose. So I decided to write some small specialized pager for usage as `psql` pager.
+Everybody who uses `psql` uses `less` pager. It is working well, but there is not any special
+support for tabular data. I found few projects, but no one was completed for this purpose.
+I decided to write some small specialized pager for usage as `psql` pager.
+
 
 ## Main target
 * possibility to freeze first few rows, first few colums
 * possibility to use fancy colors - like `mcview` or `FoxPro`
 
+
 ## Screenshots
 ![Screenshot](screenshots/theme1.gif)
 
 ![Screenshot](screenshots/theme3.gif)
+
 
 ## Options
 
@@ -19,6 +24,7 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 * -c N     freeze first N columns
 * -f file  open file (default stdin)
 * --no-mouse  without own mouse handling (cannot be changed in app)
+
 
 ## Themes
 
@@ -37,6 +43,7 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 12. Paradox like
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
+
 
 ## Keyboard commands
 
@@ -62,25 +69,28 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * Alt M - switch (on, off) own mouse handler
 * Mouse button wheel - scroll vertical
 * Alt Mouse button wheel - scroll horizontal
+* q, F10, Esc Esc, Esc 0 - quit
+
 
 # Recommended psql configuration
 
 * linestyle unicode
 * border 2
 
+
 # Note - compilation issue
 
 Some linker issues can be fixed by:
 <pre>
 I changed 
-gcc -lncursesw pager.c -o pspg -ggdb 
-to 
+gcc -lncursesw pager.c -o pspg -ggdb
+to
 gcc pager.c -o pspg -ggdb -lncursesw
 </pre>
 
 # Note
 
-If you like it, send a postcard to address
+If you like it, send a postcard from your home country to my address, please:
 
     Pavel Stehule
     Skalice 12
@@ -89,4 +99,3 @@ If you like it, send a postcard to address
 
 
 I invite any questions, comments, bug reports, patches on mail address pavel.stehule@gmail.com
-

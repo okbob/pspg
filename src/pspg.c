@@ -1,3 +1,15 @@
+/*-------------------------------------------------------------------------
+ *
+ * pspg.c
+ *	  a terminal pager designed for usage from psql
+ *
+ * Portions Copyright (c) 2017-2017 Pavel Stehule
+ *
+ * IDENTIFICATION
+ *	  src/pspg.c
+ *
+ *-------------------------------------------------------------------------
+ */
 #ifdef __FreeBSD__
 #define _WITH_GETLINE
 #include <ncurses/curses.h>
@@ -2262,6 +2274,8 @@ main(int argc, char *argv[])
 	curs_set(0);
 	noecho();
 
+	set_escdelay(25);
+
 	if (use_mouse)
 	{
 
@@ -2426,21 +2440,27 @@ main(int argc, char *argv[])
 		switch (c)
 		{
 			case 27:
-				if (getch() == 'm')
 				{
-					if (use_mouse)
-					{
-						mousemask(0, &prev_mousemask);
-						use_mouse = false;
-					}
-					else
-					{
-						mousemask(prev_mousemask, NULL);
-						use_mouse = true;
-					}
+					int		second_char = getch();
 
-					c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
-					refresh_scr = true;
+					if (second_char == 'm')
+					{
+						if (use_mouse)
+						{
+							mousemask(0, &prev_mousemask);
+							use_mouse = false;
+						}
+						else
+						{
+							mousemask(prev_mousemask, NULL);
+							use_mouse = true;
+						}
+
+						c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
+						refresh_scr = true;
+					}
+					else if (second_char == 27 || second_char == '0')
+						c2 = 'q';
 				}
 				break;
 
