@@ -18,6 +18,7 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 * -s N     use theme (default theme is mc theme)
 * -c N     freeze first N columns
 * -f file  open file (default stdin)
+* --no-mouse  without own mouse handling (cannot be changed in app)
 
 ## Themes
 
@@ -58,6 +59,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * ? - search for a pattern which will take you to the previous occurrence
 * n - for next match in backward direction
 * N - for previous match in forward direction
+* Alt M - switch (on, off) own mouse handler
 
 # Recommended psql configuration
 

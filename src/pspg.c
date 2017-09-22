@@ -5,6 +5,7 @@
 #include <curses.h>
 #endif
 #include <errno.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2122,6 +2123,25 @@ if_in_int(int v, int *s, int v1, int v2)
 	return v2;
 }
 
+static int
+show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
+{
+	wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+
+	if (par != NULL)
+		mvwprintw(scrdesc->bottom_bar, 0, 0, fmt, par);
+	else
+		mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", fmt);
+
+	wclrtoeol(scrdesc->bottom_bar);
+	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+	wrefresh(scrdesc->bottom_bar);
+
+	refresh();
+
+	return getch();
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2146,13 +2166,27 @@ main(int argc, char *argv[])
 	int		fix_rows_offset = 0;
 
 	int		opt;
+	int		option_index = 0;
+	bool	use_mouse = true;
+	mmask_t		prev_mousemask = 0;
 
-	while ((opt = getopt(argc, argv, "bs:c:f:X")) != -1)
+	static struct option long_options[] =
+	{
+		/* These options set a flag. */
+		{"no-mouse", no_argument, 0, 1},
+		{0, 0, 0, 0}
+	};
+
+	while ((opt = getopt_long(argc, argv, "bs:c:f:X",
+							  long_options, &option_index)) != -1)
 	{
 		int		n;
 
 		switch (opt)
 		{
+			case 1:
+				use_mouse = false;
+				break;
 			case 'X':
 				no_alternate_screen = true;
 				break;
@@ -2186,7 +2220,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X]\n", argv[0]);
+				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X] [--no-mouse]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -2213,8 +2247,22 @@ main(int argc, char *argv[])
 	curs_set(0);
 	noecho();
 
-	mousemask(ALL_MOUSE_EVENTS, NULL);
-	mouseinterval(50);
+	if (use_mouse)
+	{
+
+#if NCURSES_MOUSE_VERSION > 1
+
+		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
+
+#else
+
+		mousemask(BUTTON1_CLICKED, NULL);
+
+#endif
+
+		mouseinterval(10);
+
+	}
 
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
@@ -2362,6 +2410,25 @@ main(int argc, char *argv[])
 
 		switch (c)
 		{
+			case 27:
+				if (getch() == 'm')
+				{
+					if (use_mouse)
+					{
+						mousemask(0, &prev_mousemask);
+						use_mouse = false;
+					}
+					else
+					{
+						mousemask(prev_mousemask, NULL);
+						use_mouse = true;
+					}
+
+					c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
+					refresh_scr = true;
+				}
+				break;
+
 			case KEY_UP:
 			case 'k':
 				if (cursor_row > 0)
