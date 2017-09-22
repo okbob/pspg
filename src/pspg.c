@@ -2252,7 +2252,7 @@ main(int argc, char *argv[])
 
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
+		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
 
 #else
 
@@ -2937,6 +2937,18 @@ exit:
 					{
 
 #if NCURSES_MOUSE_VERSION > 1
+
+						if (event.bstate & BUTTON_ALT && event.bstate & BUTTON5_PRESSED)
+						{
+							c2 = 'l';
+							break;
+						}
+
+						if (event.bstate & BUTTON_ALT && event.bstate & BUTTON4_PRESSED)
+						{
+							c2 = 'h';
+							break;
+						}
 
 						if (event.bstate & BUTTON5_PRESSED)
 						{
