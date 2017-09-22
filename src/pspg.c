@@ -2123,6 +2123,9 @@ if_in_int(int v, int *s, int v1, int v2)
 	return v2;
 }
 
+/*
+ * It is used for result of action info
+ */
 static int
 show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 {
@@ -2140,6 +2143,18 @@ show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 	refresh();
 
 	return getch();
+}
+
+static void
+get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
+{
+	mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", prompt);
+	wclrtoeol(scrdesc->bottom_bar);
+	curs_set(1);
+	echo();
+	wgetnstr(scrdesc->bottom_bar, buffer, maxsize);
+	curs_set(0);
+	noecho();
 }
 
 int
@@ -2753,13 +2768,7 @@ recheck_end:
 					FILE   *fp;
 					bool	ok = false;
 
-					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "log file: ");
-					wclrtoeol(scrdesc.bottom_bar);
-					curs_set(1);
-					echo();
-					wgetnstr(scrdesc.bottom_bar, buffer, sizeof(buffer) - 1);
-					curs_set(0);
-					noecho();
+					get_string(&scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
 
 					fp = fopen(buffer, "w");
 					if (fp != NULL)
@@ -2787,16 +2796,7 @@ recheck_end:
 exit:
 
 					if (!ok)
-					{
-						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						mvwprintw(scrdesc.bottom_bar, 0, 0, " Cannot write to %s ", buffer);
-						wclrtoeol(scrdesc.bottom_bar);
-						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						wrefresh(scrdesc.bottom_bar);
-						refresh();
-
-						c2 = getch();
-					}
+						c2 = show_info_wait(&scrdesc, " Cannot write to %s ", buffer);
 
 					refresh_scr = true;
 
@@ -2804,13 +2804,7 @@ exit:
 				}
 
 			case '/':
-					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "/");
-					wclrtoeol(scrdesc.bottom_bar);
-					curs_set(1);
-					echo();
-					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
-					curs_set(0);
-					noecho();
+					get_string(&scrdesc, "/", scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
 					/* continue to find next: */
 			case 'n':
 				{
@@ -2849,29 +2843,14 @@ exit:
 					}
 
 					if (!found)
-					{
-						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Not found ");
-						wclrtoeol(scrdesc.bottom_bar);
-						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						wrefresh(scrdesc.bottom_bar);
-						refresh();
-
-						c2 = getch();
-					}
+						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
 
 					refresh_scr = true;
 				}
 				break;
 
 			case '?':
-					mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", "?");
-					wclrtoeol(scrdesc.bottom_bar);
-					curs_set(1);
-					echo();
-					wgetnstr(scrdesc.bottom_bar, scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
-					curs_set(0);
-					noecho();
+					get_string(&scrdesc, "?", scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
 					/* continue to find next: */
 			case 'N':
 				{
@@ -2914,16 +2893,7 @@ exit:
 					}
 
 					if (!found)
-					{
-						wattron(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						mvwprintw(scrdesc.bottom_bar, 0, 0, "%s", " Not found ");
-						wclrtoeol(scrdesc.bottom_bar);
-						wattroff(scrdesc.bottom_bar, COLOR_PAIR(6) | A_BOLD);
-						wrefresh(scrdesc.bottom_bar);
-						refresh();
-
-						c2 = getch();
-					}
+						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
 
 					refresh_scr = true;
 				}
