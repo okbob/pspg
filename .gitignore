@@ -51,3 +51,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 pspg
+
+/config.cache
+/config.log
+/config.status
