@@ -32,7 +32,7 @@
 
 #define STYLE			1
 
-//#define COLORIZED_NO_ALTERNATE_SCREEN
+#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
 
 typedef struct LineBuffer
@@ -1896,7 +1896,7 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		int		rows_rows = desc->footer_row - first_row - first_data_row;
 		int		data_rows;
 
-		if (rows_rows > 0)
+		if (rows_rows >= 0)
 		{
 			data_rows = scrdesc->main_maxy - desc->fixed_rows;
 			scrdesc->rows_rows = min_int(rows_rows, data_rows);
@@ -2522,7 +2522,7 @@ recheck_left:
 					{
 						if (footer_cursor_col > 0)
 							footer_cursor_col -= 1;
-						else if (scrdesc.rows_rows > 0)
+						else if (scrdesc.rows_rows >= 0)
 						{
 							_is_footer_cursor = false;
 							footer_cursor_col = 0;
@@ -2580,7 +2580,7 @@ recheck_right:
 					{
 						int max_footer_cursor_col = desc.footer_char_size - maxx;
 
-						if (footer_cursor_col + 1 >= max_footer_cursor_col && scrdesc.rows_rows > 0)
+						if (footer_cursor_col + 1 >= max_footer_cursor_col && scrdesc.rows_rows >= 0)
 						{
 							_is_footer_cursor = false;
 							footer_cursor_col = max_footer_cursor_col;
