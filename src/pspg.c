@@ -1896,7 +1896,8 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		int		rows_rows = desc->footer_row - first_row - first_data_row;
 		int		data_rows;
 
-		if (rows_rows >= 0)
+		/* desc->footer_row == desc->first_data_row when result is empty */
+		if (rows_rows > 0 || desc->footer_row == desc->first_data_row)
 		{
 			data_rows = scrdesc->main_maxy - desc->fixed_rows;
 			scrdesc->rows_rows = min_int(rows_rows, data_rows);
