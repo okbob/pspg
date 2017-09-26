@@ -32,7 +32,7 @@
 
 #define STYLE			1
 
-#define COLORIZED_NO_ALTERNATE_SCREEN
+//#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
 
 typedef struct LineBuffer
