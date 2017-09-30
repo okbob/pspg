@@ -1041,7 +1041,7 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, -1, COLOR_BLUE);
 		init_pair(10, COLOR_BLACK, COLOR_CYAN);
-		init_pair(11, COLOR_YELLOW, COLOR_CYAN);
+		init_pair(11, COLOR_WHITE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 	}
