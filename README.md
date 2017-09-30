@@ -63,6 +63,10 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * NPAGE, Ctrl F, space - forward one window
 * HOME, ^ - go to begin of line, first column
 * END, $ - go to end of line, last column
+* Ctrl E - scroll a window down
+* Ctrl Y - scroll a window up
+* Ctrl D - forwad a half window
+* Ctrl U - backward a hald window
 * s - save content to file
 * / - search for a pattern which will take you to the next occurrence
 * ? - search for a pattern which will take you to the previous occurrence

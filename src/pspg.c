@@ -2560,6 +2560,85 @@ main(int argc, char *argv[])
 				}
 				break;
 
+			case 4:		/* CTRL D - forward half win */
+				{
+					int		offset = ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
+					int		max_cursor_row;
+					int		max_first_row;
+
+					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+					max_cursor_row = desc.last_row - desc.first_data_row;
+
+					if (first_row + offset <= max_first_row)
+					{
+						first_row += offset;
+						cursor_row += offset;
+					}
+					else if (cursor_row + offset <= max_cursor_row)
+					{
+						cursor_row += offset;
+						first_row = max_first_row;
+					}
+					else
+					{
+						cursor_row = max_cursor_row;
+						first_row = max_first_row;
+					}
+				}
+				break;
+
+			case 21:	/* CTRL U - backward half win */
+				{
+					int		offset = ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
+
+					if (first_row - offset > 0)
+					{
+						first_row -= offset;
+						cursor_row -= offset;
+					}
+					else if (cursor_row - offset > 0)
+					{
+						first_row = 0;
+						cursor_row -= offset;
+					}
+					else
+					{
+						first_row = 0;
+						cursor_row = 0;
+					}
+				}
+				break;
+
+			case 5:		/* CTRL E */
+				{
+					int		max_cursor_row;
+					int		max_first_row;
+
+					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+					max_cursor_row = desc.last_row - desc.first_data_row;
+
+					if (first_row < max_first_row)
+					{
+						first_row += 1;
+						cursor_row += 1;
+					}
+					else if (cursor_row < max_cursor_row)
+					{
+						cursor_row += 1;
+					}
+				}
+				break;
+
+			case 25:	/* CTRL Y */
+				if (first_row > 0)
+				{
+					first_row -= 1;
+					cursor_row -= 1;
+				}
+				else if (cursor_row > 0)
+					cursor_row -= 1;
+				break;
+
 			case KEY_LEFT:
 			case 'h':
 				{
