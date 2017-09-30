@@ -832,6 +832,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
 		init_pair(9, -1, -1);							/* footer */
 		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
+		init_pair(11, COLOR_BLACK, COLOR_WHITE);							/* cursor over decoration */
+		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
+		init_pair(13, COLOR_BLACK, COLOR_WHITE);			/* light bottom bar colors */
 	}
 	else if (theme == 1)
 	{
@@ -845,7 +848,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_RED, COLOR_BLUE);
 		init_pair(9, COLOR_CYAN, COLOR_BLUE);
 		init_pair(10, COLOR_WHITE, COLOR_CYAN);
-
+		init_pair(11, COLOR_WHITE, COLOR_CYAN);
+		init_pair(12, COLOR_WHITE, COLOR_CYAN);
+		init_pair(13, COLOR_YELLOW, COLOR_CYAN);
 	}
 	else if (theme == 2)
 	{
@@ -860,7 +865,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_BLUE, COLOR_CYAN);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-
+		init_pair(11, COLOR_WHITE, COLOR_BLUE);
+		init_pair(12, COLOR_WHITE, COLOR_BLUE);
+		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 3)
 	{
@@ -874,7 +881,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_CYAN);
 		init_pair(9, COLOR_BLACK, COLOR_CYAN);
 		init_pair(10, COLOR_CYAN, COLOR_BLACK);
-
+		init_pair(11, COLOR_CYAN, COLOR_BLACK);
+		init_pair(12, COLOR_CYAN, COLOR_BLACK);
+		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 	}
 	else if (theme == 4)
 	{
@@ -888,6 +897,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_BLACK, COLOR_WHITE);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
+		init_pair(11, COLOR_WHITE, COLOR_BLUE);
+		init_pair(12, COLOR_WHITE, COLOR_BLUE);
+		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 5)
 	{
@@ -899,9 +911,11 @@ initialize_color_pairs(int theme)
 		init_pair(5, COLOR_BLACK, COLOR_CYAN);
 		init_pair(6, COLOR_BLACK, COLOR_CYAN);
 		init_pair(8, COLOR_BLACK, COLOR_BLUE);
-		init_pair(9, -1, -1);
+		init_pair(9, COLOR_BLACK, COLOR_CYAN);
 		init_pair(10, COLOR_BLACK, COLOR_CYAN);
-
+		init_pair(11, -1, COLOR_CYAN);
+		init_pair(12, COLOR_BLACK, COLOR_CYAN);
+		init_pair(13, COLOR_BLACK, COLOR_CYAN);
 	}
 	else if (theme == 6)
 	{
@@ -915,6 +929,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_CYAN, COLOR_BLACK);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
+		init_pair(11, COLOR_WHITE, COLOR_BLUE);
+		init_pair(12, COLOR_WHITE, COLOR_BLUE);
+		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 7)
 	{
@@ -928,6 +945,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_CYAN, COLOR_BLACK);
 		init_pair(10, COLOR_WHITE, COLOR_GREEN);
+		init_pair(11, COLOR_WHITE, COLOR_GREEN);
+		init_pair(12, COLOR_WHITE, COLOR_GREEN);
+		init_pair(13, COLOR_WHITE, COLOR_GREEN);
 	}
 	else if (theme == 8)
 	{
@@ -941,6 +961,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_WHITE, COLOR_BLUE);
 		init_pair(10, COLOR_WHITE, COLOR_CYAN);
+		init_pair(11, COLOR_BLUE, COLOR_CYAN);
+		init_pair(12, COLOR_WHITE, COLOR_CYAN);
+		init_pair(13, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 9)
 	{
@@ -954,6 +977,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_WHITE, COLOR_BLUE);
 		init_pair(10, COLOR_WHITE, COLOR_CYAN);
+		init_pair(11, COLOR_WHITE, COLOR_CYAN);
+		init_pair(12, COLOR_WHITE, COLOR_CYAN);
+		init_pair(13, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 10)
 	{
@@ -967,6 +993,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_BLUE, COLOR_CYAN);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
+		init_pair(11, COLOR_CYAN, COLOR_BLUE);
+		init_pair(12, COLOR_WHITE, COLOR_BLUE);
+		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 11)
 	{
@@ -980,6 +1009,9 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_WHITE, COLOR_BLACK);
 		init_pair(10, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(11, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(12, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(13, COLOR_WHITE, COLOR_MAGENTA);
 	}
 	else if (theme == 12)
 	{
@@ -993,8 +1025,26 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_WHITE, COLOR_BLUE);
 		init_pair(9, COLOR_BLUE, COLOR_CYAN);
 		init_pair(10, COLOR_WHITE, COLOR_BLUE);
+		init_pair(11, COLOR_CYAN, COLOR_BLUE);
+		init_pair(12, COLOR_WHITE, COLOR_BLUE);
+		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 	}
+	else if (theme == 13)
+	{
+		assume_default_colors(COLOR_WHITE | A_BOLD, COLOR_BLUE);
 
+		init_pair(2, -1, -1);
+		init_pair(3, COLOR_WHITE, COLOR_BLUE);
+		init_pair(4, COLOR_WHITE, COLOR_BLUE);
+		init_pair(5, COLOR_BLACK, COLOR_CYAN);
+		init_pair(6, COLOR_BLACK, COLOR_CYAN);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, -1, COLOR_BLUE);
+		init_pair(10, COLOR_BLACK, COLOR_CYAN);
+		init_pair(11, COLOR_YELLOW, COLOR_CYAN);
+		init_pair(12, COLOR_WHITE, COLOR_BLACK);
+		init_pair(13, COLOR_WHITE, COLOR_BLACK);
+	}
 }
 
 /*
@@ -1999,22 +2049,22 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 
 	scrdesc->bottom_bar = newwin(1, 0, maxy - 1, 0);
 
-	wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
+	wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 	mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
-	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
+	wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
 	mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+	wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
 	wrefresh(scrdesc->bottom_bar);
 
 	if (desc->headline_transl != NULL)
 	{
-		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
+		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 		mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
-		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(5));
-		wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
+		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
 		mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
-		wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
 		wrefresh(scrdesc->bottom_bar);
 	}
 
@@ -2142,7 +2192,7 @@ if_in_int(int v, int *s, int v1, int v2)
 static int
 show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 {
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+	wattron(scrdesc->bottom_bar, COLOR_PAIR(13) | A_BOLD);
 
 	if (par != NULL)
 		mvwprintw(scrdesc->bottom_bar, 0, 0, fmt, par);
@@ -2150,7 +2200,7 @@ show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 		mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", fmt);
 
 	wclrtoeol(scrdesc->bottom_bar);
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(6) | A_BOLD);
+	wattroff(scrdesc->bottom_bar, COLOR_PAIR(13) | A_BOLD);
 	wrefresh(scrdesc->bottom_bar);
 
 	refresh();
@@ -2223,9 +2273,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 12)
+				if (n < 0 || n > 13)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 12 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 13 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
@@ -2383,15 +2433,17 @@ main(int argc, char *argv[])
 
 		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0),
+					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12 || scrdesc.theme == 13) ? A_BOLD : 0),
 					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(6) | A_BOLD, generic_pager ? A_BOLD | COLOR_PAIR(6) : COLOR_PAIR(6),
+					COLOR_PAIR(6) | (scrdesc.theme != 13 ? A_BOLD : 0),
+					(generic_pager || scrdesc.theme == 13) ? A_BOLD | COLOR_PAIR(11) : COLOR_PAIR(11),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(5) | A_BOLD, COLOR_PAIR(6),
+					COLOR_PAIR(5) |  (scrdesc.theme != 13 ? A_BOLD : 0),
+					COLOR_PAIR(11) | (scrdesc.theme == 13 ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
@@ -2403,14 +2455,14 @@ main(int argc, char *argv[])
 			if (!generic_pager)
 				color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
 			else
-				color = COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12) ? A_BOLD : 0);
+				color = COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12 || scrdesc.theme == 13) ? A_BOLD : 0);
 
 			window_fill(scrdesc.footer,
 								first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 								footer_cursor_col,
 								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
-								COLOR_PAIR(10) | A_BOLD, 0, 0, true);
+								COLOR_PAIR(10) | (scrdesc.theme != 13 ? A_BOLD : 0), 0, 0, true);
 		}
 
 		if (scrdesc.luc != NULL)
