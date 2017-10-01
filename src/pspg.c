@@ -1045,6 +1045,23 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 	}
+	else if (theme == 14)
+	{
+		assume_default_colors(COLOR_WHITE | A_BOLD, COLOR_BLUE);
+
+		init_pair(2, -1, -1);
+		init_pair(3, COLOR_WHITE, COLOR_BLUE);
+		init_pair(4, COLOR_MAGENTA, COLOR_BLUE);
+		init_pair(5, COLOR_BLACK, COLOR_CYAN);
+		init_pair(6, COLOR_BLACK, COLOR_CYAN);
+		init_pair(8, COLOR_WHITE, COLOR_BLUE);
+		init_pair(9, -1, COLOR_BLUE);
+		init_pair(10, COLOR_BLACK, COLOR_CYAN);
+		init_pair(11, COLOR_WHITE, COLOR_CYAN);
+		init_pair(12, COLOR_WHITE, COLOR_BLACK);
+		init_pair(13, COLOR_WHITE, COLOR_BLACK);
+	}
+
 }
 
 /*
@@ -2175,7 +2192,7 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 }
 
 static int
-if_in_int(int v, int *s, int v1, int v2)
+if_in_int(int v, const int *s, int v1, int v2)
 {
 	while(*s != -1)
 	{
@@ -2184,6 +2201,18 @@ if_in_int(int v, int *s, int v1, int v2)
 		s += 1;
 	}
 	return v2;
+}
+
+static int
+if_notin_int(int v, const int *s, int v1, int v2)
+{
+	while(*s != -1)
+	{
+		if (v == *s)
+			return v2;
+		s += 1;
+	}
+	return v1;
 }
 
 /*
@@ -2273,9 +2302,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 13)
+				if (n < 0 || n > 14)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 13 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. 14 are supported.\n");
 					exit(EXIT_FAILURE);
 				}
 				style = n;
@@ -2433,17 +2462,17 @@ main(int argc, char *argv[])
 
 		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-					COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12 || scrdesc.theme == 13) ? A_BOLD : 0),
-					scrdesc.theme == 2 && generic_pager ? A_BOLD : 0,
+					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14-1}, A_BOLD, 0),
+					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(6) | (scrdesc.theme != 13 ? A_BOLD : 0),
-					(generic_pager || scrdesc.theme == 13) ? A_BOLD | COLOR_PAIR(11) : COLOR_PAIR(11),
+					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
+					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(5) |  (scrdesc.theme != 13 ? A_BOLD : 0),
-					COLOR_PAIR(11) | (scrdesc.theme == 13 ? A_BOLD : 0),
+					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
+					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
@@ -2455,14 +2484,14 @@ main(int argc, char *argv[])
 			if (!generic_pager)
 				color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
 			else
-				color = COLOR_PAIR(3) | ( (scrdesc.theme == 2 || scrdesc.theme == 12 || scrdesc.theme == 13) ? A_BOLD : 0);
+				color = COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
 
 			window_fill(scrdesc.footer,
 								first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 								footer_cursor_col,
 								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
-								COLOR_PAIR(10) | (scrdesc.theme != 13 ? A_BOLD : 0), 0, 0, true);
+								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, true);
 		}
 
 		if (scrdesc.luc != NULL)

@@ -42,6 +42,7 @@ I decided to write some small specialized pager for usage as `psql` pager.
 11. Dark cyan/black mode
 12. Paradox like
 13. dBase IV retro style
+14. dBase IV retro style (Magenta labels)
 
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
