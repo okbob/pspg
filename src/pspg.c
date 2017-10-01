@@ -834,7 +834,7 @@ initialize_color_pairs(int theme)
 		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
 		init_pair(11, COLOR_BLACK, COLOR_WHITE);							/* cursor over decoration */
 		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
-		init_pair(13, COLOR_BLACK, COLOR_WHITE);			/* light bottom bar colors */
+		init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
 	}
 	else if (theme == 1)
 	{
@@ -2043,6 +2043,30 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 #endif
 }
 
+static int
+if_in_int(int v, const int *s, int v1, int v2)
+{
+	while(*s != -1)
+	{
+		if (v == *s)
+			return v1;
+		s += 1;
+	}
+	return v2;
+}
+
+static int
+if_notin_int(int v, const int *s, int v1, int v2)
+{
+	while(*s != -1)
+	{
+		if (v == *s)
+			return v2;
+		s += 1;
+	}
+	return v1;
+}
+
 /*
  * Rewresh aux windows like top bar or bottom bar.
  */
@@ -2069,9 +2093,9 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 	wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 	mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
 	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
+	wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 	mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
+	wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 	wrefresh(scrdesc->bottom_bar);
 
 	if (desc->headline_transl != NULL)
@@ -2079,9 +2103,9 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 		mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
 		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
+		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 		mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
-		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | (scrdesc->theme != 13 ? A_BOLD : 0));
+		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 		wrefresh(scrdesc->bottom_bar);
 	}
 
@@ -2191,29 +2215,6 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 	wrefresh(scrdesc->top_bar);
 }
 
-static int
-if_in_int(int v, const int *s, int v1, int v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v1;
-		s += 1;
-	}
-	return v2;
-}
-
-static int
-if_notin_int(int v, const int *s, int v1, int v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v2;
-		s += 1;
-	}
-	return v1;
-}
 
 /*
  * It is used for result of action info
@@ -2462,7 +2463,7 @@ main(int argc, char *argv[])
 
 		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14-1}, A_BOLD, 0),
+					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
 					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
