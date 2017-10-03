@@ -808,6 +808,8 @@ strncpytrim(char *dest, const char *src,
 	*dest = '\0';
 }
 
+#define MAX_STYLE		14
+
 /*
  * Set color pairs based on style
  */
@@ -1032,7 +1034,7 @@ initialize_color_pairs(int theme)
 	}
 	else if (theme == 13)
 	{
-		assume_default_colors(COLOR_WHITE | A_BOLD, COLOR_BLUE);
+		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 		init_pair(2, -1, -1);
 		init_pair(3, COLOR_WHITE, COLOR_BLUE);
@@ -1046,9 +1048,9 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 	}
-	else if (theme == 14)
+	else if (theme == MAX_STYLE)
 	{
-		assume_default_colors(COLOR_WHITE | A_BOLD, COLOR_BLUE);
+		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 		init_pair(2, -1, -1);
 		init_pair(3, COLOR_WHITE, COLOR_BLUE);
@@ -2282,11 +2284,13 @@ main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
-		{"no-mouse", no_argument, 0, 1},
+		{"help", no_argument, 0, 1},
+		{"no-mouse", no_argument, 0, 2},
+		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
 	};
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:X:V",
+	while ((opt = getopt_long(argc, argv, "bs:c:f:XV",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2294,6 +2298,21 @@ main(int argc, char *argv[])
 		switch (opt)
 		{
 			case 1:
+				fprintf(stderr, "pspg is a Unix pager optimized for table browsing.\n\n");
+				fprintf(stderr, "Usage:\n");
+				fprintf(stderr, "  %s [OPTION]\n\n", argv[0]);
+				fprintf(stderr, "Options:\n");
+				fprintf(stderr, "  -b             black-white style\n");
+				fprintf(stderr, "  -s N           set color style number (1..%d)\n", MAX_STYLE);
+				fprintf(stderr, "  -c N           fix N columns (1..4)\n");
+				fprintf(stderr, "  -f file        open file\n");
+				fprintf(stderr, "  --help         show this help\n\n");
+				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
+				fprintf(stderr, "  -V, --version  show version\n\n");
+				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
+				exit(0);
+
+			case 2:
 				use_mouse = false;
 				break;
 			case 'V':
@@ -2307,9 +2326,9 @@ main(int argc, char *argv[])
 				break;
 			case 's':
 				n = atoi(optarg);
-				if (n < 0 || n > 14)
+				if (n < 0 || n > MAX_STYLE)
 				{
-					fprintf(stderr, "Only color schemas 0 .. 14 are supported.\n");
+					fprintf(stderr, "Only color schemas 0 .. %d are supported.\n", MAX_STYLE);
 					exit(EXIT_FAILURE);
 				}
 				style = n;
@@ -2332,7 +2351,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X] [-V] [--no-mouse]\n", argv[0]);
+				fprintf(stderr, "Try %s --help", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -2381,7 +2400,7 @@ main(int argc, char *argv[])
 	if (desc.headline != NULL)
 		detected_format = translate_headline(&desc);
 
-	if (desc.headline_transl != NULL)
+	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 		desc.first_data_row = desc.border_head_row + 1;
 	else if (desc.title_rows > 0)
 		desc.first_data_row = desc.title_rows;
@@ -2471,13 +2490,13 @@ main(int argc, char *argv[])
 					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
 					COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
-					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
+					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
-					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
+					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
 					COLOR_PAIR(6) | A_BOLD,
 					false);
 		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
