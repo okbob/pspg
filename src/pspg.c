@@ -2986,8 +2986,16 @@ exit:
 				}
 
 			case '/':
-					get_string(&scrdesc, "/", scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
+				{
+					char	locsearchterm[256];
+
+					get_string(&scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
+					if (locsearchterm[0] != '\0')
+					
+						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+
 					/* continue to find next: */
+				}
 			case 'n':
 				{
 					int		current_row = scrdesc.fix_rows_rows;
@@ -3032,8 +3040,16 @@ exit:
 				break;
 
 			case '?':
-					get_string(&scrdesc, "?", scrdesc.searchterm, sizeof(scrdesc.searchterm) - 1);
+				{
+					char	locsearchterm[256];
+
+					get_string(&scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
+					if (locsearchterm[0] != '\0')
+					
+						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+
 					/* continue to find next: */
+				}
 			case 'N':
 				{
 					int		rowidx;
