@@ -6,7 +6,7 @@ I decided to write some small specialized pager for usage as `psql` pager.
 
 
 ## Main target
-* possibility to freeze first few rows, first few colums
+* possibility to freeze first few rows, first few columns
 * possibility to use fancy colors - like `mcview` or `FoxPro`
 
 
@@ -66,8 +66,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * END, $ - go to end of line, last column
 * Ctrl E - scroll a window down
 * Ctrl Y - scroll a window up
-* Ctrl D - forwad a half window
-* Ctrl U - backward a hald window
+* Ctrl D - forward a half window
+* Ctrl U - backward a half window
 * s - save content to file
 * / - search for a pattern which will take you to the next occurrence
 * ? - search for a pattern which will take you to the previous occurrence
@@ -83,6 +83,14 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 * linestyle unicode
 * border 2
+
+some possible configuration:
+<pre>
+-- Switch pagers with :x and :xx commands
+\set x '\\setenv PAGER less'
+\set xx '\\setenv PAGER \'pspg -bX --no-mouse\''
+:xx
+</pre>
 
 
 # Note - compilation issue
