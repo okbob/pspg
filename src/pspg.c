@@ -31,6 +31,7 @@
 #include <sys/param.h>
 
 #define STYLE			1
+#define PSPG_VERSION "0.3-devel"
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
@@ -2285,7 +2286,7 @@ main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:X",
+	while ((opt = getopt_long(argc, argv, "bs:c:f:X:V",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2295,6 +2296,9 @@ main(int argc, char *argv[])
 			case 1:
 				use_mouse = false;
 				break;
+			case 'V':
+				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
+				exit(0);
 			case 'X':
 				no_alternate_screen = true;
 				break;
@@ -2328,7 +2332,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X] [--no-mouse]\n", argv[0]);
+				fprintf(stderr, "Usage: %s [-b] [-s n] [-c n] [-f file] [-X] [-V] [--no-mouse]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -2514,7 +2518,7 @@ main(int argc, char *argv[])
 		}
 		else
 			c = getch();
-		
+
 		if (c == 'q' || c == KEY_F(10))
 			break;
 
@@ -2991,7 +2995,7 @@ exit:
 
 					get_string(&scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
-					
+
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 
 					/* continue to find next: */
@@ -3045,7 +3049,7 @@ exit:
 
 					get_string(&scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
-					
+
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 
 					/* continue to find next: */
