@@ -112,6 +112,8 @@ typedef struct
 	WINDOW *bottom_bar;				/* bottom bar window */
 	int		theme;					/* color theme number */
 	char	searchterm[256];		/* currently active search input */
+	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
+	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
 } ScrDesc;
 
 static int
@@ -1276,7 +1278,8 @@ window_fill(WINDOW *win,
 			attr_t cursor_data_attr,		/* colors for cursor on data positions */
 			attr_t cursor_line_attr,		/* colors for cursor on border position */
 			attr_t cursor_expi_attr,		/* colors for cursor on expanded headers */
-			bool is_footer)					/* true if window is footer */
+			bool is_footer,					/* true if window is footer */
+			ScrDesc *scrdesc)				/* used for searching records limits in expanded mode */
 {
 	int			maxy, maxx;
 	int			row;
@@ -1285,6 +1288,13 @@ window_fill(WINDOW *win,
 	attr_t		active_attr;
 	int			srcy_bak = srcy;
 	char		*free_row;
+
+	/* when we want to detect expanded records titles */
+	if (scrdesc != NULL && desc->is_expanded_mode)
+	{
+		scrdesc->first_rec_title_y = -1;
+		scrdesc->last_rec_title_y = -1;
+	}
 
 	/* fast leaving */
 	if (win == NULL)
@@ -1349,6 +1359,13 @@ window_fill(WINDOW *win,
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
 				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
+				if (is_expand_head && scrdesc != NULL)
+				{
+					if (scrdesc->first_rec_title_y == -1)
+						scrdesc->first_rec_title_y = row - 1;
+					else
+						scrdesc->last_rec_title_y = row - 1;
+				}
 			}
 			else
 			{
@@ -2484,7 +2501,7 @@ main(int argc, char *argv[])
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
-		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false);
+		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false, NULL);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
 					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
@@ -2492,14 +2509,14 @@ main(int argc, char *argv[])
 					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
 					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
-					false);
+					false, &scrdesc);
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
 					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
 					COLOR_PAIR(6) | A_BOLD,
-					false);
-		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false);
+					false, NULL);
+		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false, NULL);
 
 		if (scrdesc.footer != NULL)
 		{
@@ -2515,7 +2532,8 @@ main(int argc, char *argv[])
 								footer_cursor_col,
 								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
-								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, true);
+								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, true,
+								NULL);
 		}
 
 		if (scrdesc.luc != NULL)
@@ -2844,17 +2862,27 @@ recheck_right:
 
 			case KEY_PPAGE:
 			case 2:		/* CTRL B */
-				if (first_row > 0)
 				{
-					first_row -= scrdesc.main_maxy - scrdesc.fix_rows_rows;
-					if (first_row < 0)
-						first_row = 0;
-				}
-				if (cursor_row > 0)
-				{
-					cursor_row -= scrdesc.main_maxy - scrdesc.fix_rows_rows;
-					if (cursor_row < 0)
-						cursor_row = 0;
+					int		offset;
+
+					if (desc.is_expanded_mode &&
+							scrdesc.first_rec_title_y != -1 && scrdesc.last_rec_title_y != -1)
+						offset = scrdesc.last_rec_title_y - scrdesc.first_rec_title_y;
+					else
+						offset = scrdesc.main_maxy - scrdesc.fix_rows_rows;
+
+					if (first_row > 0)
+					{
+						first_row -= offset;
+						if (first_row < 0)
+							first_row = 0;
+					}
+					if (cursor_row > 0)
+					{
+						cursor_row -= offset;
+						if (cursor_row < 0)
+							cursor_row = 0;
+					}
 				}
 				break;
 
@@ -2864,9 +2892,16 @@ recheck_right:
 				{
 					int		max_cursor_row;
 					int		max_first_row;
+					int		offset;
 
-					first_row += scrdesc.main_maxy - scrdesc.fix_rows_rows;
-					cursor_row += scrdesc.main_maxy - scrdesc.fix_rows_rows;
+					if (desc.is_expanded_mode &&
+							scrdesc.first_rec_title_y != -1 && scrdesc.last_rec_title_y != -1)
+						offset = scrdesc.last_rec_title_y - scrdesc.first_rec_title_y;
+					else
+						offset = scrdesc.main_maxy - scrdesc.fix_rows_rows;
+
+					first_row += offset;
+					cursor_row += offset;
 
 					max_cursor_row = desc.last_row - desc.first_data_row;
 					if (cursor_row > max_cursor_row)
