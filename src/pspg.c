@@ -2183,7 +2183,7 @@ is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 
 static void
 print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
-						 int cursor_row, int cursor_col, int first_row)
+						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
@@ -2212,8 +2212,8 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 							number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
 							number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
 							number_width(desc->headline_char_size), desc->headline_char_size,
-							number_width(desc->maxy - desc->fixed_rows), first_row + 1,
-							number_width(smaxy), cursor_row - first_row,
+							number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
+							number_width(smaxy), cursor_row - first_row + fix_rows_offset,
 							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
 							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy - desc->fixed_rows - desc->title_rows,
 							(cursor_row + 1) / ((double) (desc->maxy - desc->fixed_rows - desc->title_rows)) * 100.0);
@@ -2486,7 +2486,7 @@ main(int argc, char *argv[])
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
-	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
+	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
 	if (no_alternate_screen)
 	{
@@ -2590,11 +2590,12 @@ main(int argc, char *argv[])
 
 			case KEY_UP:
 			case 'k':
+			case 'i':
 				if (cursor_row > 0)
 				{
 					cursor_row -= 1;
-					if (cursor_row < first_row)
-						first_row = cursor_row;
+					if (cursor_row + fix_rows_offset < first_row)
+						first_row = cursor_row + fix_rows_offset;
 				}
 				break;
 
@@ -3242,7 +3243,7 @@ exit:
 								cursor_row = 0;
 
 							if (cursor_row + fix_rows_offset < first_row)
-								first_row = cursor_row;
+								first_row = cursor_row + fix_rows_offset;
 
 							max_cursor_row = desc.last_row - desc.first_data_row;
 							if (cursor_row > max_cursor_row)
@@ -3262,7 +3263,7 @@ exit:
 				break;
 		}
 
-		print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
+		print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 		if (first_row != prev_first_row)
 		{
@@ -3273,9 +3274,12 @@ exit:
 
 				rows_rows = min_int(desc.footer_row - scrdesc.fix_rows_rows - first_row - desc.title_rows,
 									 scrdesc.main_maxy - scrdesc.fix_rows_rows);
+				rows_rows = rows_rows > 0 ? rows_rows : 0;
 
 				if (!refresh_scr)
+				{
 					refresh_scr = scrdesc.rows_rows != rows_rows;
+				}
 			}
 		}
 
@@ -3303,7 +3307,7 @@ exit:
 			refresh_aux_windows(&scrdesc, &desc);
 			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc, first_data_row, first_row);
-			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row);
+			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 			refresh_scr = false;
 		}
