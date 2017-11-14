@@ -2287,7 +2287,7 @@ main(int argc, char *argv[])
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	int		_columns = -1;			/* default will be 1 if screen width will be enough */
-	int		fixedRows = -1;			/* detect automaticly */
+	int		fixedRows = -1;			/* detect automaticly (not yet implemented option) */
 	FILE   *fp = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
@@ -2488,11 +2488,6 @@ main(int argc, char *argv[])
 
 	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
-	if (no_alternate_screen)
-	{
-		endwin();
-	}
-
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -2590,10 +2585,21 @@ main(int argc, char *argv[])
 
 			case KEY_UP:
 			case 'k':
-			case 'i':
 				if (cursor_row > 0)
 				{
-					cursor_row -= 1;
+					/*
+					 * When we are on data position, and we are going up, and a fixed rows are hidden,
+					 * then unhide fixed rows first (by decreasing first_row)
+					 */
+					if (fix_rows_offset > 0 && !is_footer_cursor(cursor_row, &scrdesc, &desc))
+						first_row -= 1;
+					else
+						cursor_row -= 1;
+
+					/*
+					 * When fixed rows are hidden, then gap between first row and cursor row
+					 * can be bigger (about fix_rows_offset.
+					 */
 					if (cursor_row + fix_rows_offset < first_row)
 						first_row = cursor_row + fix_rows_offset;
 				}
