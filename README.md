@@ -24,7 +24,7 @@ I decided to write some small specialized pager for usage as `psql` pager.
 * -c N     freeze first N columns
 * -f file  open file (default stdin)
 * --no-mouse  without own mouse handling (cannot be changed in app)
-
+* --no-sound  without sound effect
 
 ## Themes
 

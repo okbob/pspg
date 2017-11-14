@@ -1420,7 +1420,6 @@ window_fill(WINDOW *win,
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
-
 				i = 0;
 				while (i < maxx)
 				{
@@ -2291,6 +2290,7 @@ main(int argc, char *argv[])
 	FILE   *fp = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
+	bool	no_sound = false;
 	int		fix_rows_offset = 0;
 
 	int		opt;
@@ -2303,6 +2303,7 @@ main(int argc, char *argv[])
 		/* These options set a flag. */
 		{"help", no_argument, 0, 1},
 		{"no-mouse", no_argument, 0, 2},
+		{"no-sound", no_argument, 0, 3},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
 	};
@@ -2325,12 +2326,16 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  --help         show this help\n\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
+				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
 
 			case 2:
 				use_mouse = false;
+				break;
+			case 3:
+				no_sound = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2603,6 +2608,8 @@ main(int argc, char *argv[])
 					if (cursor_row + fix_rows_offset < first_row)
 						first_row = cursor_row + fix_rows_offset;
 				}
+				else if (!no_sound)
+					beep();
 				break;
 
 			case '0':
@@ -2624,7 +2631,11 @@ main(int argc, char *argv[])
 					max_cursor_row = desc.last_row - desc.first_data_row;
 
 					if (++cursor_row > max_cursor_row)
+					{
 						cursor_row = max_cursor_row;
+						if (!no_sound)
+							beep();
+					}
 
 					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 						first_row += 1;
@@ -2890,6 +2901,8 @@ recheck_right:
 						if (cursor_row < 0)
 							cursor_row = 0;
 					}
+					else if (!no_sound)
+						beep();
 				}
 				break;
 
@@ -2912,7 +2925,11 @@ recheck_right:
 
 					max_cursor_row = desc.last_row - desc.first_data_row;
 					if (cursor_row > max_cursor_row)
+					{
 						cursor_row = max_cursor_row;
+						if (!no_sound)
+							beep();
+					}
 
 					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 						first_row += 1;
@@ -3204,7 +3221,11 @@ exit:
 
 							max_cursor_row = desc.last_row - desc.first_data_row;
 							if (cursor_row > max_cursor_row)
+							{
 								cursor_row = max_cursor_row;
+								if (!no_sound)
+									beep();
+							}
 
 							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
 								first_row += 1;
@@ -3234,6 +3255,8 @@ exit:
 								if (cursor_row < 0)
 									cursor_row = 0;
 							}
+							else if (!no_sound)
+								beep();
 						}
 						else
 
