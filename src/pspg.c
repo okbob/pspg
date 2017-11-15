@@ -2324,6 +2324,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -s N           set color style number (1..%d)\n", MAX_STYLE);
 				fprintf(stderr, "  -c N           fix N columns (1..4)\n");
 				fprintf(stderr, "  -f file        open file\n");
+				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
@@ -2373,7 +2374,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Try %s --help", argv[0]);
+				fprintf(stderr, "Try %s --help\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
