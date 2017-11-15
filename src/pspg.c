@@ -2373,7 +2373,7 @@ main(int argc, char *argv[])
 				}
 				break;
 			default:
-				fprintf(stderr, "Try %s --help", argv[0]);
+				fprintf(stderr, "Try %s --help\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
