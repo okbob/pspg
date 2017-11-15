@@ -31,7 +31,7 @@
 #include <sys/param.h>
 
 #define STYLE			1
-#define PSPG_VERSION "0.3-devel"
+#define PSPG_VERSION "0.4-devel"
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
@@ -2297,6 +2297,7 @@ main(int argc, char *argv[])
 	int		option_index = 0;
 	bool	use_mouse = true;
 	mmask_t		prev_mousemask = 0;
+	bool	quit_if_one_screen = false;
 
 	static struct option long_options[] =
 	{
@@ -2304,11 +2305,12 @@ main(int argc, char *argv[])
 		{"help", no_argument, 0, 1},
 		{"no-mouse", no_argument, 0, 2},
 		{"no-sound", no_argument, 0, 3},
+		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
 	};
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:XV",
+	while ((opt = getopt_long(argc, argv, "bs:c:f:XVF",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2328,6 +2330,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --help         show this help\n\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
+				fprintf(stderr, "  -F, --quit-if-one-screen   quit if content is one screen\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -2372,6 +2375,9 @@ main(int argc, char *argv[])
 					fprintf(stderr, "cannot to read file: %s\n", optarg);
 					exit(1);
 				}
+				break;
+			case 'F':
+				quit_if_one_screen = true;
 				break;
 			default:
 				fprintf(stderr, "Try %s --help\n", argv[0]);
@@ -2438,6 +2444,23 @@ main(int argc, char *argv[])
 	scrdesc.theme = style;
 	refresh_aux_windows(&scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
+
+	if (quit_if_one_screen)
+	{
+		/* the content can be displayed in one screen */
+		if (maxy >= desc.last_row && maxx >= desc.maxx)
+		{
+			LineBuffer *lnb = &desc.rows;
+			int			lnb_row = 0;
+
+			endwin();
+
+			while (lnb_row < lnb->nrows)
+				printf("%s", lnb->rows[lnb_row++]);
+
+			return 0;
+		}
+	}
 
 	/* some corrections */
 	if (detected_format)

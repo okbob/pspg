@@ -25,6 +25,8 @@ I decided to write some small specialized pager for usage as `psql` pager.
 * -f file  open file (default stdin)
 * --no-mouse  without own mouse handling (cannot be changed in app)
 * --no-sound  without sound effect
+* -F, --quit-if-one-screen  quit if content is one screen
+* -V, --version  show version
 
 ## Themes
 
