@@ -10,7 +10,7 @@ pspg: src/pspg.c config.make
 	$(CC) src/pspg.c -o pspg $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm ./pspg
+	$(RM) pspg
 	
 distclean: clean
 	$(RM) -r autom4te.cache
