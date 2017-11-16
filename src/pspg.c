@@ -10,12 +10,7 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifdef __FreeBSD__
-#define _WITH_GETLINE
-#include <ncurses/curses.h>
-#else
 #include <curses.h>
-#endif
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
