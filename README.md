@@ -109,6 +109,10 @@ gcc pager.c -o pspg -ggdb -lncursesw
 
 The pspg is available from community repository https://yum.postgresql.org/packages.php
 
+## Gentoo
+
+    # emerge -av dev-db/pspg
+
 # Note
 
 If you like it, send a postcard from your home country to my address, please:
