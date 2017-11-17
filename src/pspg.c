@@ -26,7 +26,7 @@
 #include <sys/param.h>
 
 #define STYLE			1
-#define PSPG_VERSION "0.5"
+#define PSPG_VERSION "0.6"
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
