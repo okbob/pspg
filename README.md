@@ -4,6 +4,7 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 support for tabular data. I found few projects, but no one was completed for this purpose.
 I decided to write some small specialized pager for usage as `psql` pager.
 
+This pager can be used from `mysql` client too.
 
 ## Main target
 * possibility to freeze first few rows, first few columns
