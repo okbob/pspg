@@ -2424,10 +2424,13 @@ main(int argc, char *argv[])
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 		desc.first_data_row = desc.border_head_row + 1;
-	else if (desc.title_rows > 0)
+	else if (desc.title_rows > 0 && desc.is_expanded_mode)
 		desc.first_data_row = desc.title_rows;
 	else
+	{
 		desc.first_data_row = 0;
+		desc.title_rows = 0;
+	}
 
 	first_data_row = desc.first_data_row;
 
