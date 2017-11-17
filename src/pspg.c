@@ -1074,7 +1074,6 @@ readfile(FILE *fp, DataDesc *desc)
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
-	int			trimmed_nrows = 0;
 	bool		use_stdin = false;
 	LineBuffer *rows;
 
@@ -1145,7 +1144,6 @@ readfile(FILE *fp, DataDesc *desc)
 
 		rows->rows[rows->nrows++] = line;
 
-
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
 		{
@@ -1205,11 +1203,7 @@ readfile(FILE *fp, DataDesc *desc)
 		if ((int) clen > 1 || (clen == 1 && *line != '\n'))
 			desc->last_row = nrows;
 
-		if (*line != '\0')
-			trimmed_nrows = nrows;
-
 		nrows += 1;
-
 
 		line = NULL;
 	}
@@ -1223,7 +1217,8 @@ readfile(FILE *fp, DataDesc *desc)
 	if (!use_stdin)
 		fclose(fp);
 
-	desc->maxy = trimmed_nrows ;
+	if (desc->last_row != -1)
+		desc->maxy = desc->last_row;
 
 	desc->headline_char_size = 0;
 
@@ -1247,8 +1242,7 @@ readfile(FILE *fp, DataDesc *desc)
 		desc->headline_char_size = 0;
 
 		/* there are not a data set */
-		desc->last_row = trimmed_nrows;
-		desc->last_data_row = trimmed_nrows;
+		desc->last_data_row = desc->last_row;
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
@@ -1627,7 +1621,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	if (offsety)
 		printf("\e[%dB", offsety);
 
-	while (row < maxy )
+	while (row < maxy)
 	{
 		int			bytes;
 		char	   *ptr;
@@ -1807,11 +1801,11 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
 
-		for (i = 0; i < min_int(size.ws_row - 2, desc->last_row); i++)
+		for (i = 0; i < min_int(size.ws_row - 2, desc->last_row + 1); i++)
 			printf("\eD");
 
 		/* Go wit cursor to up */
-		printf("\e[%dA", min_int(size.ws_row - 2, desc->last_row));
+		printf("\e[%dA", min_int(size.ws_row - 2, desc->last_row + 1));
 
 		/* Save cursor */
 		printf("\e[s");
@@ -1827,6 +1821,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 		}
 		if (scrdesc->fix_rows_rows > 0)
 		{
+			/* Go to saved position */
 			printf("\e[u\e[s");
 
 			draw_rectange(0, scrdesc->fix_cols_cols,
@@ -1839,6 +1834,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 		if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 		{
+			/* Go to saved position */
 			printf("\e[u\e[s");
 
 			draw_rectange(0, 0,
@@ -1849,8 +1845,9 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 						  false);
 		}
 
-		if (scrdesc->rows_rows > 0)
+		if (scrdesc->rows_rows > 0 )
 		{
+			/* Go to saved position */
 			printf("\e[u\e[s");
 
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
@@ -1865,6 +1862,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 		if (scrdesc->footer != NULL)
 		{
+			/* Go to saved position */
 			printf("\e[u\e[s");
 
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
@@ -2004,7 +2002,7 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 	else if (desc->headline_transl != NULL)
 	{
 		scrdesc->rows_rows = min_int(scrdesc->main_maxy - scrdesc->fix_rows_rows,
-									 desc->last_row - desc->first_data_row);
+									 desc->last_row - desc->first_data_row + 1);
 	}
 	else
 	{
@@ -2209,8 +2207,8 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 							number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
 							number_width(smaxy), cursor_row - first_row + fix_rows_offset,
 							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
-							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy - desc->fixed_rows - desc->title_rows,
-							(cursor_row + 1) / ((double) (desc->maxy - desc->fixed_rows - desc->title_rows)) * 100.0);
+							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+							(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
 	}
 	else
 	{
