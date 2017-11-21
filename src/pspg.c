@@ -2411,7 +2411,7 @@ main(int argc, char *argv[])
 
 	initscr();
 
-	if(!has_colors() && style != 0)
+	if(!has_colors())
 	{
 		endwin();
 		fprintf(stderr, "Your terminal does not support color\n");
