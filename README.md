@@ -114,6 +114,10 @@ The pspg is available from community repository https://yum.postgresql.org/packa
 
     # emerge -av dev-db/pspg
 
+## FreeBSD
+
+    # pkg install pspg
+
 # Note
 
 If you like it, send a postcard from your home country to my address, please:
