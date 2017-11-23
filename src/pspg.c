@@ -2612,7 +2612,7 @@ main(int argc, char *argv[])
 		else
 			c = getch();
 
-		if (c == 'q' || c == KEY_F(10))
+		if (c == 'q' || c == KEY_F(10) || c == ERR)
 			break;
 
 		prev_first_row = first_row;
