@@ -1274,10 +1274,19 @@ readfile(FILE *fp, DataDesc *desc)
 		desc->title[0] = '\0';
 	}
 
-	if (freopen("/dev/tty", "rw", stdin) == NULL)
+	fclose(stdin);
+	if (freopen("/dev/tty", "r", stdin) == NULL)
 	{
-		fprintf(stderr, "cannot to reopen stdin: %s\n", strerror(errno));
-		exit(1);
+		/*
+		 * try to reopen pty.
+		 * Workaround from:
+		 * https://cboard.cprogramming.com/c-programming/172533-how-read-pipe-while-keeping-interactive-keyboard-c.html
+		 */
+		if (freopen(ttyname(fileno(stdout)), "r", stdin) == NULL)
+		{
+			fprintf(stderr, "cannot to reopen stdin: %s\n", strerror(errno));
+			exit(1);
+		}
 	}
 
 	return 0;
