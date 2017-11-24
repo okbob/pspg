@@ -53,7 +53,7 @@ typedef struct LineBuffer
  */
 typedef struct
 {
-	int		border_top_row;			/* nrow of bootom outer border or -1 */
+	int		border_top_row;			/* nrow of bottom outer border or -1 */
 	int		border_head_row;		/* nrow of head outer (required) */
 	int		border_bottom_row;		/* nrow of bottom outer border or -1 */
 	int		border_type;			/* detected type of border: 0, 1, 2 */
@@ -85,12 +85,12 @@ typedef struct
 } DataDesc;
 
 /*
- * This structure can be muttable - depends on displayed data
+ * This structure can be mutable - depends on displayed data
  */
 typedef struct
 {
 	int		fix_rows_rows;			/* current number of fixed rows in window rows */
-	int		fix_cols_cols;			/* current number of fixed colums in window rows */
+	int		fix_cols_cols;			/* current number of fixed columns in window rows */
 	int		rows_rows;				/* current number of data rows */
 	int		footer_rows;			/* current number of footer rows */
 	int		maxy;					/* max y size of screen */
@@ -858,7 +858,7 @@ initialize_color_pairs(int theme)
 		init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
 		init_pair(9, -1, -1);							/* footer */
 		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
-		init_pair(11, COLOR_BLACK, COLOR_WHITE);							/* cursor over decoration */
+		init_pair(11, COLOR_BLACK, COLOR_WHITE);		/* cursor over decoration */
 		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
 		init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
 	}
@@ -1190,7 +1190,7 @@ readfile(FILE *fp, DataDesc *desc)
 			if (!desc->is_expanded_mode)
 				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 
-			/* title surelly doesn't it there */
+			/* title surely doesn't it there */
 			if ((!desc->is_expanded_mode && nrows == 1) ||
 			    (desc->is_expanded_mode && nrows == 0))
 			{
@@ -1563,7 +1563,7 @@ window_fill(WINDOW *win,
 			if (i < maxx)
 				wclrtoeol(win);
 
-			/* draw cursor line to screan end of line */
+			/* draw cursor line to screen end of line */
 			if (is_cursor_row && i < maxx)
 				mvwchgat(win, row - 1, i + 1, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
 
@@ -2116,7 +2116,7 @@ if_notin_int(int v, const int *s, int v1, int v2)
 }
 
 /*
- * Rewresh aux windows like top bar or bottom bar.
+ * Refresh aux windows like top bar or bottom bar.
  */
 static void
 refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
@@ -2315,7 +2315,7 @@ main(int argc, char *argv[])
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	int		_columns = -1;			/* default will be 1 if screen width will be enough */
-	int		fixedRows = -1;			/* detect automaticly (not yet implemented option) */
+	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	FILE   *fp = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
