@@ -31,6 +31,11 @@
 //#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
 
+/* GNU Hurd does not define MAXPATHLEN */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 4096
+#endif
+
 typedef struct LineBuffer
 {
 	int		first_row;
