@@ -74,8 +74,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * s - save content to file
 * / - search for a pattern which will take you to the next occurrence
 * ? - search for a pattern which will take you to the previous occurrence
-* n - for next match in backward direction
-* N - for previous match in forward direction
+* n - for next match
+* N - for next match in reverse direction
 * Alt M - switch (on, off) own mouse handler
 * Mouse button wheel - scroll vertical
 * Alt Mouse button wheel - scroll horizontal

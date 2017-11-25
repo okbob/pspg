@@ -2298,6 +2298,10 @@ get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 	noecho();
 }
 
+#define SEARCH_FORWARD			1
+#define SEARCH_BACKWARD			2
+
+
 int
 main(int argc, char *argv[])
 {
@@ -2327,6 +2331,8 @@ main(int argc, char *argv[])
 	bool	use_mouse = true;
 	mmask_t		prev_mousemask = 0;
 	bool	quit_if_one_screen = false;
+	int		search_direction = SEARCH_FORWARD;
+	bool	redirect_mode;
 
 	static struct option long_options[] =
 	{
@@ -2608,9 +2614,13 @@ main(int argc, char *argv[])
 		{
 			c = c2;
 			c2 = 0;
+			redirect_mode = true;
 		}
 		else
+		{
 			c = getch();
+			redirect_mode = false;
+		}
 
 		if (c == 'q' || c == KEY_F(10) || c == ERR)
 			break;
@@ -3129,8 +3139,9 @@ exit:
 
 					get_string(&scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
-
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+
+					search_direction = SEARCH_FORWARD;
 
 					/* continue to find next: */
 				}
@@ -3141,6 +3152,13 @@ exit:
 					int		max_first_row;
 					LineBuffer   *rows = &desc.rows;
 					bool	found = false;
+
+					/* call inverse command when search direction is SEARCH_BACKWARD */
+					if (c == 'n' && search_direction == SEARCH_BACKWARD && !redirect_mode)
+					{
+						c2 = 'N';
+						break;
+					}
 
 					for (nrows = 0; nrows < desc.last_row - scrdesc.fix_rows_rows; nrows++, current_row++)
 					{
@@ -3183,8 +3201,9 @@ exit:
 
 					get_string(&scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
-
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+
+					search_direction = SEARCH_BACKWARD;
 
 					/* continue to find next: */
 				}
@@ -3192,9 +3211,15 @@ exit:
 				{
 					int		rowidx;
 					int		search_row;
-
 					LineBuffer   *rows = &desc.rows;
 					bool	found = false;
+
+					/* call inverse command when search direction is SEARCH_BACKWARD */
+					if (c == 'N' && search_direction == SEARCH_BACKWARD && !redirect_mode)
+					{
+						c2 = 'n';
+						break;
+					}
 
 					rowidx = cursor_row + scrdesc.fix_rows_rows + desc.title_rows - 1;
 					search_row = cursor_row - 1;
