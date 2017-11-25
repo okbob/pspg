@@ -3,13 +3,13 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	0.7.1
+Version: 	0.7.2
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
 Vendor: 	Pavel Stehule <pavel.stehule@gmail.com>
 URL: 		https://github.com/okbob/pspg
-Source: 	https://github.com/okbob/pspg/archive/%{version}.tgz
+Source: 	https://github.com/okbob/pspg/archive/%{version}.tar.gz
 BuildRequires: 	ncurses-devel
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: 	ncurses
