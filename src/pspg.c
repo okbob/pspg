@@ -1279,21 +1279,6 @@ readfile(FILE *fp, DataDesc *desc)
 		desc->title[0] = '\0';
 	}
 
-	fclose(stdin);
-	if (freopen("/dev/tty", "r", stdin) == NULL)
-	{
-		/*
-		 * try to reopen pty.
-		 * Workaround from:
-		 * https://cboard.cprogramming.com/c-programming/172533-how-read-pipe-while-keeping-interactive-keyboard-c.html
-		 */
-		if (freopen(ttyname(fileno(stdout)), "r", stdin) == NULL)
-		{
-			fprintf(stderr, "cannot to reopen stdin: %s\n", strerror(errno));
-			exit(1);
-		}
-	}
-
 	return 0;
 }
 
@@ -2338,6 +2323,7 @@ main(int argc, char *argv[])
 	bool	quit_if_one_screen = false;
 	int		search_direction = SEARCH_FORWARD;
 	bool	redirect_mode;
+	bool	noatty;					/* true, when cannot to get keys from stdin */
 
 	static struct option long_options[] =
 	{
@@ -2428,8 +2414,42 @@ main(int argc, char *argv[])
 	setlocale(LC_ALL, "");
 
 	readfile(fp, &desc);
+	if (fp != NULL)
+	{
+		fclose(fp);
+		fp = NULL;
+	}
 
-	initscr();
+	if (!isatty(fileno(stdin)))
+	{
+		if (freopen("/dev/tty", "r", stdin) != NULL)
+			noatty = false;
+		else if (freopen(ttyname(fileno(stdout)), "r", stdin) != NULL)
+			noatty = false;
+		else
+		{
+			/*
+			 * cannot to reopen terminal device. See discussion to issue #35
+			 * fallback solution - read keys directly from stderr. Just check
+			 * it it is possible.
+			 */
+			if (!isatty(fileno(stderr)))
+			{
+				fprintf(stderr, "missing a access to terminal device\n");
+				exit(1);
+			}
+			noatty = true;
+			fclose(stdin);
+		}
+	}
+	else
+		noatty = false;
+
+	if (noatty)
+		/* use stderr like stdin. This is fallback solution used by less */
+		newterm(termname(), stdout, stderr);
+	else
+		initscr();
 
 	if(!has_colors())
 	{
