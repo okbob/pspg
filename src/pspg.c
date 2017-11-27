@@ -1246,9 +1246,6 @@ readfile(FILE *fp, DataDesc *desc)
 		exit(1);
 	}
 
-	if (!use_stdin)
-		fclose(fp);
-
 	if (desc->last_row != -1)
 		desc->maxy = desc->last_row;
 
