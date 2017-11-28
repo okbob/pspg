@@ -684,7 +684,7 @@ isHeadLeftChar(char *str)
 	const char *u6 = "\342\225\237";
 
 	/* ascii */
-	if (str[0] == '+' || str[0] == '-')
+	if ((str[0] == '+' || str[0] == '-') && str[1] == '-')
 		return true;
 
 	/* pgcli fmt */
@@ -1941,7 +1941,8 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 	{
 		scrdesc->fix_rows_rows = fixRows;
 	}
-	else if (!desc->is_expanded_mode && desc->border_head_row != -1)
+	else if (!desc->is_expanded_mode && desc->border_head_row != -1 &&
+			  desc->headline_transl != NULL)
 	{
 		scrdesc->fix_rows_rows = desc->border_head_row + 1 - desc->title_rows;
 	}
@@ -1955,7 +1956,6 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 
 	if (scrdesc->fix_rows_rows == 0 && !desc->is_expanded_mode)
 	{
-		scrdesc->fix_rows_rows = 0;
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
@@ -2212,7 +2212,7 @@ print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
 	if (scrdesc->theme == 2)
 		wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
 
-	if (desc->title[0] != '\0')
+	if (desc->title[0] != '\0' && desc->title_rows > 0)
 		mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->title);
 	else if (desc->filename[0] != '\0')
 		mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->filename);
@@ -2493,7 +2493,9 @@ main(int argc, char *argv[])
 	else
 	{
 		desc.first_data_row = 0;
+		desc.last_data_row = desc.last_row;
 		desc.title_rows = 0;
+		desc.title[0] = '\0';
 	}
 
 	first_data_row = desc.first_data_row;
