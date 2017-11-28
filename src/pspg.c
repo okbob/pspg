@@ -1164,7 +1164,15 @@ readfile(FILE *fp, DataDesc *desc)
 
 	while (( read = getline(&line, &len, fp)) != -1)
 	{
-		int		clen = utf8len(line);
+		int		clen;
+
+		if (line[read - 1] == '\n')
+		{
+			line[read - 1] = '\0';
+			read -= 1;
+		}
+
+		clen = utf8len(line);
 
 		if (rows->nrows == 1000)
 		{
@@ -1180,7 +1188,7 @@ readfile(FILE *fp, DataDesc *desc)
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
 		{
-			strncpytrim(desc->title, line, 63, len);
+			strncpytrim(desc->title, line, 63, read);
 			desc->title_rows = 1;
 		}
 
@@ -1553,7 +1561,7 @@ window_fill(WINDOW *win,
 
 			/* draw cursor line to screen end of line */
 			if (is_cursor_row && i < maxx)
-				mvwchgat(win, row - 1, i + 1, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+				mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
 
 			if (free_row != NULL)
 			{
@@ -2292,6 +2300,7 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 			title[0] = '\0';
 
 		wattron(scrdesc->bottom_bar, prompt_attr);
+
 
 		if (desc->headline_transl)
 		{
