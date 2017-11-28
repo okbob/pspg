@@ -104,6 +104,7 @@ typedef struct
 	int		main_maxx;				/* max x size of main place (should be same like maxx) */
 	int		main_start_y;			/* y position of first row of main place */
 	int		main_start_x;			/* x position of first row of main place */
+	int		top_bar_rows;			/* 1 or 0 when top bar is not used */
 	WINDOW *luc;					/* window for left upper corner */
 	WINDOW *fix_rows;				/* window for fixed rows */
 	WINDOW *fix_cols;				/* window for fixed columns */
@@ -1824,11 +1825,11 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
 
-		for (i = 0; i < min_int(size.ws_row - 2, desc->last_row + 1); i++)
+		for (i = 0; i < min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1); i++)
 			printf("\eD");
 
 		/* Go wit cursor to up */
-		printf("\e[%dA", min_int(size.ws_row - 2, desc->last_row + 1));
+		printf("\e[%dA", min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1));
 
 		/* Save cursor */
 		printf("\e[s");
@@ -1836,8 +1837,8 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 		if (scrdesc->fix_cols_cols > 0)
 		{
 			draw_rectange(scrdesc->fix_rows_rows, 0,
-						  scrdesc->rows_rows, scrdesc->fix_cols_cols,
-						  first_data_row + first_row - fix_rows_offset , 0,
+						  scrdesc->rows_rows , scrdesc->fix_cols_cols,
+						  first_data_row + first_row - fix_rows_offset, 0,
 						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
@@ -1875,7 +1876,7 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
-						  first_data_row + first_row - fix_rows_offset , scrdesc->fix_cols_cols + cursor_col,
+						  first_data_row + first_row - fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
 						  desc,
 						  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
 						  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
@@ -2039,12 +2040,13 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 	{
 		scrdesc->fix_rows = newwin(scrdesc->fix_rows_rows,
 								   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
-								   1, scrdesc->fix_cols_cols);
+								   scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
 
 	if (scrdesc->fix_cols_cols > 0 && scrdesc->rows_rows > 0)
 	{
-		scrdesc->fix_cols = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols, scrdesc->fix_rows_rows + 1, 0);
+		scrdesc->fix_cols = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols,
+									 scrdesc->fix_rows_rows + scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
@@ -2106,7 +2108,7 @@ if_notin_int(int v, const int *s, int v1, int v2)
  * Refresh aux windows like top bar or bottom bar.
  */
 static void
-refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
+refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc, bool hide_top_bar)
 {
 	int		maxy, maxx;
 
@@ -2114,34 +2116,49 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc)
 	getmaxyx(stdscr, maxy, maxx);
 
 	if (scrdesc->top_bar != NULL)
+	{
 		delwin(scrdesc->top_bar);
+		scrdesc->top_bar = NULL;
+	}
 
-	scrdesc->top_bar = newwin(1, 0, 0, 0);
-	wbkgd(scrdesc->top_bar, COLOR_PAIR(2));
-	wrefresh(scrdesc->top_bar);
+	if (!hide_top_bar)
+	{
+		scrdesc->top_bar_rows = 1;
+		scrdesc->top_bar = newwin(1, 0, 0, 0);
+		wbkgd(scrdesc->top_bar, COLOR_PAIR(2));
+		wrefresh(scrdesc->top_bar);
+	}
+	else
+		scrdesc->top_bar_rows = 0;
 
 	if (scrdesc->bottom_bar != NULL)
+	{
 		delwin(scrdesc->bottom_bar);
+		scrdesc->bottom_bar = NULL;
+	}
 
 	scrdesc->bottom_bar = newwin(1, 0, maxy - 1, 0);
 
-	wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-	mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
-	wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-	mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-	wrefresh(scrdesc->bottom_bar);
-
-	if (desc->headline_transl != NULL)
+	if (scrdesc->top_bar_rows > 0)
 	{
 		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-		mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
+		mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
 		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-		mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
+		mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
 		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 		wrefresh(scrdesc->bottom_bar);
+
+		if (desc->headline_transl != NULL)
+		{
+			wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
+			mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
+			wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
+			wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
+			wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wrefresh(scrdesc->bottom_bar);
+		}
 	}
 
 	scrdesc->main_maxy = maxy;
@@ -2197,57 +2214,110 @@ is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 }
 
 static void
-print_top_window_context(ScrDesc *scrdesc, DataDesc *desc,
+print_status(ScrDesc *scrdesc, DataDesc *desc,
 						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
 	char	buffer[200];
 
-	getmaxyx(scrdesc->top_bar, maxy, maxx);
-	getmaxyx(stdscr, smaxy, smaxx);
-
-	(void) maxy;
-
-	if (scrdesc->theme == 2)
-		wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
-
-	if (desc->title[0] != '\0' && desc->title_rows > 0)
-		mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->title);
-	else if (desc->filename[0] != '\0')
-		mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->filename);
-
-	if (scrdesc->theme == 2)
-		wattroff(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
-
-	if (desc->headline_transl)
+	/* do nothing when there are not top status bar */
+	if (scrdesc->top_bar_rows > 0)
 	{
-		snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
-							number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
-							number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
-							number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
-							number_width(desc->headline_char_size), desc->headline_char_size,
-							number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
-							number_width(smaxy), cursor_row - first_row + fix_rows_offset,
-							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
-							number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
-							(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+		getmaxyx(scrdesc->top_bar, maxy, maxx);
+		getmaxyx(stdscr, smaxy, smaxx);
+
+		(void) maxy;
+
+		if (scrdesc->theme == 2)
+			wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
+		if (desc->title[0] != '\0' && desc->title_rows > 0)
+			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->title);
+		else if (desc->filename[0] != '\0')
+			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->filename);
+
+		if (scrdesc->theme == 2)
+			wattroff(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
+
+		if (desc->headline_transl)
+		{
+			snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+								number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+								number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+								number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+								number_width(desc->headline_char_size), desc->headline_char_size,
+								number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
+								number_width(smaxy), cursor_row - first_row + fix_rows_offset,
+								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
+								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+								(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+		}
+		else
+		{
+			snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
+								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
+								number_width(desc->maxx), desc->maxx,
+								number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
+								number_width(smaxy), cursor_row - first_row,
+								number_width(desc->last_row), cursor_row + 1,
+								number_width(desc->last_row), desc->last_row + 1,
+								((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
+		}
+
+		mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
+		wrefresh(scrdesc->top_bar);
 	}
 	else
 	{
-		snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
-							number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
-							number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
-							number_width(desc->maxx), desc->maxx,
-							number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + 1,
-							number_width(smaxy), cursor_row - first_row,
-							number_width(desc->last_row), cursor_row + 1,
-							number_width(desc->last_row), desc->last_row + 1,
-							((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
-	}
+		/* less-status-bar */
+		char	title[65];
+		attr_t	prompt_attr;
 
-	mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
-	wrefresh(scrdesc->top_bar);
+		switch (scrdesc->theme)
+		{
+			case 0:
+			case 1:
+				prompt_attr = COLOR_PAIR(2);
+				break;
+			default:
+				prompt_attr = COLOR_PAIR(13) | A_BOLD;
+		}
+
+		if (desc->title_rows > 0 && desc->title[0] != '\0')
+			snprintf(title, 64, "%s ", desc->title);
+		else if (desc->filename[0] != '\0')
+			snprintf(title, 64, "%s ", desc->filename);
+		else
+			title[0] = '\0';
+
+		wattron(scrdesc->bottom_bar, prompt_attr);
+
+		if (desc->headline_transl)
+		{
+			snprintf(buffer, 199, "%slines %d-%d/%d %.0f%% ",
+								title,
+								first_row + 1 - fix_rows_offset,
+								first_row + 1 - fix_rows_offset + scrdesc->rows_rows,
+								desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+								(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+		}
+		else
+		{
+			snprintf(buffer, 199, "%slines %d-%d/%d %.0f%% ",
+								title,
+								first_row + 1,
+								first_row + 1 + scrdesc->footer_rows,
+								desc->last_row + 1,
+								((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
+		}
+
+		mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", buffer);
+		wclrtoeol(scrdesc->bottom_bar);
+		wrefresh(scrdesc->bottom_bar);
+
+		wattroff(scrdesc->bottom_bar, prompt_attr);
+	}
 }
 
 
@@ -2321,6 +2391,7 @@ main(int argc, char *argv[])
 	int		search_direction = SEARCH_FORWARD;
 	bool	redirect_mode;
 	bool	noatty;					/* true, when cannot to get keys from stdin */
+	bool	less_status_bar = false;
 
 	static struct option long_options[] =
 	{
@@ -2328,6 +2399,7 @@ main(int argc, char *argv[])
 		{"help", no_argument, 0, 1},
 		{"no-mouse", no_argument, 0, 2},
 		{"no-sound", no_argument, 0, 3},
+		{"less-status-bar", no_argument, 0, 4},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -2351,6 +2423,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n\n");
+				fprintf(stderr, "  --less-status-bar   status bar like less pager\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  -F, --quit-if-one-screen   quit if content is one screen\n");
@@ -2363,6 +2436,9 @@ main(int argc, char *argv[])
 				break;
 			case 3:
 				no_sound = true;
+				break;
+			case 4:
+				less_status_bar = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2504,7 +2580,7 @@ main(int argc, char *argv[])
 
 	memset(&scrdesc, 0, sizeof(ScrDesc));
 	scrdesc.theme = style;
-	refresh_aux_windows(&scrdesc, &desc);
+	refresh_aux_windows(&scrdesc, &desc, less_status_bar);
 	getmaxyx(stdscr, maxy, maxx);
 
 	if (quit_if_one_screen)
@@ -2577,7 +2653,7 @@ main(int argc, char *argv[])
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
-	print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
+	print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
 	while (true)
 	{
@@ -3397,7 +3473,7 @@ exit:
 				break;
 		}
 
-		print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+		print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 		if (first_row != prev_first_row)
 		{
@@ -3438,10 +3514,10 @@ exit:
 
 			getmaxyx(stdscr, maxy, maxx);
 
-			refresh_aux_windows(&scrdesc, &desc);
+			refresh_aux_windows(&scrdesc, &desc, less_status_bar);
 			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc, first_data_row, first_row);
-			print_top_window_context(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+			print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 			refresh_scr = false;
 		}

@@ -24,6 +24,7 @@ This pager can be used from `mysql` client too.
 * -s N     use theme (default theme is mc theme)
 * -c N     freeze first N columns
 * -f file  open file (default stdin)
+* --less-status-bar  status bar like less pager
 * --no-mouse  without own mouse handling (cannot be changed in app)
 * --no-sound  without sound effect
 * -F, --quit-if-one-screen  quit if content is one screen
