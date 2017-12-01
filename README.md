@@ -107,6 +107,12 @@ to
 gcc pager.c -o pspg -ggdb -lncursesw
 </pre>
 
+On some old systems a compilation fails with error
+<pre>
+/home/user/Src/pspg-0.6/src/pspg.c:2403: undefined reference to `set_escdelay'
+</pre>
+In this case comment line with function set_escdelay
+
 # Note - Installation
 
 The pspg is available from community repository https://yum.postgresql.org/packages.php
