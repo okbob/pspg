@@ -6,7 +6,6 @@ Known bugs
 
 Possible ToDo
 =============
-* hide top/bottom bar (fullscreen)
 * tail mode
 * 256 colours + custom colour schemas
 * hide outer border
@@ -20,7 +19,6 @@ Possible ToDo
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
 * support fetched data - columns width can be different
-* scrolling and cursor optimization
 
 Similar projects
 ================

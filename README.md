@@ -19,16 +19,19 @@ This pager can be used from `mysql` client too.
 
 ## Options
 
-* -b       black/white theme
-* -X       doesn't clean screen on the end
-* -s N     use theme (default theme is mc theme)
-* -c N     freeze first N columns
-* -f file  open file (default stdin)
-* --less-status-bar  status bar like less pager
-* --no-mouse  without own mouse handling (cannot be changed in app)
-* --no-sound  without sound effect
-* -F, --quit-if-one-screen  quit if content is one screen
-* -V, --version  show version
+* `-b`       black/white theme
+* `-X`       doesn't clean screen on the end
+* `-s N`     use theme (default theme is mc theme)
+* `-c N`     freeze first N columns
+* `-f file`  open file (default stdin)
+* `--help`   show this help
+* `-i --ignore-case`  ignore case in searches that do not contain uppercase
+* `-I --IGNORE-CASE`  ignore case in all searches
+* `--less-status-bar`  status bar like less pager
+* `--no-mouse`  without own mouse handling (cannot be changed in app)
+* `--no-sound`  without sound effect
+* `-F`, `--quit-if-one-screen`  quit if content is one screen
+* `-V`, `--version`  show version
 
 ## Themes
 
