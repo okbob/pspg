@@ -2707,18 +2707,20 @@ main(int argc, char *argv[])
 								NULL);
 		}
 
-		if (scrdesc.luc != NULL)
-			wrefresh(scrdesc.luc);
-		if (scrdesc.rows != NULL)
-			wrefresh(scrdesc.rows);
-		if (scrdesc.fix_cols != NULL)
-			wrefresh(scrdesc.fix_cols);
-		if (scrdesc.fix_rows != NULL)
-			wrefresh(scrdesc.fix_rows);
-		if (scrdesc.footer != NULL)
-			wrefresh(scrdesc.footer);
 
-		refresh();
+		if (scrdesc.luc != NULL)
+			wnoutrefresh(scrdesc.luc);
+		if (scrdesc.rows != NULL)
+			wnoutrefresh(scrdesc.rows);
+		if (scrdesc.fix_cols != NULL)
+			wnoutrefresh(scrdesc.fix_cols);
+		if (scrdesc.fix_rows != NULL)
+			wnoutrefresh(scrdesc.fix_rows);
+		if (scrdesc.footer != NULL)
+			wnoutrefresh(scrdesc.footer);
+
+		doupdate();
+
 		if (c2 != 0)
 		{
 			c = c2;
