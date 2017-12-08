@@ -87,9 +87,10 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 
 # Recommended psql configuration
-
-* linestyle unicode
-* border 2
+<pre>
+\pset linestyle unicode
+\pset border 2
+</pre>
 
 some possible configuration:
 <pre>
