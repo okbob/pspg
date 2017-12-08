@@ -57,33 +57,33 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 ## Keyboard commands
 
-* 0, 1, 2, 3, 4 - freeze first N columns
-* KEY_UP, k - navigate backward by one line
-* KEY_DOWN, j - navigate forward by one line
-* KEY_LEFT, h - scroll to left
-* KEY_RIGHT, l - scroll to right
-* Ctrl Home, g - go to the start of file
-* Ctrl End, G - go to the end of file
-* H - go to first line of current window
-* M - go to half of current window
-* L - go to end of current window
-* PPAGE, Ctrl B - backward one window
-* NPAGE, Ctrl F, space - forward one window
-* HOME, ^ - go to begin of line, first column
-* END, $ - go to end of line, last column
-* Ctrl E - scroll a window down
-* Ctrl Y - scroll a window up
-* Ctrl D - forward a half window
-* Ctrl U - backward a half window
-* s - save content to file
-* / - search for a pattern which will take you to the next occurrence
-* ? - search for a pattern which will take you to the previous occurrence
-* n - for next match
-* N - for next match in reverse direction
-* Alt M - switch (on, off) own mouse handler
+* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, <kbd>4</kbd> - freeze first N columns
+* <kbd>KEY_UP</kbd>, <kbd>k</kbd> - navigate backward by one line
+* <kbd>KEY_DOWN</kbd>, <kbd>j</kbd> - navigate forward by one line
+* <kbd>KEY_LEFT</kbd>, <kbd>h</kbd> - scroll to left
+* <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd> - scroll to right
+* <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd> - go to the start of file
+* <kbd>Ctrl<kbd>+<kbd>End</kbd>, <kbd>G</kbd> - go to the end of file
+* <kbd>H</kbd> - go to first line of current window
+* <kbd>M</kbd> - go to half of current window
+* <kbd>L</kbd> - go to end of current window
+* <kbd>PPAGE</kbd>, <kbd>Ctrl<kbd>+<kbd>b</kbd> - backward one window
+* <kbd>NPAGE</kbd>, <kbd>Ctrl<kbd>+<kbd>f</kbd>, <kbd>space</kbd> - forward one window
+* <kbd>HOME</kbd>, <kbd>^</kbd> - go to begin of line, first column
+* <kbd>END</kbd>, <kbd>$</kbd> - go to end of line, last column
+* <kbd>Ctrl</kbd>+<kbd>e</kbd> - scroll a window down
+* <kbd>Ctrl<kbd>+<kbd>y</kbd> - scroll a window up
+* <kbd>Ctrl<kbd>+<kbd>d</kbd> - forward a half window
+* <kbd>Ctrl<kbd>+<kbd>u</kbd> - backward a half window
+* <kbd>s</kbd> - save content to file
+* <kbd>/</kbd> - search for a pattern which will take you to the next occurrence
+* <kbd>?</kbd> - search for a pattern which will take you to the previous occurrence
+* <kbd>n</kbd> - for next match
+* <kbd>N</kbd> - for next match in reverse direction
+* <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * Mouse button wheel - scroll vertical
-* Alt Mouse button wheel - scroll horizontal
-* q, F10, Esc Esc, Esc 0 - quit
+* <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
+* <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>Esc</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
 
 
 # Recommended psql configuration
