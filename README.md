@@ -63,18 +63,18 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>KEY_LEFT</kbd>, <kbd>h</kbd> - scroll to left
 * <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd> - scroll to right
 * <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd> - go to the start of file
-* <kbd>Ctrl<kbd>+<kbd>End</kbd>, <kbd>G</kbd> - go to the end of file
+* <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd> - go to the end of file
 * <kbd>H</kbd> - go to first line of current window
 * <kbd>M</kbd> - go to half of current window
 * <kbd>L</kbd> - go to end of current window
-* <kbd>PPAGE</kbd>, <kbd>Ctrl<kbd>+<kbd>b</kbd> - backward one window
-* <kbd>NPAGE</kbd>, <kbd>Ctrl<kbd>+<kbd>f</kbd>, <kbd>space</kbd> - forward one window
+* <kbd>PPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>b</kbd> - backward one window
+* <kbd>NPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>f</kbd>, <kbd>space</kbd> - forward one window
 * <kbd>HOME</kbd>, <kbd>^</kbd> - go to begin of line, first column
 * <kbd>END</kbd>, <kbd>$</kbd> - go to end of line, last column
 * <kbd>Ctrl</kbd>+<kbd>e</kbd> - scroll a window down
-* <kbd>Ctrl<kbd>+<kbd>y</kbd> - scroll a window up
-* <kbd>Ctrl<kbd>+<kbd>d</kbd> - forward a half window
-* <kbd>Ctrl<kbd>+<kbd>u</kbd> - backward a half window
+* <kbd>Ctrl</kbd>+<kbd>y</kbd> - scroll a window up
+* <kbd>Ctrl</kbd>+<kbd>d</kbd> - forward a half window
+* <kbd>Ctrl</kbd>+<kbd>u</kbd> - backward a half window
 * <kbd>s</kbd> - save content to file
 * <kbd>/</kbd> - search for a pattern which will take you to the next occurrence
 * <kbd>?</kbd> - search for a pattern which will take you to the previous occurrence
