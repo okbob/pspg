@@ -486,6 +486,10 @@ isHeadLeftChar(char *str)
 	if (str[0] == '|' && str[1] == '-')
 		return true;
 
+	/* expanded border 1 */
+	if (str[0] == '-' && str[1] == '[')
+		return true;
+
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
@@ -574,6 +578,8 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 
 		*ei_maxx = pos - 1;
 	}
+
+
 
 	return true;
 }
