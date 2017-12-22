@@ -38,11 +38,24 @@
 #define MAXPATHLEN 4096
 #endif
 
+#define LINEINFO_NONE				0
+#define LINEINFO_BOOKMARK			1
+#define LINEINFO_FOUNDSTR			2
+#define LINEINFO_FOUNDSTR_MULTI		6
+
+typedef struct LineInfo
+{
+	char			mask;
+	short int		start_bytes;
+	short int		bytes;
+} LineInfo;
+
 typedef struct LineBuffer
 {
 	int		first_row;
 	int		nrows;
 	char   *rows[1000];
+	LineInfo	   *lineinfo;
 	struct LineBuffer *next;
 	struct LineBuffer *prev;
 } LineBuffer;
@@ -667,6 +680,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_BLACK, COLOR_WHITE);		/* cursor over decoration */
 		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
 		init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
+		init_pair(14, COLOR_BLACK, COLOR_WHITE);		/* color of bookmark lines */
 	}
 	else if (theme == 1)
 	{
@@ -683,6 +697,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_YELLOW, COLOR_CYAN);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 2)
 	{
@@ -700,6 +715,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_BLUE);
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
+		init_pair(14, COLOR_WHITE, COLOR_MAGENTA);
 	}
 	else if (theme == 3)
 	{
@@ -716,6 +732,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_CYAN, COLOR_BLACK);
 		init_pair(12, COLOR_CYAN, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 4)
 	{
@@ -732,6 +749,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_BLUE);
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 5)
 	{
@@ -748,6 +766,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, -1, COLOR_CYAN);
 		init_pair(12, COLOR_BLACK, COLOR_CYAN);
 		init_pair(13, COLOR_BLACK, COLOR_CYAN);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 6)
 	{
@@ -764,6 +783,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_BLUE);
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 7)
 	{
@@ -780,6 +800,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_GREEN);
 		init_pair(12, COLOR_WHITE, COLOR_GREEN);
 		init_pair(13, COLOR_WHITE, COLOR_GREEN);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 8)
 	{
@@ -796,6 +817,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_BLUE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_WHITE, COLOR_CYAN);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 9)
 	{
@@ -812,6 +834,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_WHITE, COLOR_CYAN);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 10)
 	{
@@ -828,6 +851,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_CYAN, COLOR_BLUE);
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 11)
 	{
@@ -844,6 +868,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(12, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(13, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 12)
 	{
@@ -860,6 +885,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_CYAN, COLOR_BLUE);
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == 13)
 	{
@@ -876,6 +902,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 	else if (theme == MAX_STYLE)
 	{
@@ -892,6 +919,7 @@ initialize_color_pairs(int theme)
 		init_pair(11, COLOR_WHITE, COLOR_CYAN);
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
+		init_pair(14, COLOR_WHITE, COLOR_RED);
 	}
 
 }
@@ -1099,6 +1127,8 @@ window_fill(WINDOW *win,
 			attr_t cursor_data_attr,		/* colors for cursor on data positions */
 			attr_t cursor_line_attr,		/* colors for cursor on border position */
 			attr_t cursor_expi_attr,		/* colors for cursor on expanded headers */
+			attr_t bookmark_attr,			/* colors for bookmark */
+			attr_t cursor_bookmark_attr,	/* colors for cursor on bookmark line */
 			bool is_footer,					/* true if window is footer */
 			ScrDesc *scrdesc)				/* used for searching records limits in expanded mode */
 {
@@ -1139,6 +1169,8 @@ window_fill(WINDOW *win,
 		char	   *ptr;
 		char	   *rowstr;
 		bool		is_cursor_row;
+		LineInfo   *lineinfo = NULL;
+		bool		is_bookmark_row;
 
 		is_cursor_row = row == cursor_row;
 
@@ -1149,19 +1181,41 @@ window_fill(WINDOW *win,
 		}
 
 		if (lnb != NULL && lnb_row < lnb->nrows)
-			rowstr = lnb->rows[lnb_row++];
+		{
+			rowstr = lnb->rows[lnb_row];
+			if (lnb->lineinfo != NULL)
+				lineinfo = &lnb->lineinfo[lnb_row];
+			lnb_row += 1;
+		}
 		else
 			rowstr = NULL;
 
-		if (!is_footer)
+		is_bookmark_row = (lineinfo != NULL && lineinfo->mask & LINEINFO_BOOKMARK != 0) ? true : false;
+
+		if (is_bookmark_row)
 		{
-			if (desc->border_type == 2)
-				active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+			if (!is_footer)
+			{
+				if (desc->border_type == 2)
+					active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+				else
+					active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+			}
 			else
 				active_attr = is_cursor_row ? cursor_data_attr : data_attr;
 		}
 		else
-			active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+		{
+			if (!is_footer)
+			{
+				if (desc->border_type == 2)
+					active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+				else
+					active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+			}
+			else
+				active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+		}
 
 		wattron(win, active_attr);
 
@@ -1281,7 +1335,9 @@ window_fill(WINDOW *win,
 
 							if (!is_footer)
 							{
-								if (is_cursor_row)
+								if (is_bookmark_row)
+									new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+								else if (is_cursor_row)
 									new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
 								else
 									new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
@@ -1360,8 +1416,8 @@ window_fill(WINDOW *win,
 				wclrtoeol(win);
 
 			/* draw cursor line to screen end of line */
-			if (is_cursor_row && i < maxx)
-				mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+			if (is_cursor_row && i < maxx )
+				mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(is_bookmark_row ? cursor_bookmark_attr : cursor_data_attr), 0);
 
 			if (free_row != NULL)
 			{
@@ -2498,7 +2554,7 @@ main(int argc, char *argv[])
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
-		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, false, NULL);
+		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, false, NULL);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
 					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
@@ -2506,14 +2562,17 @@ main(int argc, char *argv[])
 					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
 					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
+					COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
 					false, &scrdesc);
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
 					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
 					COLOR_PAIR(6) | A_BOLD,
+					COLOR_PAIR(14) | A_BOLD,
+					COLOR_PAIR(14) | A_BOLD | A_REVERSE,
 					false, NULL);
-		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, false, NULL);
+		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, false, NULL);
 
 		if (scrdesc.footer != NULL)
 		{
@@ -2529,7 +2588,7 @@ main(int argc, char *argv[])
 								footer_cursor_col,
 								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
-								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, true,
+								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, 0, 0, true,
 								NULL);
 		}
 
@@ -2570,7 +2629,7 @@ main(int argc, char *argv[])
 				{
 					int		second_char = getch();
 
-					if (second_char == 'm')
+					if (second_char == 'm')		/* ALT m */
 					{
 						if (use_mouse)
 						{
@@ -2585,6 +2644,32 @@ main(int argc, char *argv[])
 
 						c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
 						refresh_scr = true;
+					}
+					if (second_char == 'k')		/* ALT k */
+					{
+						LineBuffer *lnb = &desc.rows;
+						int			_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset;
+
+						/* skip first x LineBuffers */
+						while (_cursor_row > 1000)
+						{
+							lnb = lnb->next;
+							_cursor_row -= 1000;
+						}
+
+						if (lnb->lineinfo == NULL)
+						{
+							lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
+							if (lnb->lineinfo == NULL)
+							{
+								endwin();
+								fprintf(stderr, "Out of memory");
+								exit(EXIT_FAILURE);
+							}
+							memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
+						}
+
+						lnb->lineinfo[_cursor_row].mask ^= LINEINFO_BOOKMARK;
 					}
 					else if (second_char == 27 || second_char == '0')
 						c2 = 'q';
