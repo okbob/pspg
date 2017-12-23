@@ -2244,6 +2244,7 @@ main(int argc, char *argv[])
 	int		maxx, maxy;
 	int		c;
 	int		c2 = 0;
+	int		c3 = 0;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
@@ -2438,7 +2439,8 @@ main(int argc, char *argv[])
 
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
+		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT |
+				  BUTTON1_DOUBLE_CLICKED, NULL);
 
 #else
 
@@ -2446,7 +2448,7 @@ main(int argc, char *argv[])
 
 #endif
 
-		mouseinterval(10);
+		//mouseinterval();
 
 	}
 
@@ -2627,7 +2629,15 @@ main(int argc, char *argv[])
 		{
 			case 27:
 				{
-					int		second_char = getch();
+					int		second_char;
+
+					if (c3 != 0)
+					{
+						second_char = c3;
+						c3 = 0;
+					}
+					else
+						second_char = getch();
 
 					if (second_char == 'm')		/* ALT m */
 					{
@@ -3382,7 +3392,7 @@ exit:
 
 #endif
 
-						if (event.bstate & BUTTON1_PRESSED)
+						if (event.bstate & BUTTON1_CLICKED || event.bstate & BUTTON1_DOUBLE_CLICKED)
 						{
 							int		max_cursor_row;
 							int		max_first_row;
@@ -3406,6 +3416,12 @@ exit:
 								max_first_row = 0;
 							if (first_row > max_first_row)
 								first_row = max_first_row;
+
+							if (event.bstate & BUTTON_ALT && event.bstate & BUTTON1_DOUBLE_CLICKED)
+							{
+								c2 = 27;
+								c3 = 'k';
+							}
 						}
 					}
 				}
