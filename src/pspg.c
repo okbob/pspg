@@ -2448,8 +2448,6 @@ main(int argc, char *argv[])
 
 #endif
 
-		//mouseinterval();
-
 	}
 
 	if (desc.headline != NULL)
@@ -2655,7 +2653,7 @@ main(int argc, char *argv[])
 						c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
 						refresh_scr = true;
 					}
-					if (second_char == 'k')		/* ALT k */
+					if (second_char == 'k')		/* ALT k - (un)set bookmark */
 					{
 						LineBuffer *lnb = &desc.rows;
 						int			_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset;
@@ -2680,6 +2678,124 @@ main(int argc, char *argv[])
 						}
 
 						lnb->lineinfo[_cursor_row].mask ^= LINEINFO_BOOKMARK;
+					}
+					else if (second_char == 'i')		/* ALT i - prev bookmark */
+					{
+						LineBuffer *lnb = &desc.rows;
+						int		rownum_cursor_row;
+						int		rownum = 0;
+						bool	found = false;
+
+						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset - 1;
+
+						if (rownum_cursor_row >= 0)
+						{
+							/* skip first x LineBuffers */
+							while (rownum_cursor_row > 1000 && lnb != NULL)
+							{
+								lnb = lnb->next;
+								rownum_cursor_row -= 1000;
+								rownum += 1000;
+							}
+
+							rownum += rownum_cursor_row;
+
+							while (lnb != NULL)
+							{
+								if (lnb->lineinfo != NULL)
+								{
+									if (rownum_cursor_row < 0)
+										rownum_cursor_row = lnb->nrows - 1;
+
+									while (rownum_cursor_row >= 0)
+									{
+										if (lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK != 0)
+										{
+											found = true;
+											goto exit_search_prev_bookmark;
+										}
+										rownum -= 1;
+										rownum_cursor_row -= 1;
+									}
+								}
+								else
+									rownum -= 1000;
+
+								lnb = lnb->prev;
+							}
+						}
+
+exit_search_prev_bookmark:
+
+						if (found)
+						{
+							cursor_row = rownum - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset;
+							if (cursor_row < first_row)
+								first_row = cursor_row;
+						}
+
+						break;
+					}
+					else if (second_char == 'j')		/* ALT j - next bookmark */
+					{
+						LineBuffer *lnb = &desc.rows;
+						int		rownum_cursor_row;
+						int		rownum = 0;
+						bool	found = false;
+
+						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset + 1;
+
+						/* skip first x LineBuffers */
+						while (rownum_cursor_row > 1000 && lnb != NULL)
+						{
+							lnb = lnb->next;
+							rownum_cursor_row -= 1000;
+							rownum += 1000;
+						}
+
+						rownum += rownum_cursor_row;
+
+						while (lnb != NULL)
+						{
+							if (lnb->lineinfo != NULL)
+							{
+								while (rownum_cursor_row < lnb->nrows)
+								{
+									if (lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK != 0)
+									{
+										found = true;
+										goto exit_search_next_bookmark;
+									}
+									rownum += 1;
+									rownum_cursor_row += 1;
+								}
+							}
+							else
+								rownum += 1000;
+
+							rownum_cursor_row = 0;
+							lnb = lnb->next;
+						}
+
+exit_search_next_bookmark:
+
+						if (found)
+						{
+							int		max_first_row;
+
+							cursor_row = rownum - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset;
+
+							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
+								first_row = cursor_row - maxy + scrdesc.fix_rows_rows + 3;
+
+							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+							if (max_first_row < 0)
+								max_first_row = 0;
+							if (first_row > max_first_row)
+								first_row = max_first_row;
+						}
+
+						break;
 					}
 					else if (second_char == 27 || second_char == '0')
 						c2 = 'q';

@@ -15,7 +15,6 @@ Possible ToDo
 * draw scrollbars FoxPro style
 * CSV support (own formatter)
 * regexp marking (green background, only pattern, whole row)
-* mark lines (red background)
 * mc
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
