@@ -1202,7 +1202,7 @@ window_fill(WINDOW *win,
 					active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
 			}
 			else
-				active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+				active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
 		}
 		else
 		{
@@ -1343,7 +1343,12 @@ window_fill(WINDOW *win,
 									new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
 							}
 							else
-								new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+							{
+								if (is_bookmark_row)
+									new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+								else
+									new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+							}
 
 							if (new_attr != active_attr)
 							{
@@ -1415,9 +1420,16 @@ window_fill(WINDOW *win,
 			if (i < maxx)
 				wclrtoeol(win);
 
-			/* draw cursor line to screen end of line */
-			if (is_cursor_row && i < maxx )
-				mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(is_bookmark_row ? cursor_bookmark_attr : cursor_data_attr), 0);
+			/* draw cursor or bookmark line to screen end of line */
+			if (i < maxx)
+			{
+				if (is_cursor_row && !is_bookmark_row)
+					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+				else if (!is_cursor_row && is_bookmark_row)
+					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(bookmark_attr), 0);
+				else if (is_cursor_row && is_bookmark_row)
+					mvwchgat(win, row - 1, i, -1, cursor_bookmark_attr, PAIR_NUMBER(cursor_bookmark_attr), 0);
+			}
 
 			if (free_row != NULL)
 			{
@@ -2588,7 +2600,10 @@ main(int argc, char *argv[])
 								footer_cursor_col,
 								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 								color, 0, 0,
-								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0, 0, 0, true,
+								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
+								COLOR_PAIR(14) | A_BOLD,
+								COLOR_PAIR(14) | A_BOLD | A_REVERSE,
+								true,
 								NULL);
 		}
 
@@ -2656,7 +2671,7 @@ main(int argc, char *argv[])
 					if (second_char == 'k')		/* ALT k - (un)set bookmark */
 					{
 						LineBuffer *lnb = &desc.rows;
-						int			_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset;
+						int			_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
 
 						/* skip first x LineBuffers */
 						while (_cursor_row > 1000)
@@ -2686,7 +2701,7 @@ main(int argc, char *argv[])
 						int		rownum = 0;
 						bool	found = false;
 
-						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset - 1;
+						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset - 1;
 
 						if (rownum_cursor_row >= 0)
 						{
@@ -2729,7 +2744,7 @@ exit_search_prev_bookmark:
 
 						if (found)
 						{
-							cursor_row = rownum - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset;
+							cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
 							if (cursor_row < first_row)
 								first_row = cursor_row;
 						}
@@ -2743,7 +2758,7 @@ exit_search_prev_bookmark:
 						int		rownum = 0;
 						bool	found = false;
 
-						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows - desc.title_rows + fix_rows_offset + 1;
+						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset + 1;
 
 						/* skip first x LineBuffers */
 						while (rownum_cursor_row > 1000 && lnb != NULL)
@@ -2783,10 +2798,10 @@ exit_search_next_bookmark:
 						{
 							int		max_first_row;
 
-							cursor_row = rownum - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset;
+							cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
 
-							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
-								first_row = cursor_row - maxy + scrdesc.fix_rows_rows + 3;
+							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
+								first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
 
 							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 							if (max_first_row < 0)
@@ -3298,10 +3313,9 @@ exit:
 				}
 			case 'n':
 				{
-					int		current_row = scrdesc.fix_rows_rows;
-					int		nrows;
-					int		max_first_row;
-					LineBuffer   *rows = &desc.rows;
+					int		rownum_cursor_row;
+					int		rownum = 0;
+					LineBuffer   *lnb = &desc.rows;
 					bool	found = false;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
@@ -3311,44 +3325,65 @@ exit:
 						break;
 					}
 
-					for (nrows = 0; nrows < desc.last_row - scrdesc.fix_rows_rows; nrows++, current_row++)
+					rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset + 1;
+
+					/* skip first x LineBuffers */
+					while (rownum_cursor_row > 1000 && lnb != NULL)
 					{
-						if (current_row == 1000)
+						lnb = lnb->next;
+						rownum_cursor_row -= 1000;
+						rownum += 1000;
+					}
+
+					rownum += rownum_cursor_row;
+
+					while (lnb != NULL)
+					{
+						while (rownum_cursor_row < lnb->nrows)
 						{
-							rows = rows->next;
-							current_row = 0;
+							if (ignore_case || (ignore_lower_case && !scrdesc.has_upperchr))
+							{
+								if (utf8_nstrstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm))
+								{
+									found = true;
+									goto found_next_pattern;
+								}
+							}
+							else
+							{
+								if (strstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm))
+								{
+									found = true;
+									goto found_next_pattern;
+								}
+							}
+
+							rownum += 1;
+							rownum_cursor_row += 1;
 						}
 
-						if (nrows <= cursor_row) /* skip to start */
-							continue;
+						rownum_cursor_row = 0;
+						lnb = lnb->next;
+					}
 
-						if (ignore_case || (ignore_lower_case && !scrdesc.has_upperchr))
-						{
-							if (!utf8_nstrstr(rows->rows[current_row], scrdesc.searchterm))
-								continue;
-						}
-						else
-						{
-							if (!strstr(rows->rows[current_row], scrdesc.searchterm))
-								continue;
-						}
+found_next_pattern:
 
-						cursor_row = nrows - desc.title_rows;
-						found = true;
+					if (found)
+					{
+						int		max_first_row;
 
-						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - 3)
-							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + 3;
+						cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
+
+						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
+							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
 
 						max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
 						if (max_first_row < 0)
 							max_first_row = 0;
 						if (first_row > max_first_row)
 							first_row = max_first_row;
-
-						break;
 					}
-
-					if (!found)
+					else
 						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
 
 					refresh_scr = true;
