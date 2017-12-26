@@ -129,7 +129,12 @@ typedef struct
 	WINDOW *bottom_bar;				/* bottom bar window */
 	int		theme;					/* color theme number */
 	char	searchterm[256];		/* currently active search input */
+	int		searchterm_char_size;	/* size of searchterm in chars */
 	bool	has_upperchr;			/* true, when search term has upper char */
+	bool	found;					/* true, when last search was successfull */
+	int		found_start_x;			/* x position of found pattern */
+	int		found_chars;			/* number of chars of pattern */
+	int		found_row;				/* row of found pattern */
 	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
 } ScrDesc;
@@ -592,8 +597,6 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 		*ei_maxx = pos - 1;
 	}
 
-
-
 	return true;
 }
 
@@ -681,6 +684,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
 		init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
 		init_pair(14, COLOR_BLACK, COLOR_WHITE);		/* color of bookmark lines */
+		init_pair(15, COLOR_WHITE, COLOR_BLACK);		/* color of marked search pattern */
 	}
 	else if (theme == 1)
 	{
@@ -698,6 +702,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_YELLOW, COLOR_CYAN);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 2)
 	{
@@ -716,6 +721,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 		init_pair(14, COLOR_WHITE, COLOR_MAGENTA);
+		init_pair(15, COLOR_YELLOW, COLOR_RED);
 	}
 	else if (theme == 3)
 	{
@@ -733,6 +739,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_CYAN, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_WHITE, COLOR_BLUE);
 	}
 	else if (theme == 4)
 	{
@@ -750,6 +757,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 5)
 	{
@@ -767,6 +775,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_BLACK, COLOR_CYAN);
 		init_pair(13, COLOR_BLACK, COLOR_CYAN);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 6)
 	{
@@ -784,6 +793,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 7)
 	{
@@ -801,6 +811,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_GREEN);
 		init_pair(13, COLOR_WHITE, COLOR_GREEN);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_WHITE, COLOR_CYAN);
 	}
 	else if (theme == 8)
 	{
@@ -818,6 +829,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_WHITE, COLOR_CYAN);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 9)
 	{
@@ -835,6 +847,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_CYAN);
 		init_pair(13, COLOR_WHITE, COLOR_CYAN);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 10)
 	{
@@ -852,6 +865,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_MAGENTA);
 	}
 	else if (theme == 11)
 	{
@@ -869,6 +883,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(13, COLOR_WHITE, COLOR_MAGENTA);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == 12)
 	{
@@ -886,6 +901,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLUE);
 		init_pair(13, COLOR_WHITE, COLOR_BLUE);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_MAGENTA);
 	}
 	else if (theme == 13)
 	{
@@ -903,6 +919,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 	else if (theme == MAX_STYLE)
 	{
@@ -920,6 +937,7 @@ initialize_color_pairs(int theme)
 		init_pair(12, COLOR_WHITE, COLOR_BLACK);
 		init_pair(13, COLOR_WHITE, COLOR_BLACK);
 		init_pair(14, COLOR_WHITE, COLOR_RED);
+		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 	}
 
 }
@@ -1129,6 +1147,7 @@ window_fill(WINDOW *win,
 			attr_t cursor_expi_attr,		/* colors for cursor on expanded headers */
 			attr_t bookmark_attr,			/* colors for bookmark */
 			attr_t cursor_bookmark_attr,	/* colors for cursor on bookmark line */
+			attr_t found_str_attr,			/* colors for marked string */
 			bool is_footer,					/* true if window is footer */
 			ScrDesc *scrdesc)				/* used for searching records limits in expanded mode */
 {
@@ -1168,9 +1187,10 @@ window_fill(WINDOW *win,
 		int			bytes;
 		char	   *ptr;
 		char	   *rowstr;
-		bool		is_cursor_row;
 		LineInfo   *lineinfo = NULL;
-		bool		is_bookmark_row;
+		bool		is_bookmark_row = false;
+		bool		is_cursor_row = false;
+		bool		is_found_row = false;
 
 		is_cursor_row = row == cursor_row;
 
@@ -1229,6 +1249,9 @@ window_fill(WINDOW *win,
 			bool	is_expand_head;
 			int		ei_min, ei_max;
 			int		left_spaces;							/* aux left spaces */
+
+			if (scrdesc != NULL)
+				is_found_row = scrdesc->found && scrdesc->found_row == effective_row;
 
 			if (desc->is_expanded_mode)
 			{
@@ -1348,6 +1371,12 @@ window_fill(WINDOW *win,
 									new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
 								else
 									new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+							}
+
+							if (is_found_row && htrpos >= scrdesc->found_start_x &&
+									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
+							{
+								new_attr = is_cursor_row ? new_attr | A_REVERSE : found_str_attr;
 							}
 
 							if (new_attr != active_attr)
@@ -2566,7 +2595,7 @@ main(int argc, char *argv[])
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
-		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, false, NULL);
+		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, false, NULL);
 		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
 					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
@@ -2575,7 +2604,9 @@ main(int argc, char *argv[])
 					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 					COLOR_PAIR(6) | A_BOLD,
 					COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
+					COLOR_PAIR(15) | A_BOLD,
 					false, &scrdesc);
+
 		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
 					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
 					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
@@ -2583,8 +2614,9 @@ main(int argc, char *argv[])
 					COLOR_PAIR(6) | A_BOLD,
 					COLOR_PAIR(14) | A_BOLD,
 					COLOR_PAIR(14) | A_BOLD | A_REVERSE,
-					false, NULL);
-		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, false, NULL);
+					COLOR_PAIR(15) | A_BOLD,
+					false, &scrdesc);
+		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
 
 		if (scrdesc.footer != NULL)
 		{
@@ -2603,8 +2635,9 @@ main(int argc, char *argv[])
 								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
 								COLOR_PAIR(14) | A_BOLD,
 								COLOR_PAIR(14) | A_BOLD | A_REVERSE,
+								COLOR_PAIR(15) | A_BOLD,
 								true,
-								NULL);
+								&scrdesc);
 		}
 
 
@@ -3305,6 +3338,7 @@ exit:
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 					}
 
 					search_direction = SEARCH_FORWARD;
@@ -3316,7 +3350,8 @@ exit:
 					int		rownum_cursor_row;
 					int		rownum = 0;
 					LineBuffer   *lnb = &desc.rows;
-					bool	found = false;
+
+					scrdesc.found = false;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (c == 'n' && search_direction == SEARCH_BACKWARD && !redirect_mode)
@@ -3341,19 +3376,25 @@ exit:
 					{
 						while (rownum_cursor_row < lnb->nrows)
 						{
+							const char	   *str;
+
 							if (ignore_case || (ignore_lower_case && !scrdesc.has_upperchr))
 							{
-								if (utf8_nstrstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm))
+								if ((str = utf8_nstrstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm)))
 								{
-									found = true;
+									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row],
+																				str);
+									scrdesc.found = true;
 									goto found_next_pattern;
 								}
 							}
 							else
 							{
-								if (strstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm))
+								if ((str = strstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm)))
 								{
-									found = true;
+									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row],
+																				str);
+									scrdesc.found = true;
 									goto found_next_pattern;
 								}
 							}
@@ -3368,11 +3409,12 @@ exit:
 
 found_next_pattern:
 
-					if (found)
+					if (scrdesc.found)
 					{
 						int		max_first_row;
 
 						cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
+						scrdesc.found_row = rownum;
 
 						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
 							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
@@ -3399,6 +3441,7 @@ found_next_pattern:
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 					}
 
 					search_direction = SEARCH_BACKWARD;
@@ -3410,7 +3453,8 @@ found_next_pattern:
 					int		rowidx;
 					int		search_row;
 					LineBuffer   *rows = &desc.rows;
-					bool	found = false;
+
+					scrdesc.found = false;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (c == 'N' && search_direction == SEARCH_BACKWARD && !redirect_mode)
@@ -3430,6 +3474,8 @@ found_next_pattern:
 
 					while (search_row > 0)
 					{
+						const char *str;
+
 						if (rowidx < 0)
 						{
 							rows = rows->prev;
@@ -3438,14 +3484,17 @@ found_next_pattern:
 						}
 
 						if (((ignore_case || (ignore_lower_case && !scrdesc.has_upperchr)) 
-										&& utf8_nstrstr(rows->rows[rowidx], scrdesc.searchterm) != NULL) 
-							|| strstr(rows->rows[rowidx], scrdesc.searchterm) != NULL)
+										&& (str = utf8_nstrstr(rows->rows[rowidx], scrdesc.searchterm)) != NULL) 
+							|| (str = strstr(rows->rows[rowidx], scrdesc.searchterm)) != NULL)
 						{
 							cursor_row = search_row;
 							if (first_row > cursor_row)
 								first_row = cursor_row;
 
-							found = true;
+							scrdesc.found_start_x = utf8len_start_stop(rows->rows[rowidx], str);
+							scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+							scrdesc.found = true;
+
 							break;
 						}
 
@@ -3453,7 +3502,7 @@ found_next_pattern:
 						search_row -= 1;
 					}
 
-					if (!found)
+					if (!scrdesc.found)
 						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
 
 					refresh_scr = true;

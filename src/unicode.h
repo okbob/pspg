@@ -18,6 +18,7 @@
 #include <stdbool.h>
 
 size_t utf8len(char *s);
+size_t utf8len_start_stop(const char *start, const char *stop);
 int utf8charlen(char ch);
 int utf_dsplen(const char *s);
 const char *utf8_nstrstr(const char *haystack, const char *needle);

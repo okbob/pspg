@@ -30,6 +30,20 @@ utf8len(char *s)
 }
 
 /*
+ * Returns length of utf8 string in chars.
+ */
+size_t
+utf8len_start_stop(const char *start, const char *stop)
+{
+	size_t len = 0;
+
+	for (; *start && start < stop ; ++start)
+		if ((*start & 0xC0) != 0x80)
+			++len;
+	return len;
+}
+
+/*
  * Returns length of utf8 char in bytes
  */
 int
