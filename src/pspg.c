@@ -3542,6 +3542,7 @@ found_next_pattern:
 								scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
 								scrdesc.found = true;
 								fresh_found = true;
+								fresh_found_cursor_col = -1;
 
 								str += scrdesc.searchterm_size;
 							}
@@ -3723,7 +3724,6 @@ found_next_pattern:
 				}
 			}
 
-			/* doesn't work yet */
 			if (fresh_found  && _is_footer_cursor && scrdesc.footer != NULL)
 			{
 				getmaxyx(scrdesc.footer, maxy, maxx);
