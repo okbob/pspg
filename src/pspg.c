@@ -130,10 +130,11 @@ typedef struct
 	int		theme;					/* color theme number */
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
+	int		searchterm_size;		/* size of searchterm in bytes */
 	bool	has_upperchr;			/* true, when search term has upper char */
 	bool	found;					/* true, when last search was successfull */
 	int		found_start_x;			/* x position of found pattern */
-	int		found_chars;			/* number of chars of pattern */
+	int		found_start_bytes;		/* bytes position of found pattern */
 	int		found_row;				/* row of found pattern */
 	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
@@ -1350,51 +1351,40 @@ window_fill(WINDOW *win,
 					}
 					else if (!fix_line_attr_style)
 					{
-						int htrpos = srcx + i;
+						int		htrpos = srcx + i;
+						int		new_attr = active_attr;
 
-						if (htrpos < desc->headline_char_size)
+						if (is_bookmark_row)
+							new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+						else if (is_footer)
+							new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+						else if (htrpos < desc->headline_char_size)
 						{
-							int		new_attr;
-
-							if (!is_footer)
-							{
-								if (is_bookmark_row)
-									new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
-								else if (is_cursor_row)
-									new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
-								else
-									new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
-							}
+							if (is_cursor_row )
+								new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
 							else
+								new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+						}
+
+						if (is_found_row && htrpos >= scrdesc->found_start_x &&
+								htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
+							new_attr = is_cursor_row ? new_attr | A_REVERSE : found_str_attr;
+
+						if (new_attr != active_attr)
+						{
+							if (bytes > 0)
 							{
-								if (is_bookmark_row)
-									new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
-								else
-									new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+								waddnstr(win, rowstr, bytes);
+								rowstr += bytes;
+								bytes = 0;
 							}
 
-							if (is_found_row && htrpos >= scrdesc->found_start_x &&
-									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-							{
-								new_attr = is_cursor_row ? new_attr | A_REVERSE : found_str_attr;
-							}
+							/* disable current style */
+							wattroff(win, active_attr);
 
-							if (new_attr != active_attr)
-							{
-								if (bytes > 0)
-								{
-									waddnstr(win, rowstr, bytes);
-									rowstr += bytes;
-									bytes = 0;
-								}
-
-								/* disable current style */
-								wattroff(win, active_attr);
-
-								/* active new style */
-								active_attr = new_attr;
-								wattron(win, active_attr);
-							}
+							/* active new style */
+							active_attr = new_attr;
+							wattron(win, active_attr);
 						}
 					}
 					else
@@ -1435,8 +1425,10 @@ window_fill(WINDOW *win,
 						bytes += len;
 					}
 					else
+					{
 						break;
-				}
+					}
+				} /* end while */
 			}
 			else if (is_cursor_row)
 				/* in this case i is not valid, but it is necessary for cursor line printing */
@@ -2315,6 +2307,8 @@ main(int argc, char *argv[])
 	bool	less_status_bar = false;
 	bool	ignore_case = false;
 	bool	ignore_lower_case = false;
+	bool	fresh_found = false;
+	int		fresh_found_cursor_col = -1;
 
 	static struct option long_options[] =
 	{
@@ -2386,7 +2380,7 @@ main(int argc, char *argv[])
 				n = atoi(optarg);
 				if (n < 0 || n > MAX_STYLE)
 				{
-					fprintf(stderr, "Only color schemas 0 .. %d are supported.\n", MAX_STYLE);
+					fprintf(stderr, "only color schemas 0 .. %d are supported.\n", MAX_STYLE);
 					exit(EXIT_FAILURE);
 				}
 				style = n;
@@ -2460,7 +2454,7 @@ main(int argc, char *argv[])
 	if(!has_colors())
 	{
 		endwin();
-		fprintf(stderr, "Your terminal does not support color\n");
+		fprintf(stderr, "your terminal does not support color\n");
 		exit(1);
 	}
 
@@ -2595,75 +2589,75 @@ main(int argc, char *argv[])
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
-		window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, false, NULL);
-		window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-					COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
-					(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
-					COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
-					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
-					COLOR_PAIR(6) | A_BOLD,
-					COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
-					COLOR_PAIR(15) | A_BOLD,
-					false, &scrdesc);
-
-		window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
-					COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
-					COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
-					COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
-					COLOR_PAIR(6) | A_BOLD,
-					COLOR_PAIR(14) | A_BOLD,
-					COLOR_PAIR(14) | A_BOLD | A_REVERSE,
-					COLOR_PAIR(15) | A_BOLD,
-					false, &scrdesc);
-		window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
-
-		if (scrdesc.footer != NULL)
+		if (c2 == 0)
 		{
-			int		color;
+			window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, false, NULL);
+			window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
+						COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
+						(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
+						COLOR_PAIR(8) | A_BOLD,
+						COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
+						COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
+						COLOR_PAIR(6) | A_BOLD,
+						COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
+						COLOR_PAIR(15) | A_BOLD,
+						false, &scrdesc);
 
-			if (!generic_pager)
-				color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
-			else
-				color = COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
+			window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
+						COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
+						COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
+						COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
+						COLOR_PAIR(6) | A_BOLD,
+						COLOR_PAIR(14) | A_BOLD,
+						COLOR_PAIR(14) | A_BOLD | A_REVERSE,
+						COLOR_PAIR(15) | A_BOLD,
+						false, &scrdesc);
+			window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
 
-			window_fill(scrdesc.footer,
-								first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
-								footer_cursor_col,
-								cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
-								color, 0, 0,
-								COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
-								COLOR_PAIR(14) | A_BOLD,
-								COLOR_PAIR(14) | A_BOLD | A_REVERSE,
-								COLOR_PAIR(15) | A_BOLD,
-								true,
-								&scrdesc);
+			if (scrdesc.footer != NULL)
+			{
+				int		color;
+
+				if (!generic_pager)
+					color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
+				else
+					color = COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
+
+				window_fill(scrdesc.footer,
+									first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
+									footer_cursor_col,
+									cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
+									color, 0, 0,
+									COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
+									COLOR_PAIR(14) | A_BOLD,
+									COLOR_PAIR(14) | A_BOLD | A_REVERSE,
+									COLOR_PAIR(15) | A_BOLD,
+									true,
+									&scrdesc);
+			}
+
+
+			if (scrdesc.luc != NULL)
+				wnoutrefresh(scrdesc.luc);
+			if (scrdesc.rows != NULL)
+				wnoutrefresh(scrdesc.rows);
+			if (scrdesc.fix_cols != NULL)
+				wnoutrefresh(scrdesc.fix_cols);
+			if (scrdesc.fix_rows != NULL)
+				wnoutrefresh(scrdesc.fix_rows);
+			if (scrdesc.footer != NULL)
+				wnoutrefresh(scrdesc.footer);
+
+			doupdate();
+
+			c = getch();
+			redirect_mode = false;
 		}
-
-
-		if (scrdesc.luc != NULL)
-			wnoutrefresh(scrdesc.luc);
-		if (scrdesc.rows != NULL)
-			wnoutrefresh(scrdesc.rows);
-		if (scrdesc.fix_cols != NULL)
-			wnoutrefresh(scrdesc.fix_cols);
-		if (scrdesc.fix_rows != NULL)
-			wnoutrefresh(scrdesc.fix_rows);
-		if (scrdesc.footer != NULL)
-			wnoutrefresh(scrdesc.footer);
-
-		doupdate();
-
-		if (c2 != 0)
+		else
 		{
 			c = c2;
 			c2 = 0;
 			redirect_mode = true;
-		}
-		else
-		{
-			c = getch();
-			redirect_mode = false;
 		}
 
 		if (c == 'q' || c == KEY_F(10) || c == ERR)
@@ -2719,8 +2713,8 @@ main(int argc, char *argv[])
 							if (lnb->lineinfo == NULL)
 							{
 								endwin();
-								fprintf(stderr, "Out of memory");
-								exit(EXIT_FAILURE);
+								fprintf(stderr, "out of memory");
+								exit(1);
 							}
 							memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 						}
@@ -3338,6 +3332,7 @@ exit:
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 					}
 
@@ -3349,9 +3344,8 @@ exit:
 				{
 					int		rownum_cursor_row;
 					int		rownum = 0;
+					int		skip_bytes = 0;
 					LineBuffer   *lnb = &desc.rows;
-
-					scrdesc.found = false;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (c == 'n' && search_direction == SEARCH_BACKWARD && !redirect_mode)
@@ -3360,7 +3354,11 @@ exit:
 						break;
 					}
 
-					rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset + 1;
+					rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+					if (scrdesc.found && rownum_cursor_row == scrdesc.found_row)
+						skip_bytes = scrdesc.found_start_bytes + scrdesc.searchterm_size;
+
+					scrdesc.found = false;
 
 					/* skip first x LineBuffers */
 					while (rownum_cursor_row > 1000 && lnb != NULL)
@@ -3380,20 +3378,20 @@ exit:
 
 							if (ignore_case || (ignore_lower_case && !scrdesc.has_upperchr))
 							{
-								if ((str = utf8_nstrstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm)))
+								if ((str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm)))
 								{
-									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row],
-																				str);
+									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
+									scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
 									scrdesc.found = true;
 									goto found_next_pattern;
 								}
 							}
 							else
 							{
-								if ((str = strstr(lnb->rows[rownum_cursor_row], scrdesc.searchterm)))
+								if ((str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm)))
 								{
-									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row],
-																				str);
+									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
+									scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
 									scrdesc.found = true;
 									goto found_next_pattern;
 								}
@@ -3401,6 +3399,7 @@ exit:
 
 							rownum += 1;
 							rownum_cursor_row += 1;
+							skip_bytes = 0;
 						}
 
 						rownum_cursor_row = 0;
@@ -3415,6 +3414,8 @@ found_next_pattern:
 
 						cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
 						scrdesc.found_row = rownum;
+						fresh_found = true;
+						fresh_found_cursor_col = -1;
 
 						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
 							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
@@ -3426,7 +3427,12 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
+					{
+						if (!no_sound)
+							beep();
+
 						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
+					}
 
 					refresh_scr = true;
 				}
@@ -3441,6 +3447,7 @@ found_next_pattern:
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 					}
 
@@ -3453,8 +3460,7 @@ found_next_pattern:
 					int		rowidx;
 					int		search_row;
 					LineBuffer   *rows = &desc.rows;
-
-					scrdesc.found = false;
+					int		cut_bytes = 0;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (c == 'N' && search_direction == SEARCH_BACKWARD && !redirect_mode)
@@ -3463,8 +3469,22 @@ found_next_pattern:
 						break;
 					}
 
-					rowidx = cursor_row + scrdesc.fix_rows_rows + desc.title_rows - 1;
-					search_row = cursor_row - 1;
+					rowidx = cursor_row + scrdesc.fix_rows_rows + desc.title_rows;
+					search_row = cursor_row;
+
+					/*
+					 * when we can search on found line, the use it,
+					 * else try start searching from previous row.
+					 */
+					if (scrdesc.found && rowidx == scrdesc.found_row && scrdesc.found_start_bytes > 0)
+						cut_bytes = scrdesc.found_start_bytes;
+					else
+					{
+						rowidx -= 1;
+						search_row -= 1;
+					}
+
+					scrdesc.found = false;
 
 					while (rowidx > 1000)
 					{
@@ -3472,9 +3492,11 @@ found_next_pattern:
 						rowidx -= 1000;
 					}
 
-					while (search_row > 0)
+					while (search_row >= 0)
 					{
 						const char *str;
+						char *row;
+						bool	free_row;
 
 						if (rowidx < 0)
 						{
@@ -3483,27 +3505,68 @@ found_next_pattern:
 							continue;
 						}
 
-						if (((ignore_case || (ignore_lower_case && !scrdesc.has_upperchr)) 
-										&& (str = utf8_nstrstr(rows->rows[rowidx], scrdesc.searchterm)) != NULL) 
-							|| (str = strstr(rows->rows[rowidx], scrdesc.searchterm)) != NULL)
+						if (cut_bytes != 0)
 						{
-							cursor_row = search_row;
-							if (first_row > cursor_row)
-								first_row = cursor_row;
-
-							scrdesc.found_start_x = utf8len_start_stop(rows->rows[rowidx], str);
-							scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
-							scrdesc.found = true;
-
-							break;
+							row = malloc(strlen(rows->rows[rowidx]) + 1);
+							if (row == NULL)
+							{
+								endwin();
+								fprintf(stderr, "out of memory");
+								exit(1);
+							}
+							strcpy(row, rows->rows[rowidx]);
+							row[cut_bytes] = '\0';
+							free_row = true;
 						}
+						else
+						{
+							row = rows->rows[rowidx];
+							free_row = false;
+						}
+
+						str = row;
+
+						/* try to find most right pattern */
+						while (1)
+						{
+							if (((ignore_case || (ignore_lower_case && !scrdesc.has_upperchr)) 
+											&& (str = utf8_nstrstr(str, scrdesc.searchterm)) != NULL) 
+								|| (str = strstr(str, scrdesc.searchterm)) != NULL)
+							{
+								cursor_row = search_row;
+								if (first_row > cursor_row)
+									first_row = cursor_row;
+
+								scrdesc.found_start_x = utf8len_start_stop(row, str);
+								scrdesc.found_start_bytes = str - row;
+								scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+								scrdesc.found = true;
+								fresh_found = true;
+
+								str += scrdesc.searchterm_size;
+							}
+							else
+								break;
+						}
+
+						if (free_row)
+							free(row);
+
+						if (scrdesc.found)
+							break;
 
 						rowidx -= 1;
 						search_row -= 1;
+						cut_bytes = 0;
 					}
 
 					if (!scrdesc.found)
+					{
+						if (!no_sound)
+							beep();
+
 						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
+					}
 
 					refresh_scr = true;
 				}
@@ -3626,6 +3689,92 @@ found_next_pattern:
 					}
 				}
 				break;
+		} /* end switch */
+
+		if (fresh_found && scrdesc.found)
+		{
+			int		maxy, maxx;
+			bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+
+			if (fresh_found && scrdesc.fix_cols != NULL)
+			{
+				getmaxyx(scrdesc.fix_cols, maxy, maxx);
+
+				if (scrdesc.found_start_x + scrdesc.searchterm_char_size <= maxx)
+					fresh_found = false;
+			}
+
+			if (fresh_found && !_is_footer_cursor &&  scrdesc.rows != NULL)
+			{
+				getmaxyx(scrdesc.rows, maxy, maxx);
+
+				if (cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
+						cursor_col + scrdesc.fix_cols_cols + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
+				{
+					fresh_found = false;
+				}
+				else
+				{
+					/* we would to move cursor_col to left or right to be partially visible */
+					if (cursor_col + scrdesc.fix_cols_cols > scrdesc.found_start_x)
+						c2 = KEY_LEFT;
+					else if (cursor_col + scrdesc.fix_cols_cols + maxx < scrdesc.found_start_x + scrdesc.searchterm_char_size)
+						c2 = KEY_RIGHT;
+				}
+			}
+
+			/* doesn't work yet */
+			if (fresh_found  && _is_footer_cursor && scrdesc.footer != NULL)
+			{
+				getmaxyx(scrdesc.footer, maxy, maxx);
+
+				if (footer_cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
+						footer_cursor_col + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
+				{
+					fresh_found = false;
+				}
+				else
+				{
+					/* we would to move cursor_col to left or right to be partially visible */
+					if (footer_cursor_col > scrdesc.found_start_x)
+						c2 = KEY_LEFT;
+					else if (footer_cursor_col + maxx < scrdesc.found_start_x + scrdesc.searchterm_char_size)
+						c2 = KEY_RIGHT;
+				}
+			}
+
+			if (c2 != 0)
+			{
+				/* protect agains infinity loop */
+				if (fresh_found_cursor_col != -1)
+				{
+					/* the direction should not be changed */
+					if (_is_footer_cursor)
+					{
+						if ((fresh_found_cursor_col > footer_cursor_col && c2 == KEY_RIGHT) ||
+							(fresh_found_cursor_col < footer_cursor_col && c2 == KEY_LEFT) ||
+							(fresh_found_cursor_col == footer_cursor_col))
+							{
+								c2 = 0;
+								fresh_found = false;
+							}
+						}
+					else
+					{
+						if ((fresh_found_cursor_col > cursor_col && c2 == KEY_RIGHT) ||
+							(fresh_found_cursor_col < cursor_col && c2 == KEY_LEFT) ||
+							(fresh_found_cursor_col == cursor_col))
+						{
+							c2 = 0;
+							fresh_found = false;
+						}
+					}
+				}
+				else
+					fresh_found_cursor_col = _is_footer_cursor? footer_cursor_col : cursor_col;
+			}
+			else
+				fresh_found = false;
 		}
 
 		print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
