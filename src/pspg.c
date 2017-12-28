@@ -1421,7 +1421,7 @@ window_fill(WINDOW *win,
 				i = 0;
 				while (i < maxx)
 				{
-					if (is_expand_head)
+					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
 					{
 						int		pos = srcx + i;
 						int		new_attr;
@@ -2333,6 +2333,8 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 static int
 show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 {
+	int		c;
+
 	wattron(scrdesc->bottom_bar, COLOR_PAIR(13) | A_BOLD);
 
 	if (par != NULL)
@@ -2346,7 +2348,11 @@ show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 
 	refresh();
 
-	return getch();
+	timeout(2000);
+	c = getch();
+	timeout(-1);
+
+	return c == ERR ? 0 : c;
 }
 
 static void
