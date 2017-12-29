@@ -27,11 +27,7 @@
 
 #include "unicode.h"
 
-#define STYLE			1
 #define PSPG_VERSION "0.9.1"
-
-//#define COLORIZED_NO_ALTERNATE_SCREEN
-//#define DEBUG_COLORS				1
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -127,7 +123,6 @@ typedef struct
 	WINDOW *footer;					/* window for footer */
 	WINDOW *top_bar;				/* top bar window */
 	WINDOW *bottom_bar;				/* bottom bar window */
-	int		theme;					/* color theme number */
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */
@@ -138,9 +133,16 @@ typedef struct
 	int		found_row;				/* row of found pattern */
 	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
+} ScrDesc;
+
+typedef struct
+{
 	bool	ignore_case;
 	bool	ignore_lower_case;
-} ScrDesc;
+	bool	no_sound;
+	bool	less_status_bar;
+	int		theme;
+} Options;
 
 static int
 min_int(int a, int b)
@@ -972,7 +974,6 @@ initialize_color_pairs(int theme)
 		init_pair(16, COLOR_BLACK, COLOR_GREEN);
 		init_pair(17, COLOR_WHITE, COLOR_GREEN);
 	}
-
 }
 
 /*
@@ -1168,7 +1169,8 @@ readfile(FILE *fp, DataDesc *desc)
 }
 
 static void
-window_fill(WINDOW *win,
+window_fill(Options *opts,
+			WINDOW *win,
 			int srcy, int srcx,				/* offset to displayed data */
 			int cursor_row,					/* row of row cursor */
 			DataDesc *desc,
@@ -1280,7 +1282,7 @@ window_fill(WINDOW *win,
 
 				while (str != NULL)
 				{
-					if (((scrdesc->ignore_case || (scrdesc->ignore_lower_case && !scrdesc->has_upperchr)) 
+					if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
 								&& (str = utf8_nstrstr(str, scrdesc->searchterm)) != NULL) 
 								|| (str = strstr(str, scrdesc->searchterm)) != NULL)
 					{
@@ -1820,7 +1822,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 }
 
 static void
-draw_data(ScrDesc *scrdesc, DataDesc *desc,
+draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		  int first_data_row, int first_row, int cursor_col,
 		  int footer_cursor_col, int fix_rows_offset)
 {
@@ -1883,8 +1885,8 @@ draw_data(ScrDesc *scrdesc, DataDesc *desc,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
 						  desc,
-						  scrdesc->theme == 2 ? 0 | A_BOLD : 0,
-						  scrdesc->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
+						  opts->theme == 2 ? 0 | A_BOLD : 0,
+						  opts->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
 						  COLOR_PAIR(8) | A_BOLD,
 						  true);
 		}
@@ -2113,7 +2115,7 @@ if_notin_int(int v, const int *s, int v1, int v2)
  * Refresh aux windows like top bar or bottom bar.
  */
 static void
-refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc, bool hide_top_bar)
+refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 {
 	int		maxy, maxx;
 
@@ -2126,15 +2128,15 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc, bool hide_top_bar)
 		scrdesc->top_bar = NULL;
 	}
 
-	if (!hide_top_bar)
+	if (opts->less_status_bar)
+		scrdesc->top_bar_rows = 0;
+	else
 	{
 		scrdesc->top_bar_rows = 1;
 		scrdesc->top_bar = newwin(1, 0, 0, 0);
 		wbkgd(scrdesc->top_bar, COLOR_PAIR(2));
 		wrefresh(scrdesc->top_bar);
 	}
-	else
-		scrdesc->top_bar_rows = 0;
 
 	if (scrdesc->bottom_bar != NULL)
 	{
@@ -2149,9 +2151,9 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc, bool hide_top_bar)
 		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 		mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
 		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 		mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
-		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 		wrefresh(scrdesc->bottom_bar);
 
 		if (desc->headline_transl != NULL)
@@ -2159,9 +2161,9 @@ refresh_aux_windows(ScrDesc *scrdesc, DataDesc *desc, bool hide_top_bar)
 			wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
 			mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
 			wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-			wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 			mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
-			wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(scrdesc->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
 			wrefresh(scrdesc->bottom_bar);
 		}
 	}
@@ -2219,7 +2221,7 @@ is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 }
 
 static void
-print_status(ScrDesc *scrdesc, DataDesc *desc,
+print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset)
 {
 	int		maxy, maxx;
@@ -2234,14 +2236,14 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 
 		(void) maxy;
 
-		if (scrdesc->theme == 2)
+		if (opts->theme == 2)
 			wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
 		if (desc->title[0] != '\0' && desc->title_rows > 0)
 			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->title);
 		else if (desc->filename[0] != '\0')
 			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->filename);
 
-		if (scrdesc->theme == 2)
+		if (opts->theme == 2)
 			wattroff(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
 
 		if (desc->headline_transl)
@@ -2279,7 +2281,7 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 		char	title[65];
 		attr_t	prompt_attr;
 
-		switch (scrdesc->theme)
+		switch (opts->theme)
 		{
 			case 0:
 			case 1:
@@ -2297,7 +2299,6 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 			title[0] = '\0';
 
 		wattron(scrdesc->bottom_bar, prompt_attr);
-
 
 		if (desc->headline_transl)
 		{
@@ -2326,12 +2327,18 @@ print_status(ScrDesc *scrdesc, DataDesc *desc,
 	}
 }
 
+static void
+make_beep(Options *opts)
+{
+	if (!opts->no_sound)
+		beep();
+}
 
 /*
  * It is used for result of action info
  */
 static int
-show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
+show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
 {
 	int		c;
 
@@ -2347,6 +2354,9 @@ show_info_wait(ScrDesc *scrdesc, char *fmt, char *par)
 	wrefresh(scrdesc->bottom_bar);
 
 	refresh();
+
+	if (beep)
+		make_beep(opts);
 
 	timeout(2000);
 	c = getch();
@@ -2370,7 +2380,7 @@ get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 #define SEARCH_FORWARD			1
 #define SEARCH_BACKWARD			2
 
-bool
+static bool
 has_upperchr(char *str)
 {
 	while (*str != '\0')
@@ -2399,15 +2409,14 @@ main(int argc, char *argv[])
 	int		prev_first_row;
 	int		first_data_row;
 	int		i;
-	int		style = STYLE;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
+	Options			opts;
 	int		_columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	FILE   *fp = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
-	bool	no_sound = false;
 	int		fix_rows_offset = 0;
 
 	int		opt;
@@ -2418,7 +2427,6 @@ main(int argc, char *argv[])
 	int		search_direction = SEARCH_FORWARD;
 	bool	redirect_mode;
 	bool	noatty;					/* true, when cannot to get keys from stdin */
-	bool	less_status_bar = false;
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
 
@@ -2435,6 +2443,12 @@ main(int argc, char *argv[])
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
 	};
+
+	opts.ignore_case = false;
+	opts.ignore_lower_case = false;
+	opts.no_sound = false;
+	opts.less_status_bar = false;
+	opts.theme = 1;
 
 	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFiI",
 							  long_options, &option_index)) != -1)
@@ -2465,19 +2479,19 @@ main(int argc, char *argv[])
 				exit(0);
 
 			case 'I':
-				scrdesc.ignore_case = true;
+				opts.ignore_case = true;
 				break;
 			case 'i':
-				scrdesc.ignore_lower_case = true;
+				opts.ignore_lower_case = true;
 				break;
 			case 2:
 				use_mouse = false;
 				break;
 			case 3:
-				no_sound = true;
+				opts.no_sound = true;
 				break;
 			case 4:
-				less_status_bar = true;
+				opts.less_status_bar = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2486,7 +2500,7 @@ main(int argc, char *argv[])
 				no_alternate_screen = true;
 				break;
 			case 'b':
-				style = 0;
+				opts.theme = 0;
 				break;
 			case 's':
 				n = atoi(optarg);
@@ -2495,7 +2509,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "only color schemas 0 .. %d are supported.\n", MAX_STYLE);
 					exit(EXIT_FAILURE);
 				}
-				style = n;
+				opts.theme = n;
 				break;
 			case 'c':
 				n = atoi(optarg);
@@ -2571,7 +2585,7 @@ main(int argc, char *argv[])
 	}
 
 	start_color();
-	initialize_color_pairs(style);
+	initialize_color_pairs(opts.theme);
 
 	clear();
 	cbreak();
@@ -2617,12 +2631,8 @@ main(int argc, char *argv[])
 	trim_footer_rows(&desc);
 
 	memset(&scrdesc, 0, sizeof(ScrDesc));
-	scrdesc.theme = style;
-	refresh_aux_windows(&scrdesc, &desc, less_status_bar);
+	refresh_aux_windows(&opts, &scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
-
-	scrdesc.ignore_case = false;
-	scrdesc.ignore_lower_case = false;
 
 	if (quit_if_one_screen)
 	{
@@ -2694,7 +2704,7 @@ main(int argc, char *argv[])
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
-	print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
+	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
 	while (true)
 	{
@@ -2706,48 +2716,48 @@ main(int argc, char *argv[])
 
 		if (c2 == 0)
 		{
-			window_fill(scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, false, NULL);
-			window_fill(scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-						COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
-						(scrdesc.theme == 2 && generic_pager) ? A_BOLD : 0,
+			window_fill(&opts, scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, false, NULL);
+			window_fill(&opts, scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
+						COLOR_PAIR(3) | if_in_int(opts.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
+						(opts.theme == 2 && generic_pager) ? A_BOLD : 0,
 						COLOR_PAIR(8) | A_BOLD,
-						COLOR_PAIR(6) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
-						COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
+						COLOR_PAIR(6) | if_notin_int(opts.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
+						COLOR_PAIR(11) | if_in_int(opts.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
 						COLOR_PAIR(6) | A_BOLD,
 						COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
 						COLOR_PAIR(15) | A_BOLD,
-						COLOR_PAIR(16) | if_in_int(scrdesc.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						COLOR_PAIR(17) | if_in_int(scrdesc.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(scrdesc.theme, (int[]) {0, -1}, A_REVERSE, 0),
+						COLOR_PAIR(16) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
+						COLOR_PAIR(17) | if_in_int(opts.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
 						false, &scrdesc);
 
-			window_fill(scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
-						COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
-						COLOR_PAIR(5) |  if_notin_int(scrdesc.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
-						COLOR_PAIR(11) | if_in_int(scrdesc.theme, (int[]) {-1}, A_BOLD, 0),
+			window_fill(&opts, scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
+						COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
+						COLOR_PAIR(5) |  if_notin_int(opts.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
+						COLOR_PAIR(11) | if_in_int(opts.theme, (int[]) {-1}, A_BOLD, 0),
 						COLOR_PAIR(6) | A_BOLD,
 						COLOR_PAIR(14) | A_BOLD,
 						COLOR_PAIR(14) | A_BOLD | A_REVERSE,
 						COLOR_PAIR(15) | A_BOLD,
-						COLOR_PAIR(16) | if_in_int(scrdesc.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						COLOR_PAIR(17) | if_in_int(scrdesc.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(scrdesc.theme, (int[]) {0, -1}, A_REVERSE, 0),
+						COLOR_PAIR(16) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
+						COLOR_PAIR(17) | if_in_int(opts.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
 						false, &scrdesc);
-			window_fill(scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((scrdesc.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
+			window_fill(&opts, scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
 
 			if (scrdesc.footer != NULL)
 			{
 				int		color;
 
 				if (!generic_pager)
-					color = COLOR_PAIR(9) | if_in_int(scrdesc.theme, (int[]) { -1}, A_BOLD, 0);
+					color = COLOR_PAIR(9) | if_in_int(opts.theme, (int[]) { -1}, A_BOLD, 0);
 				else
-					color = COLOR_PAIR(3) | if_in_int(scrdesc.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
+					color = COLOR_PAIR(3) | if_in_int(opts.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
 
-				window_fill(scrdesc.footer,
+				window_fill(&opts, scrdesc.footer,
 									first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 									footer_cursor_col,
 									cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
 									color, 0, 0,
-									COLOR_PAIR(10) | if_notin_int(scrdesc.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
+									COLOR_PAIR(10) | if_notin_int(opts.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
 									COLOR_PAIR(14) | A_BOLD,
 									COLOR_PAIR(14) | A_BOLD | A_REVERSE,
 									COLOR_PAIR(15) | A_BOLD,
@@ -2756,7 +2766,6 @@ main(int argc, char *argv[])
 									true,
 									&scrdesc);
 			}
-
 
 			if (scrdesc.luc != NULL)
 				wnoutrefresh(scrdesc.luc);
@@ -2813,7 +2822,7 @@ main(int argc, char *argv[])
 							use_mouse = true;
 						}
 
-						c2 = show_info_wait(&scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off");
+						c2 = show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false);
 						refresh_scr = true;
 					}
 					if (second_char == 'k')		/* ALT k - (un)set bookmark */
@@ -2985,8 +2994,9 @@ exit_search_next_bookmark:
 					if (cursor_row + fix_rows_offset < first_row)
 						first_row = cursor_row + fix_rows_offset;
 				}
-				else if (!no_sound)
-					beep();
+				else
+					make_beep(&opts);
+
 				break;
 
 			case '0':
@@ -3010,8 +3020,7 @@ exit_search_next_bookmark:
 					if (++cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
-						if (!no_sound)
-							beep();
+						make_beep(&opts);
 					}
 
 					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
@@ -3278,8 +3287,8 @@ recheck_right:
 						if (cursor_row < 0)
 							cursor_row = 0;
 					}
-					else if (!no_sound)
-						beep();
+					else
+						make_beep(&opts);
 				}
 				break;
 
@@ -3304,8 +3313,7 @@ recheck_right:
 					if (cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
-						if (!no_sound)
-							beep();
+						make_beep(&opts);
 					}
 
 					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
@@ -3437,7 +3445,7 @@ recheck_end:
 exit:
 
 					if (!ok)
-						c2 = show_info_wait(&scrdesc, " Cannot write to %s ", buffer);
+						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s ", buffer, true);
 
 					refresh_scr = true;
 
@@ -3509,7 +3517,7 @@ exit:
 						{
 							const char	   *str;
 
-							if (scrdesc.ignore_case || (scrdesc.ignore_lower_case && !scrdesc.has_upperchr))
+							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
 							{
 								if ((str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm)))
 								{
@@ -3560,12 +3568,7 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
-					{
-						if (!no_sound)
-							beep();
-
-						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
-					}
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
 
 					refresh_scr = true;
 				}
@@ -3672,11 +3675,11 @@ found_next_pattern:
 						str = row;
 
 						/* try to find most right pattern */
-						while (1)
+						while (str != NULL)
 						{
-							if (((scrdesc.ignore_case || (scrdesc.ignore_lower_case && !scrdesc.has_upperchr)) 
-											&& (str = utf8_nstrstr(str, scrdesc.searchterm)) != NULL) 
-								|| (str = strstr(str, scrdesc.searchterm)) != NULL)
+							if (((opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
+									&& (str = utf8_nstrstr(str, scrdesc.searchterm)) != NULL)
+									|| (str = strstr(str, scrdesc.searchterm)) != NULL)
 							{
 								cursor_row = search_row;
 								if (first_row > cursor_row)
@@ -3691,8 +3694,6 @@ found_next_pattern:
 
 								str += scrdesc.searchterm_size;
 							}
-							else
-								break;
 						}
 
 						if (free_row)
@@ -3707,12 +3708,7 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-					{
-						if (!no_sound)
-							beep();
-
-						c2 = show_info_wait(&scrdesc, " Not found ", NULL);
-					}
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
 
 					refresh_scr = true;
 				}
@@ -3762,8 +3758,7 @@ found_next_pattern:
 							if (cursor_row > max_cursor_row)
 							{
 								cursor_row = max_cursor_row;
-								if (!no_sound)
-									beep();
+								make_beep(&opts);
 							}
 
 							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
@@ -3794,8 +3789,8 @@ found_next_pattern:
 								if (cursor_row < 0)
 									cursor_row = 0;
 							}
-							else if (!no_sound)
-								beep();
+							else
+								make_beep(&opts);
 						}
 						else
 
@@ -3922,7 +3917,7 @@ found_next_pattern:
 				fresh_found = false;
 		}
 
-		print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 		if (first_row != prev_first_row)
 		{
@@ -3963,10 +3958,10 @@ found_next_pattern:
 
 			getmaxyx(stdscr, maxy, maxx);
 
-			refresh_aux_windows(&scrdesc, &desc, less_status_bar);
+			refresh_aux_windows(&opts, &scrdesc, &desc);
 			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc, first_data_row, first_row);
-			print_status(&scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 			refresh_scr = false;
 		}
@@ -3976,7 +3971,7 @@ found_next_pattern:
 
 	if (no_alternate_screen)
 	{
-		draw_data(&scrdesc, &desc, first_data_row, first_row, cursor_col,
+		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,
 				  footer_cursor_col, fix_rows_offset);
 	}
 
