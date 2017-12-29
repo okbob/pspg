@@ -28,7 +28,7 @@
 #include "unicode.h"
 
 #define STYLE			1
-#define PSPG_VERSION "0.8"
+#define PSPG_VERSION "0.9.1"
 
 //#define COLORIZED_NO_ALTERNATE_SCREEN
 //#define DEBUG_COLORS				1
