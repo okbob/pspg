@@ -26,6 +26,7 @@
 #include <sys/param.h>
 
 #include "unicode.h"
+#include "themes.h"
 
 #define PSPG_VERSION "0.9.1"
 
@@ -39,6 +40,8 @@
 #define LINEINFO_FOUNDSTR			2
 #define LINEINFO_FOUNDSTR_MULTI		4
 #define LINEINFO_UNKNOWN			8
+
+#define MAX_STYLE					14
 
 typedef struct LineInfo
 {
@@ -100,6 +103,16 @@ typedef struct
 	int		footer_rows;			/* number of footer rows */
 } DataDesc;
 
+
+typedef struct
+{
+	bool	ignore_case;
+	bool	ignore_lower_case;
+	bool	no_sound;
+	bool	less_status_bar;
+	int		theme;
+} Options;
+
 /*
  * This structure can be mutable - depends on displayed data
  */
@@ -116,13 +129,8 @@ typedef struct
 	int		main_start_y;			/* y position of first row of main place */
 	int		main_start_x;			/* x position of first row of main place */
 	int		top_bar_rows;			/* 1 or 0 when top bar is not used */
-	WINDOW *luc;					/* window for left upper corner */
-	WINDOW *fix_rows;				/* window for fixed rows */
-	WINDOW *fix_cols;				/* window for fixed columns */
-	WINDOW *rows;					/* window for data */
-	WINDOW *footer;					/* window for footer */
-	WINDOW *top_bar;				/* top bar window */
-	WINDOW *bottom_bar;				/* bottom bar window */
+	WINDOW	*wins[7];
+	Theme	themes[7];
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */
@@ -135,14 +143,13 @@ typedef struct
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
 } ScrDesc;
 
-typedef struct
-{
-	bool	ignore_case;
-	bool	ignore_lower_case;
-	bool	no_sound;
-	bool	less_status_bar;
-	int		theme;
-} Options;
+#define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
+#define		w_fix_rows(scrdesc)		((scrdesc)->wins[WINDOW_FIX_ROWS])
+#define		w_fix_cols(scrdesc)		((scrdesc)->wins[WINDOW_FIX_COLS])
+#define		w_rows(scrdesc)			((scrdesc)->wins[WINDOW_ROWS])
+#define		w_footer(scrdesc)		((scrdesc)->wins[WINDOW_FOOTER])
+#define		w_top_bar(scrdesc)		((scrdesc)->wins[WINDOW_TOP_BAR])
+#define		w_bottom_bar(scrdesc)	((scrdesc)->wins[WINDOW_BOTTOM_BAR])
 
 static int
 min_int(int a, int b)
@@ -658,324 +665,6 @@ strncpytrim(char *dest, const char *src,
 	*dest = '\0';
 }
 
-#define MAX_STYLE		14
-
-/*
- * Set color pairs based on style
- */
-static void
-initialize_color_pairs(int theme)
-{
-		init_pair(9, -1, -1);							/* footer */
-		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
-
-		init_pair(11, COLOR_BLACK, COLOR_GREEN);
-		init_pair(12, COLOR_BLACK, COLOR_MAGENTA);
-		init_pair(13, COLOR_BLACK, COLOR_YELLOW);
-
-	if (theme == 0)
-	{
-		use_default_colors();
-
-		init_pair(2, COLOR_BLACK, COLOR_WHITE);			/* top bar colors */
-		init_pair(3, -1, -1);							/* data alphanumeric */
-		init_pair(4, -1, -1);							/* fix rows, columns */
-		init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
-		init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
-		init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
-		init_pair(9, -1, -1);							/* footer */
-		init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
-		init_pair(11, COLOR_BLACK, COLOR_WHITE);		/* cursor over decoration */
-		init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
-		init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
-		init_pair(14, COLOR_BLACK, COLOR_WHITE);		/* color of bookmark lines */
-		init_pair(15, COLOR_WHITE, COLOR_BLACK);		/* color of marked search pattern */
-		init_pair(16, -1, -1);							/* color of line with pattern */
-		init_pair(17, -1, -1);							/* color of line art with pattern */
-	}
-	else if (theme == 1)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
-
-		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_WHITE, COLOR_BLUE);
-		init_pair(4, COLOR_YELLOW, COLOR_BLUE);
-		init_pair(5, COLOR_YELLOW, COLOR_CYAN);
-		init_pair(6, COLOR_WHITE, COLOR_CYAN);
-		init_pair(8, COLOR_RED, COLOR_BLUE);
-		init_pair(9, COLOR_CYAN, COLOR_BLUE);
-		init_pair(10, COLOR_WHITE, COLOR_CYAN);
-		init_pair(11, COLOR_WHITE, COLOR_CYAN);
-		init_pair(12, COLOR_WHITE, COLOR_CYAN);
-		init_pair(13, COLOR_YELLOW, COLOR_CYAN);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-	else if (theme == 2)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_CYAN);
-
-		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_WHITE, COLOR_CYAN);
-		init_pair(4, COLOR_WHITE, COLOR_CYAN);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(7, COLOR_YELLOW, COLOR_WHITE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLUE, COLOR_CYAN);
-		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-		init_pair(11, COLOR_WHITE, COLOR_BLUE);
-		init_pair(12, COLOR_WHITE, COLOR_BLUE);
-		init_pair(13, COLOR_WHITE, COLOR_BLUE);
-		init_pair(14, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(15, COLOR_YELLOW, COLOR_RED);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-	else if (theme == 3)
-	{
-		assume_default_colors(COLOR_BLACK, COLOR_CYAN);
-
-		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_BLACK, COLOR_CYAN);
-		init_pair(4, COLOR_WHITE, COLOR_CYAN);
-		init_pair(5, COLOR_WHITE, COLOR_BLACK);
-		init_pair(6, COLOR_CYAN, COLOR_BLACK);
-		init_pair(8, COLOR_WHITE, COLOR_CYAN);
-		init_pair(9, COLOR_BLACK, COLOR_CYAN);
-		init_pair(10, COLOR_CYAN, COLOR_BLACK);
-		init_pair(11, COLOR_CYAN, COLOR_BLACK);
-		init_pair(12, COLOR_CYAN, COLOR_BLACK);
-		init_pair(13, COLOR_WHITE, COLOR_BLACK);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_WHITE, COLOR_BLUE);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_BLACK, COLOR_GREEN);
-	}
-	else if (theme == 4)
-	{
-		assume_default_colors(COLOR_BLACK, COLOR_WHITE);
-
-		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_BLACK, COLOR_WHITE);
-		init_pair(4, COLOR_BLACK, COLOR_WHITE);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLACK, COLOR_WHITE);
-		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-		init_pair(11, COLOR_WHITE, COLOR_BLUE);
-		init_pair(12, COLOR_WHITE, COLOR_BLUE);
-		init_pair(13, COLOR_WHITE, COLOR_BLUE);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_BLACK, COLOR_GREEN);
-	}
-	else if (theme == 5)
-	{
-		use_default_colors();
-
-		init_pair(2, COLOR_GREEN, COLOR_BLUE);
-		init_pair(3, -1, -1);
-		init_pair(4, COLOR_CYAN, -1);
-		init_pair(5, COLOR_BLACK, COLOR_CYAN);
-		init_pair(6, COLOR_BLACK, COLOR_CYAN);
-		init_pair(8, COLOR_BLACK, COLOR_BLUE);
-		init_pair(9, COLOR_BLACK, COLOR_CYAN);
-		init_pair(10, COLOR_BLACK, COLOR_CYAN);
-		init_pair(11, -1, COLOR_CYAN);
-		init_pair(12, COLOR_BLACK, COLOR_CYAN);
-		init_pair(13, COLOR_BLACK, COLOR_CYAN);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, -1, COLOR_GREEN);
-	}
-	else if (theme == 6)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLACK);
-
-		init_pair(2, COLOR_BLACK, COLOR_CYAN);
-		init_pair(3, COLOR_WHITE, COLOR_BLACK);
-		init_pair(4, COLOR_CYAN, COLOR_BLACK);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_CYAN, COLOR_BLACK);
-		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-		init_pair(11, COLOR_WHITE, COLOR_BLUE);
-		init_pair(12, COLOR_WHITE, COLOR_BLUE);
-		init_pair(13, COLOR_WHITE, COLOR_BLUE);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-	else if (theme == 7)
-	{
-		assume_default_colors(COLOR_GREEN, COLOR_BLACK);
-
-		init_pair(2, COLOR_CYAN, COLOR_BLACK);
-		init_pair(3, COLOR_GREEN, COLOR_BLACK);
-		init_pair(4, COLOR_GREEN, COLOR_BLACK);
-		init_pair(5, COLOR_WHITE, COLOR_GREEN);
-		init_pair(6, COLOR_WHITE, COLOR_GREEN);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_CYAN, COLOR_BLACK);
-		init_pair(10, COLOR_WHITE, COLOR_GREEN);
-		init_pair(11, COLOR_WHITE, COLOR_GREEN);
-		init_pair(12, COLOR_WHITE, COLOR_GREEN);
-		init_pair(13, COLOR_WHITE, COLOR_GREEN);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_WHITE, COLOR_CYAN);
-		init_pair(16, COLOR_BLACK, COLOR_CYAN);
-		init_pair(17, COLOR_GREEN, COLOR_CYAN);
-	}
-	else if (theme == 8)
-	{
-		assume_default_colors(COLOR_CYAN, COLOR_BLUE);
-
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_WHITE, COLOR_BLUE);
-		init_pair(4, COLOR_WHITE, COLOR_BLUE);
-		init_pair(5, COLOR_WHITE, COLOR_CYAN);
-		init_pair(6, COLOR_WHITE, COLOR_CYAN);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_WHITE, COLOR_BLUE);
-		init_pair(10, COLOR_WHITE, COLOR_CYAN);
-		init_pair(11, COLOR_BLUE, COLOR_CYAN);
-		init_pair(12, COLOR_WHITE, COLOR_CYAN);
-		init_pair(13, COLOR_WHITE, COLOR_CYAN);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_CYAN, COLOR_GREEN);
-	}
-	else if (theme == 9)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
-
-		init_pair(2, COLOR_BLACK, COLOR_WHITE);
-		init_pair(3, COLOR_WHITE, COLOR_BLUE);
-		init_pair(4, COLOR_CYAN, COLOR_BLUE);
-		init_pair(5, COLOR_WHITE, COLOR_CYAN);
-		init_pair(6, COLOR_WHITE, COLOR_CYAN);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_WHITE, COLOR_BLUE);
-		init_pair(10, COLOR_WHITE, COLOR_CYAN);
-		init_pair(11, COLOR_WHITE, COLOR_CYAN);
-		init_pair(12, COLOR_WHITE, COLOR_CYAN);
-		init_pair(13, COLOR_WHITE, COLOR_CYAN);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-	else if (theme == 10)
-	{
-		assume_default_colors(COLOR_BLUE, COLOR_CYAN);
-
-		init_pair(2, COLOR_BLUE, COLOR_CYAN);
-		init_pair(3, COLOR_BLUE, COLOR_CYAN);
-		init_pair(4, COLOR_WHITE, COLOR_CYAN);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLUE, COLOR_CYAN);
-		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-		init_pair(11, COLOR_CYAN, COLOR_BLUE);
-		init_pair(12, COLOR_WHITE, COLOR_BLUE);
-		init_pair(13, COLOR_WHITE, COLOR_BLUE);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_MAGENTA);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_BLUE, COLOR_GREEN);
-	}
-	else if (theme == 11)
-	{
-		assume_default_colors(COLOR_CYAN, COLOR_BLACK);
-
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_CYAN, COLOR_BLACK);
-		init_pair(4, COLOR_CYAN, COLOR_BLACK);
-		init_pair(5, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(6, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_WHITE, COLOR_BLACK);
-		init_pair(10, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(11, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(12, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(13, COLOR_WHITE, COLOR_MAGENTA);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_CYAN, COLOR_GREEN);
-	}
-	else if (theme == 12)
-	{
-		assume_default_colors(COLOR_BLUE, COLOR_CYAN);
-
-		init_pair(2, COLOR_BLUE, COLOR_CYAN);
-		init_pair(3, COLOR_WHITE, COLOR_CYAN);
-		init_pair(4, COLOR_BLUE, COLOR_CYAN);
-		init_pair(5, COLOR_WHITE, COLOR_BLUE);
-		init_pair(6, COLOR_WHITE, COLOR_BLUE);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_BLUE, COLOR_CYAN);
-		init_pair(10, COLOR_WHITE, COLOR_BLUE);
-		init_pair(11, COLOR_CYAN, COLOR_BLUE);
-		init_pair(12, COLOR_WHITE, COLOR_BLUE);
-		init_pair(13, COLOR_WHITE, COLOR_BLUE);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_MAGENTA);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_BLUE, COLOR_GREEN);
-	}
-	else if (theme == 13)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
-
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_WHITE, COLOR_BLUE);
-		init_pair(4, COLOR_WHITE, COLOR_BLUE);
-		init_pair(5, COLOR_BLACK, COLOR_CYAN);
-		init_pair(6, COLOR_BLACK, COLOR_CYAN);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_WHITE, COLOR_BLUE);
-		init_pair(10, COLOR_BLACK, COLOR_CYAN);
-		init_pair(11, COLOR_WHITE, COLOR_CYAN);
-		init_pair(12, COLOR_WHITE, COLOR_BLACK);
-		init_pair(13, COLOR_WHITE, COLOR_BLACK);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-	else if (theme == MAX_STYLE)
-	{
-		assume_default_colors(COLOR_WHITE, COLOR_BLUE);
-
-		init_pair(2, COLOR_WHITE, COLOR_BLUE);
-		init_pair(3, COLOR_WHITE, COLOR_BLUE);
-		init_pair(4, COLOR_MAGENTA, COLOR_BLUE);
-		init_pair(5, COLOR_BLACK, COLOR_CYAN);
-		init_pair(6, COLOR_BLACK, COLOR_CYAN);
-		init_pair(8, COLOR_WHITE, COLOR_BLUE);
-		init_pair(9, COLOR_WHITE, COLOR_BLUE);
-		init_pair(10, COLOR_BLACK, COLOR_CYAN);
-		init_pair(11, COLOR_WHITE, COLOR_CYAN);
-		init_pair(12, COLOR_WHITE, COLOR_BLACK);
-		init_pair(13, COLOR_WHITE, COLOR_BLACK);
-		init_pair(14, COLOR_WHITE, COLOR_RED);
-		init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-		init_pair(16, COLOR_BLACK, COLOR_GREEN);
-		init_pair(17, COLOR_WHITE, COLOR_GREEN);
-	}
-}
-
 /*
  * Read data from file and fill DataDesc.
  */
@@ -1169,24 +858,13 @@ readfile(FILE *fp, DataDesc *desc)
 }
 
 static void
-window_fill(Options *opts,
-			WINDOW *win,
-			int srcy, int srcx,				/* offset to displayed data */
+window_fill(int window_identifier,
+			int srcy,
+			int srcx,						/* offset to displayed data */
 			int cursor_row,					/* row of row cursor */
 			DataDesc *desc,
-			attr_t data_attr,				/* colors for data (alphanums) */
-			attr_t line_attr,				/* colors for borders */
-			attr_t expi_attr,				/* colors for expanded headers */
-			attr_t cursor_data_attr,		/* colors for cursor on data positions */
-			attr_t cursor_line_attr,		/* colors for cursor on border position */
-			attr_t cursor_expi_attr,		/* colors for cursor on expanded headers */
-			attr_t bookmark_attr,			/* colors for bookmark */
-			attr_t cursor_bookmark_attr,	/* colors for cursor on bookmark line */
-			attr_t found_str_attr,			/* colors for marked string */
-			attr_t pattern_data_attr,
-			attr_t pattern_line_attr,
-			bool is_footer,					/* true if window is footer */
-			ScrDesc *scrdesc)				/* used for searching records limits in expanded mode */
+			ScrDesc *scrdesc,
+			Options *opts)
 {
 	int			maxy, maxx;
 	int			row;
@@ -1195,9 +873,15 @@ window_fill(Options *opts,
 	attr_t		active_attr;
 	int			srcy_bak = srcy;
 	char		*free_row;
+	WINDOW		*win;
+	Theme		*t;
+	bool		is_footer = window_identifier == WINDOW_FOOTER;
+
+	win = scrdesc->wins[window_identifier];
+	t = &scrdesc->themes[window_identifier];
 
 	/* when we want to detect expanded records titles */
-	if (scrdesc != NULL && desc->is_expanded_mode)
+	if (desc->is_expanded_mode)
 	{
 		scrdesc->first_rec_title_y = -1;
 		scrdesc->last_rec_title_y = -1;
@@ -1252,7 +936,7 @@ window_fill(Options *opts,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (scrdesc != NULL && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL)
+		if (*scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL)
 		{
 			if (lineinfo == NULL)
 			{
@@ -1307,36 +991,36 @@ window_fill(Options *opts,
 			if (!is_footer)
 			{
 				if (desc->border_type == 2)
-					active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+					active_attr = is_cursor_row ? t->cursor_bookmark_attr : t->bookmark_line_attr;
 				else
-					active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+					active_attr = is_cursor_row ? t->cursor_bookmark_attr : t->bookmark_data_attr;
 			}
 			else
-				active_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+				active_attr = is_cursor_row ? t->cursor_bookmark_attr : t->bookmark_data_attr;
 		}
 		else if (is_pattern_row)
 		{
 			if (!is_footer)
 			{
 				if (desc->border_type == 2)
-					active_attr = is_cursor_row ? cursor_line_attr : pattern_line_attr;
+					active_attr = is_cursor_row ? t->cursor_line_attr : t->pattern_line_attr;
 				else
-					active_attr = is_cursor_row ? cursor_data_attr : pattern_data_attr;
+					active_attr = is_cursor_row ? t->cursor_data_attr : t->pattern_data_attr;
 			}
 			else
-				active_attr = is_cursor_row ? cursor_data_attr : pattern_data_attr;
+				active_attr = is_cursor_row ? t->cursor_data_attr : t->pattern_data_attr;
 		}
 		else
 		{
 			if (!is_footer)
 			{
 				if (desc->border_type == 2)
-					active_attr = is_cursor_row ? cursor_line_attr : line_attr;
+					active_attr = is_cursor_row ? t->cursor_line_attr : t->line_attr;
 				else
-					active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+					active_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
 			}
 			else
-				active_attr = is_cursor_row ? cursor_data_attr : data_attr;
+				active_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
 		}
 
 		wattron(win, active_attr);
@@ -1352,14 +1036,13 @@ window_fill(Options *opts,
 			int		ei_min, ei_max;
 			int		left_spaces;							/* aux left spaces */
 
-			if (scrdesc != NULL)
-				is_found_row = scrdesc->found && scrdesc->found_row == effective_row;
+			is_found_row = scrdesc->found && scrdesc->found_row == effective_row;
 
 			if (desc->is_expanded_mode)
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
 				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
-				if (is_expand_head && scrdesc != NULL)
+				if (is_expand_head)
 				{
 					if (scrdesc->first_rec_title_y == -1)
 						scrdesc->first_rec_title_y = row - 1;
@@ -1429,9 +1112,9 @@ window_fill(Options *opts,
 						int		new_attr;
 
 						if (is_cursor_row)
-							new_attr = pos >= ei_min && pos <= ei_max ? cursor_expi_attr : cursor_line_attr;
+							new_attr = pos >= ei_min && pos <= ei_max ? t->cursor_expi_attr : t->cursor_line_attr;
 						else
-							new_attr = pos >= ei_min && pos <= ei_max ? expi_attr : line_attr;
+							new_attr = pos >= ei_min && pos <= ei_max ? t->expi_attr : t->line_attr;
 
 						if (new_attr != active_attr)
 						{
@@ -1456,27 +1139,32 @@ window_fill(Options *opts,
 						int		new_attr = active_attr;
 
 						if (is_bookmark_row)
-							new_attr = is_cursor_row ? cursor_bookmark_attr : bookmark_attr;
+						{
+							if (!is_cursor_row )
+								new_attr = desc->headline_transl[htrpos] == 'd' ? t->bookmark_data_attr : t->bookmark_line_attr;
+							else
+								new_attr = t->cursor_bookmark_attr;
+						}
 						else if (is_pattern_row && !is_cursor_row)
 						{
 							if (is_footer)
-								new_attr = pattern_data_attr;
+								new_attr = t->pattern_data_attr;
 							else if (htrpos < desc->headline_char_size)
-								new_attr = desc->headline_transl[htrpos] == 'd' ? pattern_data_attr : pattern_line_attr;
+								new_attr = desc->headline_transl[htrpos] == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 						}
 						else if (is_footer)
-							new_attr = is_cursor_row ? cursor_data_attr : data_attr;
+							new_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
 						else if (htrpos < desc->headline_char_size)
 						{
 							if (is_cursor_row )
-								new_attr = desc->headline_transl[htrpos] == 'd' ? cursor_data_attr : cursor_line_attr;
+								new_attr = desc->headline_transl[htrpos] == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
 							else
-								new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+								new_attr = desc->headline_transl[htrpos] == 'd' ? t->data_attr : t->line_attr;
 						}
 
 						if (is_found_row && htrpos >= scrdesc->found_start_x &&
 								htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-							new_attr = is_cursor_row ? new_attr | A_REVERSE : found_str_attr;
+							new_attr = is_cursor_row ? new_attr | A_REVERSE : t->found_str_attr;
 
 						if (new_attr != active_attr)
 						{
@@ -1502,9 +1190,9 @@ window_fill(Options *opts,
 							int		new_attr;
 
 							if (is_cursor_row)
-								new_attr = cursor_line_attr;
+								new_attr = t->cursor_line_attr;
 							else
-								new_attr = line_attr;
+								new_attr = t->line_attr;
 
 							if (new_attr != active_attr)
 							{
@@ -1553,13 +1241,13 @@ window_fill(Options *opts,
 			if (i < maxx)
 			{
 				if (is_cursor_row && !is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(cursor_data_attr), 0);
+					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->cursor_data_attr), 0);
 				else if (!is_cursor_row && is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(bookmark_attr), 0);
+					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->bookmark_data_attr), 0);
 				else if (is_cursor_row && is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, cursor_bookmark_attr, PAIR_NUMBER(cursor_bookmark_attr), 0);
+					mvwchgat(win, row - 1, i, -1, t->cursor_bookmark_attr, PAIR_NUMBER(t->cursor_bookmark_attr), 0);
 				else if (!is_cursor_row && is_pattern_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(pattern_data_attr), 0);
+					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->pattern_data_attr), 0);
 			}
 
 			if (free_row != NULL)
@@ -1891,7 +1579,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						  true);
 		}
 
-		if (scrdesc->footer != NULL)
+		if (w_footer(scrdesc) != NULL)
 		{
 			/* Go to saved position */
 			printf("\e[u\e[s");
@@ -1974,31 +1662,31 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 static void
 create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
 {
-	if (scrdesc->luc != NULL)
+	if (w_luc(scrdesc) != NULL)
 	{
-		delwin(scrdesc->luc);
-		scrdesc->luc = NULL;
+		delwin(w_luc(scrdesc));
+		w_luc(scrdesc) = NULL;
 	}
-	if (scrdesc->fix_rows != NULL)
+	if (w_fix_rows(scrdesc) != NULL)
 	{
-		delwin(scrdesc->fix_rows);
-		scrdesc->fix_rows = NULL;
+		delwin(w_fix_rows(scrdesc));
+		w_fix_rows(scrdesc) = NULL;
 	}
-	if (scrdesc->fix_cols != NULL)
+	if (w_fix_cols(scrdesc) != NULL)
 	{
-		delwin(scrdesc->fix_cols);
-		scrdesc->fix_cols = NULL;
+		delwin(w_fix_cols(scrdesc));
+		w_fix_cols(scrdesc) = NULL;
 	}
-	if (scrdesc->rows != NULL)
+	if (w_rows(scrdesc) != NULL)
 	{
-		delwin(scrdesc->rows);
-		scrdesc->rows = NULL;
+		delwin(w_rows(scrdesc));
+		w_rows(scrdesc) = NULL;
 	}
 
-	if (scrdesc->footer != NULL)
+	if (w_footer(scrdesc) != NULL)
 	{
-		delwin(scrdesc->footer);
-		scrdesc->footer = NULL;
+		delwin(w_footer(scrdesc));
+		w_footer(scrdesc) = NULL;
 	}
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
@@ -2026,7 +1714,7 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 
 		if (scrdesc->footer_rows > 0)
 		{
-			scrdesc->footer = newwin(scrdesc->footer_rows,
+			w_footer(scrdesc) = newwin(scrdesc->footer_rows,
 									scrdesc->maxx, scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows, 0);
 		}
 	}
@@ -2040,75 +1728,33 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		scrdesc->rows_rows = 0;
 		scrdesc->fix_rows_rows = 0;
 		scrdesc->footer_rows = min_int(scrdesc->main_maxy, desc->last_row + 1);
-		scrdesc->footer = newwin(scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
+		w_footer(scrdesc) = newwin(scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0)
 	{
-		scrdesc->fix_rows = newwin(scrdesc->fix_rows_rows,
+		w_fix_rows(scrdesc) = newwin(scrdesc->fix_rows_rows,
 								   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
 								   scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
 
 	if (scrdesc->fix_cols_cols > 0 && scrdesc->rows_rows > 0)
 	{
-		scrdesc->fix_cols = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols,
+		w_fix_cols(scrdesc) = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols,
 									 scrdesc->fix_rows_rows + scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
-		scrdesc->luc = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
+		w_luc(scrdesc) = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->rows_rows > 0)
 	{
-		scrdesc->rows = newwin(scrdesc->rows_rows,
+		w_rows(scrdesc) = newwin(scrdesc->rows_rows,
 							   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
 							   scrdesc->fix_rows_rows + scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
-
-#ifdef DEBUG_COLORS
-
-	if (scrdesc->rows != NULL)
-		wbkgd(scrdesc->rows, COLOR_PAIR(2));
-	if (scrdesc->luc != NULL)
-		wbkgd(scrdesc->luc, COLOR_PAIR(10));
-	if (scrdesc->fix_cols != NULL)
-		wbkgd(scrdesc->fix_cols, COLOR_PAIR(11));
-	if (scrdesc->fix_rows != NULL)
-		wbkgd(scrdesc->fix_rows, COLOR_PAIR(12));
-	if (scrdesc->footer != NULL)
-	{
-		wbkgd(scrdesc->footer, COLOR_PAIR(13));
-		wrefresh(scrdesc->footer);
-	}
-
-#endif
-}
-
-static int
-if_in_int(int v, const int *s, int v1, int v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v1;
-		s += 1;
-	}
-	return v2;
-}
-
-static int
-if_notin_int(int v, const int *s, int v1, int v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v2;
-		s += 1;
-	}
-	return v1;
 }
 
 /*
@@ -2118,14 +1764,17 @@ static void
 refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 {
 	int		maxy, maxx;
+	WINDOW	   *top_bar = w_top_bar(scrdesc);
+	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
 
 	refresh();
 	getmaxyx(stdscr, maxy, maxx);
 
-	if (scrdesc->top_bar != NULL)
+	if (top_bar != NULL)
 	{
-		delwin(scrdesc->top_bar);
-		scrdesc->top_bar = NULL;
+		delwin(top_bar);
+		top_bar = NULL;
+		w_top_bar(scrdesc) = NULL;
 	}
 
 	if (opts->less_status_bar)
@@ -2133,38 +1782,41 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	else
 	{
 		scrdesc->top_bar_rows = 1;
-		scrdesc->top_bar = newwin(1, 0, 0, 0);
-		wbkgd(scrdesc->top_bar, COLOR_PAIR(2));
-		wrefresh(scrdesc->top_bar);
+		top_bar = newwin(1, 0, 0, 0);
+		wbkgd(top_bar, COLOR_PAIR(2));
+		wrefresh(top_bar);
+		w_top_bar(scrdesc) = top_bar;
 	}
 
-	if (scrdesc->bottom_bar != NULL)
+	if (bottom_bar != NULL)
 	{
-		delwin(scrdesc->bottom_bar);
-		scrdesc->bottom_bar = NULL;
+		delwin(bottom_bar);
+		bottom_bar = NULL;
+		w_bottom_bar(scrdesc) = NULL;
 	}
 
-	scrdesc->bottom_bar = newwin(1, 0, maxy - 1, 0);
+	bottom_bar = newwin(1, 0, maxy - 1, 0);
+	w_bottom_bar(scrdesc) = bottom_bar;
 
 	if (scrdesc->top_bar_rows > 0)
 	{
-		wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-		mvwaddstr(scrdesc->bottom_bar, 0, 1, "Q");
-		wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-		wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-		mvwprintw(scrdesc->bottom_bar, 0, 2, "%-4s", "uit");
-		wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-		wrefresh(scrdesc->bottom_bar);
+		wattron(bottom_bar, A_BOLD | COLOR_PAIR(13));
+		mvwaddstr(bottom_bar, 0, 1, "Q");
+		wattroff(bottom_bar, A_BOLD | COLOR_PAIR(13));
+		wattron(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		mvwprintw(bottom_bar, 0, 2, "%-4s", "uit");
+		wattroff(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		wrefresh(bottom_bar);
 
 		if (desc->headline_transl != NULL)
 		{
-			wattron(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-			mvwaddstr(scrdesc->bottom_bar, 0, 7, "0..4");
-			wattroff(scrdesc->bottom_bar, A_BOLD | COLOR_PAIR(13));
-			wattron(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-			mvwprintw(scrdesc->bottom_bar, 0, 11, "%s", " Col.Freeze ");
-			wattroff(scrdesc->bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
-			wrefresh(scrdesc->bottom_bar);
+			wattron(bottom_bar, A_BOLD | COLOR_PAIR(13));
+			mvwaddstr(bottom_bar, 0, 7, "0..4");
+			wattroff(bottom_bar, A_BOLD | COLOR_PAIR(13));
+			wattron(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			mvwprintw(bottom_bar, 0, 11, "%s", " Col.Freeze ");
+			wattroff(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wrefresh(bottom_bar);
 		}
 	}
 
@@ -2173,13 +1825,13 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	scrdesc->main_start_y = 0;
 	scrdesc->main_start_x = 0;
 
-	if (scrdesc->top_bar != NULL)
+	if (top_bar != NULL)
 	{
 		scrdesc->main_maxy -= 1;
 		scrdesc->main_start_y = 1;
 	}
 
-	if (scrdesc->bottom_bar != NULL)
+	if (bottom_bar != NULL)
 	{
 		scrdesc->main_maxy -= 1;
 	}
@@ -2212,7 +1864,7 @@ number_width(int num)
 static bool
 is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 {
-	if (scrdesc->footer == NULL)
+	if (w_footer(scrdesc) == NULL)
 		return false;
 	else if (scrdesc->rows_rows == 0)
 		return true;
@@ -2227,24 +1879,26 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	int		maxy, maxx;
 	int		smaxy, smaxx;
 	char	buffer[200];
+	WINDOW   *top_bar = w_top_bar(scrdesc);
+	WINDOW   *bottom_bar = w_bottom_bar(scrdesc);
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
 	{
-		getmaxyx(scrdesc->top_bar, maxy, maxx);
+		getmaxyx(top_bar, maxy, maxx);
 		getmaxyx(stdscr, smaxy, smaxx);
 
 		(void) maxy;
 
 		if (opts->theme == 2)
-			wattron(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
+			wattron(top_bar, A_BOLD | COLOR_PAIR(7));
 		if (desc->title[0] != '\0' && desc->title_rows > 0)
-			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->title);
+			mvwprintw(top_bar, 0, 0, "%s", desc->title);
 		else if (desc->filename[0] != '\0')
-			mvwprintw(scrdesc->top_bar, 0, 0, "%s", desc->filename);
+			mvwprintw(top_bar, 0, 0, "%s", desc->filename);
 
 		if (opts->theme == 2)
-			wattroff(scrdesc->top_bar, A_BOLD | COLOR_PAIR(7));
+			wattroff(top_bar, A_BOLD | COLOR_PAIR(7));
 
 		if (desc->headline_transl)
 		{
@@ -2272,8 +1926,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 								((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
 		}
 
-		mvwprintw(scrdesc->top_bar, 0, maxx - strlen(buffer), "%s", buffer);
-		wrefresh(scrdesc->top_bar);
+		mvwprintw(top_bar, 0, maxx - strlen(buffer), "%s", buffer);
+		wrefresh(top_bar);
 	}
 	else
 	{
@@ -2298,7 +1952,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		else
 			title[0] = '\0';
 
-		wattron(scrdesc->bottom_bar, prompt_attr);
+		wattron(bottom_bar, prompt_attr);
 
 		if (desc->headline_transl)
 		{
@@ -2319,11 +1973,11 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 								((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
 		}
 
-		mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", buffer);
-		wclrtoeol(scrdesc->bottom_bar);
-		wrefresh(scrdesc->bottom_bar);
+		mvwprintw(bottom_bar, 0, 0, "%s", buffer);
+		wclrtoeol(bottom_bar);
+		wrefresh(bottom_bar);
 
-		wattroff(scrdesc->bottom_bar, prompt_attr);
+		wattroff(bottom_bar, prompt_attr);
 	}
 }
 
@@ -2341,17 +1995,18 @@ static int
 show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
 {
 	int		c;
+	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 
-	wattron(scrdesc->bottom_bar, COLOR_PAIR(13) | A_BOLD);
+	wattron(bottom_bar, COLOR_PAIR(13) | A_BOLD);
 
 	if (par != NULL)
-		mvwprintw(scrdesc->bottom_bar, 0, 0, fmt, par);
+		mvwprintw(bottom_bar, 0, 0, fmt, par);
 	else
-		mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", fmt);
+		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
-	wclrtoeol(scrdesc->bottom_bar);
-	wattroff(scrdesc->bottom_bar, COLOR_PAIR(13) | A_BOLD);
-	wrefresh(scrdesc->bottom_bar);
+	wclrtoeol(bottom_bar);
+	wattroff(bottom_bar, COLOR_PAIR(13) | A_BOLD);
+	wrefresh(bottom_bar);
 
 	refresh();
 
@@ -2368,11 +2023,13 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
 static void
 get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 {
-	mvwprintw(scrdesc->bottom_bar, 0, 0, "%s", prompt);
-	wclrtoeol(scrdesc->bottom_bar);
+	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
+
+	mvwprintw(bottom_bar, 0, 0, "%s", prompt);
+	wclrtoeol(bottom_bar);
 	curs_set(1);
 	echo();
-	wgetnstr(scrdesc->bottom_bar, buffer, maxsize);
+	wgetnstr(bottom_bar, buffer, maxsize);
 	curs_set(0);
 	noecho();
 }
@@ -2429,6 +2086,8 @@ main(int argc, char *argv[])
 	bool	noatty;					/* true, when cannot to get keys from stdin */
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
+
+	Theme	rows_theme;
 
 	static struct option long_options[] =
 	{
@@ -2706,6 +2365,12 @@ main(int argc, char *argv[])
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
+	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_LUC]);
+	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_COLS]);
+	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FOOTER]);
+
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -2714,69 +2379,52 @@ main(int argc, char *argv[])
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
+		/*
+		 * Draw windows, only when function (key) redirect was not forced.
+		 * Redirect emmit immediate redraw.
+		 */
 		if (c2 == 0)
 		{
-			window_fill(&opts, scrdesc.luc, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, 0, -1, &desc, COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, false, NULL);
-			window_fill(&opts, scrdesc.rows, first_data_row + first_row - fix_rows_offset, scrdesc.fix_cols_cols + cursor_col, cursor_row - first_row + fix_rows_offset, &desc,
-						COLOR_PAIR(3) | if_in_int(opts.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0),
-						(opts.theme == 2 && generic_pager) ? A_BOLD : 0,
-						COLOR_PAIR(8) | A_BOLD,
-						COLOR_PAIR(6) | if_notin_int(opts.theme, (int[]) { 13, 14, -1}, A_BOLD, 0),
-						COLOR_PAIR(11) | if_in_int(opts.theme, (int[]) {-1}, A_BOLD, 0) | (generic_pager ? A_BOLD : 0),
-						COLOR_PAIR(6) | A_BOLD,
-						COLOR_PAIR(14) | A_BOLD, COLOR_PAIR(14) | A_REVERSE | A_BOLD,
-						COLOR_PAIR(15) | A_BOLD,
-						COLOR_PAIR(16) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						COLOR_PAIR(17) | if_in_int(opts.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						false, &scrdesc);
+			window_fill(WINDOW_LUC,
+						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+						0,
+						-1,
+						&desc, &scrdesc, &opts);
 
-			window_fill(&opts, scrdesc.fix_cols, first_data_row + first_row - fix_rows_offset, 0, cursor_row - first_row + fix_rows_offset, &desc,
-						COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, COLOR_PAIR(8) | A_BOLD,
-						COLOR_PAIR(5) |  if_notin_int(opts.theme, (int[]) {13, 14, -1}, A_BOLD, 0),
-						COLOR_PAIR(11) | if_in_int(opts.theme, (int[]) {-1}, A_BOLD, 0),
-						COLOR_PAIR(6) | A_BOLD,
-						COLOR_PAIR(14) | A_BOLD,
-						COLOR_PAIR(14) | A_BOLD | A_REVERSE,
-						COLOR_PAIR(15) | A_BOLD,
-						COLOR_PAIR(16) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						COLOR_PAIR(17) | if_in_int(opts.theme, (int[]) {11, 7, 8, -1}, A_BOLD, 0) | if_in_int(opts.theme, (int[]) {0, -1}, A_REVERSE, 0),
-						false, &scrdesc);
-			window_fill(&opts, scrdesc.fix_rows, desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows, scrdesc.fix_cols_cols + cursor_col, -1, &desc, COLOR_PAIR(4) | ((opts.theme != 12) ? A_BOLD : 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, NULL);
+			window_fill(WINDOW_ROWS,
+						first_data_row + first_row - fix_rows_offset,
+						scrdesc.fix_cols_cols + cursor_col,
+						cursor_row - first_row + fix_rows_offset,
+						&desc, &scrdesc, &opts);
 
-			if (scrdesc.footer != NULL)
-			{
-				int		color;
+			window_fill(WINDOW_FIX_COLS,
+						first_data_row + first_row - fix_rows_offset,
+						0,
+						cursor_row - first_row + fix_rows_offset,
+						&desc, &scrdesc, &opts);
 
-				if (!generic_pager)
-					color = COLOR_PAIR(9) | if_in_int(opts.theme, (int[]) { -1}, A_BOLD, 0);
-				else
-					color = COLOR_PAIR(3) | if_in_int(opts.theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
+			window_fill(WINDOW_FIX_ROWS,
+						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+						scrdesc.fix_cols_cols + cursor_col,
+						-1,
+						&desc, &scrdesc, &opts);
 
-				window_fill(&opts, scrdesc.footer,
-									first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
-									footer_cursor_col,
-									cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset, &desc,
-									color, 0, 0,
-									COLOR_PAIR(10) | if_notin_int(opts.theme, (int[]) { 13, 14, -1}, A_BOLD, 0), 0, 0,
-									COLOR_PAIR(14) | A_BOLD,
-									COLOR_PAIR(14) | A_BOLD | A_REVERSE,
-									COLOR_PAIR(15) | A_BOLD,
-									COLOR_PAIR(16),
-									COLOR_PAIR(17),
-									true,
-									&scrdesc);
-			}
+			window_fill(WINDOW_FOOTER,
+						first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
+						footer_cursor_col,
+						cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
+						&desc, &scrdesc, &opts);
 
-			if (scrdesc.luc != NULL)
-				wnoutrefresh(scrdesc.luc);
-			if (scrdesc.rows != NULL)
-				wnoutrefresh(scrdesc.rows);
-			if (scrdesc.fix_cols != NULL)
-				wnoutrefresh(scrdesc.fix_cols);
-			if (scrdesc.fix_rows != NULL)
-				wnoutrefresh(scrdesc.fix_rows);
-			if (scrdesc.footer != NULL)
-				wnoutrefresh(scrdesc.footer);
+			if (w_luc(&scrdesc) != NULL)
+				wnoutrefresh(w_luc(&scrdesc));
+			if (w_rows(&scrdesc) != NULL)
+				wnoutrefresh(w_rows(&scrdesc));
+			if (w_fix_cols(&scrdesc) != NULL)
+				wnoutrefresh(w_fix_cols(&scrdesc));
+			if (w_fix_rows(&scrdesc) != NULL)
+				wnoutrefresh(w_fix_rows(&scrdesc));
+			if (w_footer(&scrdesc) != NULL)
+				wnoutrefresh(w_footer(&scrdesc));
 
 			doupdate();
 
@@ -3837,17 +3485,17 @@ found_next_pattern:
 			int		maxy, maxx;
 			bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
 
-			if (fresh_found && scrdesc.fix_cols != NULL)
+			if (fresh_found && w_fix_cols(&scrdesc) != NULL)
 			{
-				getmaxyx(scrdesc.fix_cols, maxy, maxx);
+				getmaxyx(w_fix_cols(&scrdesc), maxy, maxx);
 
 				if (scrdesc.found_start_x + scrdesc.searchterm_char_size <= maxx)
 					fresh_found = false;
 			}
 
-			if (fresh_found && !_is_footer_cursor &&  scrdesc.rows != NULL)
+			if (fresh_found && !_is_footer_cursor &&  w_rows(&scrdesc) != NULL)
 			{
-				getmaxyx(scrdesc.rows, maxy, maxx);
+				getmaxyx(w_rows(&scrdesc), maxy, maxx);
 
 				if (cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
 						cursor_col + scrdesc.fix_cols_cols + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
@@ -3864,9 +3512,9 @@ found_next_pattern:
 				}
 			}
 
-			if (fresh_found  && _is_footer_cursor && scrdesc.footer != NULL)
+			if (fresh_found  && _is_footer_cursor && w_footer(&scrdesc) != NULL)
 			{
-				getmaxyx(scrdesc.footer, maxy, maxx);
+				getmaxyx(w_footer(&scrdesc), maxy, maxx);
 
 				if (footer_cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
 						footer_cursor_col + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
