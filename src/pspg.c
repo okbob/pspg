@@ -962,7 +962,7 @@ window_fill(int window_identifier,
 				const char *str = rowstr;
 
 				lineinfo->mask ^= LINEINFO_UNKNOWN;
-				lineinfo->mask &= !(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
+				lineinfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
 
 				while (str != NULL)
 				{
