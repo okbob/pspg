@@ -11,9 +11,7 @@
  *-------------------------------------------------------------------------
  */
 
-
 #include "unicode.h"
-
 
 /*
  * Returns length of utf8 string in chars.
@@ -238,7 +236,6 @@ utf_dsplen(const char *s)
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
 
-
 /*
  * following code is taken from starwing/luautf8 library.
  *
@@ -373,14 +370,13 @@ utf8_tofold(const char *s)
 
 	return convert_char(tofold_table, table_size(tofold_table),
 						  utf8_to_unicode((const unsigned char *) s));
-
 }
 
 const char *
 utf8_nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
-	int		f1, f2;
+	int		f1 = 0, f2 = 0;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -412,7 +408,6 @@ utf8_nstrstr(const char *haystack, const char *needle)
 
 	return haystack;
 }
-
 
 bool
 utf8_isupper(const char *s)

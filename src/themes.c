@@ -14,7 +14,7 @@
 #include "themes.h"
 #include <string.h>
 
-int
+static int
 if_in_int(int v, const int *s, int v1, int v2)
 {
 	while(*s != -1)
@@ -26,7 +26,7 @@ if_in_int(int v, const int *s, int v1, int v2)
 	return v2;
 }
 
-int
+static int
 if_notin_int(int v, const int *s, int v1, int v2)
 {
 	while(*s != -1)
@@ -54,6 +54,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, -1, -1);							/* fix rows, columns */
 			init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
 			init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
+			init_pair(7, COLOR_BLACK, COLOR_WHITE);			/* title color */
 			init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
 			init_pair(9, -1, -1);							/* footer */
 			init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
@@ -74,6 +75,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(5, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(6, COLOR_WHITE, COLOR_CYAN);
+			init_pair(7, COLOR_BLACK, COLOR_CYAN);
 			init_pair(8, COLOR_RED, COLOR_BLUE);
 			init_pair(9, COLOR_CYAN, COLOR_BLUE);
 			init_pair(10, COLOR_WHITE, COLOR_CYAN);
@@ -115,6 +117,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_WHITE, COLOR_CYAN);
 			init_pair(5, COLOR_WHITE, COLOR_BLACK);
 			init_pair(6, COLOR_CYAN, COLOR_BLACK);
+			init_pair(7, COLOR_BLACK, COLOR_WHITE);
 			init_pair(8, COLOR_WHITE, COLOR_CYAN);
 			init_pair(9, COLOR_BLACK, COLOR_CYAN);
 			init_pair(10, COLOR_CYAN, COLOR_BLACK);
@@ -135,6 +138,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_BLACK, COLOR_WHITE);
 			init_pair(5, COLOR_WHITE, COLOR_BLUE);
 			init_pair(6, COLOR_WHITE, COLOR_BLUE);
+			init_pair(7, COLOR_BLACK, COLOR_CYAN);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_BLACK, COLOR_WHITE);
 			init_pair(10, COLOR_WHITE, COLOR_BLUE);
@@ -155,6 +159,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_CYAN, -1);
 			init_pair(5, COLOR_BLACK, COLOR_CYAN);
 			init_pair(6, COLOR_BLACK, COLOR_CYAN);
+			init_pair(7, COLOR_GREEN, COLOR_BLUE);
 			init_pair(8, COLOR_BLACK, COLOR_BLUE);
 			init_pair(9, COLOR_BLACK, COLOR_CYAN);
 			init_pair(10, COLOR_BLACK, COLOR_CYAN);
@@ -175,6 +180,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_CYAN, COLOR_BLACK);
 			init_pair(5, COLOR_WHITE, COLOR_BLUE);
 			init_pair(6, COLOR_WHITE, COLOR_BLUE);
+			init_pair(7, COLOR_BLACK, COLOR_CYAN);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_CYAN, COLOR_BLACK);
 			init_pair(10, COLOR_WHITE, COLOR_BLUE);
@@ -195,6 +201,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_GREEN, COLOR_BLACK);
 			init_pair(5, COLOR_WHITE, COLOR_GREEN);
 			init_pair(6, COLOR_WHITE, COLOR_GREEN);
+			init_pair(7, COLOR_CYAN, COLOR_BLACK);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_CYAN, COLOR_BLACK);
 			init_pair(10, COLOR_WHITE, COLOR_GREEN);
@@ -215,13 +222,13 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_WHITE, COLOR_BLUE);
 			init_pair(5, COLOR_WHITE, COLOR_CYAN);
 			init_pair(6, COLOR_WHITE, COLOR_CYAN);
+			init_pair(7, COLOR_WHITE, COLOR_BLUE);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLUE);
 			init_pair(10, COLOR_WHITE, COLOR_CYAN);
 			init_pair(11, COLOR_BLUE, COLOR_CYAN);
 			init_pair(12, COLOR_WHITE, COLOR_CYAN);
-			init_pair(13, COLOR_WHITE, COLOR_CYAN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
+			init_pair(13, COLOR_WHITE, COLOR_CYAN);			init_pair(14, COLOR_WHITE, COLOR_RED);
 			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
 			init_pair(16, COLOR_BLACK, COLOR_GREEN);
 			init_pair(17, COLOR_CYAN, COLOR_GREEN);
@@ -235,6 +242,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_CYAN, COLOR_BLUE);
 			init_pair(5, COLOR_WHITE, COLOR_CYAN);
 			init_pair(6, COLOR_WHITE, COLOR_CYAN);
+			init_pair(7, COLOR_BLACK, COLOR_WHITE);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLUE);
 			init_pair(10, COLOR_WHITE, COLOR_CYAN);
@@ -255,6 +263,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_WHITE, COLOR_CYAN);
 			init_pair(5, COLOR_WHITE, COLOR_BLUE);
 			init_pair(6, COLOR_WHITE, COLOR_BLUE);
+			init_pair(7, COLOR_BLUE, COLOR_CYAN);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_BLUE, COLOR_CYAN);
 			init_pair(10, COLOR_WHITE, COLOR_BLUE);
@@ -275,6 +284,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_CYAN, COLOR_BLACK);
 			init_pair(5, COLOR_WHITE, COLOR_MAGENTA);
 			init_pair(6, COLOR_WHITE, COLOR_MAGENTA);
+			init_pair(7, COLOR_WHITE, COLOR_BLUE);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLACK);
 			init_pair(10, COLOR_WHITE, COLOR_MAGENTA);
@@ -295,6 +305,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_BLUE, COLOR_CYAN);
 			init_pair(5, COLOR_WHITE, COLOR_BLUE);
 			init_pair(6, COLOR_WHITE, COLOR_BLUE);
+			init_pair(7, COLOR_BLUE, COLOR_CYAN);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_BLUE, COLOR_CYAN);
 			init_pair(10, COLOR_WHITE, COLOR_BLUE);
@@ -315,6 +326,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_WHITE, COLOR_BLUE);
 			init_pair(5, COLOR_BLACK, COLOR_CYAN);
 			init_pair(6, COLOR_BLACK, COLOR_CYAN);
+			init_pair(7, COLOR_WHITE, COLOR_BLUE);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLUE);
 			init_pair(10, COLOR_BLACK, COLOR_CYAN);
@@ -335,6 +347,7 @@ initialize_color_pairs(int theme)
 			init_pair(4, COLOR_MAGENTA, COLOR_BLUE);
 			init_pair(5, COLOR_BLACK, COLOR_CYAN);
 			init_pair(6, COLOR_BLACK, COLOR_CYAN);
+			init_pair(7, COLOR_WHITE, COLOR_BLUE);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLUE);
 			init_pair(10, COLOR_BLACK, COLOR_CYAN);
@@ -365,6 +378,23 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, Theme *t
 			t->data_attr = COLOR_PAIR(4);
 			t->data_attr |= _notin(theme, (int[]) {12, -1}, A_BOLD, 0);
 			break;
+
+		case WINDOW_TOP_BAR:
+			t->title_attr = COLOR_PAIR(7);
+			t->title_attr |= _in(theme, (int[]) {2, -1}, A_BOLD, 0);
+			break;
+
+		case WINDOW_BOTTOM_BAR:
+			t->prompt_attr = _in(theme, (int[]) {0, 1, -1}, COLOR_PAIR(2), COLOR_PAIR(13));
+			t->bottom_attr = COLOR_PAIR(12);
+			t->bottom_light_attr = COLOR_PAIR(13);
+
+			t->prompt_attr |= _notin(theme, (int[]) {0, 1, -1}, A_BOLD, 0);
+			t->bottom_attr |= _notin(theme, (int[]) {13, 14, -1}, A_BOLD, 0);
+			t->bottom_light_attr |= A_BOLD;
+
+			break;
+
 
 		case WINDOW_FIX_COLS:
 			t->data_attr = COLOR_PAIR(4);

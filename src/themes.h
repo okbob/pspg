@@ -30,6 +30,10 @@ typedef struct
 	attr_t found_str_attr;			/* colors for marked string */
 	attr_t pattern_data_attr;		/* colors for pattern line data */
 	attr_t pattern_line_attr;		/* colors for pattern lide art */
+	attr_t title_attr;				/* colors for title window */
+	attr_t bottom_attr;				/* colors for bottom text */
+	attr_t bottom_light_attr;		/* colors for lighter bottom text */
+	attr_t prompt_attr;				/* less prompt color */
 } Theme;
 
 #define		WINDOW_LUC				0
@@ -40,8 +44,6 @@ typedef struct
 #define		WINDOW_TOP_BAR			5
 #define		WINDOW_BOTTOM_BAR		6
 
-int if_in_int(int v, const int *s, int v1, int v2);
-int if_notin_int(int v, const int *s, int v1, int v2);
 void initialize_color_pairs(int theme);
 void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, Theme *t);
 

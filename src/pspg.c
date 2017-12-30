@@ -110,6 +110,7 @@ typedef struct
 	bool	ignore_lower_case;
 	bool	no_sound;
 	bool	less_status_bar;
+	bool	no_highlight_search;
 	int		theme;
 } Options;
 
@@ -151,6 +152,8 @@ typedef struct
 #define		w_top_bar(scrdesc)		((scrdesc)->wins[WINDOW_TOP_BAR])
 #define		w_bottom_bar(scrdesc)	((scrdesc)->wins[WINDOW_BOTTOM_BAR])
 
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
 static int
 min_int(int a, int b)
 {
@@ -159,7 +162,6 @@ min_int(int a, int b)
 	else
 		return b;
 }
-
 
 /*
  * Translate from UTF8 to semantic characters.
@@ -675,18 +677,12 @@ readfile(FILE *fp, DataDesc *desc)
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
-	bool		use_stdin = false;
 	LineBuffer *rows;
 
 	/* safe reset */
 	desc->filename[0] = '\0';
 
-	if (fp == NULL)
-	{
-		use_stdin = true;
-		fp = stdin;
-	}
-	else
+	if (fp != NULL)
 	{
 		int		fno;
 		char	proclnk[MAXPATHLEN + 1];
@@ -708,6 +704,8 @@ readfile(FILE *fp, DataDesc *desc)
 			desc->filename[64] = '\0';
 		}
 	}
+	else
+		fp = stdin;
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -936,7 +934,7 @@ window_fill(int window_identifier,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (*scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL)
+		if (*scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL && !opts->no_highlight_search)
 		{
 			if (lineinfo == NULL)
 			{
@@ -1766,6 +1764,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	int		maxy, maxx;
 	WINDOW	   *top_bar = w_top_bar(scrdesc);
 	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
+	Theme	   *bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
 	refresh();
 	getmaxyx(stdscr, maxy, maxx);
@@ -1798,24 +1797,24 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	bottom_bar = newwin(1, 0, maxy - 1, 0);
 	w_bottom_bar(scrdesc) = bottom_bar;
 
-	if (scrdesc->top_bar_rows > 0)
+	if (!opts->less_status_bar > 0)
 	{
-		wattron(bottom_bar, A_BOLD | COLOR_PAIR(13));
+		wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
 		mvwaddstr(bottom_bar, 0, 1, "Q");
-		wattroff(bottom_bar, A_BOLD | COLOR_PAIR(13));
-		wattron(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
+		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
 		mvwprintw(bottom_bar, 0, 2, "%-4s", "uit");
-		wattroff(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 		wrefresh(bottom_bar);
 
 		if (desc->headline_transl != NULL)
 		{
-			wattron(bottom_bar, A_BOLD | COLOR_PAIR(13));
+			wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
 			mvwaddstr(bottom_bar, 0, 7, "0..4");
-			wattroff(bottom_bar, A_BOLD | COLOR_PAIR(13));
-			wattron(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
+			wattron(bottom_bar, bottom_bar_theme->bottom_attr);
 			mvwprintw(bottom_bar, 0, 11, "%s", " Col.Freeze ");
-			wattroff(bottom_bar, COLOR_PAIR(12) | if_notin_int(opts->theme, (int[]) {13, 14, -1}, A_BOLD, 0));
+			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 			wrefresh(bottom_bar);
 		}
 	}
@@ -1881,6 +1880,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	char	buffer[200];
 	WINDOW   *top_bar = w_top_bar(scrdesc);
 	WINDOW   *bottom_bar = w_bottom_bar(scrdesc);
+	Theme	*top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
+	Theme	*bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
@@ -1890,15 +1891,12 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		(void) maxy;
 
-		if (opts->theme == 2)
-			wattron(top_bar, A_BOLD | COLOR_PAIR(7));
+		wattron(top_bar, top_bar_theme->title_attr);
 		if (desc->title[0] != '\0' && desc->title_rows > 0)
 			mvwprintw(top_bar, 0, 0, "%s", desc->title);
 		else if (desc->filename[0] != '\0')
 			mvwprintw(top_bar, 0, 0, "%s", desc->filename);
-
-		if (opts->theme == 2)
-			wattroff(top_bar, A_BOLD | COLOR_PAIR(7));
+		wattroff(top_bar, top_bar_theme->title_attr);
 
 		if (desc->headline_transl)
 		{
@@ -1933,26 +1931,35 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	{
 		/* less-status-bar */
 		char	title[65];
-		attr_t	prompt_attr;
-
-		switch (opts->theme)
-		{
-			case 0:
-			case 1:
-				prompt_attr = COLOR_PAIR(2);
-				break;
-			default:
-				prompt_attr = COLOR_PAIR(13) | A_BOLD;
-		}
+		char	*str;
+		int		bytes = sizeof(title) - 2;
+		char	*ptr = title;
 
 		if (desc->title_rows > 0 && desc->title[0] != '\0')
-			snprintf(title, 64, "%s ", desc->title);
+			str = desc->title;
 		else if (desc->filename[0] != '\0')
-			snprintf(title, 64, "%s ", desc->filename);
+			str = desc->filename;
 		else
-			title[0] = '\0';
+			str = "";
 
-		wattron(bottom_bar, prompt_attr);
+		while (bytes > 0 && *str != '\0')
+		{
+			size_t		sz = utf8len(str);
+
+			if (sz > bytes)
+				break;
+
+			memcpy(ptr, str, sz);
+			ptr += sz;
+			str += sz;
+			bytes -= sz;
+		}
+
+		if (ptr != title)
+			*ptr++ = ' ';
+		*ptr = '\0';
+
+		wattron(bottom_bar, bottom_bar_theme->prompt_attr);
 
 		if (desc->headline_transl)
 		{
@@ -1977,7 +1984,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		wclrtoeol(bottom_bar);
 		wrefresh(bottom_bar);
 
-		wattroff(bottom_bar, prompt_attr);
+		wattroff(bottom_bar, bottom_bar_theme->prompt_attr);
 	}
 }
 
@@ -1996,8 +2003,9 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
 {
 	int		c;
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
+	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	wattron(bottom_bar, COLOR_PAIR(13) | A_BOLD);
+	wattron(bottom_bar, t->bottom_light_attr);
 
 	if (par != NULL)
 		mvwprintw(bottom_bar, 0, 0, fmt, par);
@@ -2005,7 +2013,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
 	wclrtoeol(bottom_bar);
-	wattroff(bottom_bar, COLOR_PAIR(13) | A_BOLD);
+	wattroff(bottom_bar,  t->bottom_light_attr);
 	wrefresh(bottom_bar);
 
 	refresh();
@@ -2087,12 +2095,11 @@ main(int argc, char *argv[])
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
 
-	Theme	rows_theme;
-
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
 		{"help", no_argument, 0, 1},
+		{"HILITE-SEARCH", no_argument, 0, 'G'},
 		{"ignore-case", no_argument, 0, 'i'},
 		{"IGNORE-CASE", no_argument, 0, 'I'},
 		{"no-mouse", no_argument, 0, 2},
@@ -2107,9 +2114,10 @@ main(int argc, char *argv[])
 	opts.ignore_lower_case = false;
 	opts.no_sound = false;
 	opts.less_status_bar = false;
+	opts.no_highlight_search = false;
 	opts.theme = 1;
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFiI",
+	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFGiI",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2126,13 +2134,19 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -c N           fix N columns (1..4)\n");
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
-				fprintf(stderr, "  --help         show this help\n\n");
-				fprintf(stderr, "  -i --ignore-case  ignore case in searches that do not contain uppercase\n");
-				fprintf(stderr, "  -I --IGNORE-CASE  ignore case in all searches\n");
-				fprintf(stderr, "  --less-status-bar   status bar like less pager\n");
+				fprintf(stderr, "  --help         show this help\n");
+				fprintf(stderr, "  -G --HILITE-SEARCH\n");
+				fprintf(stderr, "                 don't highlight lines for searches\n");
+				fprintf(stderr, "  -i --ignore-case\n");
+				fprintf(stderr, "                 ignore case in searches that do not contain uppercase\n");
+				fprintf(stderr, "  -I --IGNORE-CASE\n");
+				fprintf(stderr, "                 ignore case in all searches\n");
+				fprintf(stderr, "  --less-status-bar\n");
+				fprintf(stderr, "                 status bar like less pager\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
-				fprintf(stderr, "  -F, --quit-if-one-screen   quit if content is one screen\n");
+				fprintf(stderr, "  -F, --quit-if-one-screen\n");
+				fprintf(stderr, "                 quit if content is one screen\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -2189,6 +2203,9 @@ main(int argc, char *argv[])
 				break;
 			case 'F':
 				quit_if_one_screen = true;
+				break;
+			case 'G':
+				opts.no_highlight_search = true;
 				break;
 			default:
 				fprintf(stderr, "Try %s --help\n", argv[0]);
@@ -2290,6 +2307,10 @@ main(int argc, char *argv[])
 	trim_footer_rows(&desc);
 
 	memset(&scrdesc, 0, sizeof(ScrDesc));
+
+	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_TOP_BAR]);
+	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
+
 	refresh_aux_windows(&opts, &scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
 
@@ -2363,19 +2384,18 @@ main(int argc, char *argv[])
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
-	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
-
 	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_LUC]);
 	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_COLS]);
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FOOTER]);
 
+	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
+
 	while (true)
 	{
 		bool		refresh_scr = false;
 		bool		resize_scr = false;
-		bool		generic_pager = desc.headline_transl == NULL;
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
@@ -2529,7 +2549,7 @@ main(int argc, char *argv[])
 
 									while (rownum_cursor_row >= 0)
 									{
-										if (lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK != 0)
+										if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
 										{
 											found = true;
 											goto exit_search_prev_bookmark;
@@ -2581,7 +2601,7 @@ exit_search_prev_bookmark:
 							{
 								while (rownum_cursor_row < lnb->nrows)
 								{
-									if (lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK != 0)
+									if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
 									{
 										found = true;
 										goto exit_search_next_bookmark;
@@ -3114,14 +3134,17 @@ exit:
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
-						while (lnb != NULL)
+						if (!opts.no_highlight_search)
 						{
-							if (lnb->lineinfo != NULL)
+							while (lnb != NULL)
 							{
-								for (i = 0; i < lnb->nrows; i++)
-									lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
+								if (lnb->lineinfo != NULL)
+								{
+									for (i = 0; i < lnb->nrows; i++)
+										lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
+								}
+								lnb = lnb->next;
 							}
-							lnb = lnb->next;
 						}
 					}
 
@@ -3236,14 +3259,17 @@ found_next_pattern:
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
-						while (lnb != NULL)
+						if (!opts.no_highlight_search)
 						{
-							if (lnb->lineinfo != NULL)
+							while (lnb != NULL)
 							{
-								for (i = 0; i < lnb->nrows; i++)
-									lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
+								if (lnb->lineinfo != NULL)
+								{
+									for (i = 0; i < lnb->nrows; i++)
+										lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
+								}
+								lnb = lnb->next;
 							}
-							lnb = lnb->next;
 						}
 					}
 
@@ -3484,6 +3510,8 @@ found_next_pattern:
 		{
 			int		maxy, maxx;
 			bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+
+			UNUSED(maxy);
 
 			if (fresh_found && w_fix_cols(&scrdesc) != NULL)
 			{
