@@ -111,6 +111,7 @@ typedef struct
 	bool	no_sound;
 	bool	less_status_bar;
 	bool	no_highlight_search;
+	bool	no_highlight_lines;
 	int		theme;
 } Options;
 
@@ -226,7 +227,7 @@ translate_headline(DataDesc *desc)
 			srcptr += utf8charlen(*srcptr);
 		}
 		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
-		         strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
+				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
 		{
 			/* should be expanded mode */
 			if (processed_chars > 0 || !desc->is_expanded_mode)
@@ -240,7 +241,7 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\220", 3) == 0 || /* ┐ */
-		         strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
+				 strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
 		{
 			if (desc->linestyle != 'u' || desc->border_type != 2 ||
 				!desc->is_expanded_mode)
@@ -252,9 +253,9 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\254", 3) == 0 || /* ┬╤ */
-			     strncmp(srcptr, "\342\225\244", 3) == 0 ||
-			     strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
-			     strncmp(srcptr, "\342\225\246", 3) == 0)
+				 strncmp(srcptr, "\342\225\244", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
+				 strncmp(srcptr, "\342\225\246", 3) == 0)
 		{
 			if (desc->linestyle != 'u' || !desc->is_expanded_mode)
 			{
@@ -268,9 +269,9 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
-		         strncmp(srcptr, "\342\225\237", 3) == 0 ||
-		         strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
-		         strncmp(srcptr, "\342\225\240", 3) == 0)
+				 strncmp(srcptr, "\342\225\237", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
+				 strncmp(srcptr, "\342\225\240", 3) == 0)
 		{
 			if (processed_chars > 0)
 			{
@@ -283,9 +284,9 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\244", 3) == 0 || /* ┤╢ */
-		         strncmp(srcptr, "\342\225\242", 3) == 0 ||
-		         strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
-		         strncmp(srcptr, "\342\225\243", 3) == 0)
+				 strncmp(srcptr, "\342\225\242", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
+				 strncmp(srcptr, "\342\225\243", 3) == 0)
 		{
 			if (desc->linestyle != 'u' || desc->border_type != 2)
 			{
@@ -296,9 +297,9 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\274", 3) == 0 || /* ┼╪ */
-		         strncmp(srcptr, "\342\225\252", 3) == 0 ||
-		         strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
-		         strncmp(srcptr, "\342\225\254", 3) == 0)
+				 strncmp(srcptr, "\342\225\252", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
+				 strncmp(srcptr, "\342\225\254", 3) == 0)
 		{
 			if (desc->linestyle != 'u')
 			{
@@ -311,7 +312,7 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\200", 3) == 0 || /* ─ */
-		         strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
+				 strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
 		{
 			if (processed_chars == 0)
 			{
@@ -571,11 +572,11 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 		pos += 1;
 	}
 	else if (strncmp(str, "\342\224\214", 3) == 0 || /* ┌ */
-	         strncmp(str, "\342\225\224", 3) == 0 || /* ╔ */
-	         strncmp(str, "\342\224\234", 3) == 0 || /* ├╟ */
-	         strncmp(str, "\342\225\237", 3) == 0 ||
-	         strncmp(str, "\342\225\236", 3) == 0 || /* ╞╠ */
-	         strncmp(str, "\342\225\240", 3) == 0)
+			 strncmp(str, "\342\225\224", 3) == 0 || /* ╔ */
+			 strncmp(str, "\342\224\234", 3) == 0 || /* ├╟ */
+			 strncmp(str, "\342\225\237", 3) == 0 ||
+			 strncmp(str, "\342\225\236", 3) == 0 || /* ╞╠ */
+			 strncmp(str, "\342\225\240", 3) == 0)
 	{
 		str += 3;
 		pos += 1;
@@ -587,7 +588,7 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 		pos += 1;
 	}
 	else if (strncmp(str, "\342\224\200", 3) == 0 || /* ─ */
-	         strncmp(str, "\342\225\220", 3) == 0) /* ═ */
+			 strncmp(str, "\342\225\220", 3) == 0) /* ═ */
 	{
 		str += 3;
 		pos += 1;
@@ -874,6 +875,8 @@ window_fill(int window_identifier,
 	WINDOW		*win;
 	Theme		*t;
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
+	int			positions[100][2];
+	int			npositions;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -969,7 +972,10 @@ window_fill(int window_identifier,
 								|| (str = strstr(str, scrdesc->searchterm)) != NULL)
 					{
 						if (lineinfo->mask & LINEINFO_FOUNDSTR)
+						{
 							lineinfo->mask |= LINEINFO_FOUNDSTR_MULTI;
+							break;
+						}
 						else
 						{
 							lineinfo->mask |= LINEINFO_FOUNDSTR;
@@ -983,6 +989,28 @@ window_fill(int window_identifier,
 		}
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
+
+		/* prepare position cache */
+		if (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
+		{
+			const char *str = rowstr;
+
+			npositions = 0;
+			while (str != NULL)
+			{
+				if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
+							&& (str = utf8_nstrstr(str, scrdesc->searchterm)) != NULL) 
+							|| (str = strstr(str, scrdesc->searchterm)) != NULL)
+				{
+					positions[npositions][0] = utf8len_start_stop(rowstr, str);
+					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;
+
+					str += scrdesc->searchterm_size;
+					if (++npositions == 100)
+						break;
+				}
+			}
+		}
 
 		if (is_bookmark_row)
 		{
@@ -1149,6 +1177,29 @@ window_fill(int window_identifier,
 								new_attr = t->pattern_data_attr;
 							else if (htrpos < desc->headline_char_size)
 								new_attr = desc->headline_transl[htrpos] == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
+
+							if (new_attr == t->pattern_data_attr)
+							{
+								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
+								{
+									int		i;
+
+									for (i = 0; i < npositions; i++)
+									{
+										if (htrpos >= positions[i][0] && htrpos < positions[i][1])
+										{
+											new_attr = t->found_str_attr;
+											break;
+										}
+									}
+								}
+								else
+								{
+									if (htrpos >= lineinfo->start_char &&
+											  htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
+										new_attr = t->found_str_attr;
+								}
+							}
 						}
 						else if (is_footer)
 							new_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
@@ -2099,6 +2150,7 @@ main(int argc, char *argv[])
 	{
 		/* These options set a flag. */
 		{"help", no_argument, 0, 1},
+		{"hlite-search", no_argument, 0, 'g'},
 		{"HILITE-SEARCH", no_argument, 0, 'G'},
 		{"ignore-case", no_argument, 0, 'i'},
 		{"IGNORE-CASE", no_argument, 0, 'I'},
@@ -2117,7 +2169,7 @@ main(int argc, char *argv[])
 	opts.no_highlight_search = false;
 	opts.theme = 1;
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFGiI",
+	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2135,6 +2187,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
+				fprintf(stderr, "  -g --hlite-search\n");
 				fprintf(stderr, "  -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                 don't highlight lines for searches\n");
 				fprintf(stderr, "  -i --ignore-case\n");
@@ -2203,6 +2256,9 @@ main(int argc, char *argv[])
 				break;
 			case 'F':
 				quit_if_one_screen = true;
+				break;
+			case 'g':
+				opts.no_highlight_lines = true;
 				break;
 			case 'G':
 				opts.no_highlight_search = true;
@@ -2308,8 +2364,8 @@ main(int argc, char *argv[])
 
 	memset(&scrdesc, 0, sizeof(ScrDesc));
 
-	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_TOP_BAR]);
-	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
+	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
+	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
 
 	refresh_aux_windows(&opts, &scrdesc, &desc);
 	getmaxyx(stdscr, maxy, maxx);
@@ -2384,11 +2440,11 @@ main(int argc, char *argv[])
 	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
-	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_LUC]);
-	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_ROWS]);
-	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FIX_COLS]);
-	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_ROWS]);
-	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, &scrdesc.themes[WINDOW_FOOTER]);
+	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
+	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_COLS]);
+	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 

@@ -24,7 +24,8 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-s N`     use theme (default theme is mc theme)
 * `-c N`     freeze first N columns
 * `-f file`  open file (default stdin)
-* `-G --HILITE-SEARCH`  don't highlight lines for searches
+* `-g --hilite-search`  don't highlight lines for searches
+* `-G --HILITE-SEARCH`  don't highlight lines for searches ever
 * `--help`   show this help
 * `-i --ignore-case`  ignore case in searches that do not contain uppercase
 * `-I --IGNORE-CASE`  ignore case in all searches

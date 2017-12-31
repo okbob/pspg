@@ -45,6 +45,6 @@ typedef struct
 #define		WINDOW_BOTTOM_BAR		6
 
 void initialize_color_pairs(int theme);
-void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, Theme *t);
+void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
 
 #endif
