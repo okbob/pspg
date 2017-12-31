@@ -990,13 +990,15 @@ window_fill(int window_identifier,
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
 
-		/* prepare position cache */
-		if (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
+		/* prepare position cache, when first occurrence is visible */
+		if (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0 &&
+			  srcx + maxx > lineinfo->start_char)
 		{
 			const char *str = rowstr;
 
 			npositions = 0;
-			while (str != NULL)
+
+			while (str != NULL && npositions < 100)
 			{
 				if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
 							&& (str = utf8_nstrstr(str, scrdesc->searchterm)) != NULL) 
@@ -1005,9 +1007,15 @@ window_fill(int window_identifier,
 					positions[npositions][0] = utf8len_start_stop(rowstr, str);
 					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;
 
-					str += scrdesc->searchterm_size;
-					if (++npositions == 100)
+					/* don't search more if we are over visible part */
+					if (positions[npositions][1] > srcx + maxx)
+					{
+						npositions += 1;
 						break;
+					}
+
+					str += scrdesc->searchterm_size;
+					npositions += 1;
 				}
 			}
 		}
@@ -1178,7 +1186,7 @@ window_fill(int window_identifier,
 							else if (htrpos < desc->headline_char_size)
 								new_attr = desc->headline_transl[htrpos] == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 
-							if (new_attr == t->pattern_data_attr)
+							if (new_attr == t->pattern_data_attr && htrpos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
 								{
@@ -1195,8 +1203,7 @@ window_fill(int window_identifier,
 								}
 								else
 								{
-									if (htrpos >= lineinfo->start_char &&
-											  htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
+									if (htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
 										new_attr = t->found_str_attr;
 								}
 							}
@@ -2629,6 +2636,8 @@ exit_search_prev_bookmark:
 							if (cursor_row < first_row)
 								first_row = cursor_row;
 						}
+						else
+							make_beep(&opts);
 
 						break;
 					}
@@ -2690,6 +2699,8 @@ exit_search_next_bookmark:
 							if (first_row > max_first_row)
 								first_row = max_first_row;
 						}
+						else
+							make_beep(&opts);
 
 						break;
 					}
