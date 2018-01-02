@@ -6,13 +6,14 @@ all:
 
 all: pspg
 
-pspg: src/unicode.h src/pspg.c src/unicode.c src/themes.c config.make
-	$(CC) src/pspg.c src/unicode.c src/themes.c -o pspg $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+pspg: src/unicode.h src/pspg.c src/unicode.c src/themes.c src/print.c config.make
+	$(CC) src/pspg.c src/print.c src/unicode.c src/themes.c -o pspg $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 
 clean:
 	$(RM) src/pspg.o
 	$(RM) src/unicode.o
 	$(RM) src/themes.o
+	$(RM) src/print.o
 	$(RM) pspg
 	
 distclean: clean

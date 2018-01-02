@@ -3,7 +3,7 @@
  * themes.c
  *	  themes initialization
  *
- * Portions Copyright (c) 2017-2017 Pavel Stehule
+ * Portions Copyright (c) 2017-2018 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/themes.c
@@ -208,8 +208,8 @@ initialize_color_pairs(int theme)
 			init_pair(16, COLOR_BLACK, COLOR_GREEN);
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			init_pair(19, COLOR_CYAN, COLOR_BLUE);
+			init_pair(20, COLOR_CYAN, COLOR_BLUE);
 
 			break;
 		case 7:
