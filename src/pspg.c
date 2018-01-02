@@ -875,6 +875,7 @@ window_fill(int window_identifier,
 	WINDOW		*win;
 	Theme		*t;
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
+	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	int			positions[100][2];
 	int			npositions;
 
@@ -937,7 +938,7 @@ window_fill(int window_identifier,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (*scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL && !opts->no_highlight_search)
+		if (!is_fix_rows && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL && !opts->no_highlight_search)
 		{
 			if (lineinfo == NULL)
 			{
@@ -1218,9 +1219,33 @@ window_fill(int window_identifier,
 								new_attr = desc->headline_transl[htrpos] == 'd' ? t->data_attr : t->line_attr;
 						}
 
-						if (is_found_row && htrpos >= scrdesc->found_start_x &&
-								htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-							new_attr = is_cursor_row ? new_attr | A_REVERSE : t->found_str_attr;
+						if (is_cursor_row)
+						{
+							if (is_found_row && htrpos >= scrdesc->found_start_x &&
+									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
+								new_attr = new_attr | A_REVERSE;
+							else if (is_pattern_row && htrpos >= lineinfo->start_char)
+							{
+								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
+								{
+									int		i;
+
+									for (i = 0; i < npositions; i++)
+									{
+										if (htrpos >= positions[i][0] && htrpos < positions[i][1])
+										{
+											new_attr = t->cursor_pattern_attr;
+											break;
+										}
+									}
+								}
+								else
+								{
+									if (htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
+										new_attr = t->cursor_pattern_attr;
+								}
+							}
+						}
 
 						if (new_attr != active_attr)
 						{

@@ -30,6 +30,7 @@ typedef struct
 	attr_t found_str_attr;			/* colors for marked string */
 	attr_t pattern_data_attr;		/* colors for pattern line data */
 	attr_t pattern_line_attr;		/* colors for pattern lide art */
+	attr_t cursor_pattern_attr;		/* colors for pattern on cursor line */
 	attr_t title_attr;				/* colors for title window */
 	attr_t bottom_attr;				/* colors for bottom text */
 	attr_t bottom_light_attr;		/* colors for lighter bottom text */
