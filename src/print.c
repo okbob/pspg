@@ -281,11 +281,12 @@ window_fill(int window_identifier,
 			/* Fix too hungry cutting when some multichar char is removed */
 			if (left_spaces > 0)
 			{
-				char *p;
+				char   *p;
+				int		aux_left_spaces = left_spaces;
 
 				free_row = malloc(left_spaces + strlen(rowstr) + 1);
 				p = free_row;
-				while (left_spaces-- > 0)
+				while (aux_left_spaces-- > 0)
 				{
 					*p++ = ' ';
 				}
@@ -335,11 +336,26 @@ window_fill(int window_identifier,
 					{
 						int		htrpos = srcx + i;
 						int		new_attr = active_attr;
+						char	unicode_border[10];
+						int		unicode_border_bytes = 0;
+						char	column_format = desc->headline_transl[htrpos];
+
+						if (opts->force_uniborder && desc->linestyle == 'a')
+						{
+							if (*(rowstr + left_spaces + bytes) == '|' &&
+									(column_format == 'L' || column_format == 'R' || column_format == 'I'))
+							{
+								strncpy(unicode_border, "\342\224\202", 3);  /* │ */
+								unicode_border_bytes = 3;
+							}
+							else
+								unicode_border_bytes = 0;
+						}
 
 						if (is_bookmark_row)
 						{
 							if (!is_cursor_row )
-								new_attr = desc->headline_transl[htrpos] == 'd' ? t->bookmark_data_attr : t->bookmark_line_attr;
+								new_attr = column_format == 'd' ? t->bookmark_data_attr : t->bookmark_line_attr;
 							else
 								new_attr = t->cursor_bookmark_attr;
 						}
@@ -348,7 +364,7 @@ window_fill(int window_identifier,
 							if (is_footer)
 								new_attr = t->pattern_data_attr;
 							else if (htrpos < desc->headline_char_size)
-								new_attr = desc->headline_transl[htrpos] == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
+								new_attr = column_format == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 
 							if (new_attr == t->pattern_data_attr && htrpos >= lineinfo->start_char)
 							{
@@ -377,9 +393,9 @@ window_fill(int window_identifier,
 						else if (htrpos < desc->headline_char_size)
 						{
 							if (is_cursor_row )
-								new_attr = desc->headline_transl[htrpos] == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
+								new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
 							else
-								new_attr = desc->headline_transl[htrpos] == 'd' ? t->data_attr : t->line_attr;
+								new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
 						}
 
 						if (is_cursor_row)
@@ -410,6 +426,13 @@ window_fill(int window_identifier,
 							}
 						}
 
+						if (unicode_border_bytes > 0 && bytes > 0)
+						{
+							waddnstr(win, rowstr, bytes);
+							rowstr += bytes;
+							bytes = 0;
+						}
+
 						if (new_attr != active_attr)
 						{
 							if (bytes > 0)
@@ -425,6 +448,13 @@ window_fill(int window_identifier,
 							/* active new style */
 							active_attr = new_attr;
 							wattron(win, active_attr);
+						}
+
+						if (unicode_border_bytes > 0)
+						{
+							waddnstr(win, unicode_border, unicode_border_bytes);
+							bytes = 0;
+							rowstr += 1;
 						}
 					}
 					else
@@ -462,7 +492,9 @@ window_fill(int window_identifier,
 						int len  = utf8charlen(*ptr);
 						i += utf_dsplen(ptr);
 						ptr += len;
-						bytes += len;
+						/* suboptimal logic */
+						if (i <= maxx && rowstr < ptr)
+							bytes += len;
 					}
 					else
 					{
@@ -475,7 +507,78 @@ window_fill(int window_identifier,
 				i = 1;
 
 			if (bytes > 0)
-				waddnstr(win, rowstr, bytes);
+			{
+				if (!fix_line_attr_style || !(desc->linestyle == 'a' && opts->force_uniborder))
+					waddnstr(win, rowstr, bytes);
+				else
+				{
+					int		i = 0;
+
+					while (bytes > 0)
+					{
+						int		htrpos = srcx + i;
+						int		column_format = desc->headline_transl[htrpos];
+						bool	is_top_row = effective_row == desc->border_top_row;
+						bool	is_head_row = effective_row == desc->border_head_row;
+						bool	is_bottom_row = effective_row == desc->border_bottom_row;
+
+						if (column_format == 'd' && *rowstr == '-')
+						{
+							waddnstr(win, "\342\224\200", 3);
+							rowstr += 1;
+							bytes -= 1;
+						}
+						else if (column_format == 'L' && (*rowstr == '+' || *rowstr == '|'))
+						{
+							if (is_head_row)
+								waddnstr(win, "\342\224\234", 3);
+							else if (is_top_row)
+								waddnstr(win, "\342\224\214", 3);
+							else /* bottom row */
+								waddnstr(win, "\342\224\224", 3);
+
+							rowstr += 1;
+							bytes -= 1;
+						}
+						else if (column_format == 'I' && *rowstr == '+')
+						{
+
+							if (is_head_row)
+								waddnstr(win, "\342\224\274", 3);
+							else if (is_top_row)
+								waddnstr(win, "\342\224\254", 3);
+							else /* bottom row */
+								waddnstr(win, "\342\224\264", 3);
+
+							rowstr += 1;
+							bytes -= 1;
+						}
+						else if (column_format == 'R' && (*rowstr == '+' || *rowstr == '|'))
+						{
+							if (is_head_row)
+								waddnstr(win, "\342\224\244", 3);
+							else if (is_top_row)
+								waddnstr(win, "\342\224\220", 3);
+							else /* bottom row */
+								waddnstr(win, "\342\224\230", 3);
+
+							rowstr += 1;
+							bytes -= 1;
+
+						}
+						else
+						{
+							int len  = utf8charlen(*rowstr);
+
+							waddnstr(win, rowstr, len);
+							rowstr +=len;
+							bytes -= len;
+						}
+
+						i += 1;
+					}
+				}
+			}
 
 			/* clean other chars on line */
 			if (i < maxx)

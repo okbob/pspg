@@ -93,6 +93,7 @@ typedef struct
 	bool	less_status_bar;
 	bool	no_highlight_search;
 	bool	no_highlight_lines;
+	bool	force_uniborder;
 	int		theme;
 } Options;
 

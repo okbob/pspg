@@ -1243,6 +1243,7 @@ main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
+		{"force-uniborder", no_argument, 0, 5},
 		{"help", no_argument, 0, 1},
 		{"hlite-search", no_argument, 0, 'g'},
 		{"HILITE-SEARCH", no_argument, 0, 'G'},
@@ -1261,6 +1262,7 @@ main(int argc, char *argv[])
 	opts.no_sound = false;
 	opts.less_status_bar = false;
 	opts.no_highlight_search = false;
+	opts.force_uniborder = false;
 	opts.theme = 1;
 
 	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
@@ -1281,6 +1283,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
+				fprintf(stderr, "  --force-uniborder\n");
+				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
 				fprintf(stderr, "  -g --hlite-search\n");
 				fprintf(stderr, "  -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                 don't highlight lines for searches\n");
@@ -1312,6 +1316,9 @@ main(int argc, char *argv[])
 				break;
 			case 4:
 				opts.less_status_bar = true;
+				break;
+			case 5:
+				opts.force_uniborder = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
