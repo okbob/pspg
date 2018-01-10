@@ -338,7 +338,9 @@ window_fill(int window_identifier,
 						int		new_attr = active_attr;
 						char	unicode_border[10];
 						int		unicode_border_bytes = 0;
-						char	column_format = desc->headline_transl[htrpos];
+						char	column_format;
+
+						column_format = desc->headline_transl != NULL ? desc->headline_transl[htrpos] : ' ';
 
 						if (opts->force_uniborder && desc->linestyle == 'a')
 						{
