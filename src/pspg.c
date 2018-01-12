@@ -29,7 +29,7 @@
 #include "unicode.h"
 #include "themes.h"
 
-#define PSPG_VERSION "0.9.1"
+#define PSPG_VERSION "0.9.2"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
