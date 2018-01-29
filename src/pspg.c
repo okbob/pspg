@@ -1482,7 +1482,7 @@ main(int argc, char *argv[])
 			endwin();
 
 			while (lnb_row < lnb->nrows)
-				printf("%s", lnb->rows[lnb_row++]);
+				printf("%s\n", lnb->rows[lnb_row++]);
 
 			return 0;
 		}
