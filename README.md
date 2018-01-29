@@ -105,6 +105,13 @@ some possible configuration:
 :xx
 </pre>
 
+# MySQL usage
+<pre>
+MariaDB [sakila]> pager ~/src/pspg-master/pspg -s 14 -X --force-uniborder --quit-if-one-screen
+PAGER set to '~/src/pspg-master/pspg -s 14 -X --force-uniborder --quit-if-one-screen'
+MariaDB [sakila]> select now();
+MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
+</pre>
 
 # Note - compilation issue
 
