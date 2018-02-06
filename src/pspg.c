@@ -1549,6 +1549,12 @@ main(int argc, char *argv[])
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
+/*
+ * aux solution of #50 issue,
+ */
+scrdesc.searchterm[0] = '\0';
+
+
 	while (true)
 	{
 		bool		refresh_scr = false;

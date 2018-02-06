@@ -129,6 +129,10 @@ window_fill(int window_identifier,
 				lineinfo->mask ^= LINEINFO_UNKNOWN;
 				lineinfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
 
+endwin();
+printf(">>%d\n", scrdesc->searchterm);
+exit(0);
+
 				while (str != NULL)
 				{
 					if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
