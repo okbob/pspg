@@ -101,7 +101,8 @@ window_fill(int window_identifier,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (!is_fix_rows && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL && !opts->no_highlight_search)
+		if (!is_fix_rows && scrdesc->found && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL
+					  && !opts->no_highlight_search)
 		{
 			if (lineinfo == NULL)
 			{
@@ -131,12 +132,24 @@ window_fill(int window_identifier,
 
 				while (str != NULL)
 				{
-					if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
-								&& (str = utf8_nstrstr(str, scrdesc->searchterm)) != NULL) 
-								|| (str = strstr(str, scrdesc->searchterm)) != NULL)
+					/*
+					 * When we would to ignore case or lower case (in this case, we know, so
+					 * pattern has not any upper char, then we have to use slower case insensitive
+					 * searching.
+					 */
+					if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
+						str = utf8_nstrstr(str, scrdesc->searchterm);
+					else if (opts->ignore_lower_case && scrdesc->has_upperchr)
+						str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+					else
+						/* we can use case sensitive searching (binary comparation) */
+						str = strstr(str, scrdesc->searchterm);
+
+					if (str != NULL)
 					{
 						if (lineinfo->mask & LINEINFO_FOUNDSTR)
 						{
+							/* When we detect multi occurrence, then stop searching */
 							lineinfo->mask |= LINEINFO_FOUNDSTR_MULTI;
 							break;
 						}
@@ -156,7 +169,8 @@ window_fill(int window_identifier,
 
 		/* prepare position cache, when first occurrence is visible */
 		if (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0 &&
-			  srcx + maxx > lineinfo->start_char)
+			  srcx + maxx > lineinfo->start_char &&
+			  scrdesc->found && *scrdesc->searchterm != '\0')
 		{
 			const char *str = rowstr;
 
@@ -164,9 +178,15 @@ window_fill(int window_identifier,
 
 			while (str != NULL && npositions < 100)
 			{
-				if (((opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr)) 
-							&& (str = utf8_nstrstr(str, scrdesc->searchterm)) != NULL) 
-							|| (str = strstr(str, scrdesc->searchterm)) != NULL)
+				if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
+					str = utf8_nstrstr(str, scrdesc->searchterm);
+				else if (opts->ignore_lower_case && scrdesc->has_upperchr)
+					str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+				else
+					/* we can use case sensitive searching (binary comparation) */
+					str = strstr(str, scrdesc->searchterm);
+
+				if (str != NULL)
 				{
 					positions[npositions][0] = utf8len_start_stop(rowstr, str);
 					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;

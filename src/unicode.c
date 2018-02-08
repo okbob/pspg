@@ -12,6 +12,7 @@
  */
 
 #include "unicode.h"
+#include "string.h"
 
 /*
  * Returns length of utf8 string in chars.
@@ -377,6 +378,7 @@ utf8_nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	int		f1 = 0, f2 = 0;
+	int		needle_char_len;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -390,13 +392,14 @@ utf8_nstrstr(const char *haystack, const char *needle)
 		if (needle_prev != needle_cur)
 		{
 			needle_prev = needle_cur;
+			needle_char_len = utf8charlen(*needle_cur);
 			f1 = utf8_tofold(needle_cur);
 		}
 
 		f2 = utf8_tofold(haystack_cur);
 		if (f1 == f2)
 		{
-			needle_cur += utf8charlen(*needle_cur);
+			needle_cur += needle_char_len;
 			haystack_cur += utf8charlen(*haystack_cur);
 		}
 		else
@@ -408,6 +411,67 @@ utf8_nstrstr(const char *haystack, const char *needle)
 
 	return haystack;
 }
+
+/*
+ * Special string searching, lower chars are case insensitive,
+ * upper chars are case sensitive.
+ */
+const char *
+utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
+{
+	const char *haystack_cur, *needle_cur, *needle_prev;
+	int		f1 = 0, f2 = 0;
+	bool	eq;
+
+	needle_cur = needle;
+	needle_prev = NULL;
+	haystack_cur = haystack;
+
+	while (*needle_cur != '\0')
+	{
+		int		needle_char_len;
+		int		haystack_char_len;
+
+		if (*haystack_cur == '\0')
+			return NULL;
+
+		haystack_char_len = utf8charlen(*haystack_cur);
+
+		if (needle_prev != needle_cur)
+		{
+			needle_prev = needle_cur;
+			needle_char_len = utf8charlen(*needle_cur);
+			f1 = utf8_tofold(needle_cur);
+		}
+
+		if (!utf8_isupper(haystack_cur))
+		{
+			f2 = utf8_tofold(haystack_cur);
+			eq = f1 == f2;
+		}
+		else
+		{
+			if (needle_char_len == haystack_char_len)
+				eq = memcmp(haystack_cur, needle_cur, needle_char_len) == 0;
+			else
+				eq = false;
+		}
+
+		if (eq)
+		{
+			needle_cur += needle_char_len;
+			haystack_cur += haystack_char_len;
+		}
+		else
+		{
+			needle_cur = needle;
+			haystack_cur = haystack += utf8charlen(*haystack);
+		}
+	}
+
+	return haystack;
+}
+
 
 bool
 utf8_isupper(const char *s)

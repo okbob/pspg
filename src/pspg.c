@@ -1549,12 +1549,6 @@ main(int argc, char *argv[])
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
-/*
- * aux solution of #50 issue,
- */
-scrdesc.searchterm[0] = '\0';
-
-
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -2406,8 +2400,11 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
+					{
 						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
-
+						/* reset search term */
+						scrdesc.searchterm[0] = '\0';
+					}
 					refresh_scr = true;
 				}
 				break;
@@ -2549,7 +2546,10 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
+					{
 						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
+						scrdesc.searchterm[0] = '\0';
+					}
 
 					refresh_scr = true;
 				}
