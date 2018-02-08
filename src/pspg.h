@@ -125,6 +125,9 @@ typedef struct
 	int		found_row;				/* row of found pattern */
 	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
+	char   *fmt;					/* format string for info when refresh first is required */
+	char   *par;					/* parameter for info when refresh first is required */
+	bool	beep;					/* beep for info when refresh is required */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])

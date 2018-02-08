@@ -431,6 +431,7 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 	{
 		int		needle_char_len;
 		int		haystack_char_len;
+		bool	needle_char_is_upper;
 
 		if (*haystack_cur == '\0')
 			return NULL;
@@ -441,20 +442,23 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 		{
 			needle_prev = needle_cur;
 			needle_char_len = utf8charlen(*needle_cur);
+			needle_char_is_upper = utf8_isupper(needle_cur);
 			f1 = utf8_tofold(needle_cur);
 		}
 
-		if (!utf8_isupper(haystack_cur))
+		if (needle_char_is_upper)
 		{
-			f2 = utf8_tofold(haystack_cur);
-			eq = f1 == f2;
-		}
-		else
-		{
+			/* case sensitive */
 			if (needle_char_len == haystack_char_len)
 				eq = memcmp(haystack_cur, needle_cur, needle_char_len) == 0;
 			else
 				eq = false;
+		}
+		else
+		{
+			/* case insensitive */
+			f2 = utf8_tofold(haystack_cur);
+			eq = f1 == f2;
 		}
 
 		if (eq)

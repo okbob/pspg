@@ -101,7 +101,7 @@ window_fill(int window_identifier,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (!is_fix_rows && scrdesc->found && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL
+		if (!is_fix_rows && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL
 					  && !opts->no_highlight_search)
 		{
 			if (lineinfo == NULL)
@@ -170,7 +170,7 @@ window_fill(int window_identifier,
 		/* prepare position cache, when first occurrence is visible */
 		if (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0 &&
 			  srcx + maxx > lineinfo->start_char &&
-			  scrdesc->found && *scrdesc->searchterm != '\0')
+			  *scrdesc->searchterm != '\0')
 		{
 			const char *str = rowstr;
 

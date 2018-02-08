@@ -1144,11 +1144,31 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static int
-show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep)
+show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first)
 {
 	int		c;
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+
+	/*
+	 * When refresh is required first, then store params and quit immediately.
+	 * Only once can be info moved after refresh
+	 */
+	if (refresh_first && scrdesc->fmt == NULL)
+	{
+		if (fmt != NULL)
+			scrdesc->fmt = strdup(fmt);
+		else
+			scrdesc->fmt = NULL;
+
+		if (par != NULL)
+			scrdesc->par = strdup(par);
+		else
+			scrdesc->par = NULL;
+		scrdesc->beep = beep;
+
+		return 0;
+	}
 
 	wattron(bottom_bar, t->bottom_light_attr);
 
@@ -1202,6 +1222,25 @@ has_upperchr(char *str)
 	}
 
 	return false;
+}
+
+static void
+reset_searching_lineinfo(LineBuffer *lnb)
+{
+	while (lnb != NULL)
+	{
+		if (lnb->lineinfo != NULL)
+		{
+			int		i;
+
+			for (i = 0; i < lnb->nrows; i++)
+			{
+				lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
+				lnb->lineinfo[i].mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
+			}
+		}
+		lnb = lnb->next;
+	}
 }
 
 
@@ -1605,6 +1644,24 @@ main(int argc, char *argv[])
 
 			doupdate();
 
+		if (scrdesc.fmt != NULL)
+		{
+			c2 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false);
+			if (scrdesc.fmt != NULL)
+			{
+				free(scrdesc.fmt);
+				scrdesc.fmt = NULL;
+			}
+			if (scrdesc.par != NULL)
+			{
+				free(scrdesc.par);
+				scrdesc.par = NULL;
+			}
+
+			refresh_aux_windows(&opts, &scrdesc, &desc);
+			continue;
+		}
+
 			c = getch();
 			redirect_mode = false;
 		}
@@ -1647,7 +1704,7 @@ main(int argc, char *argv[])
 							use_mouse = true;
 						}
 
-						c2 = show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false);
+						c2 = show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false, false);
 						refresh_scr = true;
 					}
 					if (second_char == 'k')		/* ALT k - (un)set bookmark */
@@ -2274,7 +2331,7 @@ recheck_end:
 exit:
 
 					if (!ok)
-						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s ", buffer, true);
+						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s ", buffer, true, false);
 
 					refresh_scr = true;
 
@@ -2295,18 +2352,7 @@ exit:
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
-						if (!opts.no_highlight_search)
-						{
-							while (lnb != NULL)
-							{
-								if (lnb->lineinfo != NULL)
-								{
-									for (i = 0; i < lnb->nrows; i++)
-										lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
-								}
-								lnb = lnb->next;
-							}
-						}
+						reset_searching_lineinfo(&desc.rows);
 					}
 
 					search_direction = SEARCH_FORWARD;
@@ -2350,24 +2396,19 @@ exit:
 							const char	   *str;
 
 							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-							{
-								if ((str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm)))
-								{
-									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
-									scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
-									scrdesc.found = true;
-									goto found_next_pattern;
-								}
-							}
+								str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
+								str = utf8_nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes,
+																	 scrdesc.searchterm);
 							else
+								str = str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+
+							if (str != NULL)
 							{
-								if ((str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm)))
-								{
-									scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
-									scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
-									scrdesc.found = true;
-									goto found_next_pattern;
-								}
+								scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
+								scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
+								scrdesc.found = true;
+								goto found_next_pattern;
 							}
 
 							rownum += 1;
@@ -2400,11 +2441,8 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
-					{
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
-						/* reset search term */
-						scrdesc.searchterm[0] = '\0';
-					}
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true);
+
 					refresh_scr = true;
 				}
 				break;
@@ -2416,25 +2454,12 @@ found_next_pattern:
 					get_string(&scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
 					{
-						LineBuffer *lnb = &desc.rows;
-
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
-						if (!opts.no_highlight_search)
-						{
-							while (lnb != NULL)
-							{
-								if (lnb->lineinfo != NULL)
-								{
-									for (i = 0; i < lnb->nrows; i++)
-										lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
-								}
-								lnb = lnb->next;
-							}
-						}
+						reset_searching_lineinfo(&desc.rows);
 					}
 
 					search_direction = SEARCH_BACKWARD;
@@ -2515,9 +2540,14 @@ found_next_pattern:
 						/* try to find most right pattern */
 						while (str != NULL)
 						{
-							if (((opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-									&& (str = utf8_nstrstr(str, scrdesc.searchterm)) != NULL)
-									|| (str = strstr(str, scrdesc.searchterm)) != NULL)
+							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
+								str = utf8_nstrstr(str, scrdesc.searchterm);
+							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
+								str = utf8_nstrstr_ignore_lower_case(str, scrdesc.searchterm);
+							else
+								str = str = strstr(str, scrdesc.searchterm);
+
+							if (str != NULL)
 							{
 								cursor_row = search_row;
 								if (first_row > cursor_row)
@@ -2546,10 +2576,7 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-					{
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true);
-						scrdesc.searchterm[0] = '\0';
-					}
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true);
 
 					refresh_scr = true;
 				}
