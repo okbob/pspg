@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	0.9.2
+Version: 	0.9.3
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,9 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Sun Feb 11 2018 Pavel Stehule <pavel.stehule@gmail.com>
+- fix few crash related when searching was used
+
 * Fri Jan 12 2017 Pavel Stehule <pavel.stehule@gmail.com>
 - possibility to replace ascii art by unicode
 
