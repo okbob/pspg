@@ -36,8 +36,6 @@
 #define MAXPATHLEN 4096
 #endif
 
-#define MAX_STYLE					14
-
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
 int
