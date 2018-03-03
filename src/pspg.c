@@ -52,7 +52,7 @@ static const char *
 strcasestr(const char *s1, const char *s2)
 {
 	/* not implemented yet */
-	return NULL;
+	return strstr(s1, s2);
 }
 
 /*
