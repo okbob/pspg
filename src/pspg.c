@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <langinfo.h>
 #include <libgen.h>
 #include <locale.h>
 #include <unistd.h>
@@ -1436,6 +1437,16 @@ main(int argc, char *argv[])
 	}
 
 	setlocale(LC_ALL, "");
+
+	/*
+	 * ensure, so active encoding is UTF8
+	 */
+	if (!opts.force8bit)
+	{
+		if (strcmp(nl_langinfo(CODESET), "UTF-8") != 0)
+			opts.force8bit = true;
+	}
+
 
 	readfile(fp, &opts, &desc);
 	if (fp != NULL)
