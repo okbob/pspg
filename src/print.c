@@ -138,9 +138,19 @@ window_fill(int window_identifier,
 					 * searching.
 					 */
 					if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
-						str = utf8_nstrstr(str, scrdesc->searchterm);
+					{
+						if (opts->force8bit)
+							str = strstr(str, scrdesc->searchterm);
+						else
+							str = utf8_nstrstr(str, scrdesc->searchterm);
+					}
 					else if (opts->ignore_lower_case && scrdesc->has_upperchr)
-						str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+					{
+						if (opts->force8bit)
+							str = strstr(str, scrdesc->searchterm);
+						else
+							str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+					}
 					else
 						/* we can use case sensitive searching (binary comparation) */
 						str = strstr(str, scrdesc->searchterm);
@@ -156,7 +166,10 @@ window_fill(int window_identifier,
 						else
 						{
 							lineinfo->mask |= LINEINFO_FOUNDSTR;
-							lineinfo->start_char = utf8len_start_stop(rowstr, str);
+							if (opts->force8bit)
+								lineinfo->start_char = str - rowstr;
+							else
+								lineinfo->start_char = utf8len_start_stop(rowstr, str);
 						}
 
 						str += scrdesc->searchterm_size;
@@ -179,16 +192,26 @@ window_fill(int window_identifier,
 			while (str != NULL && npositions < 100)
 			{
 				if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
-					str = utf8_nstrstr(str, scrdesc->searchterm);
+				{
+					if (opts->force8bit)
+						str = strstr(str, scrdesc->searchterm);
+					else
+						str = utf8_nstrstr(str, scrdesc->searchterm);
+				}
 				else if (opts->ignore_lower_case && scrdesc->has_upperchr)
-					str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+				{
+					if (opts->force8bit)
+						str = strstr(str, scrdesc->searchterm);
+					else
+						str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+				}
 				else
 					/* we can use case sensitive searching (binary comparation) */
 					str = strstr(str, scrdesc->searchterm);
 
 				if (str != NULL)
 				{
-					positions[npositions][0] = utf8len_start_stop(rowstr, str);
+					positions[npositions][0] = opts->force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
 					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;
 
 					/* don't search more if we are over visible part */
@@ -259,7 +282,7 @@ window_fill(int window_identifier,
 			if (desc->is_expanded_mode)
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
-				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
+				is_expand_head = is_expanded_header(opts, rowstr, &ei_min, &ei_max);
 				if (is_expand_head)
 				{
 					if (scrdesc->first_rec_title_y == -1)
@@ -285,17 +308,35 @@ window_fill(int window_identifier,
 			/* skip first srcx chars */
 			i = srcx;
 			left_spaces = 0;
-			while(i > 0)
+			if (opts->force8bit)
 			{
-				if (*rowstr != '\0' && *rowstr != '\n')
+				while(i > 0)
 				{
-					i -= utf_dsplen(rowstr);
-					rowstr += utf8charlen(*rowstr);
-					if (i < 0)
-						left_spaces = -i;
+					if (*rowstr != '\0' && *rowstr != '\n')
+					{
+						i -= 1;
+						rowstr += 1;
+						if (i < 0)
+							left_spaces = -i;
+					}
+					else
+						break;
 				}
-				else
-					break;
+			}
+			else
+			{
+				while(i > 0)
+				{
+					if (*rowstr != '\0' && *rowstr != '\n')
+					{
+						i -= utf_dsplen(rowstr);
+						rowstr += utf8charlen(*rowstr);
+						if (i < 0)
+							left_spaces = -i;
+					}
+					else
+						break;
+				}
 			}
 
 			/* Fix too hungry cutting when some multichar char is removed */
@@ -511,12 +552,23 @@ window_fill(int window_identifier,
 
 					if (*ptr != '\0')
 					{
-						int len  = utf8charlen(*ptr);
-						i += utf_dsplen(ptr);
-						ptr += len;
-						/* suboptimal logic */
-						if (i <= maxx && rowstr < ptr)
-							bytes += len;
+						if (opts->force8bit)
+						{
+							i += 1;
+							ptr += 1;
+							/* suboptimal logic */
+							if (i <= maxx && rowstr < ptr)
+								bytes += 1;
+						}
+						else
+						{
+							int len  = utf8charlen(*ptr);
+							i += utf_dsplen(ptr);
+							ptr += len;
+							/* suboptimal logic */
+							if (i <= maxx && rowstr < ptr)
+								bytes += len;
+						}
 					}
 					else
 					{
@@ -590,7 +642,7 @@ window_fill(int window_identifier,
 						}
 						else
 						{
-							int len  = utf8charlen(*rowstr);
+							int len = opts->force8bit ? 1 : utf8charlen(*rowstr);
 
 							waddnstr(win, rowstr, len);
 							rowstr +=len;
@@ -684,6 +736,7 @@ static void
 draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			int maxy, int maxx,				/* size of visible rectangle */
 			int srcy, int srcx,				/* offset to displayed data */
+			Options *opts,
 			DataDesc *desc,
 			attr_t data_attr,				/* colors for data (alphanums) */
 			attr_t line_attr,				/* colors for borders */
@@ -744,7 +797,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			if (desc->is_expanded_mode)
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
-				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
+				is_expand_head = is_expanded_header(opts, rowstr, &ei_min, &ei_max);
 			}
 			else
 			{
@@ -760,17 +813,35 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			/* skip first srcx chars */
 			i = srcx;
 			left_spaces = 0;
-			while(i > 0)
+			if (opts->force8bit)
 			{
-				if (*rowstr != '\0' && *rowstr != '\n')
+				while(i > 0)
 				{
-					i -= utf_dsplen(rowstr);
-					rowstr += utf8charlen(*rowstr);
-					if (i < 0)
-						left_spaces = -i;
+					if (*rowstr != '\0' && *rowstr != '\n')
+					{
+						i -= 1;
+						rowstr += 1;
+						if (i < 0)
+							left_spaces = -i;
+					}
+					else
+						break;
 				}
-				else
-					break;
+			}
+			else
+			{
+				while(i > 0)
+				{
+					if (*rowstr != '\0' && *rowstr != '\n')
+					{
+						i -= utf_dsplen(rowstr);
+						rowstr += utf8charlen(*rowstr);
+						if (i < 0)
+							left_spaces = -i;
+					}
+					else
+						break;
+				}
 			}
 
 			/* Fix too hungry cutting when some multichar char is removed */
@@ -849,8 +920,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 					if (*ptr != '\0' && *ptr != '\n')
 					{
-						int len  = utf8charlen(*ptr);
-						i += utf_dsplen(ptr);
+						int len  = opts->force8bit ? 1 : utf8charlen(*ptr);
+						i += opts->force8bit ? 1 : utf_dsplen(ptr);
 						ptr += len;
 						bytes += len;
 					}
@@ -903,7 +974,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows, 0,
 						  scrdesc->rows_rows , scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, 0,
-						  desc,
+						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
 		}
@@ -915,7 +986,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  desc->title_rows + fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
-						  desc,
+						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  true);
 		}
@@ -928,7 +999,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  desc->title_rows + fix_rows_offset, 0,
-						  desc,
+						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
 		}
@@ -941,7 +1012,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
-						  desc,
+						  opts, desc,
 						  opts->theme == 2 ? 0 | A_BOLD : 0,
 						  opts->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
 						  COLOR_PAIR(8) | A_BOLD,
@@ -956,12 +1027,11 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
 						  scrdesc->footer_rows, scrdesc->maxx,
 						  first_data_row + first_row + scrdesc->rows_rows - fix_rows_offset, footer_cursor_col,
-						  desc,
+						  opts, desc,
 						  COLOR_PAIR(9), 0, 0, true);
 		}
 
 		/* reset */
 		printf("\e[0m\r");
-
 	}
 }

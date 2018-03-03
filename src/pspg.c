@@ -11,6 +11,7 @@
  *-------------------------------------------------------------------------
  */
 #include <curses.h>
+#include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -47,11 +48,18 @@ min_int(int a, int b)
 		return b;
 }
 
+static const char *
+strcasestr(const char *s1, const char *s2)
+{
+	/* not implemented yet */
+	return NULL;
+}
+
 /*
  * Translate from UTF8 to semantic characters.
  */
 static bool
-translate_headline(DataDesc *desc)
+translate_headline(Options *opts, DataDesc *desc)
 {
 	char   *srcptr;
 	char   *destptr;
@@ -59,6 +67,7 @@ translate_headline(DataDesc *desc)
 	bool	broken_format = false;
 	int		processed_chars = 0;
 	bool	is_expanded_info = false;
+	bool	force8bit = opts->force8bit;
 
 	srcptr = desc->headline;
 	destptr = malloc(desc->headline_size + 1);
@@ -98,7 +107,7 @@ translate_headline(DataDesc *desc)
 			desc->expanded_info_minx = processed_chars;
 
 			*destptr++ = 'd';
-			srcptr += utf8charlen(*srcptr);
+			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
 		}
 		else if (is_expanded_info)
 		{
@@ -107,7 +116,7 @@ translate_headline(DataDesc *desc)
 				is_expanded_info = false;
 			}
 			*destptr++ = 'd';
-			srcptr += utf8charlen(*srcptr);
+			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
 		}
 		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
 				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
@@ -308,7 +317,7 @@ translate_headline(DataDesc *desc)
  * Trim footer rows - We should to trim footer rows and calculate footer_char_size
  */
 static void
-trim_footer_rows(DataDesc *desc)
+trim_footer_rows(Options *opts, DataDesc *desc)
 {
 	if (desc->headline_transl != NULL && desc->footer_row != -1)
 	{
@@ -353,7 +362,7 @@ trim_footer_rows(DataDesc *desc)
 				endptr -= 1;
 			}
 
-			len = utf8len(line);
+			len = opts->force8bit ? strlen(line) : utf8len(line);
 			if (len > desc->footer_char_size)
 				desc->footer_char_size = len;
 		}
@@ -445,7 +454,7 @@ isBottomLeftChar(char *str)
  * detect different faces of headline in extended mode
  */
 bool
-is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
+is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx)
 {
 	int		pos = 0;
 
@@ -489,7 +498,7 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 		while (*str != ']' && *str != '\0')
 		{
 			pos += 1;
-			str += utf8charlen(*str);
+			str += opts->force8bit ? 1 : utf8charlen(*str);
 		}
 
 		*ei_maxx = pos - 1;
@@ -502,7 +511,7 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
  * Copy trimmed string
  */
 static void
-strncpytrim(char *dest, const char *src,
+strncpytrim(Options *opts, char *dest, const char *src,
 			size_t ndest, size_t nsrc)
 {
 	const char *endptr;
@@ -532,7 +541,7 @@ strncpytrim(char *dest, const char *src,
 		if (*src == '\0')
 			break;
 
-		clen = utf8charlen(*src);
+		clen = opts->force8bit ? 1 : utf8charlen(*src);
 		if (clen <= ndest && clen <= nsrc)
 		{
 			int		i;
@@ -555,7 +564,7 @@ strncpytrim(char *dest, const char *src,
  * Read data from file and fill DataDesc.
  */
 static int
-readfile(FILE *fp, DataDesc *desc)
+readfile(FILE *fp, Options *opts, DataDesc *desc)
 {
 	char	   *line = NULL;
 	size_t		len;
@@ -639,21 +648,21 @@ readfile(FILE *fp, DataDesc *desc)
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
 		{
-			strncpytrim(desc->title, line, 63, read);
+			strncpytrim(opts, desc->title, line, 63, read);
 			desc->title_rows = 1;
 		}
 
 		if (desc->border_head_row == -1 && desc->border_top_row == -1 && isTopLeftChar(line))
 		{
 			desc->border_top_row = nrows;
-			desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
+			desc->is_expanded_mode = is_expanded_header(opts, line, NULL, NULL);
 		}
 		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
 		{
 			desc->border_head_row = nrows;
 
 			if (!desc->is_expanded_mode)
-				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
+				desc->is_expanded_mode = is_expanded_header(opts, line, NULL, NULL);
 
 			/* title surely doesn't it there */
 			if ((!desc->is_expanded_mode && nrows == 1) ||
@@ -1087,7 +1096,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		while (bytes > 0 && *str != '\0')
 		{
-			size_t		sz = utf8len(str);
+			size_t		sz = opts->force8bit ? strlen(str) : utf8len(str);
 
 			if (sz > bytes)
 				break;
@@ -1209,14 +1218,27 @@ get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 #define SEARCH_BACKWARD			2
 
 static bool
-has_upperchr(char *str)
+has_upperchr(Options *opts, char *str)
 {
-	while (*str != '\0')
+	if (opts->force8bit)
 	{
-		if (utf8_isupper(str))
-			return true;
+		while (*str != '\0')
+		{
+			if (isupper(*str))
+				return true;
 
-		str += utf8charlen(*str);
+			str += 1;
+		}
+	}
+	else
+	{
+		while (*str != '\0')
+		{
+			if (utf8_isupper(str))
+				return true;
+
+			str += utf8charlen(*str);
+		}
 	}
 
 	return false;
@@ -1280,6 +1302,7 @@ main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
+		{"force8bit", no_argument, 0, 6},
 		{"force-uniborder", no_argument, 0, 5},
 		{"help", no_argument, 0, 1},
 		{"hlite-search", no_argument, 0, 'g'},
@@ -1300,6 +1323,7 @@ main(int argc, char *argv[])
 	opts.less_status_bar = false;
 	opts.no_highlight_search = false;
 	opts.force_uniborder = false;
+	opts.force8bit = false;
 	opts.theme = 1;
 
 	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
@@ -1320,6 +1344,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
+				fprintf(stderr, "  --force8bit    force 8bit encoding processing\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
 				fprintf(stderr, "  -g --hlite-search\n");
@@ -1356,6 +1381,9 @@ main(int argc, char *argv[])
 				break;
 			case 5:
 				opts.force_uniborder = true;
+				break;
+			case 6:
+				opts.force8bit = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -1409,7 +1437,7 @@ main(int argc, char *argv[])
 
 	setlocale(LC_ALL, "");
 
-	readfile(fp, &desc);
+	readfile(fp, &opts, &desc);
 	if (fp != NULL)
 	{
 		fclose(fp);
@@ -1482,7 +1510,7 @@ main(int argc, char *argv[])
 	}
 
 	if (desc.headline != NULL)
-		detected_format = translate_headline(&desc);
+		detected_format = translate_headline(&opts, &desc);
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 		desc.first_data_row = desc.border_head_row + 1;
@@ -1498,7 +1526,7 @@ main(int argc, char *argv[])
 
 	first_data_row = desc.first_data_row;
 
-	trim_footer_rows(&desc);
+	trim_footer_rows(&opts, &desc);
 
 	memset(&scrdesc, 0, sizeof(ScrDesc));
 
@@ -1547,7 +1575,7 @@ main(int argc, char *argv[])
 						break;
 					}
 					pos += 1;
-					str += utf8charlen(*str);
+					str += opts.force8bit ? 1 : utf8charlen(*str);
 				}
 			}
 		}
@@ -1570,7 +1598,7 @@ main(int argc, char *argv[])
 					}
 				}
 
-				trim_footer_rows(&desc);
+				trim_footer_rows(&opts, &desc);
 			}
 		}
 	}
@@ -2346,9 +2374,9 @@ exit:
 						LineBuffer *lnb = &desc.rows;
 
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
-						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
-						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
+						scrdesc.searchterm_char_size = opts.force8bit ? strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
 
 						reset_searching_lineinfo(&desc.rows);
 					}
@@ -2394,12 +2422,23 @@ exit:
 							const char	   *str;
 
 							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-								str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+							{
+								if (opts.force8bit)
+									str = strcasestr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+								else
+									str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+							}
 							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
-								str = utf8_nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes,
+							{
+								if (opts.force8bit)
+									/* isn't correct */
+									str = strcasestr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+								else
+									str = utf8_nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes,
 																	 scrdesc.searchterm);
+							}
 							else
-								str = str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+								str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
 
 							if (str != NULL)
 							{
@@ -2453,7 +2492,7 @@ found_next_pattern:
 					if (locsearchterm[0] != '\0')
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
-						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 

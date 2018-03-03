@@ -94,6 +94,7 @@ typedef struct
 	bool	no_highlight_search;
 	bool	no_highlight_lines;
 	bool	force_uniborder;
+	bool	force8bit;
 	int		theme;
 } Options;
 
@@ -143,7 +144,7 @@ void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, Data
 void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 
 /* from pspg.c */
-bool is_expanded_header(char *str, int *ei_minx, int *ei_maxx);
+bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
 int min_int(int a, int b);
 
 #endif
