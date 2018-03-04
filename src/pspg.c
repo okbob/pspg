@@ -1441,7 +1441,6 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
-				fprintf(stderr, "  --force8bit    force 8bit encoding processing\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
 				fprintf(stderr, "  -g --hlite-search\n");

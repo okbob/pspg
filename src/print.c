@@ -397,8 +397,7 @@ window_fill(int window_identifier,
 					{
 						int		htrpos = srcx + i;
 						int		new_attr = active_attr;
-						char	unicode_border[10];
-						int		unicode_border_bytes = 0;
+						bool	print_acs_vline = false;
 						char	column_format;
 
 						column_format = desc->headline_transl != NULL ? desc->headline_transl[htrpos] : ' ';
@@ -408,11 +407,8 @@ window_fill(int window_identifier,
 							if (*(rowstr + left_spaces + bytes) == '|' &&
 									(column_format == 'L' || column_format == 'R' || column_format == 'I'))
 							{
-								strncpy(unicode_border, "\342\224\202", 3);  /* │ */
-								unicode_border_bytes = 3;
+								print_acs_vline = true;
 							}
-							else
-								unicode_border_bytes = 0;
 						}
 
 						if (is_bookmark_row)
@@ -489,7 +485,7 @@ window_fill(int window_identifier,
 							}
 						}
 
-						if (unicode_border_bytes > 0 && bytes > 0)
+						if (print_acs_vline && bytes > 0)
 						{
 							waddnstr(win, rowstr, bytes);
 							rowstr += bytes;
@@ -513,9 +509,9 @@ window_fill(int window_identifier,
 							wattron(win, active_attr);
 						}
 
-						if (unicode_border_bytes > 0)
+						if (print_acs_vline)
 						{
-							waddnstr(win, unicode_border, unicode_border_bytes);
+							waddch(win, ACS_VLINE);
 							bytes = 0;
 							rowstr += 1;
 						}
@@ -598,31 +594,30 @@ window_fill(int window_identifier,
 
 						if (column_format == 'd' && *rowstr == '-')
 						{
-							waddnstr(win, "\342\224\200", 3);
+							waddch(win, ACS_HLINE);
 							rowstr += 1;
 							bytes -= 1;
 						}
 						else if (column_format == 'L' && (*rowstr == '+' || *rowstr == '|'))
 						{
 							if (is_head_row)
-								waddnstr(win, "\342\224\234", 3);
+								waddch(win, ACS_LTEE);
 							else if (is_top_row)
-								waddnstr(win, "\342\224\214", 3);
+								waddch(win, ACS_ULCORNER);
 							else /* bottom row */
-								waddnstr(win, "\342\224\224", 3);
+								waddch(win, ACS_LLCORNER);
 
 							rowstr += 1;
 							bytes -= 1;
 						}
 						else if (column_format == 'I' && *rowstr == '+')
 						{
-
 							if (is_head_row)
-								waddnstr(win, "\342\224\274", 3);
+								waddch(win, ACS_PLUS);
 							else if (is_top_row)
-								waddnstr(win, "\342\224\254", 3);
+								waddch(win, ACS_TTEE);
 							else /* bottom row */
-								waddnstr(win, "\342\224\264", 3);
+								waddch(win, ACS_BTEE);
 
 							rowstr += 1;
 							bytes -= 1;
@@ -630,11 +625,11 @@ window_fill(int window_identifier,
 						else if (column_format == 'R' && (*rowstr == '+' || *rowstr == '|'))
 						{
 							if (is_head_row)
-								waddnstr(win, "\342\224\244", 3);
+								waddch(win, ACS_RTEE);
 							else if (is_top_row)
-								waddnstr(win, "\342\224\220", 3);
+								waddch(win, ACS_URCORNER);
 							else /* bottom row */
-								waddnstr(win, "\342\224\230", 3);
+								waddch(win, ACS_LRCORNER);
 
 							rowstr += 1;
 							bytes -= 1;
