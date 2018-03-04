@@ -1369,6 +1369,7 @@ main(int argc, char *argv[])
 	int		c;
 	int		c2 = 0;
 	int		c3 = 0;
+	int		c4 = 0;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
@@ -1709,6 +1710,8 @@ main(int argc, char *argv[])
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
+	redirect_search_command = false;
+
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -1765,25 +1768,31 @@ main(int argc, char *argv[])
 
 			doupdate();
 
-		if (scrdesc.fmt != NULL)
-		{
-			c2 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false);
 			if (scrdesc.fmt != NULL)
 			{
-				free(scrdesc.fmt);
-				scrdesc.fmt = NULL;
+				c4 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false);
+				if (scrdesc.fmt != NULL)
+				{
+					free(scrdesc.fmt);
+					scrdesc.fmt = NULL;
+				}
+				if (scrdesc.par != NULL)
+				{
+					free(scrdesc.par);
+					scrdesc.par = NULL;
+				}
+
+				refresh_aux_windows(&opts, &scrdesc, &desc);
+				continue;
 			}
-			if (scrdesc.par != NULL)
+
+			if (c4 != 0)
 			{
-				free(scrdesc.par);
-				scrdesc.par = NULL;
+				c = c4;
+				c4 = 0;
 			}
-
-			refresh_aux_windows(&opts, &scrdesc, &desc);
-			continue;
-		}
-
-			c = getch();
+			else
+				c = getch();
 			redirect_mode = false;
 		}
 		else
