@@ -1400,7 +1400,6 @@ main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
-		{"force8bit", no_argument, 0, 6},
 		{"force-uniborder", no_argument, 0, 5},
 		{"help", no_argument, 0, 1},
 		{"hlite-search", no_argument, 0, 'g'},
@@ -1480,9 +1479,6 @@ main(int argc, char *argv[])
 			case 5:
 				opts.force_uniborder = true;
 				break;
-			case 6:
-				opts.force8bit = true;
-				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 				exit(0);
@@ -1535,15 +1531,7 @@ main(int argc, char *argv[])
 
 	setlocale(LC_ALL, "");
 
-	/*
-	 * ensure, so active encoding is UTF8
-	 */
-	if (!opts.force8bit)
-	{
-		if (strcmp(nl_langinfo(CODESET), "UTF-8") != 0)
-			opts.force8bit = true;
-	}
-
+	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
 	readfile(fp, &opts, &desc);
 	if (fp != NULL)
