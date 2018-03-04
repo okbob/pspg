@@ -140,11 +140,13 @@ typedef struct
 #define		w_bottom_bar(scrdesc)	((scrdesc)->wins[WINDOW_BOTTOM_BAR])
 
 /* from print.c */
-void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
-void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
+extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
+extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 
 /* from pspg.c */
-bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
-int min_int(int a, int b);
+extern bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
+extern int min_int(int a, int b);
+extern const char *nstrstr(const char *haystack, const char *needle);
+extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
 
 #endif

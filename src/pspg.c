@@ -49,6 +49,103 @@ min_int(int a, int b)
 		return b;
 }
 
+/*
+ * special case insensitive searching routines
+ */
+const char *
+nstrstr(const char *haystack, const char *needle)
+{
+	const char *haystack_cur, *needle_cur, *needle_prev;
+	int		f1 = 0, f2 = 0;
+
+	needle_cur = needle;
+	needle_prev = NULL;
+	haystack_cur = haystack;
+
+	while (*needle_cur != '\0')
+	{
+		if (*haystack_cur == '\0')
+			return NULL;
+
+		if (needle_prev != needle_cur)
+		{
+			needle_prev = needle_cur;
+			f1 = toupper(*needle_cur);
+		}
+
+		f2 = toupper(*haystack_cur);
+		if (f1 == f2)
+		{
+			needle_cur += 1;
+			haystack_cur += 1;
+		}
+		else
+		{
+			needle_cur = needle;
+			haystack_cur = haystack += 1;
+		}
+	}
+
+	return haystack;
+}
+
+/*
+ * Special string searching, lower chars are case insensitive,
+ * upper chars are case sensitive.
+ */
+const char *
+nstrstr_ignore_lower_case(const char *haystack, const char *needle)
+{
+	const char *haystack_cur, *needle_cur, *needle_prev;
+	int		f1 = 0;
+	bool	eq;
+
+	needle_cur = needle;
+	needle_prev = NULL;
+	haystack_cur = haystack;
+
+	while (*needle_cur != '\0')
+	{
+		bool	needle_char_is_upper;
+
+		if (*haystack_cur == '\0')
+			return NULL;
+
+		if (needle_prev != needle_cur)
+		{
+			needle_prev = needle_cur;
+			needle_char_is_upper = isupper(*needle_cur);
+			f1 = toupper(*needle_cur);
+		}
+
+		if (needle_char_is_upper)
+		{
+			/* case sensitive */
+			eq = *haystack_cur == *needle_cur;
+		}
+		else
+		{
+			/* case insensitive */
+			eq = f1 == toupper(*haystack_cur);
+		}
+
+		if (eq)
+		{
+			needle_cur += 1;
+			haystack_cur += 1;
+		}
+		else
+		{
+			needle_cur = needle;
+			haystack_cur = haystack += 1;
+		}
+	}
+
+	return haystack;
+}
+
+
+
 static const char *
 strcasestr(const char *s1, const char *s2)
 {
@@ -2435,7 +2532,7 @@ exit:
 							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
 							{
 								if (opts.force8bit)
-									str = strcasestr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+									str = nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
 								else
 									str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
 							}
@@ -2443,7 +2540,7 @@ exit:
 							{
 								if (opts.force8bit)
 									/* isn't correct */
-									str = strcasestr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+									str = nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
 								else
 									str = utf8_nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes,
 																	 scrdesc.searchterm);
@@ -2589,9 +2686,15 @@ found_next_pattern:
 						while (str != NULL)
 						{
 							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-								str = utf8_nstrstr(str, scrdesc.searchterm);
+								if (opts.force8bit)
+									nstrstr(str, scrdesc.searchterm);
+								else
+									str = utf8_nstrstr(str, scrdesc.searchterm);
 							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
-								str = utf8_nstrstr_ignore_lower_case(str, scrdesc.searchterm);
+								if (opts.force8bit)
+									nstrstr_ignore_lower_case(str, scrdesc.searchterm);
+								else
+									str = utf8_nstrstr_ignore_lower_case(str, scrdesc.searchterm);
 							else
 								str = str = strstr(str, scrdesc.searchterm);
 
