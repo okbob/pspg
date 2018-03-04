@@ -2674,7 +2674,7 @@ found_next_pattern:
 						{
 							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
 								if (opts.force8bit)
-									nstrstr(str, scrdesc.searchterm);
+									str = nstrstr(str, scrdesc.searchterm);
 								else
 									str = utf8_nstrstr(str, scrdesc.searchterm);
 							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
