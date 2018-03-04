@@ -113,6 +113,8 @@ MariaDB [sakila]> select now();
 MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 </pre>
 
+`LC_CTYPE` should be correct.
+
 # Note - compilation issue
 
 Some linker issues can be fixed by:
