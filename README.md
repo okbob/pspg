@@ -147,6 +147,12 @@ The pspg is available from community repository https://yum.postgresql.org/packa
 
     # port install pspg
 
+# Possible ToDo
+
+* Store data in some column format (now data are stored like array of rows). With this change can
+  be possible to operate over columns - hide columns, change width, cyclic iteration over columns,
+  change order of columns, mark columns and export only selected columns (selected rows).
+
 # Note
 
 If you like it, send a postcard from your home country to my address, please:
