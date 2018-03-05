@@ -2099,6 +2099,7 @@ exit_search_next_bookmark:
 				break;
 
 			case 5:		/* CTRL E */
+			case 520:	/* CTRL DOWN @xterm */
 				{
 					int		max_cursor_row;
 					int		max_first_row;
@@ -2119,6 +2120,7 @@ exit_search_next_bookmark:
 				break;
 
 			case 25:	/* CTRL Y */
+			case 561:	/* CTRL UP @xterm */
 				if (first_row > 0)
 				{
 					first_row -= 1;
@@ -2257,12 +2259,14 @@ recheck_right:
 				break;
 
 			case 538:		/* CTRL HOME */
+			case 530:		/* @xterm */
 			case 'g':
 				cursor_row = 0;
 				first_row = 0;
 				break;
 
 			case 533:		/* CTRL END */
+			case 525:		/* @xterm */
 			case 'G':
 				cursor_row = desc.last_row - desc.first_data_row;
 				first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
