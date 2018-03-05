@@ -1710,8 +1710,6 @@ main(int argc, char *argv[])
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
-	redirect_search_command = false;
-
 	while (true)
 	{
 		bool		refresh_scr = false;
