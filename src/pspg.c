@@ -38,7 +38,14 @@
 #define MAXPATHLEN 4096
 #endif
 
+int			extra_key_codes[20];
+
+#define CTRL_HOME		(extra_key_codes[0])
+#define CTRL_END		(extra_key_codes[1])
+
 #define UNUSED(expr) do { (void)(expr); } while (0)
+
+#define		USE_EXTENDED_NAMES
 
 int
 min_int(int a, int b)
@@ -1361,6 +1368,24 @@ reset_searching_lineinfo(LineBuffer *lnb)
 	}
 }
 
+#ifdef NCURSES_EXT_FUNCS
+
+static int
+get_code(const char *capname, int fallback)
+{
+	char	*s;
+	int		result;
+
+	s = tigetstr(capname);
+	if (s == NULL || s == (char *) -1)
+		return fallback;
+
+	result = key_defined(s);
+	return result > 0 ? result : fallback;
+}
+
+#endif
+
 
 int
 main(int argc, char *argv[])
@@ -1587,7 +1612,24 @@ main(int argc, char *argv[])
 	curs_set(0);
 	noecho();
 
+#ifdef NCURSES_EXT_FUNCS
+
 	set_escdelay(25);
+
+	use_extended_names(TRUE);
+
+#define CTRL_HOME		(extra_key_codes[0])
+#define CTRL_END		(extra_key_codes[1])
+
+	CTRL_HOME = get_code("kHOM5", 538);
+	CTRL_END = get_code("kEND5", 533);
+
+#else
+
+	CTRL_HOME = 538;
+	CTRL_END = 533;
+
+#endif
 
 	if (use_mouse)
 	{
@@ -2256,18 +2298,6 @@ recheck_right:
 				}
 				break;
 
-			case 538:		/* CTRL HOME */
-			case 'g':
-				cursor_row = 0;
-				first_row = 0;
-				break;
-
-			case 533:		/* CTRL END */
-			case 'G':
-				cursor_row = desc.last_row - desc.first_data_row;
-				first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
-				break;
-
 			case 'H':
 				cursor_row = first_row;
 				break;
@@ -2844,6 +2874,17 @@ found_next_pattern:
 				}
 				break;
 		} /* end switch */
+
+		if (c == 'g' || c == CTRL_HOME)
+		{
+			cursor_row = 0;
+			first_row = 0;
+		}
+		else if (c == 'G' || c == CTRL_END)
+		{
+			cursor_row = desc.last_row - desc.first_data_row;
+			first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+		}
 
 		if (fresh_found && scrdesc.found)
 		{
