@@ -151,15 +151,6 @@ nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 	return haystack;
 }
 
-
-
-static const char *
-strcasestr(const char *s1, const char *s2)
-{
-	/* not implemented yet */
-	return strstr(s1, s2);
-}
-
 /*
  * Translate from UTF8 to semantic characters.
  */
