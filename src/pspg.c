@@ -1378,6 +1378,48 @@ get_code(const char *capname, int fallback)
 
 #endif
 
+/*
+ * Replace tilde by HOME dir
+ */
+static char *
+tilde(char *path)
+{
+	static char	writebuf[MAXPATHLEN];
+	int			chars = 0;
+	char *w;
+
+	w = writebuf;
+
+	while (*path && chars < MAXPATHLEN - 1)
+	{
+		if (*path == '~')
+		{
+			char *home = getenv("HOME");
+
+			if (home == NULL)
+			{
+				endwin();
+				fprintf(stderr, "HOME directory is not defined");
+				exit(1);
+			}
+			while (*home && chars < MAXPATHLEN - 1)
+			{
+				*w++ = *home++;
+				chars += 1;
+			}
+			path++;
+		}
+		else
+		{
+			*w++ = *path++;
+			chars += 1;
+		}
+	}
+
+	*w = '\0';
+
+	return writebuf;
+}
 
 int
 main(int argc, char *argv[])
@@ -2449,7 +2491,8 @@ recheck_end:
 				}
 			case 's':
 				{
-					char	buffer[1024];
+					char	buffer[MAXPATHLEN + 1024];
+					char   *path;
 					FILE   *fp;
 					bool	ok = false;
 
@@ -2457,41 +2500,44 @@ recheck_end:
 
 					get_string(&scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
 
-					fp = fopen(buffer, "w");
-					if (fp != NULL)
+					if (buffer[0] != '\0')
 					{
-						LineBuffer *lnb = &desc.rows;
-
-						ok = true;
-
-						while (lnb != NULL)
+						path = tilde(buffer);
+						fp = fopen(path, "w");
+						if (fp != NULL)
 						{
-							for (i = 0; i < lnb->nrows; i++)
-							{
-								fprintf(fp, "%s\n", lnb->rows[i]);
-								if (errno != 0)
-								{
-									ok = false;
-									goto exit;
-								}
-							}
-							lnb = lnb->next;
-						}
+							LineBuffer *lnb = &desc.rows;
 
-						fclose(fp);
-					}
+							ok = true;
+
+							while (lnb != NULL)
+							{
+								for (i = 0; i < lnb->nrows; i++)
+								{
+									fprintf(fp, "%s\n", lnb->rows[i]);
+									if (errno != 0)
+									{
+										ok = false;
+										goto exit;
+									}
+								}
+								lnb = lnb->next;
+							}
+
+							fclose(fp);
+						}
 exit:
 
-					if (!ok)
-					{
-						if (errno != 0)
+						if (!ok)
 						{
-							char buffer2[1024];
+							if (errno != 0)
+								snprintf(buffer, sizeof(buffer), "%s (%s)", path, strerror(errno));
+							else
+								strcpy(buffer, path);
 
-							snprintf(buffer2, 1024, "%s (%s)", buffer, strerror(errno));
-							strcpy(buffer, buffer2);
+							c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
 						}
-						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
+
 					}
 
 					refresh_scr = true;
