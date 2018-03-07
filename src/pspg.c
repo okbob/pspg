@@ -1247,7 +1247,7 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static int
-show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first)
+show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first, bool applytimeout)
 {
 	int		c;
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
@@ -1289,7 +1289,8 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (beep)
 		make_beep(opts);
 
-	timeout(2000);
+	if (applytimeout)
+		timeout(2000);
 	c = getch();
 	timeout(-1);
 
@@ -1801,7 +1802,7 @@ main(int argc, char *argv[])
 
 			if (scrdesc.fmt != NULL)
 			{
-				c4 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false);
+				c4 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false, true);
 				if (scrdesc.fmt != NULL)
 				{
 					free(scrdesc.fmt);
@@ -1865,7 +1866,7 @@ main(int argc, char *argv[])
 							use_mouse = true;
 						}
 
-						c2 = show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false, false);
+						c2 = show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false, false, true);
 						refresh_scr = true;
 					}
 					if (second_char == 'k')		/* ALT k - (un)set bookmark */
@@ -2452,6 +2453,8 @@ recheck_end:
 					FILE   *fp;
 					bool	ok = false;
 
+					errno = 0;
+
 					get_string(&scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
 
 					fp = fopen(buffer, "w");
@@ -2480,7 +2483,16 @@ recheck_end:
 exit:
 
 					if (!ok)
-						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s ", buffer, true, false);
+					{
+						if (errno != 0)
+						{
+							char buffer2[1024];
+
+							snprintf(buffer2, 1024, "%s (%s)", buffer, strerror(errno));
+							strcpy(buffer, buffer2);
+						}
+						c2 = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
+					}
 
 					refresh_scr = true;
 
@@ -2601,7 +2613,7 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true);
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true, true);
 
 					refresh_scr = true;
 				}
@@ -2742,7 +2754,7 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true);
+						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true, true);
 
 					refresh_scr = true;
 				}
