@@ -2465,7 +2465,7 @@ recheck_end:
 						{
 							for (i = 0; i < lnb->nrows; i++)
 							{
-								fprintf(fp, "%s", lnb->rows[i]);
+								fprintf(fp, "%s\n", lnb->rows[i]);
 								if (errno != 0)
 								{
 									ok = false;
