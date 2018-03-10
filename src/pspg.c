@@ -152,6 +152,33 @@ nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 }
 
 /*
+ * Multiple used block - searching in string based on configuration
+ */
+const char *
+pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
+{
+	bool	ignore_case = opts->ignore_case;
+	bool	ignore_lower_case = opts->ignore_lower_case;
+	bool	force8bit = opts->force8bit;
+	bool	has_upperchr = scrdesc->has_upperchr;
+	const char *searchterm = scrdesc->searchterm;
+	const char *result;
+
+	if (ignore_case || (ignore_lower_case && !has_upperchr))
+	{
+		result = force8bit ? nstrstr(str, searchterm) : utf8_nstrstr(str, searchterm);
+	}
+	else if (ignore_lower_case && has_upperchr)
+	{
+		result = force8bit ? nstrstr_ignore_lower_case(str, searchterm) : utf8_nstrstr_ignore_lower_case(str, searchterm);
+	}
+	else
+		result = strstr(str, searchterm);
+
+	return result;
+}
+
+/*
  * Translate from UTF8 to semantic characters.
  */
 static bool
@@ -1590,6 +1617,7 @@ main(int argc, char *argv[])
 
 	setlocale(LC_ALL, "");
 
+	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
 	readfile(fp, &opts, &desc);
@@ -2602,28 +2630,11 @@ exit:
 						{
 							const char	   *str;
 
-							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-							{
-								if (opts.force8bit)
-									str = nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
-								else
-									str = utf8_nstrstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
-							}
-							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
-							{
-								if (opts.force8bit)
-									/* isn't correct */
-									str = nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
-								else
-									str = utf8_nstrstr_ignore_lower_case(lnb->rows[rownum_cursor_row] + skip_bytes,
-																	 scrdesc.searchterm);
-							}
-							else
-								str = strstr(lnb->rows[rownum_cursor_row] + skip_bytes, scrdesc.searchterm);
+							str = pspg_search(&opts, &scrdesc, lnb->rows[rownum_cursor_row] + skip_bytes);
 
 							if (str != NULL)
 							{
-								scrdesc.found_start_x = utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
+								scrdesc.found_start_x = opts.force8bit ? str - lnb->rows[rownum_cursor_row] : utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
 								scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
 								scrdesc.found = true;
 								goto found_next_pattern;
@@ -2730,7 +2741,7 @@ found_next_pattern:
 						if (rowidx < 0)
 						{
 							rows = rows->prev;
-							rowidx = 1000;
+							rowidx = 999;
 							continue;
 						}
 
@@ -2758,18 +2769,7 @@ found_next_pattern:
 						/* try to find most right pattern */
 						while (str != NULL)
 						{
-							if (opts.ignore_case || (opts.ignore_lower_case && !scrdesc.has_upperchr))
-								if (opts.force8bit)
-									str = nstrstr(str, scrdesc.searchterm);
-								else
-									str = utf8_nstrstr(str, scrdesc.searchterm);
-							else if (opts.ignore_lower_case && scrdesc.has_upperchr)
-								if (opts.force8bit)
-									nstrstr_ignore_lower_case(str, scrdesc.searchterm);
-								else
-									str = utf8_nstrstr_ignore_lower_case(str, scrdesc.searchterm);
-							else
-								str = str = strstr(str, scrdesc.searchterm);
+							str = pspg_search(&opts, &scrdesc, str);
 
 							if (str != NULL)
 							{
@@ -2777,7 +2777,7 @@ found_next_pattern:
 								if (first_row > cursor_row)
 									first_row = cursor_row;
 
-								scrdesc.found_start_x = utf8len_start_stop(row, str);
+								scrdesc.found_start_x = opts.force8bit ? str - row : utf8len_start_stop(row, str);
 								scrdesc.found_start_bytes = str - row;
 								scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
 								scrdesc.found = true;

@@ -191,23 +191,7 @@ window_fill(int window_identifier,
 
 			while (str != NULL && npositions < 100)
 			{
-				if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
-				{
-					if (opts->force8bit)
-						str = nstrstr(str, scrdesc->searchterm);
-					else
-						str = utf8_nstrstr(str, scrdesc->searchterm);
-				}
-				else if (opts->ignore_lower_case && scrdesc->has_upperchr)
-				{
-					if (opts->force8bit)
-						str = nstrstr_ignore_lower_case(str, scrdesc->searchterm);
-					else
-						str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
-				}
-				else
-					/* we can use case sensitive searching (binary comparation) */
-					str = strstr(str, scrdesc->searchterm);
+				str = pspg_search(opts, scrdesc, str);
 
 				if (str != NULL)
 				{

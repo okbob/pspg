@@ -149,4 +149,6 @@ extern int min_int(int a, int b);
 extern const char *nstrstr(const char *haystack, const char *needle);
 extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
 
+extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str);
+
 #endif
