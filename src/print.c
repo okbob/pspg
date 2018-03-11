@@ -574,7 +574,6 @@ window_fill(int window_identifier,
 						int		column_format = desc->headline_transl[htrpos];
 						bool	is_top_row = effective_row == desc->border_top_row;
 						bool	is_head_row = effective_row == desc->border_head_row;
-						bool	is_bottom_row = effective_row == desc->border_bottom_row;
 
 						if (column_format == 'd' && *rowstr == '-')
 						{

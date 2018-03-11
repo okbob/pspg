@@ -87,6 +87,7 @@ typedef struct
 
 typedef struct
 {
+	char   *pathname;
 	bool	ignore_case;
 	bool	ignore_lower_case;
 	bool	no_sound;

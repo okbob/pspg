@@ -113,7 +113,7 @@ nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
-		bool	needle_char_is_upper;
+		bool	needle_char_is_upper = false; /* be compiler quiet */
 
 		if (*haystack_cur == '\0')
 			return NULL;
@@ -700,22 +700,11 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 	if (fp != NULL)
 	{
-		int		fno;
-		char	proclnk[MAXPATHLEN + 1];
-		char	path[MAXPATHLEN + 1];
-		ssize_t r;
-
-		fno = fileno(fp);
-
-		sprintf(proclnk, "/proc/self/fd/%d", fno);
-
-		r = readlink(proclnk, path, MAXPATHLEN);
-		if (r > 0)
+		if (opts->pathname != NULL)
 		{
 			char	   *name;
 
-			path[r] = '\0';
-			name = basename(path);
+			name = basename(opts->pathname);
 			strncpy(desc->filename, name, 64);
 			desc->filename[64] = '\0';
 		}
@@ -1501,6 +1490,7 @@ main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
+	opts.pathname = NULL;
 	opts.ignore_case = false;
 	opts.ignore_lower_case = false;
 	opts.no_sound = false;
@@ -1599,6 +1589,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "cannot to read file: %s\n", optarg);
 					exit(1);
 				}
+				opts.pathname = strdup(optarg);
 				break;
 			case 'F':
 				quit_if_one_screen = true;
@@ -2580,8 +2571,6 @@ exit:
 					get_string(&scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
 					{
-						LineBuffer *lnb = &desc.rows;
-
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);

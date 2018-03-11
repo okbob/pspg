@@ -378,7 +378,7 @@ utf8_nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	int		f1 = 0, f2 = 0;
-	int		needle_char_len;
+	int		needle_char_len = 0; /* be compiler quiet */
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -429,9 +429,9 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
-		int		needle_char_len;
 		int		haystack_char_len;
-		bool	needle_char_is_upper;
+		int		needle_char_len = 0;
+		bool	needle_char_is_upper =  false;
 
 		if (*haystack_cur == '\0')
 			return NULL;
@@ -475,7 +475,6 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 
 	return haystack;
 }
-
 
 bool
 utf8_isupper(const char *s)
