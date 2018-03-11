@@ -1285,6 +1285,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 		else
 			scrdesc->par = NULL;
 		scrdesc->beep = beep;
+		scrdesc->applytimeout = applytimeout;
 
 		return 0;
 	}
@@ -1513,8 +1514,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  %s [OPTION]\n\n", argv[0]);
 				fprintf(stderr, "Options:\n");
 				fprintf(stderr, "  -b             black-white style\n");
-				fprintf(stderr, "  -s N           set color style number (1..%d)\n", MAX_STYLE);
-				fprintf(stderr, "  -c N           fix N columns (1..4)\n");
+				fprintf(stderr, "  -s N           set color style number (0..%d)\n", MAX_STYLE);
+				fprintf(stderr, "  -c N           fix N columns (0..4)\n");
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
@@ -1863,7 +1864,9 @@ main(int argc, char *argv[])
 
 			if (scrdesc.fmt != NULL)
 			{
-				c4 = show_info_wait(&opts, &scrdesc, scrdesc.fmt, scrdesc.par, scrdesc.beep, false, true);
+				c4 = show_info_wait(&opts, &scrdesc,
+									scrdesc.fmt, scrdesc.par, scrdesc.beep,
+									false, scrdesc.applytimeout);
 				if (scrdesc.fmt != NULL)
 				{
 					free(scrdesc.fmt);
@@ -2659,7 +2662,7 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true, true);
+						c2 = show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
 
 					refresh_scr = true;
 				}
@@ -2789,7 +2792,7 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-						c2 = show_info_wait(&opts, &scrdesc, " Not found ", NULL, true, true, true);
+						c2 = show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
 
 					refresh_scr = true;
 				}

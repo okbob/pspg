@@ -130,6 +130,7 @@ typedef struct
 	char   *fmt;					/* format string for info when refresh first is required */
 	char   *par;					/* parameter for info when refresh first is required */
 	bool	beep;					/* beep for info when refresh is required */
+	bool	applytimeout;			/* true, when saved info should be close after timeout */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
