@@ -1438,6 +1438,11 @@ tilde(char *path)
 	return writebuf;
 }
 
+#define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
+#define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
+#define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
+#define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
+
 int
 main(int argc, char *argv[])
 {
@@ -1966,12 +1971,13 @@ main(int argc, char *argv[])
 						int		rownum = 0;
 						bool	found = false;
 
-						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset - 1;
+						/* start from previous line before cursor */
+						rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET - 1;
 
 						if (rownum_cursor_row >= 0)
 						{
 							/* skip first x LineBuffers */
-							while (rownum_cursor_row > 1000 && lnb != NULL)
+							while (rownum_cursor_row >= 1000 && lnb != NULL)
 							{
 								lnb = lnb->next;
 								rownum_cursor_row -= 1000;
@@ -2009,7 +2015,7 @@ exit_search_prev_bookmark:
 
 						if (found)
 						{
-							cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
+							cursor_row = rownum - CURSOR_ROW_OFFSET;
 							if (cursor_row < first_row)
 								first_row = cursor_row;
 						}
@@ -2025,10 +2031,11 @@ exit_search_prev_bookmark:
 						int		rownum = 0;
 						bool	found = false;
 
-						rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset + 1;
+						/* start after (next line) cursor line */
+						rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET + 1;
 
 						/* skip first x LineBuffers */
-						while (rownum_cursor_row > 1000 && lnb != NULL)
+						while (rownum_cursor_row >= 1000 && lnb != NULL)
 						{
 							lnb = lnb->next;
 							rownum_cursor_row -= 1000;
@@ -2065,12 +2072,12 @@ exit_search_next_bookmark:
 						{
 							int		max_first_row;
 
-							cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
+							cursor_row = rownum - CURSOR_ROW_OFFSET;
 
-							if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
-								first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+							max_first_row = MAX_FIRST_ROW;
 							if (max_first_row < 0)
 								max_first_row = 0;
 							if (first_row > max_first_row)
@@ -2127,7 +2134,7 @@ exit_search_next_bookmark:
 					int		max_cursor_row;
 					int		max_first_row;
 
-					max_cursor_row = desc.last_row - desc.first_data_row;
+					max_cursor_row = MAX_CURSOR_ROW;
 
 					if (++cursor_row > max_cursor_row)
 					{
@@ -2135,10 +2142,10 @@ exit_search_next_bookmark:
 						make_beep(&opts);
 					}
 
-					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
+					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 						first_row += 1;
 
-					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+					max_first_row = MAX_FIRST_ROW;
 
 					if (max_first_row < 0)
 						max_first_row = 0;
@@ -2149,12 +2156,12 @@ exit_search_next_bookmark:
 
 			case 4:		/* CTRL D - forward half win */
 				{
-					int		offset = ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
+					int		offset = ((VISIBLE_DATA_ROWS - 1) >> 1);
 					int		max_cursor_row;
 					int		max_first_row;
 
-					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
-					max_cursor_row = desc.last_row - desc.first_data_row;
+					max_first_row = MAX_FIRST_ROW;
+					max_cursor_row = MAX_CURSOR_ROW;
 
 					if (first_row + offset <= max_first_row)
 					{
@@ -2176,7 +2183,7 @@ exit_search_next_bookmark:
 
 			case 21:	/* CTRL U - backward half win */
 				{
-					int		offset = ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
+					int		offset = ((VISIBLE_DATA_ROWS - 1) >> 1);
 
 					if (first_row - offset > 0)
 					{
@@ -2201,8 +2208,8 @@ exit_search_next_bookmark:
 					int		max_cursor_row;
 					int		max_first_row;
 
-					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
-					max_cursor_row = desc.last_row - desc.first_data_row;
+					max_first_row = MAX_FIRST_ROW;
+					max_cursor_row = MAX_CURSOR_ROW;
 
 					if (first_row < max_first_row)
 					{
@@ -2358,10 +2365,10 @@ recheck_right:
 				cursor_row = first_row;
 				break;
 			case 'L':
-				cursor_row = first_row + maxy - scrdesc.fix_rows_rows + desc.title_rows - 3;
+				cursor_row = first_row + VISIBLE_DATA_ROWS - 1;
 				break;
 			case 'M':
-				cursor_row = first_row + ((maxy - scrdesc.fix_rows_rows + desc.title_rows - 3) >> 1);
+				cursor_row = first_row + ((VISIBLE_DATA_ROWS - 1) >> 1);
 				break;
 
 			case KEY_PPAGE:
@@ -2409,17 +2416,17 @@ recheck_right:
 					first_row += offset;
 					cursor_row += offset;
 
-					max_cursor_row = desc.last_row - desc.first_data_row;
+					max_cursor_row = MAX_CURSOR_ROW;
 					if (cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
 						make_beep(&opts);
 					}
 
-					if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
+					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 						first_row += 1;
 
-					max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+					max_first_row = MAX_FIRST_ROW;
 					if (max_first_row < 0)
 						max_first_row = 0;
 					if (first_row > max_first_row)
@@ -2600,7 +2607,7 @@ exit:
 						break;
 					}
 
-					rownum_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+					rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
 					if (scrdesc.found && rownum_cursor_row == scrdesc.found_row)
 						skip_bytes = scrdesc.found_start_bytes + scrdesc.searchterm_size;
 
@@ -2647,15 +2654,15 @@ found_next_pattern:
 					{
 						int		max_first_row;
 
-						cursor_row = rownum - scrdesc.fix_rows_rows - desc.title_rows - fix_rows_offset;
+						cursor_row = rownum - CURSOR_ROW_OFFSET;
 						scrdesc.found_row = rownum;
 						fresh_found = true;
 						fresh_found_cursor_col = -1;
 
-						if (cursor_row - first_row > maxy - scrdesc.fix_rows_rows - fix_rows_offset - 3)
-							first_row = cursor_row - maxy + scrdesc.fix_rows_rows + fix_rows_offset + 3;
+						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-						max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+						max_first_row = MAX_FIRST_ROW;
 						if (max_first_row < 0)
 							max_first_row = 0;
 						if (first_row > max_first_row)
@@ -2771,7 +2778,7 @@ found_next_pattern:
 
 								scrdesc.found_start_x = opts.force8bit ? str - row : utf8len_start_stop(row, str);
 								scrdesc.found_start_bytes = str - row;
-								scrdesc.found_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+								scrdesc.found_row = cursor_row + CURSOR_ROW_OFFSET;
 								scrdesc.found = true;
 								fresh_found = true;
 								fresh_found_cursor_col = -1;
@@ -2825,7 +2832,7 @@ found_next_pattern:
 							int		max_first_row;
 							int		offset = 1;
 
-							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+							max_first_row = MAX_FIRST_ROW;
 							if (max_first_row < 0)
 								max_first_row = 0;
 
@@ -2838,14 +2845,14 @@ found_next_pattern:
 							first_row += offset;
 							cursor_row += offset;
 
-							max_cursor_row = desc.last_row - desc.first_data_row;
+							max_cursor_row = MAX_CURSOR_ROW;
 							if (cursor_row > max_cursor_row)
 							{
 								cursor_row = max_cursor_row;
 								make_beep(&opts);
 							}
 
-							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset - 1)
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 								first_row += 1;
 
 							if (first_row > max_first_row)
@@ -2892,14 +2899,14 @@ found_next_pattern:
 							if (cursor_row + fix_rows_offset < first_row)
 								first_row = cursor_row + fix_rows_offset;
 
-							max_cursor_row = desc.last_row - desc.first_data_row;
+							max_cursor_row = MAX_CURSOR_ROW;
 							if (cursor_row > max_cursor_row)
 								cursor_row = max_cursor_row;
 
-							if (cursor_row - first_row > scrdesc.main_maxy - scrdesc.fix_rows_rows + desc.title_rows - fix_rows_offset)
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 								first_row += 1;
 
-							max_first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+							max_first_row = MAX_FIRST_ROW;
 							if (max_first_row < 0)
 								max_first_row = 0;
 							if (first_row > max_first_row)
@@ -2923,8 +2930,8 @@ found_next_pattern:
 		}
 		else if (c == 'G' || c == CTRL_END)
 		{
-			cursor_row = desc.last_row - desc.first_data_row;
-			first_row = desc.last_row - desc.title_rows - scrdesc.main_maxy + 1;
+			cursor_row = MAX_CURSOR_ROW;
+			first_row = MAX_FIRST_ROW;
 		}
 
 		if (fresh_found && scrdesc.found)
