@@ -1385,15 +1385,7 @@ get_code(const char *capname, int fallback)
 	char	*s;
 	int		result;
 
-#ifdef NCURSES_CONST
-
-	s = tigetstr(capname);
-
-#else
-
-	s = tigetstr((char *) capname;
-
-#endif
+	s = tigetstr((NCURSES_CONST char *) capname);
 
 	if (s == NULL || s == (char *) -1)
 		return fallback;
