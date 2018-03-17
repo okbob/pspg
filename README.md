@@ -143,7 +143,13 @@ The pspg is available from community repository https://yum.postgresql.org/packa
 
     # pkg install pspg
     
-## macOS (MacPorts)
+## macOS
+
+### Using Homebrew
+
+    # brew install pspg
+
+### Using MacPorts
 
     # port install pspg
 
