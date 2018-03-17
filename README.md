@@ -133,7 +133,13 @@ In this case comment line with function set_escdelay
 
 # Note - Installation
 
+## RPM (CentOS/Fedora/openSUSE/…)
+
 The pspg is available from community repository https://yum.postgresql.org/packages.php
+
+## Alpine Linux
+
+    # apk add pspg
 
 ## Gentoo
 
