@@ -145,6 +145,15 @@ The pspg is available from community repository https://yum.postgresql.org/packa
 
     # emerge -av dev-db/pspg
 
+## Arch Linux
+
+The Arch User Repository contains two versions:
+
+* [pspg](https://aur.archlinux.org/packages/pspg/) is a fixed release.
+* [pspg-git](https://aur.archlinux.org/packages/pspg-git/) tracks the `master` branch.
+
+Use the AUR helper of your choice or git and `makepkg` to install pspg.
+
 ## FreeBSD
 
     # pkg install pspg
