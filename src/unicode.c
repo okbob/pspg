@@ -48,6 +48,9 @@ utf8len_start_stop(const char *start, const char *stop)
 int
 utf8charlen(char ch)
 {
+	if ((ch & 0x80) == 0)
+		return 1;
+
 	if ((ch & 0xF0) == 0xF0)
 		return 4;
 
