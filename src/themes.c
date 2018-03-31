@@ -67,6 +67,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, -1, -1);							/* color of line art with pattern */
 			init_pair(18, -1, -1);		/* color of marked search pattern in no-hl line mode */
 			init_pair(19, -1, -1);		/* color of marked search pattern in cursor */
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 
 			break;
 		case 1:
@@ -90,7 +91,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_GREEN, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 			break;
 		case 2:
 			assume_default_colors(COLOR_WHITE, COLOR_CYAN);
@@ -113,7 +114,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(20, COLOR_YELLOW, COLOR_BLUE);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 
 			break;
 		case 3:
@@ -137,7 +138,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_BLACK, COLOR_GREEN);
 			init_pair(18, COLOR_WHITE, COLOR_GREEN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
+			init_pair(20, COLOR_WHITE, COLOR_BLUE);
 
 			break;
 		case 4:
@@ -233,7 +234,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_GREEN, COLOR_CYAN);
 			init_pair(18, COLOR_CYAN, COLOR_BLACK);
 			init_pair(19, COLOR_CYAN, COLOR_GREEN);
-			init_pair(20, COLOR_CYAN, COLOR_GREEN);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 
 			break;
 		case 8:
@@ -257,7 +258,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_CYAN, COLOR_GREEN);
 			init_pair(18, COLOR_CYAN, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_YELLOW, COLOR_CYAN);
+			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
 
 			break;
 		case 9:
@@ -281,7 +282,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_YELLOW, COLOR_CYAN);
+			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
 
 			break;
 		case 10:
@@ -305,7 +306,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_BLUE, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(20, COLOR_YELLOW, COLOR_BLUE);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 
 			break;
 		case 11:
@@ -329,7 +330,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_CYAN, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_BLACK);
 			init_pair(19, COLOR_CYAN, COLOR_MAGENTA);
-			init_pair(20, COLOR_CYAN, COLOR_MAGENTA);
+			init_pair(20, COLOR_WHITE, COLOR_BLUE);
 
 			break;
 		case 12:
@@ -353,7 +354,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_BLUE, COLOR_GREEN);
 			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(19, COLOR_CYAN, COLOR_BLUE);
-			init_pair(20, COLOR_CYAN, COLOR_BLUE);
+			init_pair(20, COLOR_WHITE, COLOR_MAGENTA);
 
 			break;
 		case 13:
@@ -377,7 +378,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_CYAN, COLOR_BLUE);
 			init_pair(19, COLOR_WHITE, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 
 			break;
 		case 14:
@@ -401,7 +402,7 @@ initialize_color_pairs(int theme)
 			init_pair(17, COLOR_WHITE, COLOR_GREEN);
 			init_pair(18, COLOR_CYAN, COLOR_BLUE);
 			init_pair(19, COLOR_WHITE, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 			break;
 	}
 }
@@ -525,6 +526,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : A_BOLD;
 			t->pattern_data_attr |= 0;
 			t->pattern_line_attr |= 0;
+			t->cursor_pattern_attr |= A_REVERSE;
 			break;
 	}
 
