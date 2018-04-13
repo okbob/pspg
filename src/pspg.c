@@ -2933,6 +2933,8 @@ found_next_pattern:
 		{
 			cursor_row = MAX_CURSOR_ROW;
 			first_row = MAX_FIRST_ROW;
+			if (first_row < 0)
+				first_row = 0;
 		}
 
 		if (fresh_found && scrdesc.found)
