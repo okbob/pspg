@@ -10,9 +10,9 @@ Group: 		Development/Tools
 Vendor: 	Pavel Stehule <pavel.stehule@gmail.com>
 URL: 		https://github.com/okbob/pspg
 Source: 	https://github.com/okbob/pspg/archive/%{version}.tar.gz
-BuildRequires: 	ncurses-devel
+BuildRequires: 	ncurses-devel readline-devel
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Requires: 	ncurses
+Requires: 	ncurses readline
 
 %description
 psps is a unix pager optimized for psql. It can freeze rows, freeze
