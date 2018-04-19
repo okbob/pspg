@@ -104,7 +104,6 @@ mbbisearch(wchar_t ucs, const struct mbinterval *table, int max)
 	return 0;
 }
 
-
 /* The following functions define the column width of an ISO 10646
  * character as follows:
  *
@@ -238,6 +237,58 @@ int
 utf_dsplen(const char *s)
 {
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
+}
+
+/*
+ * Returns display length of \0 ended multibyte string.
+ * The string is limited by max_bytes too.
+ */
+int
+utf_string_dsplen(const char *s, size_t max_bytes)
+{
+	int result = 0;
+	const char *ptr = s;
+
+	while (*ptr != '\0' && max_bytes > 0)
+	{
+		int		clen = utf8charlen(*ptr);
+
+		result += utf_dsplen(ptr);
+		ptr += clen;
+		max_bytes -= clen;
+	}
+
+	return result;
+}
+
+/*
+ * This version of previous function uses similar calculation like
+ * readline libarry - and supports terminal tabs.
+ *
+ * This code is based on demo ulfalizer/readline-and-ncurses
+ *
+ */
+int
+readline_utf_string_dsplen(const char *s, size_t max_bytes, size_t offset)
+{
+	int result = 0;
+	const char *ptr = s;
+
+	while (*ptr != '\0' && max_bytes > 0)
+	{
+		int		clen = utf8charlen(*ptr);
+		int		dsplen = utf_dsplen(ptr);
+
+		if (dsplen > 0)
+			result += dsplen;
+		else if (*ptr == '\t')
+			result = ((result + offset + 8) & ~7) - offset;
+
+		ptr += clen;
+		max_bytes -= clen;
+	}
+
+	return result;
 }
 
 /*

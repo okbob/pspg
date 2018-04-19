@@ -1,4 +1,4 @@
-AC_INIT([pspg],[0],[pavel.stehule@gmail.com],[tig])
+AC_INIT([pspg],[0],[pavel.stehule@gmail.com],[pspg])
 
 AC_LANG([C])
 AC_CONFIG_SRCDIR(src)
@@ -13,6 +13,7 @@ AC_HEADER_STDC
 
 AX_DEBUG_CFLAGS
 AX_WITH_CURSES
+AX_LIB_READLINE
 case "$ax_cv_ncurses" in "no")
 	AC_MSG_ERROR([ncurses not found])
 esac

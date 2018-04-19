@@ -31,6 +31,28 @@
 #include "unicode.h"
 #include "themes.h"
 
+#ifdef HAVE_LIBREADLINE
+
+#if defined(HAVE_READLINE_READLINE_H)
+
+#include <readline/readline.h>
+
+#elif defined(HAVE_READLINE_H)
+
+#include <readline.h>
+
+#endif
+#endif
+
+
+#ifdef HAVE_READLINE_HISTORY
+#if defined(HAVE_READLINE_HISTORY_H)
+#include <readline/history.h>
+#elif defined(HAVE_HISTORY_H)
+#include <history.h>
+#endif
+#endif
+
 #define PSPG_VERSION "1.0.0"
 
 /* GNU Hurd does not define MAXPATHLEN */
@@ -39,6 +61,18 @@
 #endif
 
 int			extra_key_codes[20];
+
+#ifdef HAVE_LIBREADLINE
+
+char		readline_buffer[1024];
+bool		got_readline_string;
+bool		force8bit;
+static unsigned char	input;
+static bool input_avail = false;
+
+static WINDOW *g_bottom_bar;
+
+#endif
 
 #define CTRL_HOME		(extra_key_codes[0])
 #define CTRL_END		(extra_key_codes[1])
@@ -1069,7 +1103,6 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
 		mvwprintw(bottom_bar, 0, 2, "%-4s", "uit");
 		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
-		wrefresh(bottom_bar);
 
 		if (desc->headline_transl != NULL)
 		{
@@ -1079,8 +1112,10 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 			wattron(bottom_bar, bottom_bar_theme->bottom_attr);
 			mvwprintw(bottom_bar, 0, 11, "%s", " Col.Freeze ");
 			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
-			wrefresh(bottom_bar);
 		}
+
+		wrefresh(bottom_bar);
+
 	}
 
 	scrdesc->main_maxy = maxy;
@@ -1314,10 +1349,126 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	return c == ERR ? 0 : c;
 }
 
+#ifdef HAVE_LIBREADLINE
+
+static int
+readline_input_avail(void)
+{
+    return input_avail;
+}
+
+static int
+readline_getc(FILE *dummy)
+{
+    input_avail = false;
+    return input;
+}
+
 static void
-get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
+forward_to_readline(char c)
+{
+    input = c;
+    input_avail = true;
+    rl_callback_read_char();
+}
+
+
+static void
+got_string(char *line)
+{
+	if (line)
+	{
+
+#ifdef HAVE_READLINE_HISTORY
+
+		if (*line)
+			add_history(line);
+
+#endif
+
+		strcpy(readline_buffer, line);
+	}
+	else
+		readline_buffer[0] = '\0';
+
+	got_readline_string = true;
+}
+
+static void
+readline_redisplay()
+{
+	size_t cursor_col;
+
+	if (!force8bit)
+	{
+		int prompt_dsplen = utf_string_dsplen(rl_display_prompt, SIZE_MAX);
+
+		cursor_col = prompt_dsplen
+					  + readline_utf_string_dsplen(rl_line_buffer, rl_point, prompt_dsplen);
+	}
+	else
+	{
+		cursor_col = strlen(rl_display_prompt) + min_int(strlen(rl_line_buffer), rl_point);
+	}
+
+	werase(g_bottom_bar);
+	mvwprintw(g_bottom_bar, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
+
+	if (cursor_col >= COLS)
+		curs_set(0);
+	else
+	{
+		wmove(g_bottom_bar, 0, cursor_col);
+		curs_set(2);
+	}
+
+	wrefresh(g_bottom_bar);
+}
+
+#endif
+
+static void
+get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
+
+#ifdef HAVE_LIBREADLINE
+
+	int		c;
+
+	g_bottom_bar = bottom_bar;
+	got_readline_string = false;
+	force8bit = opts->force8bit;
+
+	mvwprintw(bottom_bar, 0, 0, "");
+	wclrtoeol(bottom_bar);
+	curs_set(1);
+	echo();
+
+
+	rl_getc_function = readline_getc;
+	rl_input_available_hook = readline_input_avail;
+	rl_redisplay_function = readline_redisplay;
+
+	rl_callback_handler_install(prompt, got_string);
+
+	while (!got_readline_string)
+	{
+		c = wgetch(bottom_bar);
+
+		forward_to_readline(c);
+		wrefresh(bottom_bar);
+	}
+
+	rl_callback_handler_remove();
+
+	curs_set(0);
+	noecho();
+
+	buffer[1023] = '\0';
+	strncpy(buffer, readline_buffer, sizeof(buffer) - 1);
+
+#else
 
 	mvwprintw(bottom_bar, 0, 0, "%s", prompt);
 	wclrtoeol(bottom_bar);
@@ -1326,6 +1477,9 @@ get_string(ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
 	wgetnstr(bottom_bar, buffer, maxsize);
 	curs_set(0);
 	noecho();
+
+#endif
+
 }
 
 #define SEARCH_FORWARD			1
@@ -1811,6 +1965,24 @@ main(int argc, char *argv[])
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
+
+	/* initialize readline if it is active */
+#ifdef HAVE_LIBREADLINE
+
+	rl_catch_signals = 0;
+	rl_catch_sigwinch = 0;
+	rl_deprep_term_function = NULL;
+	rl_prep_term_function = NULL;
+	rl_change_environment = 0;
+	rl_inhibit_completion = 1;
+
+#ifdef HAVE_READLINE_HISTORY
+
+	read_history(tilde("~/.pspg_history"));
+
+#endif
+
+#endif
 
 	while (true)
 	{
@@ -2528,7 +2700,7 @@ recheck_end:
 
 					errno = 0;
 
-					get_string(&scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
+					get_string(&opts, &scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
 
 					if (buffer[0] != '\0')
 					{
@@ -2579,7 +2751,7 @@ exit:
 				{
 					char	locsearchterm[256];
 
-					get_string(&scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
+					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
@@ -2680,7 +2852,7 @@ found_next_pattern:
 				{
 					char	locsearchterm[256];
 
-					get_string(&scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
+					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
 					if (locsearchterm[0] != '\0')
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
@@ -3081,6 +3253,12 @@ found_next_pattern:
 		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,
 				  footer_cursor_col, fix_rows_offset);
 	}
+
+#ifdef HAVE_READLINE_HISTORY
+
+	write_history(tilde("~/.pspg_history"));
+
+#endif
 
 	return 0;
 }
