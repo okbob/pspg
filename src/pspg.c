@@ -1452,9 +1452,13 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 
 	rl_getc_function = readline_getc;
-#if RL_VERSION_MAJOR > 5
+
+#if RL_READLINE_VERSION > 0x0600
+
 	rl_input_available_hook = readline_input_avail;
+
 #endif
+
 	rl_redisplay_function = readline_redisplay;
 
 	rl_callback_handler_install(prompt, got_string);
@@ -1984,9 +1988,13 @@ main(int argc, char *argv[])
 	rl_catch_sigwinch = 0;
 	rl_deprep_term_function = NULL;
 	rl_prep_term_function = NULL;
-#if RL_VERSION_MAJOR > 5
+
+#if RL_READLINE_VERSION > 0x0600
+
 	rl_change_environment = 0;
+
 #endif
+
 	rl_inhibit_completion = 1;
 
 #ifdef HAVE_READLINE_HISTORY
