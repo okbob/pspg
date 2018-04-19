@@ -1435,6 +1435,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 #ifdef HAVE_LIBREADLINE
 
 	int		c;
+	mmask_t		prev_mousemask = 0;
 
 	g_bottom_bar = bottom_bar;
 	got_readline_string = false;
@@ -1452,6 +1453,8 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	rl_callback_handler_install(prompt, got_string);
 
+	mousemask(0, &prev_mousemask);
+
 	while (!got_readline_string)
 	{
 		c = wgetch(bottom_bar);
@@ -1459,6 +1462,8 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 		forward_to_readline(c);
 		wrefresh(bottom_bar);
 	}
+
+	mousemask(prev_mousemask, NULL);
 
 	rl_callback_handler_remove();
 
