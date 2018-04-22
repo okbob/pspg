@@ -3086,7 +3086,7 @@ found_next_pattern:
 							int		max_cursor_row;
 							int		max_first_row;
 
-							cursor_row = event.y - scrdesc.fix_rows_rows - 1 + first_row - fix_rows_offset;
+							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 							if (cursor_row < 0)
 								cursor_row = 0;
 
