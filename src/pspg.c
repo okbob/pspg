@@ -1247,7 +1247,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		while (bytes > 0 && *str != '\0')
 		{
-			size_t		sz = opts->force8bit ? strlen(str) : utf8len(str);
+			size_t		sz = opts->force8bit ? 1 : utf8charlen(*str);
 
 			if (sz > bytes)
 				break;
