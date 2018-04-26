@@ -10,7 +10,6 @@ Possible ToDo
 * 256 colours + custom colour schemas
 * hide outer border
 * hide inner borders
-* replace ascii borders by unicode
 * draw scrollbars FoxPro style
 * CSV support (own formatter)
 * regexp marking (green background, only pattern, whole row)

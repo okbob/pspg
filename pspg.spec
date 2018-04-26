@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	1.0.0
+Version: 	1.1.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,10 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Thu Apr 26 2018 Pavel Stehule <pavel.stehule@gmail.com>
+- compile with readline when it is available - history support
+- fix some bugs
+
 * Fri Mar 16 2018 Pavel Stehule <pavel.stehule@gmail.com>
 - lot of bugfixes related to searching
 - code cleaning
