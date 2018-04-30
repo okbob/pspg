@@ -57,7 +57,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "1.1.0"
+#define PSPG_VERSION "1.1.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -1453,7 +1453,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	rl_getc_function = readline_getc;
 
-#if RL_READLINE_VERSION > 0x0600
+#if RL_READLINE_VERSION >= 0x0603
 
 	rl_input_available_hook = readline_input_avail;
 
@@ -1989,7 +1989,7 @@ main(int argc, char *argv[])
 	rl_deprep_term_function = NULL;
 	rl_prep_term_function = NULL;
 
-#if RL_READLINE_VERSION > 0x0600
+#if RL_READLINE_VERSION > 0x0603
 
 	rl_change_environment = 0;
 
