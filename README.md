@@ -53,7 +53,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 12. Paradox like
 13. dBase IV retro style
 14. dBase IV retro style (Magenta labels)
-
+15. Red white theme
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
