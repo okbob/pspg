@@ -2779,9 +2779,15 @@ exit:
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = opts.force8bit ? strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
-
-						reset_searching_lineinfo(&desc.rows);
 					}
+					else
+					{
+						scrdesc.searchterm[0] = '\0';
+						scrdesc.searchterm_size = 0;
+						scrdesc.searchterm_char_size = 0;
+					}
+
+					reset_searching_lineinfo(&desc.rows);
 
 					search_direction = SEARCH_FORWARD;
 
@@ -2880,9 +2886,15 @@ found_next_pattern:
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
-
-						reset_searching_lineinfo(&desc.rows);
 					}
+					else
+					{
+						scrdesc.searchterm[0] = '\0';
+						scrdesc.searchterm_size = 0;
+						scrdesc.searchterm_char_size = 0;
+					}
+
+					reset_searching_lineinfo(&desc.rows);
 
 					search_direction = SEARCH_BACKWARD;
 
