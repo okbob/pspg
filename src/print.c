@@ -445,7 +445,7 @@ window_fill(int window_identifier,
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-								new_attr = new_attr | A_REVERSE;
+								new_attr = new_attr ^ A_REVERSE;
 							else if (is_pattern_row && htrpos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
