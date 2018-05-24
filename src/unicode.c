@@ -206,6 +206,41 @@ ucs_wcwidth(wchar_t ucs)
 }
 
 /*
+ * Map a Unicode code point to UTF-8.  utf8string must have 4 bytes of
+ * space allocated.
+ */
+unsigned char *
+unicode_to_utf8(wchar_t c, unsigned char *utf8string)
+{
+	if (c <= 0x7F)
+	{
+		utf8string[0] = c;
+	}
+	else if (c <= 0x7FF)
+	{
+		utf8string[0] = 0xC0 | ((c >> 6) & 0x1F);
+		utf8string[1] = 0x80 | (c & 0x3F);
+	}
+	else if (c <= 0xFFFF)
+	{
+		utf8string[0] = 0xE0 | ((c >> 12) & 0x0F);
+		utf8string[1] = 0x80 | ((c >> 6) & 0x3F);
+		utf8string[2] = 0x80 | (c & 0x3F);
+	}
+	else
+	{
+		utf8string[0] = 0xF0 | ((c >> 18) & 0x07);
+		utf8string[1] = 0x80 | ((c >> 12) & 0x3F);
+		utf8string[2] = 0x80 | ((c >> 6) & 0x3F);
+		utf8string[3] = 0x80 | (c & 0x3F);
+	}
+
+	return utf8string;
+}
+
+
+
+/*
  * Convert a UTF-8 character to a Unicode code point.
  * This is a one-character version of pg_utf2wchar_with_len.
  *
@@ -359,7 +394,7 @@ find_in_range(range_table *t, size_t size, wchar_t ucs)
 
 #define table_size(t) (sizeof(t)/sizeof((t)[0]))
 
-static int
+int
 utf8_tofold(const char *s)
 {
 	static struct conv_table tofold_table[] = {
