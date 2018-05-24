@@ -13,6 +13,7 @@ AC_HEADER_STDC
 
 AX_DEBUG_CFLAGS
 AX_WITH_CURSES
+AX_WITH_CURSES_PANEL
 AX_LIB_READLINE
 case "$ax_cv_ncurses" in "no")
 	AC_MSG_ERROR([ncurses not found])
@@ -26,12 +27,18 @@ AC_SUBST(enable_debug)
 AC_SUBST(CURSES_LIBS)
 AC_SUBST(COVERAGE_CFLAGS)
 AC_SUBST(COVERAGE_LDFLAGS)
+AC_SUBST(COMPILE_MENU)
 
 AC_CONFIG_FILES([config.make])
-AC_OUTPUT
+
+if test "$ax_cv_panel" = yes; then
+  COMPILE_MENU=1
+  CFLAGS="$CFLAGS -DCOMPILE_MENU"
+fi
 
 # supply -g if --enable-debug
 if test "$enable_debug" = yes && test "$ac_cv_prog_cc_g" = yes; then
   CFLAGS="$CFLAGS -g"
 fi
 
+AC_OUTPUT

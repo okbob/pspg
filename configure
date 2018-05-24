@@ -624,9 +624,11 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+COMPILE_MENU
 COVERAGE_LDFLAGS
 COVERAGE_CFLAGS
 enable_debug
+PANEL_LIBS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
 PKG_CONFIG
@@ -701,7 +703,8 @@ CURSES_LIBS
 CURSES_CFLAGS
 PKG_CONFIG
 PKG_CONFIG_PATH
-PKG_CONFIG_LIBDIR'
+PKG_CONFIG_LIBDIR
+PANEL_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1336,6 +1339,7 @@ Some influential environment variables:
               directories to add to pkg-config's search path
   PKG_CONFIG_LIBDIR
               path overriding pkg-config's built-in search path
+  PANEL_LIBS  linker library for Curses Panel, e.g. -lpanel
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -5013,6 +5017,375 @@ fi
     unset ax_saved_LIBS
     unset ax_saved_CPPFLAGS
 
+
+
+
+
+
+
+    if test "x$PANEL_LIBS" != x; then :
+
+
+
+
+    ax_saved_LIBS=$LIBS
+    ax_saved_CPPFLAGS=$CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Curses Panel library with panel.h" >&5
+$as_echo_n "checking for Curses Panel library with panel.h... " >&6; }
+if ${ax_cv_header_panel_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        LIBS="$ax_saved_LIBS $PANEL_LIBS $CURSES_LIBS"
+        CPPFLAGS="$ax_saved_CPPFLAGS $CURSES_CFLAGS"
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+                #include <panel.h>
+
+int
+main ()
+{
+
+            WINDOW *win = newwin(0, 0, 0, 0);
+            PANEL *pan = new_panel(win);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_header_panel_h=yes
+else
+  ax_cv_header_panel_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_header_panel_h" >&5
+$as_echo "$ax_cv_header_panel_h" >&6; }
+    if test "x$ax_cv_header_panel_h" = xyes; then :
+
+        ax_cv_panel=yes
+
+
+$as_echo "#define HAVE_PANEL 1" >>confdefs.h
+
+
+$as_echo "#define HAVE_PANEL_H 1" >>confdefs.h
+
+
+else
+
+        if test "x$ax_cv_panel" = xyes; then :
+
+else
+  ax_cv_panel=no
+fi
+
+fi
+
+    LIBS=$ax_saved_LIBS
+    CPPFLAGS=$ax_saved_CPPFLAGS
+    unset ax_saved_LIBS
+    unset ax_saved_CPPFLAGS
+
+
+
+else
+
+        if test "x$ax_cv_curses_which" = xncursesw; then :
+
+
+
+
+    ax_saved_LIBS=$LIBS
+    ax_saved_CPPFLAGS=$CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Curses Panel library with ncursesw/panel.h" >&5
+$as_echo_n "checking for Curses Panel library with ncursesw/panel.h... " >&6; }
+if ${ax_cv_header_ncursesw_panel_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        LIBS="$ax_saved_LIBS -lpanelw $CURSES_LIBS"
+        CPPFLAGS="$ax_saved_CPPFLAGS $CURSES_CFLAGS"
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+                #include <ncursesw/panel.h>
+
+int
+main ()
+{
+
+            WINDOW *win = newwin(0, 0, 0, 0);
+            PANEL *pan = new_panel(win);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_header_ncursesw_panel_h=yes
+else
+  ax_cv_header_ncursesw_panel_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_header_ncursesw_panel_h" >&5
+$as_echo "$ax_cv_header_ncursesw_panel_h" >&6; }
+    if test "x$ax_cv_header_ncursesw_panel_h" = xyes; then :
+
+        ax_cv_panel=yes
+        PANEL_LIBS="-lpanelw"
+
+$as_echo "#define HAVE_PANEL 1" >>confdefs.h
+
+
+$as_echo "#define HAVE_NCURSESW_PANEL_H 1" >>confdefs.h
+
+
+else
+
+        if test "x$ax_cv_panel" = xyes; then :
+
+else
+  ax_cv_panel=no
+fi
+
+fi
+
+    LIBS=$ax_saved_LIBS
+    CPPFLAGS=$ax_saved_CPPFLAGS
+    unset ax_saved_LIBS
+    unset ax_saved_CPPFLAGS
+
+
+
+elif test "x$ax_cv_curses_which" = xncurses; then :
+
+
+
+
+    ax_saved_LIBS=$LIBS
+    ax_saved_CPPFLAGS=$CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Curses Panel library with panel.h" >&5
+$as_echo_n "checking for Curses Panel library with panel.h... " >&6; }
+if ${ax_cv_header_panel_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        LIBS="$ax_saved_LIBS -lpanel $CURSES_LIBS"
+        CPPFLAGS="$ax_saved_CPPFLAGS $CURSES_CFLAGS"
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+                #include <panel.h>
+
+int
+main ()
+{
+
+            WINDOW *win = newwin(0, 0, 0, 0);
+            PANEL *pan = new_panel(win);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_header_panel_h=yes
+else
+  ax_cv_header_panel_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_header_panel_h" >&5
+$as_echo "$ax_cv_header_panel_h" >&6; }
+    if test "x$ax_cv_header_panel_h" = xyes; then :
+
+        ax_cv_panel=yes
+        PANEL_LIBS="-lpanel"
+
+$as_echo "#define HAVE_PANEL 1" >>confdefs.h
+
+
+$as_echo "#define HAVE_PANEL_H 1" >>confdefs.h
+
+
+else
+
+        if test "x$ax_cv_panel" = xyes; then :
+
+else
+  ax_cv_panel=no
+fi
+
+fi
+
+    LIBS=$ax_saved_LIBS
+    CPPFLAGS=$ax_saved_CPPFLAGS
+    unset ax_saved_LIBS
+    unset ax_saved_CPPFLAGS
+
+
+            if test x$ax_cv_panel != "xyes"; then :
+
+
+
+
+    ax_saved_LIBS=$LIBS
+    ax_saved_CPPFLAGS=$CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Curses Panel library with ncurses/panel.h" >&5
+$as_echo_n "checking for Curses Panel library with ncurses/panel.h... " >&6; }
+if ${ax_cv_header_ncurses_panel_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        LIBS="$ax_saved_LIBS -lpanel $CURSES_LIBS"
+        CPPFLAGS="$ax_saved_CPPFLAGS $CURSES_CFLAGS"
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+                #include <ncurses/panel.h>
+
+int
+main ()
+{
+
+            WINDOW *win = newwin(0, 0, 0, 0);
+            PANEL *pan = new_panel(win);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_header_ncurses_panel_h=yes
+else
+  ax_cv_header_ncurses_panel_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_header_ncurses_panel_h" >&5
+$as_echo "$ax_cv_header_ncurses_panel_h" >&6; }
+    if test "x$ax_cv_header_ncurses_panel_h" = xyes; then :
+
+        ax_cv_panel=yes
+        PANEL_LIBS="-lpanel"
+
+$as_echo "#define HAVE_PANEL 1" >>confdefs.h
+
+
+$as_echo "#define HAVE_NCURSES_PANEL_H 1" >>confdefs.h
+
+
+else
+
+        if test "x$ax_cv_panel" = xyes; then :
+
+else
+  ax_cv_panel=no
+fi
+
+fi
+
+    LIBS=$ax_saved_LIBS
+    CPPFLAGS=$ax_saved_CPPFLAGS
+    unset ax_saved_LIBS
+    unset ax_saved_CPPFLAGS
+
+
+
+fi
+
+elif test "x$ax_cv_curses_which" = xplaincurses; then :
+
+
+
+
+    ax_saved_LIBS=$LIBS
+    ax_saved_CPPFLAGS=$CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Curses Panel library with panel.h" >&5
+$as_echo_n "checking for Curses Panel library with panel.h... " >&6; }
+if ${ax_cv_header_panel_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        LIBS="$ax_saved_LIBS -lpanel $CURSES_LIBS"
+        CPPFLAGS="$ax_saved_CPPFLAGS $CURSES_CFLAGS"
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+                #include <panel.h>
+
+int
+main ()
+{
+
+            WINDOW *win = newwin(0, 0, 0, 0);
+            PANEL *pan = new_panel(win);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_header_panel_h=yes
+else
+  ax_cv_header_panel_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_header_panel_h" >&5
+$as_echo "$ax_cv_header_panel_h" >&6; }
+    if test "x$ax_cv_header_panel_h" = xyes; then :
+
+        ax_cv_panel=yes
+        PANEL_LIBS="-lpanel"
+
+$as_echo "#define HAVE_PANEL 1" >>confdefs.h
+
+
+$as_echo "#define HAVE_PANEL_H 1" >>confdefs.h
+
+
+else
+
+        if test "x$ax_cv_panel" = xyes; then :
+
+else
+  ax_cv_panel=no
+fi
+
+fi
+
+    LIBS=$ax_saved_LIBS
+    CPPFLAGS=$ax_saved_CPPFLAGS
+    unset ax_saved_LIBS
+    unset ax_saved_CPPFLAGS
+
+
+
+fi
+
+fi
+
+
 # On IRIX 5.3, sys/types and inttypes.h are conflicting.
 for ac_header in sys/types.h sys/stat.h stdlib.h string.h memory.h strings.h \
 		  inttypes.h stdint.h unistd.h
@@ -5173,7 +5546,19 @@ esac
 
 
 
+
 ac_config_files="$ac_config_files config.make"
+
+
+if test "$ax_cv_panel" = yes; then
+  COMPILE_MENU=1
+  CFLAGS="$CFLAGS -DCOMPILE_MENU"
+fi
+
+# supply -g if --enable-debug
+if test "$enable_debug" = yes && test "$ac_cv_prog_cc_g" = yes; then
+  CFLAGS="$CFLAGS -g"
+fi
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6328,11 +6713,5 @@ fi
 if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
-fi
-
-
-# supply -g if --enable-debug
-if test "$enable_debug" = yes && test "$ac_cv_prog_cc_g" = yes; then
-  CFLAGS="$CFLAGS -g"
 fi
 
