@@ -32,6 +32,13 @@
 #include "unicode.h"
 #include "themes.h"
 
+#ifdef COMPILE_MENU
+
+#include "st_menu.h"
+#include <panel.h>
+
+#endif
+
 #ifdef HAVE_LIBREADLINE
 
 #if defined(HAVE_READLINE_READLINE_H)
@@ -1736,6 +1743,34 @@ main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
+#ifdef COMPILE_MENU
+
+	bool	menu_is_active = false;
+
+	ST_MENU_CONFIG		menu_config;
+	struct ST_MENU		*menu = NULL;
+
+#define		MENU_ITEM_FILE		0
+#define		MENU_ITEM_SAVE		20
+#define		MENU_ITEM_EXIT		100
+
+	ST_MENU_ITEM _file[] = {
+		{"~S~ave", MENU_ITEM_SAVE, "s"},
+		{"--"},
+		{"E~x~it", MENU_ITEM_EXIT, "F10"},
+		{NULL}
+	};
+
+	ST_MENU_ITEM menubar[] = {
+	  {"~F~ile", MENU_ITEM_FILE, NULL, 0, _file},
+	  {"~S~earch"},
+	  {"~C~ommand"},
+	  {"~O~ptions"},
+	  {NULL}
+	};
+
+#endif
+
 	opts.pathname = NULL;
 	opts.ignore_case = false;
 	opts.ignore_lower_case = false;
@@ -1857,6 +1892,7 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
+
 	readfile(fp, &opts, &desc);
 	if (fp != NULL)
 	{
@@ -1910,6 +1946,17 @@ main(int argc, char *argv[])
 	keypad(stdscr, TRUE);
 	curs_set(0);
 	noecho();
+
+#ifdef COMPILE_MENU
+
+	menu_config.force8bit = opts.force8bit;
+	menu_config.language = NULL;
+	menu_config.encoding = NULL;
+
+	st_menu_load_style(&menu_config, 1, 100);
+
+#endif
+
 
 #ifdef NCURSES_EXT_FUNCS
 
@@ -2129,6 +2176,13 @@ main(int argc, char *argv[])
 			if (w_footer(&scrdesc) != NULL)
 				wnoutrefresh(w_footer(&scrdesc));
 
+#ifdef COMPILE_MENU
+
+			if (menu != NULL && menu_is_active)
+				st_menu_post(menu);
+
+#endif
+
 			doupdate();
 
 			if (scrdesc.fmt != NULL)
@@ -2169,6 +2223,64 @@ main(int argc, char *argv[])
 
 		if (c == 'q' || c == KEY_F(10) || c == ERR)
 			break;
+
+#ifdef COMPILE_MENU
+
+		if (menu != NULL && menu_is_active)
+		{
+			bool	processed = false;
+			bool	activated = false;
+			MEVENT	mevent;
+			ST_MENU_ITEM		*active_menu_item;
+
+			processed = st_menu_driver(menu, c, false, &mevent);
+
+			doupdate();
+			refresh();
+
+			active_menu_item = st_menu_selected_item(&activated);
+
+			if (processed && activated)
+			{
+				if (active_menu_item->code == MENU_ITEM_EXIT)
+					break;
+			}
+
+			if (!processed && c == ST_MENU_ESCAPE)
+			{
+				st_menu_unpost(menu, true);
+				menu_is_active = false;
+				continue;
+				doupdate();
+			}
+
+//c2 = getch();
+			continue;
+		}
+
+		if (c == KEY_F(9))
+		{
+			if (menu == NULL)
+			{
+				PANEL				*panel;
+
+				panel = new_panel(stdscr);
+				st_menu_set_desktop_panel(panel);
+
+				menu = st_menu_new_menubar(&menu_config, menubar);
+			}
+
+			st_menu_post(menu);
+			menu_is_active = true;
+
+			doupdate();
+			refresh();
+			//c = getch();
+			continue;
+		}
+
+#endif
+
 
 		prev_first_row = first_row;
 
