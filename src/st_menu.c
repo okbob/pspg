@@ -124,7 +124,7 @@ char_length(ST_MENU_CONFIG *config, const char *c)
 		 * This functionality can be enhanced to check real size
 		 * of utf8 string.
 		 */
-		result = utf8len((char *) c);
+		result = utf8charlen(*((char *) c));
 		if (result > 0)
 			return result;
 	}
