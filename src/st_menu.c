@@ -61,7 +61,7 @@ static inline int str_width(ST_MENU_CONFIG *config, char *str);
 static inline char *chr_casexfrm(ST_MENU_CONFIG *config, char *str);
 static inline int wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch);
 
-static bool _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent, bool is_top, bool is_nested_pulldown, bool *unpost_submenu);
+static bool _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent, bool is_top, bool is_nested_pulldown, bool *unpost_submenu, bool nodraw);
 static void _st_menu_free(struct ST_MENU *menu);
 
 static int menutext_displaywidth(ST_MENU_CONFIG *config, char *text, char **accelerator, bool *extern_accel);
@@ -668,21 +668,27 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 
 		/* desktop_win must be global */
 		if (desktop_win)
-			overwrite(desktop_win, menu->shadow_window);
-		else
-			werase(menu->shadow_window);
+		{
+			wrefresh(desktop_win);
 
-		for (i = 0; i <= smaxy; i++)
-			mvwchgat(menu->shadow_window, i, 0, smaxx,
-							config->menu_shadow_attr,
-							config->menu_shadow_cpn,
-							NULL);
+			doupdate();
+			wrefresh(desktop_win);
+//			overwrite(desktop_win, menu->shadow_window);
+		}
+		//else
+			//werase(menu->shadow_window);
 
-		wnoutrefresh(menu->shadow_window);
+//		for (i = 0; i <= smaxy; i++)
+//			mvwchgat(menu->shadow_window, i, 0, smaxx,
+//							config->menu_shadow_attr,
+//							config->menu_shadow_cpn,
+//							NULL);
+
+	//	wnoutrefresh(menu->shadow_window);
 	}
 
-	if (menu->active_submenu)
-		pulldownmenu_draw_shadow(menu->active_submenu);
+//	if (menu->active_submenu)
+//		pulldownmenu_draw_shadow(menu->active_submenu);
 }
 
 /*
@@ -976,8 +982,10 @@ add_correction(WINDOW *s, int *y, int *x)
  */
 static bool
 _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
-					bool is_top, bool is_nested_pulldown,
-					bool *unpost_submenu)
+					bool is_top,
+					bool is_nested_pulldown,
+					bool *unpost_submenu,
+					bool nodraw)
 {
 	ST_MENU_CONFIG	*config = menu->config;
 
@@ -1024,7 +1032,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		 * pulldown menu, and nested object should be nested pulldown menu.
 		 */
 		processed = _st_menu_driver(menu->active_submenu, c, alt, mevent,
-												false, _is_nested_pulldown, &unpost_submenu);
+												false, _is_nested_pulldown, &unpost_submenu, nodraw);
 
 		if (unpost_submenu)
 		{
@@ -1413,7 +1421,7 @@ draw_object:
 	 * show content, only top object is can do this - nested objects
 	 * are displayed recursivly.
 	 */
-	if (is_top)
+	if (is_top && !nodraw)
 	{
 		if (menu->is_menubar)
 			menubar_draw(menu);
@@ -1429,8 +1437,17 @@ st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent)
 {
 	bool aux_unpost_submenu = false;
 
-	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu);
+	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu, false);
 }
+
+bool
+st_menu_driver_nodraw(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent)
+{
+	bool aux_unpost_submenu = false;
+
+	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu, true);
+}
+
 
 /*
  * Create state variable for pulldown menu. It based on template - a array of ST_MENU_ITEM fields.
