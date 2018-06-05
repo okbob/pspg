@@ -1891,7 +1891,7 @@ main(int argc, char *argv[])
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
 
-	st_menu_load_style(&menu_config, 1, 100);
+	st_menu_load_style(&menu_config, 2, 100);
 
 #endif
 
@@ -2116,6 +2116,12 @@ main(int argc, char *argv[])
 
 #ifdef COMPILE_MENU
 
+			doupdate();
+			refresh();
+
+getch();
+
+
 			if (menu != NULL && menu_is_active)
 				st_menu_post(menu);
 
@@ -2171,7 +2177,7 @@ main(int argc, char *argv[])
 			MEVENT	mevent;
 			ST_MENU_ITEM		*active_menu_item;
 
-			processed = st_menu_driver(menu, c, false, &mevent);
+			processed = st_menu_driver_nodraw(menu, c, false, &mevent);
 
 			doupdate();
 			refresh();
@@ -2181,6 +2187,9 @@ main(int argc, char *argv[])
 			if (processed && activated)
 			{
 				if (active_menu_item->code == MENU_ITEM_EXIT)
+endwin();
+printf("***************************\n");
+exit(0);
 					break;
 			}
 
@@ -2188,11 +2197,9 @@ main(int argc, char *argv[])
 			{
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
-				continue;
-				doupdate();
+				goto refresh;
 			}
 
-//c2 = getch();
 			continue;
 		}
 
@@ -2214,6 +2221,7 @@ main(int argc, char *argv[])
 			doupdate();
 			refresh();
 			//c = getch();
+			c2 = 0;
 			continue;
 		}
 
@@ -3393,6 +3401,8 @@ found_next_pattern:
 
 				resize_scr = false;
 			}
+
+refresh:
 
 			getmaxyx(stdscr, maxy, maxx);
 
