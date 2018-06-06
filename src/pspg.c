@@ -2745,6 +2745,12 @@ recheck_end:
 							{
 								for (i = 0; i < lnb->nrows; i++)
 								{
+									/*
+									 * Reset errno. Previous openf can dirty it, when file was
+									 * created.
+									 */
+									errno = 0;
+
 									fprintf(fp, "%s\n", lnb->rows[i]);
 									if (errno != 0)
 									{
