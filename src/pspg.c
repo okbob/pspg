@@ -865,6 +865,14 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		exit(1);
 	}
 
+	/*
+	 * border headline cannot be higher than 1000, to simply find it
+	 * in first row block. Higher number is surelly wrong, probably
+	 * some comment.
+	 */
+	if (desc->border_top_row >= 1000)
+		desc->border_top_row = -1;
+
 	if (desc->last_row != -1)
 		desc->maxy = desc->last_row;
 
