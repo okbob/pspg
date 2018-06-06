@@ -872,6 +872,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	 */
 	if (desc->border_top_row >= 1000)
 		desc->border_top_row = -1;
+	if (desc->border_head_row >= 1000)
+		desc->border_head_row = -1;
 
 	if (desc->last_row != -1)
 		desc->maxy = desc->last_row;
