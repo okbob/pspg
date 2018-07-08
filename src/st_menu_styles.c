@@ -388,7 +388,6 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			break;
 
 		case ST_MENU_STYLE_ONECOLOR:
-			//use_default_colors();
 			config->menu_background_cpn = start_from_cpn;
 			config->menu_background_attr = 0;
 

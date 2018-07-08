@@ -5,6 +5,7 @@
 #include <string.h>
 #include <wchar.h>
 
+<<<<<<< HEAD
 #ifdef LIBUNISTRING
 
 /* libunistring */
@@ -20,6 +21,10 @@
 
 #endif
 
+=======
+#include "unicode.h"
+
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 #include "st_menu.h"
 
 /*
@@ -137,6 +142,7 @@ char_length(ST_MENU_CONFIG *config, const char *c)
 		 * This functionality can be enhanced to check real size
 		 * of utf8 string.
 		 */
+<<<<<<< HEAD
 #ifdef LIBUNISTRING
 
 		result = u8_mblen((const uint8_t *) c, 4);
@@ -147,6 +153,9 @@ char_length(ST_MENU_CONFIG *config, const char *c)
 
 #endif
 
+=======
+		result = utf8len((char *) c);
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 		if (result > 0)
 			return result;
 	}
@@ -161,6 +170,7 @@ static inline int
 char_width(ST_MENU_CONFIG *config, char *c, int bytes)
 {
 	if (!config->force8bit)
+<<<<<<< HEAD
 #ifdef LIBUNISTRING
 
 		return u8_width((const uint8_t *) c, 1, config->encoding);
@@ -171,6 +181,10 @@ char_width(ST_MENU_CONFIG *config, char *c, int bytes)
 
 #endif
 
+=======
+		return utf_dsplen((const char *) c);
+
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 	return 1;
 }
 
@@ -181,6 +195,7 @@ static inline int
 str_width(ST_MENU_CONFIG *config, char *str)
 {
 	if (!config->force8bit)
+<<<<<<< HEAD
 #ifdef LIBUNISTRING
 
 		return u8_strwidth((const uint8_t *) str, config->encoding);
@@ -191,6 +206,10 @@ str_width(ST_MENU_CONFIG *config, char *str)
 
 #endif
 
+=======
+		return utf_string_dsplen((const char *) str, strlen(str));
+
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 	return strlen(str);
 }
 
@@ -202,6 +221,7 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 {
 	char	buffer[20];
 	char   *result;
+<<<<<<< HEAD
 
 	if (!config->force8bit)
 	{
@@ -219,14 +239,23 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 
 #else
 
+=======
+	size_t	length;
+
+	if (!config->force8bit)
+	{
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 		int	fold = utf8_tofold((const char *) str);
 
 		*((int *) buffer) = fold;
 		buffer[sizeof(int)] = '\0';
 
 		result = strdup(buffer);
+<<<<<<< HEAD
 
 #endif
+=======
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 	}
 	else
 	{
@@ -249,6 +278,7 @@ wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch)
 
 	if (!config->force8bit)
 	{
+<<<<<<< HEAD
 #ifdef LIBUNISTRING
 
 		result = u8_uctomb((uint8_t *) str, (ucs4_t) wch, n);
@@ -259,6 +289,10 @@ wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch)
 		result = ptr - str;
 
 #endif
+=======
+		char *ptr = unicode_to_utf8(wch, (unsigned char *) str);
+		result = ptr - str;
+>>>>>>> 8f5d1f13eee01ca1b1ea042e7beba6b987ac3863
 	}
 	else
 	{
