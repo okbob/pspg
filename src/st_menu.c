@@ -5,7 +5,20 @@
 #include <string.h>
 #include <wchar.h>
 
+#ifdef LIBUNISTRING
+
+/* libunistring */
+#include <unicase.h>
+#include <unistr.h>
+#include <uniwidth.h>
+
+#else
+
+/* Alternative minimalistic own unicode support */
+
 #include "unicode.h"
+
+#endif
 
 #include "st_menu.h"
 
@@ -61,7 +74,7 @@ static inline int str_width(ST_MENU_CONFIG *config, char *str);
 static inline char *chr_casexfrm(ST_MENU_CONFIG *config, char *str);
 static inline int wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch);
 
-static bool _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent, bool is_top, bool is_nested_pulldown, bool *unpost_submenu, bool nodraw);
+static bool _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent, bool is_top, bool is_nested_pulldown, bool *unpost_submenu);
 static void _st_menu_free(struct ST_MENU *menu);
 
 static int menutext_displaywidth(ST_MENU_CONFIG *config, char *text, char **accelerator, bool *extern_accel);
@@ -124,7 +137,16 @@ char_length(ST_MENU_CONFIG *config, const char *c)
 		 * This functionality can be enhanced to check real size
 		 * of utf8 string.
 		 */
+#ifdef LIBUNISTRING
+
+		result = u8_mblen((const uint8_t *) c, 4);
+
+#else
+
 		result = utf8charlen(*((char *) c));
+
+#endif
+
 		if (result > 0)
 			return result;
 	}
@@ -139,7 +161,15 @@ static inline int
 char_width(ST_MENU_CONFIG *config, char *c, int bytes)
 {
 	if (!config->force8bit)
+#ifdef LIBUNISTRING
+
+		return u8_width((const uint8_t *) c, 1, config->encoding);
+
+#else
+
 		return utf_dsplen((const char *) c);
+
+#endif
 
 	return 1;
 }
@@ -151,7 +181,15 @@ static inline int
 str_width(ST_MENU_CONFIG *config, char *str)
 {
 	if (!config->force8bit)
+#ifdef LIBUNISTRING
+
+		return u8_strwidth((const uint8_t *) str, config->encoding);
+
+#else
+
 		return utf_string_dsplen((const char *) str, strlen(str));
+
+#endif
 
 	return strlen(str);
 }
@@ -164,16 +202,31 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 {
 	char	buffer[20];
 	char   *result;
-	size_t	length;
 
 	if (!config->force8bit)
 	{
+#ifdef LIBUNISTRING
+
+	size_t	length;
+
+		length = sizeof(buffer);
+		result = u8_casexfrm((const uint8_t *) str,
+								char_length(config, str),
+									config->language, NULL,
+									buffer, &length);
+		if (result == buffer)
+			result = strdup(buffer);
+
+#else
+
 		int	fold = utf8_tofold((const char *) str);
 
 		*((int *) buffer) = fold;
 		buffer[sizeof(int)] = '\0';
 
 		result = strdup(buffer);
+
+#endif
 	}
 	else
 	{
@@ -196,8 +249,16 @@ wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch)
 
 	if (!config->force8bit)
 	{
-		char *ptr = unicode_to_utf8(wch, (unsigned char *) str);
+#ifdef LIBUNISTRING
+
+		result = u8_uctomb((uint8_t *) str, (ucs4_t) wch, n);
+
+#else
+
+		char *ptr = (char *) unicode_to_utf8(wch, (unsigned char *) str);
 		result = ptr - str;
+
+#endif
 	}
 	else
 	{
@@ -668,27 +729,21 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 
 		/* desktop_win must be global */
 		if (desktop_win)
-		{
-			wrefresh(desktop_win);
+			overwrite(desktop_win, menu->shadow_window);
+		else
+			werase(menu->shadow_window);
 
-			doupdate();
-			wrefresh(desktop_win);
-//			overwrite(desktop_win, menu->shadow_window);
-		}
-		//else
-			//werase(menu->shadow_window);
+		for (i = 0; i <= smaxy; i++)
+			mvwchgat(menu->shadow_window, i, 0, smaxx,
+							config->menu_shadow_attr,
+							config->menu_shadow_cpn,
+							NULL);
 
-//		for (i = 0; i <= smaxy; i++)
-//			mvwchgat(menu->shadow_window, i, 0, smaxx,
-//							config->menu_shadow_attr,
-//							config->menu_shadow_cpn,
-//							NULL);
-
-	//	wnoutrefresh(menu->shadow_window);
+		wnoutrefresh(menu->shadow_window);
 	}
 
-//	if (menu->active_submenu)
-//		pulldownmenu_draw_shadow(menu->active_submenu);
+	if (menu->active_submenu)
+		pulldownmenu_draw_shadow(menu->active_submenu);
 }
 
 /*
@@ -982,10 +1037,8 @@ add_correction(WINDOW *s, int *y, int *x)
  */
 static bool
 _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
-					bool is_top,
-					bool is_nested_pulldown,
-					bool *unpost_submenu,
-					bool nodraw)
+					bool is_top, bool is_nested_pulldown,
+					bool *unpost_submenu)
 {
 	ST_MENU_CONFIG	*config = menu->config;
 
@@ -1032,7 +1085,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		 * pulldown menu, and nested object should be nested pulldown menu.
 		 */
 		processed = _st_menu_driver(menu->active_submenu, c, alt, mevent,
-												false, _is_nested_pulldown, &unpost_submenu, nodraw);
+												false, _is_nested_pulldown, &unpost_submenu);
 
 		if (unpost_submenu)
 		{
@@ -1421,7 +1474,7 @@ draw_object:
 	 * show content, only top object is can do this - nested objects
 	 * are displayed recursivly.
 	 */
-	if (is_top && !nodraw)
+	if (is_top)
 	{
 		if (menu->is_menubar)
 			menubar_draw(menu);
@@ -1437,17 +1490,8 @@ st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent)
 {
 	bool aux_unpost_submenu = false;
 
-	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu, false);
+	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu);
 }
-
-bool
-st_menu_driver_nodraw(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent)
-{
-	bool aux_unpost_submenu = false;
-
-	return _st_menu_driver(menu, c, alt, mevent, true, false, &aux_unpost_submenu, true);
-}
-
 
 /*
  * Create state variable for pulldown menu. It based on template - a array of ST_MENU_ITEM fields.
