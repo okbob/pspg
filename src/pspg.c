@@ -1024,7 +1024,7 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 
 		if (scrdesc->footer_rows > 0)
 		{
-			w_footer(scrdesc) = newwin(scrdesc->footer_rows,
+			w_footer(scrdesc) = subwin(stdscr, scrdesc->footer_rows,
 									scrdesc->maxx, scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows, 0);
 		}
 	}
@@ -1038,30 +1038,30 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		scrdesc->rows_rows = 0;
 		scrdesc->fix_rows_rows = 0;
 		scrdesc->footer_rows = min_int(scrdesc->main_maxy, desc->last_row + 1);
-		w_footer(scrdesc) = newwin(scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
+		w_footer(scrdesc) = subwin(stdscr, scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0)
 	{
-		w_fix_rows(scrdesc) = newwin(scrdesc->fix_rows_rows,
+		w_fix_rows(scrdesc) = subwin(stdscr, scrdesc->fix_rows_rows,
 								   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
 								   scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
 
 	if (scrdesc->fix_cols_cols > 0 && scrdesc->rows_rows > 0)
 	{
-		w_fix_cols(scrdesc) = newwin(scrdesc->rows_rows, scrdesc->fix_cols_cols,
+		w_fix_cols(scrdesc) = subwin(stdscr, scrdesc->rows_rows, scrdesc->fix_cols_cols,
 									 scrdesc->fix_rows_rows + scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
-		w_luc(scrdesc) = newwin(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
+		w_luc(scrdesc) = subwin(stdscr, scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
 	}
 
 	if (scrdesc->rows_rows > 0)
 	{
-		w_rows(scrdesc) = newwin(scrdesc->rows_rows,
+		w_rows(scrdesc) = subwin(stdscr, scrdesc->rows_rows,
 							   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
 							   scrdesc->fix_rows_rows + scrdesc->main_start_y, scrdesc->fix_cols_cols);
 	}
@@ -1093,9 +1093,9 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	else
 	{
 		scrdesc->top_bar_rows = 1;
-		top_bar = newwin(1, 0, 0, 0);
+		top_bar = subwin(stdscr, 1, 0, 0, 0);
 		wbkgd(top_bar, COLOR_PAIR(2));
-		wrefresh(top_bar);
+		wnoutrefresh(top_bar);
 		w_top_bar(scrdesc) = top_bar;
 	}
 
@@ -1106,7 +1106,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 		w_bottom_bar(scrdesc) = NULL;
 	}
 
-	bottom_bar = newwin(1, 0, maxy - 1, 0);
+	bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
 	w_bottom_bar(scrdesc) = bottom_bar;
 
 	if (!opts->less_status_bar > 0)
@@ -1128,8 +1128,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 		}
 
-		wrefresh(bottom_bar);
-
+		wnoutrefresh(bottom_bar);
 	}
 
 	scrdesc->main_maxy = maxy;
@@ -1238,7 +1237,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		}
 
 		mvwprintw(top_bar, 0, maxx - strlen(buffer), "%s", buffer);
-		wrefresh(top_bar);
+		wnoutrefresh(top_bar);
 	}
 	else
 	{
@@ -1295,7 +1294,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		mvwprintw(bottom_bar, 0, 0, "%s", buffer);
 		wclrtoeol(bottom_bar);
-		wrefresh(bottom_bar);
+		wnoutrefresh(bottom_bar);
 
 		wattroff(bottom_bar, bottom_bar_theme->prompt_attr);
 	}
@@ -1348,7 +1347,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 
 	wclrtoeol(bottom_bar);
 	wattroff(bottom_bar,  t->bottom_light_attr);
-	wrefresh(bottom_bar);
+	wnoutrefresh(bottom_bar);
 
 	refresh();
 
@@ -1459,7 +1458,6 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	wclrtoeol(bottom_bar);
 	curs_set(1);
 	echo();
-
 
 	rl_getc_function = readline_getc;
 
