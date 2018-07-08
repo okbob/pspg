@@ -1687,6 +1687,7 @@ main(int argc, char *argv[])
 
 	ST_MENU_CONFIG		menu_config;
 	struct ST_MENU		*menu = NULL;
+	int					menu_theme;
 
 #define		MENU_ITEM_FILE		0
 #define		MENU_ITEM_SAVE		20
@@ -1891,7 +1892,56 @@ main(int argc, char *argv[])
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
 
-	st_menu_load_style(&menu_config, 2, 100);
+	menu_theme = 10;
+
+	switch (opts.theme)
+	{
+		case 0:
+			menu_theme = ST_MENU_STYLE_MCB;
+			break;
+		case 1:
+			menu_theme = ST_MENU_STYLE_MC;
+			break;
+		case 2:
+			menu_theme = ST_MENU_STYLE_FOXPRO;
+			break;
+		case 3:
+			menu_theme = ST_MENU_STYLE_PDMENU;
+			break;
+		case 6:
+			menu_theme = ST_MENU_STYLE_FAND_1;
+			break;
+		case 7:
+			menu_theme = ST_MENU_STYLE_ONECOLOR;
+			break;
+		case 14:
+			menu_theme = ST_MENU_STYLE_OLD_TURBO;
+			break;
+		case 9:
+			menu_theme = ST_MENU_STYLE_DOS;
+			break;
+		case 10:
+		case 12:
+			menu_theme = ST_MENU_STYLE_VISION;
+			break;
+		case 11:
+			menu_theme = ST_MENU_STYLE_OLD_TURBO;
+			break;
+		case 13:
+			menu_theme = ST_MENU_STYLE_MC46;
+			break;
+		case 15:
+			menu_theme = ST_MENU_STYLE_PERFECT;
+			break;
+	}
+
+	if (menu_theme != ST_MENU_STYLE_ONECOLOR)
+		st_menu_load_style(&menu_config, menu_theme, 100);
+	else
+		st_menu_load_style(&menu_config, ST_MENU_STYLE_ONECOLOR, 3);
+
+	if (opts.theme == 1 || opts.theme == 13)
+		menu_config.shadow_width = 2;
 
 #endif
 
@@ -2119,9 +2169,6 @@ main(int argc, char *argv[])
 			doupdate();
 			refresh();
 
-getch();
-
-
 			if (menu != NULL && menu_is_active)
 				st_menu_post(menu);
 
@@ -2177,9 +2224,8 @@ getch();
 			MEVENT	mevent;
 			ST_MENU_ITEM		*active_menu_item;
 
-			processed = st_menu_driver_nodraw(menu, c, false, &mevent);
+			processed = st_menu_driver(menu, c, false, &mevent);
 
-			doupdate();
 			refresh();
 
 			active_menu_item = st_menu_selected_item(&activated);
@@ -2220,7 +2266,6 @@ exit(0);
 
 			doupdate();
 			refresh();
-			//c = getch();
 			c2 = 0;
 			continue;
 		}
