@@ -44,6 +44,8 @@ if_notin_int(int v, const int *s, int v1, int v2)
 void
 initialize_color_pairs(int theme)
 {
+	init_pair(21, COLOR_WHITE, COLOR_BLACK);		/* Fx keys */
+
 	switch (theme)
 	{
 		case 0:

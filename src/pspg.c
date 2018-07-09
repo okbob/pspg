@@ -1117,20 +1117,23 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 
 	if (!opts->less_status_bar > 0)
 	{
+		wattron(bottom_bar, COLOR_PAIR(21) | A_BOLD);
+		mvwaddstr(bottom_bar, 0, 0, "10");
+		wattroff(bottom_bar, COLOR_PAIR(21) | A_BOLD);
 		wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-		mvwaddstr(bottom_bar, 0, 1, "Q");
+		mvwaddstr(bottom_bar, 0, 2, "Q");
 		wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
 		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-		mvwprintw(bottom_bar, 0, 2, "%-4s", "uit");
+		mvwprintw(bottom_bar, 0, 3, "%-4s", "uit");
 		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 
 		if (desc->headline_transl != NULL)
 		{
 			wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-			mvwaddstr(bottom_bar, 0, 7, "0..4");
+			mvwaddstr(bottom_bar, 0, 8, "0..4");
 			wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
 			wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-			mvwprintw(bottom_bar, 0, 11, "%s", " Col.Freeze ");
+			mvwprintw(bottom_bar, 0, 12, "%s", " Col.Freeze ");
 			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 		}
 
