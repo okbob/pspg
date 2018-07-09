@@ -2340,7 +2340,7 @@ exit_search_next_bookmark:
 					}
 					break;
 				case 27:
-				case 0:
+				case '0':
 					c2 = 'q';
 					break;
 			}
