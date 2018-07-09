@@ -85,6 +85,14 @@ static WINDOW *g_bottom_bar;
 
 #endif
 
+typedef struct
+{
+	int		menu_code;
+	int		key_code;
+	bool	alt;
+} menu_translator;
+
+
 #define CTRL_HOME		(extra_key_codes[0])
 #define CTRL_END		(extra_key_codes[1])
 
@@ -1764,9 +1772,65 @@ main(int argc, char *argv[])
 	struct ST_MENU		*menu = NULL;
 	int					menu_theme;
 
-#define		MENU_ITEM_FILE		0
 #define		MENU_ITEM_SAVE		20
 #define		MENU_ITEM_EXIT		100
+
+#define		MENU_ITEM_SEARCH			30
+#define		MENU_ITEM_SEARCH_BACKWARD	31
+#define		MENU_ITEM_SEARCH_AGAIN		32
+#define		MENU_ITEM_SEARCH_PREV		33
+#define		MENU_ITEM_TOGGLE_BOOKMARK	34
+#define		MENU_ITEM_NEXT_BOOKMARK		35
+#define		MENU_ITEM_PREV_BOOKMARK		36
+#define		MENU_ITEM_FLUSH_BOOKMARKS	37
+
+#define		MENU_ITEM_RELEASE_COLUMNS	40
+#define		MENU_ITEM_FREEZE_ONE		41
+#define		MENU_ITEM_FREEZE_TWO		42
+#define		MENU_ITEM_FREEZE_THREE		43
+#define		MENU_ITEM_FREEZE_FOUR		44
+#define		MENU_ITEM_PREV_ROW			45
+#define		MENU_ITEM_NEXT_ROW			46
+#define		MENU_ITEM_SCROLL_LEFT		47
+#define		MENU_ITEM_SCROLL_RIGHT		48
+#define		MENU_ITEM_FIRST_ROW			49
+#define		MENU_ITEM_LAST_ROW			50
+#define		MENU_ITEM_FIRST_COLUMN		51
+#define		MENU_ITEM_LAST_COLUMN		52
+#define		MENU_ITEM_PREV_PAGE			53
+#define		MENU_ITEM_NEXT_PAGE			54
+
+#define		MENU_ITEM_MOUSE_SWITCH		60
+
+	menu_translator mtransl[] = {
+		{MENU_ITEM_SAVE, 's', false},
+		{MENU_ITEM_EXIT, 'q', false},
+		{MENU_ITEM_SEARCH, '/', false},
+		{MENU_ITEM_SEARCH_BACKWARD, '?', false},
+		{MENU_ITEM_SEARCH_AGAIN, 'n', false},
+		{MENU_ITEM_SEARCH_PREV, 'N', false},
+		{MENU_ITEM_TOGGLE_BOOKMARK, 'k', true},
+		{MENU_ITEM_NEXT_BOOKMARK, 'j', true},
+		{MENU_ITEM_PREV_BOOKMARK, 'i', true},
+		{MENU_ITEM_FLUSH_BOOKMARKS, 'o', true},
+		{MENU_ITEM_MOUSE_SWITCH, 'm', true},
+		{MENU_ITEM_RELEASE_COLUMNS, '0', false},
+		{MENU_ITEM_FREEZE_ONE, '1', false},
+		{MENU_ITEM_FREEZE_TWO, '2', false},
+		{MENU_ITEM_FREEZE_THREE, '3', false},
+		{MENU_ITEM_FREEZE_FOUR, '4', false},
+		{MENU_ITEM_PREV_ROW, 'k', false},
+		{MENU_ITEM_NEXT_ROW, 'j', false},
+		{MENU_ITEM_SCROLL_LEFT, 'h', false},
+		{MENU_ITEM_SCROLL_RIGHT, 'l', false},
+		{MENU_ITEM_FIRST_ROW, 'g', false},
+		{MENU_ITEM_LAST_ROW, 'G', false},
+		{MENU_ITEM_FIRST_COLUMN, '^', false},
+		{MENU_ITEM_LAST_COLUMN, '$', false},
+		{MENU_ITEM_PREV_PAGE, KEY_PPAGE, false},
+		{MENU_ITEM_NEXT_PAGE, KEY_NPAGE, false},
+		{0}
+	};
 
 	ST_MENU_ITEM _file[] = {
 		{"~S~ave", MENU_ITEM_SAVE, "s"},
@@ -1775,11 +1839,51 @@ main(int argc, char *argv[])
 		{NULL}
 	};
 
+	ST_MENU_ITEM _search[] = {
+		{"~S~earch", MENU_ITEM_SEARCH, "/"},
+		{"Search ~b~ackward", MENU_ITEM_SEARCH_BACKWARD, "?"},
+		{"Search ~a~gain", MENU_ITEM_SEARCH_AGAIN, "n"},
+		{"Search p~r~evious", MENU_ITEM_SEARCH_PREV, "N"},
+		{"--"},
+		{"~T~oggle bbooookmark", MENU_ITEM_TOGGLE_BOOKMARK, "M-k"},
+		{"~P~rev bookmark", MENU_ITEM_PREV_BOOKMARK, "M-i"},
+		{"~N~ext bookmark", MENU_ITEM_NEXT_BOOKMARK, "M-j"},
+		{"~F~lush bookmarks", MENU_ITEM_FLUSH_BOOKMARKS, "M-o"},
+		{NULL}
+	};
+
+	ST_MENU_ITEM _command[] = {
+		{"_0_Release fixed columns", MENU_ITEM_RELEASE_COLUMNS, "0"},
+		{"_1_Freeze one column", MENU_ITEM_FREEZE_ONE, "1"},
+		{"_2_Freeze two columns", MENU_ITEM_FREEZE_TWO, "2"},
+		{"_3_Freeze three columns", MENU_ITEM_FREEZE_THREE, "3"},
+		{"_4_Freeze four columns", MENU_ITEM_FREEZE_FOUR, "4"},
+		{"--"},
+		{"~P~rev row", MENU_ITEM_PREV_ROW, "k, Key up"},
+		{"~N~ext row", MENU_ITEM_NEXT_ROW, "j, Key down"},
+		{"Scroll to l~e~ft", MENU_ITEM_SCROLL_LEFT, "h, Key left"},
+		{"Scroll to ~r~ight", MENU_ITEM_SCROLL_RIGHT, "l, Key right"},
+		{"--"},
+		{"Go to ~f~irst row", MENU_ITEM_FIRST_ROW, "g, C-Home"},
+		{"Go to ~l~ast row", MENU_ITEM_LAST_ROW, "G, C-End"},
+		{"~S~how first column", MENU_ITEM_FIRST_COLUMN, "^, Home"},
+		{"Sho~w~ last column", MENU_ITEM_LAST_COLUMN, "$, End"},
+		{"--"},
+		{"Page up", MENU_ITEM_PREV_PAGE, "C-b, Prev page"},
+		{"Page down", MENU_ITEM_NEXT_PAGE, "C-f, space, Next page"},
+		{NULL}
+	};
+
+	ST_MENU_ITEM _options[] = {
+		{"~M~ouse on/off", MENU_ITEM_MOUSE_SWITCH, "M-m"},
+		{NULL},
+	};
+
 	ST_MENU_ITEM menubar[] = {
-	  {"~F~ile", MENU_ITEM_FILE, NULL, 0, _file},
-	  {"~S~earch"},
-	  {"~C~ommand"},
-	  {"~O~ptions"},
+	  {"~F~ile", 0, NULL, 0, _file},
+	  {"~S~earch", 0, NULL, 0, _search},
+	  {"~C~ommand", 0, NULL, 0, _command},
+	  {"~O~ptions", 0, NULL, 0, _options},
 	  {NULL}
 	};
 
@@ -2348,15 +2452,17 @@ main(int argc, char *argv[])
 
 			if (processed && activated)
 			{
-				if (active_menu_item->code == MENU_ITEM_SAVE)
+				menu_translator *mt = mtransl;
+
+				while (mt->menu_code != 0)
 				{
-					c2 = 's';
-					goto hide_menu;
-				}
-				else if (active_menu_item->code == MENU_ITEM_EXIT)
-				{
-					c2 = 'q';
-					continue;
+					if (active_menu_item->code == mt->menu_code)
+					{
+						c2 = mt->key_code;
+						press_alt = mt->alt;
+						goto hide_menu;
+					}
+					mt += 1;
 				}
 			}
 
@@ -2437,6 +2543,34 @@ hide_menu:
 						refresh_scr = true;
 					}
 					break;
+
+				case 'o':		/* ALT o - flush bookmarks */
+					{
+						LineBuffer *lnb = &desc.rows;
+						int		rownum_cursor_row;
+						int		rownum = 0;
+						bool	found = false;
+
+						while (lnb != NULL)
+						{
+							if (lnb->lineinfo != NULL)
+							{
+								rownum_cursor_row = 0;
+
+								while (rownum_cursor_row < lnb->nrows)
+								{
+									if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
+										lnb->lineinfo[rownum_cursor_row].mask ^= LINEINFO_BOOKMARK;
+
+									rownum_cursor_row += 1;
+								}
+							}
+
+							lnb = lnb->next;
+						}
+					}
+					break;
+
 				case 'k':		/* ALT k - (un)set bookmark */
 					{
 						LineBuffer *lnb = &desc.rows;
@@ -2464,6 +2598,7 @@ hide_menu:
 						lnb->lineinfo[_cursor_row].mask ^= LINEINFO_BOOKMARK;
 					}
 					break;
+
 				case 'i':		/* ALT i - prev bookmark */
 					{
 						LineBuffer *lnb = &desc.rows;
@@ -2523,6 +2658,7 @@ exit_search_prev_bookmark:
 							make_beep(&opts);
 					}
 					break;
+
 				case 'j':		/* ALT j - next bookmark */
 					{
 						LineBuffer *lnb = &desc.rows;
@@ -2586,6 +2722,7 @@ exit_search_next_bookmark:
 							make_beep(&opts);
 					}
 					break;
+
 				case 27:
 				case '0':
 					c2 = 'q';
@@ -3409,13 +3546,6 @@ found_next_pattern:
 						{
 							int		max_cursor_row;
 							int		max_first_row;
-
-if (event.bstate & BUTTON1_DOUBLE_CLICKED)
-{
-endwin();
-exit(0);
-}
-
 
 							if (event.y == 0 && scrdesc.top_bar_rows > 0)
 							{
