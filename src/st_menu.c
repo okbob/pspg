@@ -219,7 +219,14 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 
 #else
 
-		int	fold = utf8_tofold((const char *) str);
+		char buffer2[10];
+		int chrl = utf8charlen(*str);
+		int	fold;
+
+		strncpy(buffer2, str, chrl);
+		buffer2[chrl] = '\0';
+
+		fold  = utf8_tofold((const char *) buffer2);
 
 		*((int *) buffer) = fold;
 		buffer[sizeof(int)] = '\0';
@@ -255,8 +262,7 @@ wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch)
 
 #else
 
-		char *ptr = (char *) unicode_to_utf8(wch, (unsigned char *) str);
-		result = ptr - str;
+		unicode_to_utf8(wch, (unsigned char *) str, &result);
 
 #endif
 	}
@@ -1687,7 +1693,7 @@ ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_
 	menu->accelerators = safe_malloc(sizeof(ST_MENU_ACCELERATOR) * menu_fields);
 	menu->options = safe_malloc(sizeof(int) * menu_fields);
 
-	menu->nitems = menu_fields;
+	menu->nitems = menu_fields; 
 
 	/*
 	 * When text_space is not defined, then try to vallign menu items

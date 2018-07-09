@@ -210,22 +210,27 @@ ucs_wcwidth(wchar_t ucs)
  * space allocated.
  */
 unsigned char *
-unicode_to_utf8(wchar_t c, unsigned char *utf8string)
+unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size)
 {
+	int		_size;
+
 	if (c <= 0x7F)
 	{
 		utf8string[0] = c;
+		_size = 1;
 	}
 	else if (c <= 0x7FF)
 	{
 		utf8string[0] = 0xC0 | ((c >> 6) & 0x1F);
 		utf8string[1] = 0x80 | (c & 0x3F);
+		_size = 2;
 	}
 	else if (c <= 0xFFFF)
 	{
 		utf8string[0] = 0xE0 | ((c >> 12) & 0x0F);
 		utf8string[1] = 0x80 | ((c >> 6) & 0x3F);
 		utf8string[2] = 0x80 | (c & 0x3F);
+		_size = 3;
 	}
 	else
 	{
@@ -233,7 +238,11 @@ unicode_to_utf8(wchar_t c, unsigned char *utf8string)
 		utf8string[1] = 0x80 | ((c >> 12) & 0x3F);
 		utf8string[2] = 0x80 | ((c >> 6) & 0x3F);
 		utf8string[3] = 0x80 | (c & 0x3F);
+		_size = 4;
 	}
+
+	if (size != NULL)
+		*size = _size;
 
 	return utf8string;
 }

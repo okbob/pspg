@@ -50,11 +50,11 @@
 #include <readline.h>
 
 #endif
+
 #if RL_VERSION_MAJOR < 6
 #define rl_display_prompt rl_prompt
 #endif
 #endif
-
 
 #ifdef HAVE_READLINE_HISTORY
 #if defined(HAVE_READLINE_HISTORY_H)
@@ -96,6 +96,9 @@ static int get_event(MEVENT *mevent, bool *alt);
 
 bool	press_alt = false;
 MEVENT		event;
+
+FILE *debug_pipe = NULL;
+int	debug_eventno = 0;
 
 
 int
@@ -1125,22 +1128,29 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	if (!opts->less_status_bar > 0)
 	{
 		wattron(bottom_bar, COLOR_PAIR(21) | A_BOLD);
-		mvwaddstr(bottom_bar, 0, 0, "10");
+		mvwaddstr(bottom_bar, 0, 0, " 9");
+		wattroff(bottom_bar, COLOR_PAIR(21) | A_BOLD);
+		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
+		mvwprintw(bottom_bar, 0, 2, "%-4s", "Menu ");
+		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
+
+		wattron(bottom_bar, COLOR_PAIR(21) | A_BOLD);
+		mvwaddstr(bottom_bar, 0, 7, "10");
 		wattroff(bottom_bar, COLOR_PAIR(21) | A_BOLD);
 		wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-		mvwaddstr(bottom_bar, 0, 2, "Q");
+		mvwaddstr(bottom_bar, 0, 9, "Q");
 		wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
 		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-		mvwprintw(bottom_bar, 0, 3, "%-4s", "uit");
+		mvwprintw(bottom_bar, 0, 10, "%-4s", "uit");
 		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 
 		if (desc->headline_transl != NULL)
 		{
 			wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-			mvwaddstr(bottom_bar, 0, 8, "0..4");
+			mvwaddstr(bottom_bar, 0, 15, "0..4");
 			wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
 			wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-			mvwprintw(bottom_bar, 0, 12, "%s", " Col.Freeze ");
+			mvwprintw(bottom_bar, 0, 19, "%s", " Col.Freeze ");
 			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
 		}
 
@@ -1748,6 +1758,7 @@ main(int argc, char *argv[])
 	bool	menu_is_active = false;
 
 	ST_MENU_CONFIG		menu_config;
+	ST_MENU_CONFIG		menu_config2;
 	struct ST_MENU		*menu = NULL;
 	int					menu_theme;
 
@@ -1968,7 +1979,13 @@ main(int argc, char *argv[])
 			menu_theme = ST_MENU_STYLE_FOXPRO;
 			break;
 		case 3:
-			menu_theme = ST_MENU_STYLE_PDMENU;
+			menu_theme = ST_MENU_STYLE_DOS;
+			break;
+		case 4:
+			menu_theme = ST_MENU_STYLE_FREE_DOS;
+			break;
+		case 5:
+			menu_theme = ST_MENU_STYLE_NOCOLOR;
 			break;
 		case 6:
 			menu_theme = ST_MENU_STYLE_FAND_1;
@@ -1997,10 +2014,19 @@ main(int argc, char *argv[])
 			break;
 	}
 
-	if (menu_theme != ST_MENU_STYLE_ONECOLOR)
-		st_menu_load_style(&menu_config, menu_theme, 100);
-	else
+	if (menu_theme == ST_MENU_STYLE_ONECOLOR)
+	{
 		st_menu_load_style(&menu_config, ST_MENU_STYLE_ONECOLOR, 3);
+	}
+	else if (menu_theme == ST_MENU_STYLE_FREE_DOS)
+	{
+		int		fcp;
+
+		fcp = st_menu_load_style(&menu_config, menu_theme, 100);
+		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp);
+	}
+	else
+		st_menu_load_style(&menu_config, menu_theme, 100);
 
 	if (opts.theme == 1 || opts.theme == 13)
 		menu_config.shadow_width = 2;
@@ -2283,10 +2309,9 @@ main(int argc, char *argv[])
 		{
 			bool	processed = false;
 			bool	activated = false;
-			MEVENT	mevent;
 			ST_MENU_ITEM		*active_menu_item;
 
-			processed = st_menu_driver(menu, c, false, &mevent);
+			processed = st_menu_driver(menu, c, press_alt, &event);
 
 			refresh();
 
@@ -2294,17 +2319,27 @@ main(int argc, char *argv[])
 
 			if (processed && activated)
 			{
-				if (active_menu_item->code == MENU_ITEM_EXIT)
-endwin();
-printf("***************************\n");
-exit(0);
-					break;
+				if (active_menu_item->code == MENU_ITEM_SAVE)
+				{
+					c2 = 's';
+					goto hide_menu;
+				}
+				else if (active_menu_item->code == MENU_ITEM_EXIT)
+				{
+					c2 = 'q';
+					continue;
+				}
 			}
 
-			if (!processed && c == ST_MENU_ESCAPE)
+			if (!processed && (c == ST_MENU_ESCAPE || c == KEY_MOUSE))
 			{
+hide_menu:
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
+
+				mousemask(prev_mousemask, NULL);
+				mouseinterval(100);
+
 				goto refresh;
 			}
 
@@ -2320,8 +2355,24 @@ exit(0);
 				panel = new_panel(stdscr);
 				st_menu_set_desktop_panel(panel);
 
-				menu = st_menu_new_menubar(&menu_config, menubar);
+				if (menu_theme == ST_MENU_STYLE_FREE_DOS)
+					menu = st_menu_new_menubar2(&menu_config, &menu_config2, menubar);
+				else
+					menu = st_menu_new_menubar(&menu_config, menubar);
 			}
+
+#if NCURSES_MOUSE_VERSION > 1
+
+			/* BUTTON1_PRESSED | BUTTON1_RELEASED are mandatory enabled */
+			mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED, &prev_mousemask);
+
+#else
+
+			mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED, &prev_mousemask);
+
+#endif
+
+			mouseinterval(0);
 
 			st_menu_post(menu);
 			menu_is_active = true;
