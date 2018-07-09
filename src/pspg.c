@@ -2344,6 +2344,8 @@ exit_search_next_bookmark:
 					c2 = 'q';
 					break;
 			}
+
+			press_alt = false;
 		}
 		else
 		{
