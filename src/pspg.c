@@ -1705,9 +1705,11 @@ main(int argc, char *argv[])
 {
 	int		maxx, maxy;
 	int		c;
+	int		prev_c = 0;
 	int		c2 = 0;
 	int		c3 = 0;
 	int		c4 = 0;
+	bool	reuse_event = false;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
@@ -2056,14 +2058,17 @@ main(int argc, char *argv[])
 	if (use_mouse)
 	{
 
+		mouseinterval(200);
+
+
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT |
+		mousemask(BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT |
 				  BUTTON1_DOUBLE_CLICKED, NULL);
 
 #else
 
-		mousemask(BUTTON1_CLICKED, NULL);
+		mousemask(BUTTON1_CLICKED | BUTTON1_RELEASED, NULL);
 
 #endif
 
@@ -2206,6 +2211,23 @@ main(int argc, char *argv[])
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
 		/*
+		 * Next code allows to inject event, and later process original event again.
+		 * It is used for reuse mouse event: 1. replace top bar by menubar, 2. activate
+		 * field on menubar - possibly pulldown menu.
+		 */
+		if (reuse_event)
+		{
+			if (prev_c == 0)
+				prev_c = c;
+			else
+			{
+				c2 = prev_c;
+				reuse_event = false;
+				prev_c = 0;
+			}
+		}
+
+		/*
 		 * Draw windows, only when function (key) redirect was not forced.
 		 * Redirect emmit immediate redraw.
 		 */
@@ -2295,6 +2317,7 @@ main(int argc, char *argv[])
 		}
 		else
 		{
+			
 			c = c2;
 			c2 = 0;
 			redirect_mode = true;
@@ -2310,6 +2333,12 @@ main(int argc, char *argv[])
 			bool	processed = false;
 			bool	activated = false;
 			ST_MENU_ITEM		*active_menu_item;
+
+			/*
+			 * Translate clicked event to released
+			 */
+			if (c == KEY_MOUSE && event.bstate & BUTTON1_CLICKED)
+				event.bstate |= BUTTON1_RELEASED;
 
 			processed = st_menu_driver(menu, c, press_alt, &event);
 
@@ -2338,7 +2367,7 @@ hide_menu:
 				menu_is_active = false;
 
 				mousemask(prev_mousemask, NULL);
-				mouseinterval(100);
+				mouseinterval(200);
 
 				goto refresh;
 			}
@@ -2384,7 +2413,6 @@ hide_menu:
 		}
 
 #endif
-
 
 		prev_first_row = first_row;
 
@@ -3376,10 +3404,26 @@ found_next_pattern:
 
 #endif
 
-						if (event.bstate & BUTTON1_CLICKED || event.bstate & BUTTON1_DOUBLE_CLICKED)
+						if (event.bstate & BUTTON1_CLICKED || event.bstate & BUTTON1_DOUBLE_CLICKED ||
+								event.bstate & BUTTON1_RELEASED)
 						{
 							int		max_cursor_row;
 							int		max_first_row;
+
+if (event.bstate & BUTTON1_DOUBLE_CLICKED)
+{
+endwin();
+exit(0);
+}
+
+
+							if (event.y == 0 && scrdesc.top_bar_rows > 0)
+							{
+								c2 = KEY_F(9);
+								reuse_event = true;
+								prev_c = 0;
+								break;
+							}
 
 							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 							if (cursor_row < 0)
