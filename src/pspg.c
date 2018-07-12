@@ -1835,7 +1835,7 @@ main(int argc, char *argv[])
 	ST_MENU_ITEM _file[] = {
 		{"~S~ave", MENU_ITEM_SAVE, "s"},
 		{"--"},
-		{"E~x~it", MENU_ITEM_EXIT, "F10"},
+		{"E~x~it", MENU_ITEM_EXIT, "q, F10"},
 		{NULL}
 	};
 
@@ -2721,6 +2721,10 @@ exit_search_next_bookmark:
 						else
 							make_beep(&opts);
 					}
+					break;
+
+				case '9':
+					c2 = KEY_F(9);
 					break;
 
 				case 27:
