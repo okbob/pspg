@@ -26,6 +26,7 @@
 
 #define ST_MENU_OPTION_DEFAULT		1
 #define ST_MENU_OPTION_DISABLED		2
+#define	ST_MENU_OPTION_MARKED		4
 
 /*
  * Uncomment it and set for your environment when you would to
@@ -88,6 +89,7 @@ typedef struct
 	int		submenu_tag;			/* symbol used for submenu tag */
 	int		submenu_offset_y;		/* offset for submenu related to right border of parent menu window */
 	int		submenu_offset_x;		/* offset for submenu related to cursor in parent menu window */
+	int		mark_tag;				/* symbol used for mark tag */
 } ST_MENU_CONFIG;
 
 struct ST_MENU;

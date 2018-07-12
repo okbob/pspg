@@ -765,6 +765,7 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	int		row = 1;
 	int		maxy, maxx;
 	int		text_min_x, text_max_x;
+	int		*options = menu->options;
 
 	selected_item = NULL;
 
@@ -801,7 +802,17 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	while (menu_items->text != NULL)
 	{
 		bool	has_submenu = menu_items->submenu ? true : false;
-		bool	is_disabled = menu_items->options & ST_MENU_OPTION_DISABLED;
+		bool	is_disabled = false;
+		bool	is_marked = false;
+
+		if (options)
+		{
+			int		offset = menu_items - menu->menu_items;
+			int		option = options[offset];
+
+			is_disabled = option & ST_MENU_OPTION_DISABLED;
+			is_marked = option & ST_MENU_OPTION_MARKED;
+		}
 
 		if (*menu_items->text == '\0' || strncmp(menu_items->text, "--", 2) == 0)
 		{
@@ -926,6 +937,14 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 								row - (draw_box ? 0 : 1),
 								text_max_x - 2,
 									"%lc", config->submenu_tag);
+			}
+
+			if (is_marked)
+			{
+				mvwprintw(draw_area,
+								row - (draw_box ? 0 : 1),
+								text_min_x,
+									"%lc", config->mark_tag);
 			}
 
 			if (is_cursor_row)
@@ -1869,7 +1888,7 @@ st_menu_reset_option(struct ST_MENU *menu, int code, int option)
 		}
 
 		if (menu->submenus[i])
-			if (st_menu_set_option(menu->submenus[i], code, option))
+			if (st_menu_reset_option(menu->submenus[i], code, option))
 				return true;
 
 		menu_items += 1;

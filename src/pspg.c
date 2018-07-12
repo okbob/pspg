@@ -1703,6 +1703,10 @@ repeat:
 }
 
 
+extern bool
+st_menu_get_option(struct ST_MENU *menu, int code, int *option);
+
+
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
 #define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
@@ -1875,7 +1879,7 @@ main(int argc, char *argv[])
 	};
 
 	ST_MENU_ITEM _options[] = {
-		{"~M~ouse on/off", MENU_ITEM_MOUSE_SWITCH, "M-m"},
+		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m"},
 		{NULL},
 	};
 
@@ -2009,7 +2013,6 @@ main(int argc, char *argv[])
 
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
-
 
 	readfile(fp, &opts, &desc);
 	if (fp != NULL)
@@ -2508,6 +2511,11 @@ hide_menu:
 #endif
 
 			mouseinterval(0);
+
+			if (use_mouse)
+				st_menu_set_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED);
+			else
+				st_menu_reset_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED);
 
 			st_menu_post(menu);
 			menu_is_active = true;

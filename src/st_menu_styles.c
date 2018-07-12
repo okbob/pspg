@@ -11,11 +11,15 @@ int
 st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 {
 	config->submenu_tag = '>';
+	config->mark_tag = '*';
 	config->draw_box = true;
 	config->extern_accel_text_space = 2;
 
 	config->submenu_offset_y = 0;
 	config->submenu_offset_x = 0;
+
+	if (!config->force8bit)
+		config->mark_tag = L'\x2714';
 
 	switch (style)
 	{
@@ -129,12 +133,8 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			config->menu_bar_menu_offset = 1;
 			config->shadow_width = 2;
 
-#if NCURSES_WIDECHAR > 0
-
 			if (!config->force8bit)
 				config->submenu_tag = L'\x25BA';
-
-#endif
 
 			config->submenu_offset_y = 0;
 			config->submenu_offset_x = -15;
@@ -215,12 +215,8 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			config->menu_bar_menu_offset = 2;
 			config->shadow_width = 2;
 
-#if NCURSES_WIDECHAR > 0
-
 			if (!config->force8bit)
 				config->submenu_tag = L'\x00BB';
-
-#endif
 
 			break;
 
@@ -260,12 +256,8 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			config->menu_bar_menu_offset = 2;
 			config->shadow_width = 2;
 
-#if NCURSES_WIDECHAR > 0
-
 			if (!config->force8bit)
 				config->submenu_tag = L'\x00BB';
-
-#endif
 
 			break;
 
@@ -344,12 +336,8 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			config->menu_bar_menu_offset = 1;
 			config->shadow_width = 2;
 
-#if NCURSES_WIDECHAR > 0
-
 			if (!config->force8bit)
 				config->submenu_tag = L'\x2BC8';
-
-#endif
 
 			break;
 
