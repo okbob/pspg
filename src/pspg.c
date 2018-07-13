@@ -90,6 +90,7 @@ typedef struct
 	int		menu_code;
 	int		key_code;
 	bool	alt;
+	bool	menu;
 } menu_translator;
 
 
@@ -103,6 +104,7 @@ typedef struct
 static int get_event(MEVENT *mevent, bool *alt);
 
 bool	press_alt = false;
+bool	choose_menu = false;
 MEVENT		event;
 
 FILE *debug_pipe = NULL;
@@ -1805,34 +1807,44 @@ main(int argc, char *argv[])
 #define		MENU_ITEM_NEXT_PAGE			54
 
 #define		MENU_ITEM_MOUSE_SWITCH		60
+#define		MENU_ITEM_SEARCH_CS			61
+#define		MENU_ITEM_SEARCH_US			62
+#define		MENU_ITEM_SEARCH_IS			63
+#define		MENU_ITEM_FORCE_UNIART		64
+#define		MENU_ITEM_SOUND_SWITCH		65
 
 	menu_translator mtransl[] = {
-		{MENU_ITEM_SAVE, 's', false},
-		{MENU_ITEM_EXIT, 'q', false},
-		{MENU_ITEM_SEARCH, '/', false},
-		{MENU_ITEM_SEARCH_BACKWARD, '?', false},
-		{MENU_ITEM_SEARCH_AGAIN, 'n', false},
-		{MENU_ITEM_SEARCH_PREV, 'N', false},
-		{MENU_ITEM_TOGGLE_BOOKMARK, 'k', true},
-		{MENU_ITEM_NEXT_BOOKMARK, 'j', true},
-		{MENU_ITEM_PREV_BOOKMARK, 'i', true},
-		{MENU_ITEM_FLUSH_BOOKMARKS, 'o', true},
-		{MENU_ITEM_MOUSE_SWITCH, 'm', true},
-		{MENU_ITEM_RELEASE_COLUMNS, '0', false},
-		{MENU_ITEM_FREEZE_ONE, '1', false},
-		{MENU_ITEM_FREEZE_TWO, '2', false},
-		{MENU_ITEM_FREEZE_THREE, '3', false},
-		{MENU_ITEM_FREEZE_FOUR, '4', false},
-		{MENU_ITEM_PREV_ROW, 'k', false},
-		{MENU_ITEM_NEXT_ROW, 'j', false},
-		{MENU_ITEM_SCROLL_LEFT, 'h', false},
-		{MENU_ITEM_SCROLL_RIGHT, 'l', false},
-		{MENU_ITEM_FIRST_ROW, 'g', false},
-		{MENU_ITEM_LAST_ROW, 'G', false},
-		{MENU_ITEM_FIRST_COLUMN, '^', false},
-		{MENU_ITEM_LAST_COLUMN, '$', false},
-		{MENU_ITEM_PREV_PAGE, KEY_PPAGE, false},
-		{MENU_ITEM_NEXT_PAGE, KEY_NPAGE, false},
+		{MENU_ITEM_SAVE, 's', false, false},
+		{MENU_ITEM_EXIT, 'q', false, false},
+		{MENU_ITEM_SEARCH, '/', false, false},
+		{MENU_ITEM_SEARCH_BACKWARD, '?', false, false},
+		{MENU_ITEM_SEARCH_AGAIN, 'n', false, false},
+		{MENU_ITEM_SEARCH_PREV, 'N', false, false},
+		{MENU_ITEM_TOGGLE_BOOKMARK, 'k', true, false},
+		{MENU_ITEM_NEXT_BOOKMARK, 'j', true, false},
+		{MENU_ITEM_PREV_BOOKMARK, 'i', true, false},
+		{MENU_ITEM_FLUSH_BOOKMARKS, 'o', true, false},
+		{MENU_ITEM_MOUSE_SWITCH, 'm', true, false},
+		{MENU_ITEM_RELEASE_COLUMNS, '0', false, false},
+		{MENU_ITEM_FREEZE_ONE, '1', false, false},
+		{MENU_ITEM_FREEZE_TWO, '2', false, false},
+		{MENU_ITEM_FREEZE_THREE, '3', false, false},
+		{MENU_ITEM_FREEZE_FOUR, '4', false, false},
+		{MENU_ITEM_PREV_ROW, 'k', false, false},
+		{MENU_ITEM_NEXT_ROW, 'j', false, false},
+		{MENU_ITEM_SCROLL_LEFT, 'h', false, false},
+		{MENU_ITEM_SCROLL_RIGHT, 'l', false, false},
+		{MENU_ITEM_FIRST_ROW, 'g', false, false},
+		{MENU_ITEM_LAST_ROW, 'G', false, false},
+		{MENU_ITEM_FIRST_COLUMN, '^', false, false},
+		{MENU_ITEM_LAST_COLUMN, '$', false, false},
+		{MENU_ITEM_PREV_PAGE, KEY_PPAGE, false, false},
+		{MENU_ITEM_NEXT_PAGE, KEY_NPAGE, false, false},
+		{MENU_ITEM_SEARCH_CS, MENU_ITEM_SEARCH_CS, false, true},
+		{MENU_ITEM_SEARCH_US, MENU_ITEM_SEARCH_US, false, true},
+		{MENU_ITEM_SEARCH_IS, MENU_ITEM_SEARCH_IS, false, true},
+		{MENU_ITEM_FORCE_UNIART, MENU_ITEM_FORCE_UNIART, false, true},
+		{MENU_ITEM_SOUND_SWITCH, MENU_ITEM_SOUND_SWITCH, false, true},
 		{0}
 	};
 
@@ -1879,7 +1891,14 @@ main(int argc, char *argv[])
 	};
 
 	ST_MENU_ITEM _options[] = {
+		{"Case ~s~ensitive search", MENU_ITEM_SEARCH_CS},
+		{"Case ~i~nsensitive search", MENU_ITEM_SEARCH_IS},
+		{"~U~pper case sensitive search", MENU_ITEM_SEARCH_US},
+		{"--"},
 		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m"},
+		{"~Q~uiet mode", MENU_ITEM_SOUND_SWITCH},
+		{"--"},
+		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART},
 		{NULL},
 	};
 
@@ -2430,10 +2449,15 @@ main(int argc, char *argv[])
 			redirect_mode = true;
 		}
 
+#ifndef COMPILE_MENU
+
 		if (c == 'q' || c == KEY_F(10) || c == ERR)
 			break;
 
-#ifdef COMPILE_MENU
+#else
+
+		if ((c == 'q' && !menu_is_active) || c == KEY_F(10) || c == ERR)
+			break;
 
 		if (menu != NULL && menu_is_active)
 		{
@@ -2463,6 +2487,7 @@ main(int argc, char *argv[])
 					{
 						c2 = mt->key_code;
 						press_alt = mt->alt;
+						choose_menu = mt->menu;
 						goto hide_menu;
 					}
 					mt += 1;
@@ -2512,6 +2537,35 @@ hide_menu:
 
 			mouseinterval(0);
 
+			if (opts.no_sound)
+				st_menu_set_option(menu, MENU_ITEM_SOUND_SWITCH, ST_MENU_OPTION_MARKED);
+			else
+				st_menu_reset_option(menu, MENU_ITEM_SOUND_SWITCH, ST_MENU_OPTION_MARKED);
+
+			if (opts.force_uniborder)
+				st_menu_set_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED);
+			else
+				st_menu_reset_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED);
+
+			if (opts.ignore_case)
+			{
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
+				st_menu_set_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
+			}
+			else if (opts.ignore_lower_case)
+			{
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
+				st_menu_set_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
+			}
+			else
+			{
+				st_menu_set_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
+				st_menu_reset_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
+			}
+
 			if (use_mouse)
 				st_menu_set_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED);
 			else
@@ -2530,7 +2584,46 @@ hide_menu:
 
 		prev_first_row = first_row;
 
-		if (press_alt)
+		if (choose_menu)
+		{
+			switch (c)
+			{
+				case MENU_ITEM_SEARCH_IS:
+					opts.ignore_lower_case = false;
+					opts.ignore_case = true;
+					goto reset_search;
+
+				case MENU_ITEM_SEARCH_US:
+					opts.ignore_lower_case = true;
+					opts.ignore_case = false;
+					goto reset_search;
+
+				case MENU_ITEM_SEARCH_CS:
+					opts.ignore_lower_case = false;
+					opts.ignore_case = false;
+
+reset_search:
+
+					scrdesc.searchterm[0] = '\0';
+					scrdesc.searchterm_size = 0;
+					scrdesc.searchterm_char_size = 0;
+
+					reset_searching_lineinfo(&desc.rows);
+					break;
+
+				case MENU_ITEM_FORCE_UNIART:
+					opts.force_uniborder = !opts.force_uniborder;
+					refresh_scr = true;
+					break;
+
+				case MENU_ITEM_SOUND_SWITCH:
+					opts.no_sound = !opts.no_sound;
+					break;
+			}
+
+			choose_menu = false;
+		}
+		else if (press_alt)
 		{
 			switch (c)
 			{
