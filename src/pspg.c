@@ -1979,6 +1979,39 @@ main(int argc, char *argv[])
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
+
+#ifdef HAVE_LIBREADLINE
+
+				fprintf(stdout, "with readline (version: 0x%04x)\n", RL_READLINE_VERSION);
+
+#endif
+
+#ifdef COMPILE_MENU
+
+				fprintf(stdout, "with integrated menu\n");
+
+#endif
+
+#ifdef NCURSES_VERSION
+
+				fprintf(stdout, "ncurses version: %s, patch: %ld\n",
+							NCURSES_VERSION,
+							NCURSES_VERSION_PATCH);
+
+#endif
+
+#ifdef HAVE_NCURSESW
+
+				fprintf(stdout, "ncurses with wide char support\n");
+
+#endif
+
+#ifdef NCURSES_WIDECHAR
+
+				fprintf(stdout, "ncurses widechar num: %d\n", NCURSES_WIDECHAR);
+
+#endif
+
 				exit(0);
 			case 'X':
 				no_alternate_screen = true;
