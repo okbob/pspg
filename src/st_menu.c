@@ -1212,8 +1212,11 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 					{
 						int		minx, maxx;
 
+						/* first menubar field get mouse from left corner */
 						minx = i > 0 ? (menu->bar_fields_x_pos[i] - chars_before) : 0;
-						maxx = menu->bar_fields_x_pos[i + 1] - chars_before;
+
+						/* last menubar field get mouse to right corner */
+						maxx = i + 1 < menu->nitems ? menu->bar_fields_x_pos[i + 1] - chars_before : mevent->x + 1;
 
 						/* transform possitions to target menu code */
 						if (mevent->x >= minx && mevent->x < maxx)
