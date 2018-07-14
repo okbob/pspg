@@ -2570,39 +2570,19 @@ hide_menu:
 
 			mouseinterval(0);
 
-			if (opts.no_sound)
-				st_menu_set_option(menu, MENU_ITEM_SOUND_SWITCH, ST_MENU_OPTION_MARKED);
-			else
-				st_menu_reset_option(menu, MENU_ITEM_SOUND_SWITCH, ST_MENU_OPTION_MARKED);
+			st_menu_set_option(menu, MENU_ITEM_RELEASE_COLUMNS, ST_MENU_OPTION_MARKED, _columns == 0);
+			st_menu_set_option(menu, MENU_ITEM_FREEZE_ONE, ST_MENU_OPTION_MARKED, (_columns == 1 || _columns == -1));
+			st_menu_set_option(menu, MENU_ITEM_FREEZE_TWO, ST_MENU_OPTION_MARKED, _columns == 2);
+			st_menu_set_option(menu, MENU_ITEM_FREEZE_THREE, ST_MENU_OPTION_MARKED, _columns == 3);
+			st_menu_set_option(menu, MENU_ITEM_FREEZE_FOUR, ST_MENU_OPTION_MARKED, _columns == 4);
 
-			if (opts.force_uniborder)
-				st_menu_set_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED);
-			else
-				st_menu_reset_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED);
+			st_menu_set_option(menu, MENU_ITEM_SOUND_SWITCH, ST_MENU_OPTION_MARKED, opts.no_sound);
+			st_menu_set_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED, opts.force_uniborder);
+			st_menu_set_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED, use_mouse);
 
-			if (opts.ignore_case)
-			{
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
-				st_menu_set_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
-			}
-			else if (opts.ignore_lower_case)
-			{
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
-				st_menu_set_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
-			}
-			else
-			{
-				st_menu_set_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED);
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED);
-				st_menu_reset_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED);
-			}
-
-			if (use_mouse)
-				st_menu_set_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED);
-			else
-				st_menu_reset_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED);
+			st_menu_set_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED, !(opts.ignore_case || opts.ignore_lower_case));
+			st_menu_set_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED, opts.ignore_case);
+			st_menu_set_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED, opts.ignore_lower_case);
 
 			st_menu_post(menu);
 			menu_is_active = true;

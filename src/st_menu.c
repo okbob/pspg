@@ -625,7 +625,6 @@ menubar_draw(struct ST_MENU *menu)
 		i += 1;
 	}
 
-
 	wnoutrefresh(menu->window);
 
 	if (menu->active_submenu)
@@ -839,6 +838,8 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 			bool	is_cursor_row = menu->cursor_row == row;
 			bool	first_char = true;
 			bool	is_extern_accel;
+			int		text_y = -1;
+			int		text_x = -1;
 
 			if (is_cursor_row)
 			{
@@ -906,6 +907,16 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 				{
 					int chlen = char_length(config, text);
 
+					/* Save initial position of text. This first char, when is not
+					 * external accelerator used, or first char after highlighted char
+					 * when extern accelerator is used.
+					 */
+					if (text_y == -1 && text_x == -1)
+					{
+						if (!is_extern_accel || !highlight)
+							getyx(draw_area, text_y, text_x);
+					}
+
 					waddnstr(draw_area, text, chlen);
 					text += chlen;
 				}
@@ -943,7 +954,7 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 			{
 				mvwprintw(draw_area,
 								row - (draw_box ? 0 : 1),
-								text_min_x,
+								text_x - 1,
 									"%lc", config->mark_tag);
 			}
 
@@ -1849,7 +1860,7 @@ st_menu_selected_item(bool *activated)
  * Set flag of first menu item specified by code
  */
 bool
-st_menu_set_option(struct ST_MENU *menu, int code, int option)
+st_menu_enable_option(struct ST_MENU *menu, int code, int option)
 {
 	ST_MENU_ITEM *menu_items = menu->menu_items;
 	int		i = 0;
@@ -1863,7 +1874,7 @@ st_menu_set_option(struct ST_MENU *menu, int code, int option)
 		}
 
 		if (menu->submenus[i])
-			if (st_menu_set_option(menu->submenus[i], code, option))
+			if (st_menu_enable_option(menu->submenus[i], code, option))
 				return true;
 
 		menu_items += 1;
@@ -1892,6 +1903,63 @@ st_menu_reset_option(struct ST_MENU *menu, int code, int option)
 
 		if (menu->submenus[i])
 			if (st_menu_reset_option(menu->submenus[i], code, option))
+				return true;
+
+		menu_items += 1;
+		i += 1;
+	}
+
+	return false;
+}
+
+/*
+ * Reset flag of first menu item specified by code
+ */
+bool
+st_menu_reset_all_option(struct ST_MENU *menu, int option)
+{
+	ST_MENU_ITEM *menu_items = menu->menu_items;
+	int		i = 0;
+
+	while (menu_items->text)
+	{
+		menu->options[i] &= ~option;
+
+		if (menu->submenus[i])
+			if (st_menu_reset_all_option(menu->submenus[i], option))
+				return true;
+
+		menu_items += 1;
+		i += 1;
+	}
+
+	return false;
+}
+
+
+/*
+ * Set flag of first menu item specified by code
+ */
+bool
+st_menu_set_option(struct ST_MENU *menu, int code, int option, bool value)
+{
+	ST_MENU_ITEM *menu_items = menu->menu_items;
+	int		i = 0;
+
+	while (menu_items->text)
+	{
+		if (menu_items->code == code)
+		{
+			if (value)
+				menu->options[i] |= option;
+			else
+				menu->options[i] &= ~option;
+
+			return true;
+		}
+
+		if (menu->submenus[i])
+			if (st_menu_set_option(menu->submenus[i], code, option, value))
 				return true;
 
 		menu_items += 1;

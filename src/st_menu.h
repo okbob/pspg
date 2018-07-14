@@ -22,6 +22,8 @@
 #define ST_MENU_STYLE_FREE_DOS_P	14
 #define ST_MENU_STYLE_MC46			15
 
+#define ST_MENU_LAST_STYLE			ST_MENU_STYLE_MC46
+
 #define	ST_MENU_ESCAPE		27
 
 #define ST_MENU_OPTION_DEFAULT		1
@@ -110,7 +112,9 @@ extern void st_menu_load(struct ST_MENU *menu, int *cursor_rows);
 
 extern ST_MENU_ITEM *st_menu_selected_item(bool *activated);
 
-extern bool st_menu_set_option(struct ST_MENU *menu, int code, int option);
+extern bool st_menu_enable_option(struct ST_MENU *menu, int code, int option);
 extern bool st_menu_reset_option(struct ST_MENU *menu, int code, int option);
+bool st_menu_reset_all_option(struct ST_MENU *menu, int option);
+extern bool st_menu_set_option(struct ST_MENU *menu, int code, int option, bool value);
 
 #endif
