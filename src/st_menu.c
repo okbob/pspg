@@ -725,7 +725,8 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 	if (menu->shadow_window)
 	{
 		int		smaxy, smaxx;
-		int		i;
+		int		i, j;
+		int		wmaxy, wmaxx;
 
 		getmaxyx(menu->shadow_window, smaxy, smaxx);
 
@@ -738,11 +739,53 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 		else
 			werase(menu->shadow_window);
 
+		wmaxy = smaxy - 1;
+		wmaxx = smaxx - config->shadow_width;
+
+#if NCURSES_WIDECHAR > 0
+
 		for (i = 0; i <= smaxy; i++)
-			mvwchgat(menu->shadow_window, i, 0, smaxx,
-							config->menu_shadow_attr,
-							config->menu_shadow_cpn,
-							NULL);
+			for (j = 0; j <= smaxx; j++)
+			{
+				cchar_t		cch;
+				wchar_t		wch[CCHARW_MAX];
+				attr_t		attr;
+				short int	cp;
+
+				if (i < wmaxy && j < wmaxx)
+					continue;
+
+				mvwin_wch(menu->shadow_window, i, j, &cch);
+				getcchar(&cch, wch, &attr, &cp, NULL);
+				setcchar(&cch, wch,
+									config->menu_shadow_attr | (attr & A_ALTCHARSET),
+									config->menu_shadow_cpn,
+									NULL);
+				mvwadd_wch(menu->shadow_window, i, j, &cch);
+			}
+
+#else
+
+		for (i = 0; i <= smaxy; i++)
+			for (j = 0; j <= smaxx; j++)
+			{
+
+				if (i < wmaxy && j < wmaxx)
+					continue;
+
+				if (mvwinch(menu->shadow_window, i, j) & A_ALTCHARSET)
+					mvwchgat(menu->shadow_window, i, j, 1,
+								config->menu_shadow_attr | A_ALTCHARSET,
+								config->menu_shadow_cpn,
+								NULL);
+				else
+					mvwchgat(menu->shadow_window, i, j, 1,
+								config->menu_shadow_attr,
+								config->menu_shadow_cpn,
+								NULL);
+			}
+
+#endif
 
 		wnoutrefresh(menu->shadow_window);
 	}
