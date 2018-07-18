@@ -2545,7 +2545,8 @@ reinit_theme:
 
 #endif
 
-			doupdate();
+			if (c2 == 0 || scrdesc.fmt != NULL)
+				doupdate();
 
 			if (scrdesc.fmt != NULL)
 			{
