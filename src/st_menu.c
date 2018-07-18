@@ -729,7 +729,7 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 		int		wmaxy, wmaxx;
 		attr_t	shadow_attr;
 
-		shadow_attr = config->menu_shadow_attr;
+		shadow_attr = config->menu_shadow_attr | A_DIM;
 
 		getmaxyx(menu->shadow_window, smaxy, smaxx);
 
@@ -768,7 +768,7 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 				 * ACS chars will be broken.
 				 */
 				setcchar(&cch, wch,
-									config->menu_shadow_attr | (attr & A_ALTCHARSET),
+									shadow_attr | (attr & A_ALTCHARSET),
 									config->menu_shadow_cpn,
 									NULL);
 				mvwadd_wch(menu->shadow_window, i, j, &cch);
@@ -785,12 +785,12 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 
 				if (mvwinch(menu->shadow_window, i, j) & A_ALTCHARSET)
 					mvwchgat(menu->shadow_window, i, j, 1,
-								config->menu_shadow_attr | A_ALTCHARSET,
+								shadow_attr | A_ALTCHARSET,
 								config->menu_shadow_cpn,
 								NULL);
 				else
 					mvwchgat(menu->shadow_window, i, j, 1,
-								config->menu_shadow_attr,
+								shadow_attr,
 								config->menu_shadow_cpn,
 								NULL);
 			}
