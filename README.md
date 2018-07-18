@@ -86,6 +86,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
+* <kbd>F9</kbd> - show menu
 * <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>Esc</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
 * <kbd>Alt</kbd>+<kbd>k</kbd> - switch bookmark
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
