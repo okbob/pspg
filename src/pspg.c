@@ -1845,6 +1845,7 @@ main(int argc, char *argv[])
 #define		MENU_ITEM_THEME_DBASEIV		94
 #define		MENU_ITEM_THEME_DBASEIV_M	95
 #define		MENU_ITEM_THEME_RED			96
+#define		MENU_ITEM_THEME_SIMPLE		97
 
 #define		NO_KEY_CODE				10000
 
@@ -1900,6 +1901,7 @@ main(int argc, char *argv[])
 		{MENU_ITEM_THEME_DBASEIV, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 13},
 		{MENU_ITEM_THEME_DBASEIV_M, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 14},
 		{MENU_ITEM_THEME_RED, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 15},
+		{MENU_ITEM_THEME_SIMPLE, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 16},
 		{0}
 	};
 
@@ -1962,6 +1964,7 @@ main(int argc, char *argv[])
 		{"_d_DbaseIV retro", MENU_ITEM_THEME_DBASEIV},
 		{"_e_DbaseIV retro (Magenta)", MENU_ITEM_THEME_DBASEIV_M},
 		{"_r_Red white theme", MENU_ITEM_THEME_RED},
+		{"_s_Simple theme", MENU_ITEM_THEME_SIMPLE},
 		{NULL},
 	};
 
@@ -2280,6 +2283,10 @@ reinit_theme:
 		case 15:
 			menu_theme = ST_MENU_STYLE_PERFECT;
 			theme_menu_code = MENU_ITEM_THEME_RED;
+			break;
+		case 16:
+			menu_theme = ST_MENU_STYLE_ONECOLOR;
+			theme_menu_code = MENU_ITEM_THEME_SIMPLE;
 			break;
 	}
 

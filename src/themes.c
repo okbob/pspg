@@ -430,12 +430,41 @@ initialize_color_pairs(int theme)
 			init_pair(19, COLOR_WHITE, COLOR_CYAN);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
 			break;
+
+		case 16:
+			use_default_colors();
+
+			init_pair(2, -1, -1);
+			init_pair(3, -1, -1);
+			init_pair(4, -1, -1);
+			init_pair(5, -1, -1);
+			init_pair(6, -1, -1);
+			init_pair(7, -1, -1);
+			init_pair(8, -1, -1);
+			init_pair(9, -1, -1);
+			init_pair(10, -1, -1);
+			init_pair(11, -1, -1);
+			init_pair(12, -1, -1);
+			init_pair(13, -1, -1);
+			init_pair(14, -1, -1);
+			init_pair(15, -1, -1);
+			init_pair(16, -1, -1);
+			init_pair(17, -1, -1);
+			init_pair(18, -1, -1);
+			init_pair(19, -1, -1);
+			init_pair(20, -1, -1);
+			break;
+
 	}
 
 }
 
 #define _in			if_in_int
 #define _notin		if_notin_int
+
+#ifndef A_ITALIC
+#define A_ITALIC	A_DIM
+#endif
 
 void
 initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t)
@@ -449,6 +478,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->data_attr = COLOR_PAIR(4);
 			t->data_attr |= _notin(theme, (int[]) {12, 15, -1}, A_BOLD, 0);
 			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
+			t->data_attr |= _in(theme, (int[]) {16, -1}, A_ITALIC, 0);
 			break;
 
 		case WINDOW_TOP_BAR:
@@ -495,6 +525,12 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
+
+			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
+			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
+			t->data_attr |= _in(theme, (int[]) {16, -1}, A_ITALIC, 0);
+			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
+			t->bookmark_line_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
 			break;
 
 		case WINDOW_ROWS:
@@ -525,6 +561,11 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
+
+			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
+			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
+			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
+			t->bookmark_line_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
 			break;
 
 		case WINDOW_FOOTER:
