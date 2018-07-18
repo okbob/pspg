@@ -14,6 +14,7 @@
 #ifndef PSPG_PSPG_H
 #define PSPG_PSPG_H
 
+#include "config.h"
 #include "themes.h"
 
 #define LINEINFO_NONE				0
@@ -83,21 +84,6 @@ typedef struct
 	int		data_rows;				/* number of data rows */
 	int		footer_rows;			/* number of footer rows */
 } DataDesc;
-
-
-typedef struct
-{
-	char   *pathname;
-	bool	ignore_case;
-	bool	ignore_lower_case;
-	bool	no_sound;
-	bool	less_status_bar;
-	bool	no_highlight_search;
-	bool	no_highlight_lines;
-	bool	force_uniborder;
-	bool	force8bit;
-	int		theme;
-} Options;
 
 /*
  * This structure can be mutable - depends on displayed data

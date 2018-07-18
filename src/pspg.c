@@ -28,9 +28,10 @@
 
 #include <sys/param.h>
 
+#include "config.h"
 #include "pspg.h"
-#include "unicode.h"
 #include "themes.h"
+#include "unicode.h"
 
 #ifdef COMPILE_MENU
 
@@ -1138,6 +1139,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 
 	bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
 	w_bottom_bar(scrdesc) = bottom_bar;
+	werase(bottom_bar);
 
 	if (!opts->less_status_bar > 0)
 	{
@@ -1823,6 +1825,7 @@ main(int argc, char *argv[])
 #define		MENU_ITEM_HIGHLIGHT_VALUES	67
 #define		MENU_ITEM_HIGHLIGHT_DISABLED	68
 #define		MENU_ITEM_THEME				69
+#define		MENU_ITEM_SAVE_SETUP		70
 
 #define		MENU_ITEM_FAMILY_THEME		1
 
@@ -1880,6 +1883,7 @@ main(int argc, char *argv[])
 		{MENU_ITEM_HIGHLIGHT_LINES, MENU_ITEM_HIGHLIGHT_LINES, false, true},
 		{MENU_ITEM_HIGHLIGHT_VALUES, MENU_ITEM_HIGHLIGHT_VALUES, false, true},
 		{MENU_ITEM_HIGHLIGHT_DISABLED, MENU_ITEM_HIGHLIGHT_DISABLED, false, true},
+		{MENU_ITEM_SAVE_SETUP, MENU_ITEM_SAVE_SETUP, false, true},
 		{MENU_ITEM_THEME_MC_BLACK, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 0},
 		{MENU_ITEM_THEME_MC, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 1},
 		{MENU_ITEM_THEME_FOXPRO, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 2},
@@ -1976,7 +1980,7 @@ main(int argc, char *argv[])
 		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART},
 		{"~T~heme", MENU_ITEM_THEME, NULL, 0, _theme},
 		{"--"},
-		{"~S~ave setup"},
+		{"~S~ave setup", MENU_ITEM_SAVE_SETUP},
 		{NULL},
 	};
 
@@ -2760,6 +2764,18 @@ reset_search:
 
 				case MENU_ITEM_SOUND_SWITCH:
 					opts.no_sound = !opts.no_sound;
+					break;
+
+				case MENU_ITEM_SAVE_SETUP:
+					if (!save_config(tilde("/pspgconf"), &opts))
+					{
+						if (errno != 0)
+							c2 = show_info_wait(&opts, &scrdesc, " Cannot write to \"~/.pspgconf\" (%s)", strerror(errno), true, true, false);
+						else
+							c2 = show_info_wait(&opts, &scrdesc, " Cannot write to \"~/.pspgconf\"", NULL, true, true, false);
+
+						choose_menu = false;
+					}
 					break;
 			}
 
