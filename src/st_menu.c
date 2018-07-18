@@ -1199,7 +1199,12 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		if (c == ST_MENU_ESCAPE)
 		{
 			*unpost_submenu = true;
-			return true;
+
+			/*
+			 * escape should to close all opened objects, so we cannot to
+			 * returns true (processed) due we are in top object.
+			 */
+			return is_top ? true : false;
 		}
 
 		if (c == KEY_MOUSE && mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED))
