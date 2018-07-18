@@ -727,6 +727,9 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 		int		smaxy, smaxx;
 		int		i, j;
 		int		wmaxy, wmaxx;
+		attr_t	shadow_attr;
+
+		shadow_attr = config->menu_shadow_attr;
 
 		getmaxyx(menu->shadow_window, smaxy, smaxx);
 
@@ -752,11 +755,18 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 				attr_t		attr;
 				short int	cp;
 
+				/* skip overwritten content */
 				if (i < wmaxy && j < wmaxx)
 					continue;
 
 				mvwin_wch(menu->shadow_window, i, j, &cch);
 				getcchar(&cch, wch, &attr, &cp, NULL);
+
+				/*
+				 * When original attributte holds A_ALTCHARSET bit, then
+				 * then updated attributte have to hold this bit too, elsewhere
+				 * ACS chars will be broken.
+				 */
 				setcchar(&cch, wch,
 									config->menu_shadow_attr | (attr & A_ALTCHARSET),
 									config->menu_shadow_cpn,
@@ -1959,7 +1969,7 @@ st_menu_reset_option(struct ST_MENU *menu, int code, int option)
  * Reset flag of first menu item specified by code
  */
 bool
-st_menu_reset_all_option(struct ST_MENU *menu, int option)
+st_menu_reset_all_options(struct ST_MENU *menu, int option)
 {
 	ST_MENU_ITEM *menu_items = menu->menu_items;
 	int		i = 0;
@@ -1969,8 +1979,7 @@ st_menu_reset_all_option(struct ST_MENU *menu, int option)
 		menu->options[i] &= ~option;
 
 		if (menu->submenus[i])
-			if (st_menu_reset_all_option(menu->submenus[i], option))
-				return true;
+			st_menu_reset_all_options(menu->submenus[i], option);
 
 		menu_items += 1;
 		i += 1;
@@ -1979,6 +1988,36 @@ st_menu_reset_all_option(struct ST_MENU *menu, int option)
 	return false;
 }
 
+
+/*
+ * Reset flag of first menu item specified by code
+ */
+bool
+st_menu_reset_all_submenu_options(struct ST_MENU *menu, int menu_code, int option)
+{
+	ST_MENU_ITEM *menu_items = menu->menu_items;
+	int		i = 0;
+
+	while (menu_items->text)
+	{
+		if (menu->submenus[i])
+		{
+			if (menu_items->code == menu_code)
+			{
+				st_menu_reset_all_options(menu->submenus[i], option);
+				return true;
+			}
+
+			if (st_menu_reset_all_submenu_options(menu->submenus[i], menu_code, option))
+				return true;
+		}
+
+		menu_items += 1;
+		i += 1;
+	}
+
+	return false;
+}
 
 /*
  * Set flag of first menu item specified by code

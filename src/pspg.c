@@ -91,6 +91,8 @@ typedef struct
 	int		key_code;
 	bool	alt;
 	bool	menu;
+	int		family;
+	int		data;
 } menu_translator;
 
 
@@ -105,6 +107,8 @@ static int get_event(MEVENT *mevent, bool *alt);
 
 bool	press_alt = false;
 bool	choose_menu = false;
+int		menu_family = 0;
+int		menu_data = 0;
 MEVENT		event;
 
 FILE *debug_pipe = NULL;
@@ -1751,6 +1755,8 @@ main(int argc, char *argv[])
 	bool	noatty;					/* true, when cannot to get keys from stdin */
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
+	bool	reinit = false;
+	int		cursor_store[1024];
 
 	static struct option long_options[] =
 	{
@@ -1777,6 +1783,7 @@ main(int argc, char *argv[])
 	ST_MENU_CONFIG		menu_config2;
 	struct ST_MENU		*menu = NULL;
 	int					menu_theme;
+	int					theme_menu_code;
 
 #define		MENU_ITEM_SAVE		20
 #define		MENU_ITEM_EXIT		100
@@ -1812,6 +1819,29 @@ main(int argc, char *argv[])
 #define		MENU_ITEM_SEARCH_IS			63
 #define		MENU_ITEM_FORCE_UNIART		64
 #define		MENU_ITEM_SOUND_SWITCH		65
+#define		MENU_ITEM_HIGHLIGHT_LINES	66
+#define		MENU_ITEM_HIGHLIGHT_VALUES	67
+#define		MENU_ITEM_HIGHLIGHT_DISABLED	68
+#define		MENU_ITEM_THEME				69
+
+#define		MENU_ITEM_FAMILY_THEME		1
+
+#define		MENU_ITEM_THEME_MC_BLACK	80
+#define		MENU_ITEM_THEME_MC			81
+#define		MENU_ITEM_THEME_FOXPRO		82
+#define		MENU_ITEM_THEME_PDMENU		83
+#define		MENU_ITEM_THEME_WHITE		84
+#define		MENU_ITEM_THEME_MUTT		85
+#define		MENU_ITEM_THEME_PCFAND		86
+#define		MENU_ITEM_THEME_GREEN		88
+#define		MENU_ITEM_THEME_BLUE		89
+#define		MENU_ITEM_THEME_PERFECT		90
+#define		MENU_ITEM_THEME_LC_BLUE		91
+#define		MENU_ITEM_THEME_D_CYAN		92
+#define		MENU_ITEM_THEME_PARADOX		93
+#define		MENU_ITEM_THEME_DBASEIV		94
+#define		MENU_ITEM_THEME_DBASEIV_M	95
+#define		MENU_ITEM_THEME_RED			96
 
 	menu_translator mtransl[] = {
 		{MENU_ITEM_SAVE, 's', false, false},
@@ -1845,6 +1875,25 @@ main(int argc, char *argv[])
 		{MENU_ITEM_SEARCH_IS, MENU_ITEM_SEARCH_IS, false, true},
 		{MENU_ITEM_FORCE_UNIART, MENU_ITEM_FORCE_UNIART, false, true},
 		{MENU_ITEM_SOUND_SWITCH, MENU_ITEM_SOUND_SWITCH, false, true},
+		{MENU_ITEM_HIGHLIGHT_LINES, MENU_ITEM_HIGHLIGHT_LINES, false, true},
+		{MENU_ITEM_HIGHLIGHT_VALUES, MENU_ITEM_HIGHLIGHT_VALUES, false, true},
+		{MENU_ITEM_HIGHLIGHT_DISABLED, MENU_ITEM_HIGHLIGHT_DISABLED, false, true},
+		{MENU_ITEM_THEME_MC_BLACK, MENU_ITEM_THEME_MC_BLACK, false, true, MENU_ITEM_FAMILY_THEME, 0},
+		{MENU_ITEM_THEME_MC, MENU_ITEM_THEME_MC, false, true, MENU_ITEM_FAMILY_THEME, 1},
+		{MENU_ITEM_THEME_FOXPRO, MENU_ITEM_THEME_FOXPRO, false, true, MENU_ITEM_FAMILY_THEME, 2},
+		{MENU_ITEM_THEME_PDMENU, MENU_ITEM_THEME_PDMENU, false, true, MENU_ITEM_FAMILY_THEME, 3},
+		{MENU_ITEM_THEME_WHITE, MENU_ITEM_THEME_WHITE, false, true, MENU_ITEM_FAMILY_THEME, 4},
+		{MENU_ITEM_THEME_MUTT, MENU_ITEM_THEME_MUTT, false, true, MENU_ITEM_FAMILY_THEME, 5},
+		{MENU_ITEM_THEME_PCFAND, MENU_ITEM_THEME_PCFAND, false, true, MENU_ITEM_FAMILY_THEME, 6},
+		{MENU_ITEM_THEME_GREEN, MENU_ITEM_THEME_GREEN, false, true, MENU_ITEM_FAMILY_THEME, 7},
+		{MENU_ITEM_THEME_BLUE, MENU_ITEM_THEME_BLUE, false, true, MENU_ITEM_FAMILY_THEME, 8},
+		{MENU_ITEM_THEME_PERFECT, MENU_ITEM_THEME_PERFECT, false, true, MENU_ITEM_FAMILY_THEME, 9},
+		{MENU_ITEM_THEME_LC_BLUE, MENU_ITEM_THEME_LC_BLUE, false, true, MENU_ITEM_FAMILY_THEME, 10},
+		{MENU_ITEM_THEME_D_CYAN, MENU_ITEM_THEME_D_CYAN, false, true, MENU_ITEM_FAMILY_THEME, 11},
+		{MENU_ITEM_THEME_PARADOX, MENU_ITEM_THEME_PARADOX, false, true, MENU_ITEM_FAMILY_THEME, 12},
+		{MENU_ITEM_THEME_DBASEIV, MENU_ITEM_THEME_DBASEIV, false, true, MENU_ITEM_FAMILY_THEME, 13},
+		{MENU_ITEM_THEME_DBASEIV_M, MENU_ITEM_THEME_DBASEIV_M, false, true, MENU_ITEM_FAMILY_THEME, 14},
+		{MENU_ITEM_THEME_RED, MENU_ITEM_THEME_RED, false, true, MENU_ITEM_FAMILY_THEME, 15},
 		{0}
 	};
 
@@ -1890,15 +1939,42 @@ main(int argc, char *argv[])
 		{NULL}
 	};
 
+	ST_MENU_ITEM _theme[] = {
+		{"_0_Midnight black", MENU_ITEM_THEME_MC_BLACK},
+		{"_1_Midnight theme", MENU_ITEM_THEME_MC},
+		{"_2_FoxPro like", MENU_ITEM_THEME_FOXPRO},
+		{"_3_Pdmenu like", MENU_ITEM_THEME_PDMENU},
+		{"_4_White theme", MENU_ITEM_THEME_WHITE},
+		{"_5_Mutt theme",MENU_ITEM_THEME_MUTT},
+		{"_6_PC Fand like", MENU_ITEM_THEME_PCFAND},
+		{"_7_Green theme", MENU_ITEM_THEME_GREEN},
+		{"_8_Blue theme", MENU_ITEM_THEME_BLUE},
+		{"_9_Word perfect theme", MENU_ITEM_THEME_PERFECT},
+		{"_l_Low contrast blue theme", MENU_ITEM_THEME_LC_BLUE},
+		{"_c_Dark cyan theme", MENU_ITEM_THEME_D_CYAN},
+		{"_p_Paradox like", MENU_ITEM_THEME_PARADOX},
+		{"_d_DbaseIV retro", MENU_ITEM_THEME_DBASEIV},
+		{"_e_DbaseIV retro (Magenta)", MENU_ITEM_THEME_DBASEIV_M},
+		{"_r_Red white theme", MENU_ITEM_THEME_RED},
+		{NULL},
+	};
+
 	ST_MENU_ITEM _options[] = {
-		{"Case ~s~ensitive search", MENU_ITEM_SEARCH_CS},
+		{"~C~ase sensitive search", MENU_ITEM_SEARCH_CS},
 		{"Case ~i~nsensitive search", MENU_ITEM_SEARCH_IS},
 		{"~U~pper case sensitive search", MENU_ITEM_SEARCH_US},
+		{"--"},
+		{"Highlight searched ~l~ines", MENU_ITEM_HIGHLIGHT_LINES},
+		{"Highlight searched ~v~alues", MENU_ITEM_HIGHLIGHT_VALUES},
+		{"~W~ithout highlighting", MENU_ITEM_HIGHLIGHT_DISABLED},
 		{"--"},
 		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m"},
 		{"~Q~uiet mode", MENU_ITEM_SOUND_SWITCH},
 		{"--"},
 		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART},
+		{"~T~heme", MENU_ITEM_THEME, NULL, 0, _theme},
+		{"--"},
+		{"~S~ave setup"},
 		{NULL},
 	};
 
@@ -2112,6 +2188,9 @@ main(int argc, char *argv[])
 	}
 
 	start_color();
+
+reinit_theme:
+
 	initialize_color_pairs(opts.theme);
 
 	clear();
@@ -2132,46 +2211,67 @@ main(int argc, char *argv[])
 	{
 		case 0:
 			menu_theme = ST_MENU_STYLE_MCB;
+			theme_menu_code = MENU_ITEM_THEME_MC_BLACK;
 			break;
 		case 1:
 			menu_theme = ST_MENU_STYLE_MC;
+			theme_menu_code = MENU_ITEM_THEME_MC;
 			break;
 		case 2:
 			menu_theme = ST_MENU_STYLE_FOXPRO;
+			theme_menu_code = MENU_ITEM_THEME_FOXPRO;
 			break;
 		case 3:
 			menu_theme = ST_MENU_STYLE_DOS;
+			theme_menu_code = MENU_ITEM_THEME_PDMENU;
 			break;
 		case 4:
-			menu_theme = ST_MENU_STYLE_FREE_DOS;
+			menu_theme = ST_MENU_STYLE_FAND_1;
+			theme_menu_code = MENU_ITEM_THEME_WHITE;
 			break;
 		case 5:
 			menu_theme = ST_MENU_STYLE_NOCOLOR;
+			theme_menu_code = MENU_ITEM_THEME_MUTT;
 			break;
 		case 6:
 			menu_theme = ST_MENU_STYLE_FAND_1;
+			theme_menu_code = MENU_ITEM_THEME_PCFAND;
 			break;
 		case 7:
 			menu_theme = ST_MENU_STYLE_ONECOLOR;
+			theme_menu_code = MENU_ITEM_THEME_GREEN;
 			break;
-		case 14:
-			menu_theme = ST_MENU_STYLE_OLD_TURBO;
+		case 8:
+			menu_theme = ST_MENU_STYLE_DOS;
+			theme_menu_code = MENU_ITEM_THEME_BLUE;
 			break;
 		case 9:
-			menu_theme = ST_MENU_STYLE_DOS;
+			menu_theme = ST_MENU_STYLE_PERFECT;
+			theme_menu_code = MENU_ITEM_THEME_PERFECT;
 			break;
 		case 10:
-		case 12:
 			menu_theme = ST_MENU_STYLE_VISION;
+			theme_menu_code = MENU_ITEM_THEME_LC_BLUE;
 			break;
 		case 11:
 			menu_theme = ST_MENU_STYLE_OLD_TURBO;
+			theme_menu_code = MENU_ITEM_THEME_D_CYAN;
+			break;
+		case 12:
+			menu_theme = ST_MENU_STYLE_VISION;
+			theme_menu_code = MENU_ITEM_THEME_PARADOX;
 			break;
 		case 13:
 			menu_theme = ST_MENU_STYLE_MC46;
+			theme_menu_code = MENU_ITEM_THEME_DBASEIV;
+			break;
+		case 14:
+			menu_theme = ST_MENU_STYLE_OLD_TURBO;
+			theme_menu_code = MENU_ITEM_THEME_DBASEIV_M;
 			break;
 		case 15:
 			menu_theme = ST_MENU_STYLE_PERFECT;
+			theme_menu_code = MENU_ITEM_THEME_RED;
 			break;
 	}
 
@@ -2191,6 +2291,8 @@ main(int argc, char *argv[])
 
 	if (opts.theme == 1 || opts.theme == 13)
 		menu_config.shadow_width = 2;
+	if (opts.theme == 4)
+		menu_config.text_space = 4;
 
 #endif
 
@@ -2356,7 +2458,8 @@ main(int argc, char *argv[])
 
 #ifdef HAVE_READLINE_HISTORY
 
-	read_history(tilde("~/.pspg_history"));
+	if (!reinit)
+		read_history(tilde("~/.pspg_history"));
 
 #endif
 
@@ -2521,6 +2624,8 @@ main(int argc, char *argv[])
 						c2 = mt->key_code;
 						press_alt = mt->alt;
 						choose_menu = mt->menu;
+						menu_family = mt->family;
+						menu_data = mt->data;
 						goto hide_menu;
 					}
 					mt += 1;
@@ -2555,6 +2660,9 @@ hide_menu:
 					menu = st_menu_new_menubar2(&menu_config, &menu_config2, menubar);
 				else
 					menu = st_menu_new_menubar(&menu_config, menubar);
+
+				if (reinit)
+					st_menu_load(menu, cursor_store);
 			}
 
 #if NCURSES_MOUSE_VERSION > 1
@@ -2580,9 +2688,17 @@ hide_menu:
 			st_menu_set_option(menu, MENU_ITEM_FORCE_UNIART, ST_MENU_OPTION_MARKED, opts.force_uniborder);
 			st_menu_set_option(menu, MENU_ITEM_MOUSE_SWITCH, ST_MENU_OPTION_MARKED, use_mouse);
 
+			st_menu_set_option(menu, MENU_ITEM_HIGHLIGHT_DISABLED, ST_MENU_OPTION_MARKED, opts.no_highlight_search);
+			st_menu_set_option(menu, MENU_ITEM_HIGHLIGHT_VALUES, ST_MENU_OPTION_MARKED, opts.no_highlight_lines);
+			st_menu_set_option(menu, MENU_ITEM_HIGHLIGHT_LINES, ST_MENU_OPTION_MARKED,
+													  !(opts.no_highlight_search || opts.no_highlight_lines));
+
 			st_menu_set_option(menu, MENU_ITEM_SEARCH_CS, ST_MENU_OPTION_MARKED, !(opts.ignore_case || opts.ignore_lower_case));
 			st_menu_set_option(menu, MENU_ITEM_SEARCH_IS, ST_MENU_OPTION_MARKED, opts.ignore_case);
 			st_menu_set_option(menu, MENU_ITEM_SEARCH_US, ST_MENU_OPTION_MARKED, opts.ignore_lower_case);
+
+			st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
+			st_menu_enable_option(menu, theme_menu_code, ST_MENU_OPTION_MARKED);
 
 			st_menu_post(menu);
 			menu_is_active = true;
@@ -2601,6 +2717,21 @@ hide_menu:
 		{
 			switch (c)
 			{
+				case MENU_ITEM_HIGHLIGHT_DISABLED:
+					opts.no_highlight_search = true;
+					opts.no_highlight_lines = false;
+					goto reset_search;
+
+				case MENU_ITEM_HIGHLIGHT_VALUES:
+					opts.no_highlight_search = false;
+					opts.no_highlight_lines = true;
+					goto reset_search;
+
+				case MENU_ITEM_HIGHLIGHT_LINES:
+					opts.no_highlight_search = false;
+					opts.no_highlight_lines = false;
+					goto reset_search;
+
 				case MENU_ITEM_SEARCH_IS:
 					opts.ignore_lower_case = false;
 					opts.ignore_case = true;
@@ -2632,6 +2763,20 @@ reset_search:
 				case MENU_ITEM_SOUND_SWITCH:
 					opts.no_sound = !opts.no_sound;
 					break;
+			}
+
+			if (menu_family == MENU_ITEM_FAMILY_THEME)
+			{
+				opts.theme = menu_data;
+				menu_family = 0;
+				reinit = true;
+
+				st_menu_save(menu, cursor_store, 1023);
+				st_menu_free(menu);
+				menu = NULL;
+				menu_is_active = false;
+
+				goto reinit_theme;
 			}
 
 			choose_menu = false;

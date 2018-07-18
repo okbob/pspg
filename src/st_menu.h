@@ -114,7 +114,8 @@ extern ST_MENU_ITEM *st_menu_selected_item(bool *activated);
 
 extern bool st_menu_enable_option(struct ST_MENU *menu, int code, int option);
 extern bool st_menu_reset_option(struct ST_MENU *menu, int code, int option);
-bool st_menu_reset_all_option(struct ST_MENU *menu, int option);
 extern bool st_menu_set_option(struct ST_MENU *menu, int code, int option, bool value);
+extern bool st_menu_reset_all_submenu_options(struct ST_MENU *menu, int menu_code, int option);
+extern bool st_menu_reset_all_options(struct ST_MENU *menu, int option);
 
 #endif

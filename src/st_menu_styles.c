@@ -1,6 +1,7 @@
 #include "st_menu.h"
 
 #include <ncurses.h>
+#include <string.h>
 
 /*
  * Prepared styles - config settings. start_from_cpn is first color pair 
@@ -10,6 +11,8 @@
 int
 st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 {
+	memset(config, 0, sizeof(ST_MENU_CONFIG));
+
 	config->submenu_tag = '>';
 	config->mark_tag = '*';
 	config->draw_box = true;
@@ -103,8 +106,8 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
 
 			config->menu_shadow_cpn = start_from_cpn;
-			config->menu_shadow_attr = A_REVERSE;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->menu_shadow_attr = 0;
+			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
 			config->accelerator_attr = 0;
