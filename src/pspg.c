@@ -2767,15 +2767,17 @@ reset_search:
 					break;
 
 				case MENU_ITEM_SAVE_SETUP:
-					if (!save_config(tilde("/pspgconf"), &opts))
+					if (!save_config(tilde("~/.pspgconf"), &opts))
 					{
 						if (errno != 0)
-							c2 = show_info_wait(&opts, &scrdesc, " Cannot write to \"~/.pspgconf\" (%s)", strerror(errno), true, true, false);
+							show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (%s)", strerror(errno), true, true, false);
 						else
-							c2 = show_info_wait(&opts, &scrdesc, " Cannot write to \"~/.pspgconf\"", NULL, true, true, false);
+							show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf", NULL, true, true, false);
 
-						choose_menu = false;
 					}
+					else
+						show_info_wait(&opts, &scrdesc, " Setup saved to ~/.pspgconf", NULL, true, true, true);
+
 					break;
 			}
 
