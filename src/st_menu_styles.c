@@ -653,12 +653,12 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = 0;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_CYAN);
+			config->cursor_attr = A_BOLD;
+			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_UNDERLINE;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_CYAN);
+			config->cursor_accel_attr = A_UNDERLINE | A_BOLD;
+			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
 
 			config->disabled_cpn = start_from_cpn;
 			config->disabled_attr = A_DIM;

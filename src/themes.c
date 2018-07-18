@@ -365,8 +365,8 @@ initialize_color_pairs(int theme)
 			init_pair(2, COLOR_WHITE, COLOR_BLACK);
 			init_pair(3, COLOR_WHITE, COLOR_BLUE);
 			init_pair(4, COLOR_WHITE, COLOR_BLUE);
-			init_pair(5, COLOR_BLACK, COLOR_CYAN);
-			init_pair(6, COLOR_BLACK, COLOR_CYAN);
+			init_pair(5, COLOR_YELLOW, COLOR_CYAN);
+			init_pair(6, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(7, COLOR_WHITE, COLOR_BLACK);
 			init_pair(8, COLOR_WHITE, COLOR_BLUE);
 			init_pair(9, COLOR_WHITE, COLOR_BLUE);
@@ -485,7 +485,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
 			t->line_attr |= 0;
 			t->expi_attr |= A_BOLD;
-			t->cursor_data_attr |= _notin(theme, (int[]) { 13, 14, -1}, A_BOLD, 0);
+			t->cursor_data_attr |= _notin(theme, (int[]) {14, -1}, A_BOLD, 0);
 			t->cursor_line_attr |= 0;
 			t->cursor_expi_attr |= A_BOLD;
 			t->cursor_pattern_attr |= A_BOLD;
@@ -515,7 +515,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->data_attr |= _in(theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
 			t->line_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, -1}, A_BOLD, 0)) : 0;
 			t->expi_attr |= A_BOLD;
-			t->cursor_data_attr |= _notin(theme, (int[]) { 13, 14, 1, -1}, A_BOLD, 0);
+			t->cursor_data_attr |= _notin(theme, (int[]) {14, 1, -1}, A_BOLD, 0);
 			t->cursor_line_attr |= !is_tabular_fmt ? A_BOLD : 0;
 			t->cursor_expi_attr |= A_BOLD;
 			t->cursor_pattern_attr |= A_BOLD;
