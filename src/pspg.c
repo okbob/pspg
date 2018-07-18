@@ -2004,6 +2004,8 @@ main(int argc, char *argv[])
 	opts.force8bit = false;
 	opts.theme = 1;
 
+	load_config(tilde("~/.pspgconf"), &opts);
+
 	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
 							  long_options, &option_index)) != -1)
 	{
@@ -2268,7 +2270,7 @@ reinit_theme:
 			theme_menu_code = MENU_ITEM_THEME_PARADOX;
 			break;
 		case 13:
-			menu_theme = ST_MENU_STYLE_MC46;
+			menu_theme = ST_MENU_STYLE_DBASE;
 			theme_menu_code = MENU_ITEM_THEME_DBASEIV;
 			break;
 		case 14:
@@ -2295,7 +2297,7 @@ reinit_theme:
 	else
 		st_menu_load_style(&menu_config, menu_theme, 100);
 
-	if (opts.theme == 1 || opts.theme == 13)
+	if (opts.theme == 1)
 		menu_config.shadow_width = 2;
 	if (opts.theme == 4)
 		menu_config.text_space = 4;
