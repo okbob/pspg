@@ -2540,9 +2540,6 @@ reinit_theme:
 
 #ifdef COMPILE_MENU
 
-			doupdate();
-			refresh();
-
 			if (menu != NULL && menu_is_active)
 				st_menu_post(menu);
 
@@ -2610,8 +2607,6 @@ reinit_theme:
 				event.bstate |= BUTTON1_RELEASED;
 
 			processed = st_menu_driver(menu, c, press_alt, &event);
-
-			refresh();
 
 			active_menu_item = st_menu_selected_item(&activated);
 
