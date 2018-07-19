@@ -86,17 +86,6 @@ static WINDOW *g_bottom_bar;
 
 #endif
 
-typedef struct
-{
-	int		menu_code;
-	int		key_code;
-	bool	alt;
-	bool	menu;
-	int		family;
-	int		data;
-} menu_translator;
-
-
 #define CTRL_HOME		(extra_key_codes[0])
 #define CTRL_END		(extra_key_codes[1])
 
@@ -108,7 +97,7 @@ static int get_event(MEVENT *mevent, bool *alt);
 
 bool	press_alt = false;
 bool	choose_menu = false;
-int		menu_family = 0;
+int		menu_group = 0;
 int		menu_data = 0;
 MEVENT		event;
 
@@ -1847,151 +1836,98 @@ main(int argc, char *argv[])
 #define		MENU_ITEM_THEME_RED			96
 #define		MENU_ITEM_THEME_SIMPLE		97
 
-#define		NO_KEY_CODE				10000
-
-	menu_translator mtransl[] = {
-		{MENU_ITEM_SAVE, 's', false, false},
-		{MENU_ITEM_EXIT, 'q', false, false},
-		{MENU_ITEM_SEARCH, '/', false, false},
-		{MENU_ITEM_SEARCH_BACKWARD, '?', false, false},
-		{MENU_ITEM_SEARCH_AGAIN, 'n', false, false},
-		{MENU_ITEM_SEARCH_PREV, 'N', false, false},
-		{MENU_ITEM_TOGGLE_BOOKMARK, 'k', true, false},
-		{MENU_ITEM_NEXT_BOOKMARK, 'j', true, false},
-		{MENU_ITEM_PREV_BOOKMARK, 'i', true, false},
-		{MENU_ITEM_FLUSH_BOOKMARKS, 'o', true, false},
-		{MENU_ITEM_MOUSE_SWITCH, 'm', true, false},
-		{MENU_ITEM_RELEASE_COLUMNS, '0', false, false},
-		{MENU_ITEM_FREEZE_ONE, '1', false, false},
-		{MENU_ITEM_FREEZE_TWO, '2', false, false},
-		{MENU_ITEM_FREEZE_THREE, '3', false, false},
-		{MENU_ITEM_FREEZE_FOUR, '4', false, false},
-		{MENU_ITEM_PREV_ROW, 'k', false, false},
-		{MENU_ITEM_NEXT_ROW, 'j', false, false},
-		{MENU_ITEM_SCROLL_LEFT, 'h', false, false},
-		{MENU_ITEM_SCROLL_RIGHT, 'l', false, false},
-		{MENU_ITEM_FIRST_ROW, 'g', false, false},
-		{MENU_ITEM_LAST_ROW, 'G', false, false},
-		{MENU_ITEM_FIRST_COLUMN, '^', false, false},
-		{MENU_ITEM_LAST_COLUMN, '$', false, false},
-		{MENU_ITEM_PREV_PAGE, KEY_PPAGE, false, false},
-		{MENU_ITEM_NEXT_PAGE, KEY_NPAGE, false, false},
-		{MENU_ITEM_SEARCH_CS, MENU_ITEM_SEARCH_CS, false, true},
-		{MENU_ITEM_SEARCH_US, MENU_ITEM_SEARCH_US, false, true},
-		{MENU_ITEM_SEARCH_IS, MENU_ITEM_SEARCH_IS, false, true},
-		{MENU_ITEM_FORCE_UNIART, MENU_ITEM_FORCE_UNIART, false, true},
-		{MENU_ITEM_SOUND_SWITCH, MENU_ITEM_SOUND_SWITCH, false, true},
-		{MENU_ITEM_HIGHLIGHT_LINES, MENU_ITEM_HIGHLIGHT_LINES, false, true},
-		{MENU_ITEM_HIGHLIGHT_VALUES, MENU_ITEM_HIGHLIGHT_VALUES, false, true},
-		{MENU_ITEM_HIGHLIGHT_DISABLED, MENU_ITEM_HIGHLIGHT_DISABLED, false, true},
-		{MENU_ITEM_SAVE_SETUP, MENU_ITEM_SAVE_SETUP, false, true},
-		{MENU_ITEM_THEME_MC_BLACK, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 0},
-		{MENU_ITEM_THEME_MC, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 1},
-		{MENU_ITEM_THEME_FOXPRO, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 2},
-		{MENU_ITEM_THEME_PDMENU, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 3},
-		{MENU_ITEM_THEME_WHITE, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 4},
-		{MENU_ITEM_THEME_MUTT, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 5},
-		{MENU_ITEM_THEME_PCFAND, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 6},
-		{MENU_ITEM_THEME_GREEN, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 7},
-		{MENU_ITEM_THEME_BLUE, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 8},
-		{MENU_ITEM_THEME_PERFECT, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 9},
-		{MENU_ITEM_THEME_LC_BLUE, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 10},
-		{MENU_ITEM_THEME_D_CYAN, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 11},
-		{MENU_ITEM_THEME_PARADOX, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 12},
-		{MENU_ITEM_THEME_DBASEIV, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 13},
-		{MENU_ITEM_THEME_DBASEIV_M, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 14},
-		{MENU_ITEM_THEME_RED, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 15},
-		{MENU_ITEM_THEME_SIMPLE, NO_KEY_CODE, false, true, MENU_ITEM_FAMILY_THEME, 16},
-		{0}
-	};
+#define		MENU_KEY_GROUP			1
+#define		MENU_KEY_ALT_GROUP		2
+#define		MENU_NO_KEY_GROUP		3
+#define		MENU_THEME_GROUP		4
 
 	ST_MENU_ITEM _file[] = {
-		{"~S~ave", MENU_ITEM_SAVE, "s"},
+		{"~S~ave", MENU_ITEM_SAVE, "s", 's', MENU_KEY_GROUP},
 		{"--"},
-		{"E~x~it", MENU_ITEM_EXIT, "q, F10"},
+		{"E~x~it", MENU_ITEM_EXIT, "q, F10", 'q', MENU_KEY_GROUP},
 		{NULL}
 	};
 
 	ST_MENU_ITEM _search[] = {
-		{"~S~earch", MENU_ITEM_SEARCH, "/"},
-		{"Search ~b~ackward", MENU_ITEM_SEARCH_BACKWARD, "?"},
-		{"Search ~a~gain", MENU_ITEM_SEARCH_AGAIN, "n"},
-		{"Search p~r~evious", MENU_ITEM_SEARCH_PREV, "N"},
+		{"~S~earch", MENU_ITEM_SEARCH, "/", '/', MENU_KEY_GROUP},
+		{"Search ~b~ackward", MENU_ITEM_SEARCH_BACKWARD, "?", '?', MENU_KEY_GROUP},
+		{"Search ~a~gain", MENU_ITEM_SEARCH_AGAIN, "n", 'n', MENU_KEY_GROUP},
+		{"Search p~r~evious", MENU_ITEM_SEARCH_PREV, "N", 'N', MENU_KEY_GROUP},
 		{"--"},
-		{"~T~oggle bbooookmark", MENU_ITEM_TOGGLE_BOOKMARK, "M-k"},
-		{"~P~rev bookmark", MENU_ITEM_PREV_BOOKMARK, "M-i"},
-		{"~N~ext bookmark", MENU_ITEM_NEXT_BOOKMARK, "M-j"},
-		{"~F~lush bookmarks", MENU_ITEM_FLUSH_BOOKMARKS, "M-o"},
+		{"~T~oggle bbooookmark", MENU_ITEM_TOGGLE_BOOKMARK, "M-k", 'k', MENU_KEY_ALT_GROUP},
+		{"~P~rev bookmark", MENU_ITEM_PREV_BOOKMARK, "M-i", 'i', MENU_KEY_ALT_GROUP},
+		{"~N~ext bookmark", MENU_ITEM_NEXT_BOOKMARK, "M-j", 'j', MENU_KEY_ALT_GROUP},
+		{"~F~lush bookmarks", MENU_ITEM_FLUSH_BOOKMARKS, "M-o", 'o', MENU_KEY_ALT_GROUP},
 		{NULL}
 	};
 
 	ST_MENU_ITEM _command[] = {
-		{"_0_Release fixed columns", MENU_ITEM_RELEASE_COLUMNS, "0"},
-		{"_1_Freeze one column", MENU_ITEM_FREEZE_ONE, "1"},
-		{"_2_Freeze two columns", MENU_ITEM_FREEZE_TWO, "2"},
-		{"_3_Freeze three columns", MENU_ITEM_FREEZE_THREE, "3"},
-		{"_4_Freeze four columns", MENU_ITEM_FREEZE_FOUR, "4"},
+		{"_0_Release fixed columns", MENU_ITEM_RELEASE_COLUMNS, "0", '0', MENU_KEY_GROUP},
+		{"_1_Freeze one column", MENU_ITEM_FREEZE_ONE, "1", '1', MENU_KEY_GROUP},
+		{"_2_Freeze two columns", MENU_ITEM_FREEZE_TWO, "2", '2', MENU_KEY_GROUP},
+		{"_3_Freeze three columns", MENU_ITEM_FREEZE_THREE, "3", '3', MENU_KEY_GROUP},
+		{"_4_Freeze four columns", MENU_ITEM_FREEZE_FOUR, "4", '4', MENU_KEY_GROUP},
 		{"--"},
-		{"~P~rev row", MENU_ITEM_PREV_ROW, "k, Key up"},
-		{"~N~ext row", MENU_ITEM_NEXT_ROW, "j, Key down"},
-		{"Scroll to l~e~ft", MENU_ITEM_SCROLL_LEFT, "h, Key left"},
-		{"Scroll to ~r~ight", MENU_ITEM_SCROLL_RIGHT, "l, Key right"},
+		{"~P~rev row", MENU_ITEM_PREV_ROW, "k, Key up", 'k', MENU_KEY_GROUP},
+		{"~N~ext row", MENU_ITEM_NEXT_ROW, "j, Key down", 'j', MENU_KEY_GROUP},
+		{"Scroll to l~e~ft", MENU_ITEM_SCROLL_LEFT, "h, Key left", 'h', MENU_KEY_GROUP},
+		{"Scroll to ~r~ight", MENU_ITEM_SCROLL_RIGHT, "l, Key right", 'l', MENU_KEY_GROUP},
 		{"--"},
-		{"Go to ~f~irst row", MENU_ITEM_FIRST_ROW, "g, C-Home"},
-		{"Go to ~l~ast row", MENU_ITEM_LAST_ROW, "G, C-End"},
-		{"~S~how first column", MENU_ITEM_FIRST_COLUMN, "^, Home"},
-		{"Sho~w~ last column", MENU_ITEM_LAST_COLUMN, "$, End"},
+		{"Go to ~f~irst row", MENU_ITEM_FIRST_ROW, "g, C-Home", 'g', MENU_KEY_GROUP},
+		{"Go to ~l~ast row", MENU_ITEM_LAST_ROW, "G, C-End", 'G', MENU_KEY_GROUP},
+		{"~S~how first column", MENU_ITEM_FIRST_COLUMN, "^, Home", '^', MENU_KEY_GROUP},
+		{"Sho~w~ last column", MENU_ITEM_LAST_COLUMN, "$, End", '$', MENU_KEY_GROUP},
 		{"--"},
-		{"Page up", MENU_ITEM_PREV_PAGE, "C-b, Prev page"},
-		{"Page down", MENU_ITEM_NEXT_PAGE, "C-f, space, Next page"},
+		{"Page up", MENU_ITEM_PREV_PAGE, "C-b, Prev page", KEY_PPAGE, MENU_KEY_GROUP},
+		{"Page down", MENU_ITEM_NEXT_PAGE, "C-f, space, Next page", KEY_NPAGE, MENU_KEY_GROUP},
 		{NULL}
 	};
 
 	ST_MENU_ITEM _theme[] = {
-		{"_0_Midnight black", MENU_ITEM_THEME_MC_BLACK},
-		{"_1_Midnight theme", MENU_ITEM_THEME_MC},
-		{"_2_FoxPro like", MENU_ITEM_THEME_FOXPRO},
-		{"_3_Pdmenu like", MENU_ITEM_THEME_PDMENU},
-		{"_4_White theme", MENU_ITEM_THEME_WHITE},
-		{"_5_Mutt theme",MENU_ITEM_THEME_MUTT},
-		{"_6_PC Fand like", MENU_ITEM_THEME_PCFAND},
-		{"_7_Green theme", MENU_ITEM_THEME_GREEN},
-		{"_8_Blue theme", MENU_ITEM_THEME_BLUE},
-		{"_9_Word perfect theme", MENU_ITEM_THEME_PERFECT},
-		{"_l_Low contrast blue theme", MENU_ITEM_THEME_LC_BLUE},
-		{"_c_Dark cyan theme", MENU_ITEM_THEME_D_CYAN},
-		{"_p_Paradox like", MENU_ITEM_THEME_PARADOX},
-		{"_d_DbaseIV retro", MENU_ITEM_THEME_DBASEIV},
-		{"_e_DbaseIV retro (Magenta)", MENU_ITEM_THEME_DBASEIV_M},
-		{"_r_Red white theme", MENU_ITEM_THEME_RED},
-		{"_s_Simple theme", MENU_ITEM_THEME_SIMPLE},
+		{"_0_Midnight black", MENU_ITEM_THEME_MC_BLACK, NULL, 0, MENU_THEME_GROUP},
+		{"_1_Midnight theme", MENU_ITEM_THEME_MC, NULL, 1, MENU_THEME_GROUP},
+		{"_2_FoxPro like", MENU_ITEM_THEME_FOXPRO, NULL, 2, MENU_THEME_GROUP},
+		{"_3_Pdmenu like", MENU_ITEM_THEME_PDMENU, NULL, 3, MENU_THEME_GROUP},
+		{"_4_White theme", MENU_ITEM_THEME_WHITE, NULL, 4, MENU_THEME_GROUP},
+		{"_5_Mutt theme",MENU_ITEM_THEME_MUTT, NULL, 5, MENU_THEME_GROUP},
+		{"_6_PC Fand like", MENU_ITEM_THEME_PCFAND, NULL, 6, MENU_THEME_GROUP},
+		{"_7_Green theme", MENU_ITEM_THEME_GREEN, NULL, 7, MENU_THEME_GROUP},
+		{"_8_Blue theme", MENU_ITEM_THEME_BLUE, NULL, 8, MENU_THEME_GROUP},
+		{"_9_Word perfect theme", MENU_ITEM_THEME_PERFECT, NULL, 9, MENU_THEME_GROUP},
+		{"_l_Low contrast blue theme", MENU_ITEM_THEME_LC_BLUE, NULL, 10, MENU_THEME_GROUP},
+		{"_c_Dark cyan theme", MENU_ITEM_THEME_D_CYAN, NULL, 11, MENU_THEME_GROUP},
+		{"_p_Paradox like", MENU_ITEM_THEME_PARADOX, NULL, 12, MENU_THEME_GROUP},
+		{"_d_DbaseIV retro", MENU_ITEM_THEME_DBASEIV, NULL, 13, MENU_THEME_GROUP},
+		{"_e_DbaseIV retro (Magenta)", MENU_ITEM_THEME_DBASEIV_M, NULL, 14, MENU_THEME_GROUP},
+		{"_r_Red white theme", MENU_ITEM_THEME_RED, NULL, 15, MENU_THEME_GROUP},
+		{"_s_Simple theme", MENU_ITEM_THEME_SIMPLE, NULL, 16, MENU_THEME_GROUP},
 		{NULL},
 	};
 
 	ST_MENU_ITEM _options[] = {
-		{"~C~ase sensitive search", MENU_ITEM_SEARCH_CS},
-		{"Case ~i~nsensitive search", MENU_ITEM_SEARCH_IS},
-		{"~U~pper case sensitive search", MENU_ITEM_SEARCH_US},
+		{"~C~ase sensitive search", MENU_ITEM_SEARCH_CS, NULL, 0, MENU_NO_KEY_GROUP},
+		{"Case ~i~nsensitive search", MENU_ITEM_SEARCH_IS, NULL, 0, MENU_NO_KEY_GROUP},
+		{"~U~pper case sensitive search", MENU_ITEM_SEARCH_US, NULL, 0, MENU_NO_KEY_GROUP},
 		{"--"},
-		{"Highlight searched ~l~ines", MENU_ITEM_HIGHLIGHT_LINES},
-		{"Highlight searched ~v~alues", MENU_ITEM_HIGHLIGHT_VALUES},
-		{"~W~ithout highlighting", MENU_ITEM_HIGHLIGHT_DISABLED},
+		{"Highlight searched ~l~ines", MENU_ITEM_HIGHLIGHT_LINES, NULL, 0, MENU_NO_KEY_GROUP},
+		{"Highlight searched ~v~alues", MENU_ITEM_HIGHLIGHT_VALUES, NULL, 0, MENU_NO_KEY_GROUP},
+		{"~W~ithout highlighting", MENU_ITEM_HIGHLIGHT_DISABLED, NULL, 0, MENU_NO_KEY_GROUP},
 		{"--"},
-		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m"},
-		{"~Q~uiet mode", MENU_ITEM_SOUND_SWITCH},
+		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m", 'm', MENU_KEY_ALT_GROUP},
+		{"~Q~uiet mode", MENU_ITEM_SOUND_SWITCH, NULL, 0, MENU_NO_KEY_GROUP},
 		{"--"},
-		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART},
-		{"~T~heme", MENU_ITEM_THEME, NULL, 0, _theme},
+		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART, NULL, 0, MENU_NO_KEY_GROUP},
+		{"~T~heme", MENU_ITEM_THEME, NULL, 0, 0,  0, _theme},
 		{"--"},
-		{"~S~ave setup", MENU_ITEM_SAVE_SETUP},
+		{"~S~ave setup", MENU_ITEM_SAVE_SETUP, NULL, 0, MENU_NO_KEY_GROUP},
 		{NULL},
 	};
 
 	ST_MENU_ITEM menubar[] = {
-	  {"~F~ile", 0, NULL, 0, _file},
-	  {"~S~earch", 0, NULL, 0, _search},
-	  {"~C~ommand", 0, NULL, 0, _command},
-	  {"~O~ptions", 0, NULL, 0, _options},
+	  {"~F~ile", 0, NULL, 0, 0, 0, _file},
+	  {"~S~earch", 0, NULL, 0, 0, 0, _search},
+	  {"~C~ommand", 0, NULL, 0, 0, 0, _command},
+	  {"~O~ptions", 0, NULL, 0, 0, 0, _options},
 	  {NULL}
 	};
 
@@ -2612,7 +2548,7 @@ reinit_theme:
 		{
 			bool	processed = false;
 			bool	activated = false;
-			ST_MENU_ITEM		*active_menu_item;
+			ST_MENU_ITEM		*ami;
 
 			/*
 			 * Translate clicked event to released
@@ -2622,25 +2558,40 @@ reinit_theme:
 
 			processed = st_menu_driver(menu, c, press_alt, &event);
 
-			active_menu_item = st_menu_selected_item(&activated);
+			ami = st_menu_selected_item(&activated);
 
 			if (processed && activated)
 			{
-				menu_translator *mt = mtransl;
-
-				while (mt->menu_code != 0)
+				switch (ami->group)
 				{
-					if (active_menu_item->code == mt->menu_code)
-					{
-						c2 = mt->key_code;
-						press_alt = mt->alt;
-						choose_menu = mt->menu;
-						menu_family = mt->family;
-						menu_data = mt->data;
-						goto hide_menu;
-					}
-					mt += 1;
+					case MENU_KEY_GROUP:
+						c2 = ami->data;
+						press_alt = false;
+						choose_menu = false;
+						break;
+
+					case MENU_KEY_ALT_GROUP:
+						c2 = ami->data;
+						press_alt = true;
+						choose_menu = false;
+						break;
+
+					case MENU_NO_KEY_GROUP:
+						c2 = ami->code;
+						press_alt = false;
+						choose_menu = true;
+						break;
+
+					case MENU_THEME_GROUP:
+						c2 = ami->code;
+						press_alt = false;
+						choose_menu = true;
+						menu_group = ami->group;
+						menu_data = ami->data;
+						break;
 				}
+
+				goto hide_menu;
 			}
 
 			if (!processed && (c == ST_MENU_ESCAPE || c == KEY_MOUSE))
@@ -2790,10 +2741,10 @@ reset_search:
 					break;
 			}
 
-			if (menu_family == MENU_ITEM_FAMILY_THEME)
+			if (menu_group == MENU_THEME_GROUP)
 			{
 				opts.theme = menu_data;
-				menu_family = 0;
+				menu_group = 0;
 				reinit = true;
 
 				st_menu_save(menu, cursor_store, 1023);
