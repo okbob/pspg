@@ -9,8 +9,12 @@ endif
 
 all: pspg
 
+st_menu_styles.o: src/st_menu_styles.c config.make
+	$(CC) -O3 src/st_menu_styles.c -c $(CFLAGS)
+
+
 st_menu.o: src/st_menu.c config.make
-	$(CC) -O3 src/st_menu.c src/st_menu_styles.c -c $(CFLAGS)
+	$(CC) -O3 src/st_menu.c -c $(CFLAGS)
 
 pspg: src/unicode.h src/pspg.c src/unicode.c src/themes.c src/print.c src/config.c $(ST_MENU_OFILES) config.make
 	$(CC) -O3 src/pspg.c src/print.c src/unicode.c src/themes.c src/config.c $(ST_MENU_OFILES) -o pspg $(CFLAGS) $(LDFLAGS) $(LDLIBS)
