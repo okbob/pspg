@@ -2017,7 +2017,7 @@ main(int argc, char *argv[])
 
 #ifdef NCURSES_VERSION
 
-				fprintf(stdout, "ncurses version: %s, patch: %ld\n",
+				fprintf(stdout, "ncurses version: %s, patch: %d\n",
 							NCURSES_VERSION,
 							NCURSES_VERSION_PATCH);
 
