@@ -2019,7 +2019,7 @@ main(int argc, char *argv[])
 
 				fprintf(stdout, "ncurses version: %s, patch: %ld\n",
 							NCURSES_VERSION,
-							NCURSES_VERSION_PATCH);
+							(long) NCURSES_VERSION_PATCH);
 
 #endif
 
