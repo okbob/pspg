@@ -1519,8 +1519,8 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	curs_set(0);
 	noecho();
 
-	buffer[1023] = '\0';
-	strncpy(buffer, readline_buffer, sizeof(buffer) - 1);
+	buffer[maxsize] = '\0';
+	strncpy(buffer, readline_buffer, maxsize - 1);
 
 #else
 
@@ -1716,7 +1716,6 @@ main(int argc, char *argv[])
 	int		c;
 	int		prev_c = 0;
 	int		c2 = 0;
-	int		c3 = 0;
 	int		c4 = 0;
 	bool	reuse_event = false;
 	int		cursor_row = 0;
@@ -2152,7 +2151,8 @@ reinit_theme:
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
 
-	menu_theme = 10;
+	menu_theme = ST_MENU_STYLE_MC;
+	theme_menu_code = MENU_ITEM_THEME_MC;
 
 	switch (opts.theme)
 	{
@@ -2430,8 +2430,11 @@ reinit_theme:
 		 */
 		if (reuse_event)
 		{
+			/* unfortunately, gcc raises false warning here -Wmaybe-uninitialized */
 			if (prev_c == 0)
+			{
 				prev_c = c;
+			}
 			else
 			{
 				c2 = prev_c;
@@ -2784,8 +2787,6 @@ reset_search:
 					{
 						LineBuffer *lnb = &desc.rows;
 						int		rownum_cursor_row;
-						int		rownum = 0;
-						bool	found = false;
 
 						while (lnb != NULL)
 						{
@@ -3467,7 +3468,7 @@ exit:
 						get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
 						if (locsearchterm[0] != '\0')
 						{
-							strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+							strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
 							scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 							scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 							scrdesc.searchterm_char_size = opts.force8bit ? strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
@@ -3574,7 +3575,7 @@ found_next_pattern:
 						get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
 						if (locsearchterm[0] != '\0')
 						{
-							strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm) - 1);
+							strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
 							scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 							scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 							scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
@@ -3818,7 +3819,6 @@ found_next_pattern:
 							if (event.bstate & BUTTON_ALT && event.bstate & BUTTON1_DOUBLE_CLICKED)
 							{
 								c2 = 27;
-								c3 = 'k';
 							}
 						}
 						break;

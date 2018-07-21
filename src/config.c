@@ -115,8 +115,8 @@ load_config(char *path, Options *opts)
 	while ((read = getline(&line, &len, f)) != -1)
 	{
 		char	key[100];
-		bool	bool_val;
-		int		int_val;
+		bool	bool_val = false;
+		int		int_val = -1;
 
 		if (parse_cfg(line, key, &bool_val, &int_val))
 		{
