@@ -101,7 +101,7 @@ int		menu_group = 0;
 int		menu_data = 0;
 MEVENT		event;
 
-#define		DEBUG_PIPE		"/home/pavel/debug"
+//#define		DEBUG_PIPE		"/home/pavel/debug"
 
 #ifdef DEBUG_PIPE
 
