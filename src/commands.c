@@ -14,6 +14,202 @@
 #include "pspg.h"
 #include "commands.h"
 
+int		CTRL_HOME;
+int		CTRL_END;
+
+
+#ifdef NCURSES_EXT_FUNCS
+
+static int
+get_code(const char *capname, int fallback)
+{
+
+#ifdef NCURSES_EXT_FUNCS
+
+	char	*s;
+	int		result;
+
+	s = tigetstr((NCURSES_CONST char *) capname);
+
+	if (s == NULL || s == (char *) -1)
+		return fallback;
+
+	result = key_defined(s);
+	return result > 0 ? result : fallback;
+
+#else
+
+	return fallback;
+
+#endif
+
+}
+
+#endif
+
+/*
+ * Set a value of CTRL_HOME and CTRL_END key codes. These codes
+ * can be redefined on some plaforms.
+ */
+void
+initialize_special_keycodes()
+{
+
+#ifdef NCURSES_EXT_FUNCS
+
+	use_extended_names(TRUE);
+
+#endif
+
+	CTRL_HOME = get_code("kHOM5", 538);
+	CTRL_END = get_code("kEND5", 533);
+
+}
+
+/*
+ * For debug purposes
+ */
+const char *
+cmd_string(int cmd)
+{
+	switch (cmd)
+	{
+		case cmd_Invalid:
+			return "Invalid";
+		case cmd_RESIZE_EVENT:
+			return "RESIZE";
+		case cmd_MOUSE_EVENT:
+			return "MOUSE";
+
+		case cmd_ReleaseCols:
+			return "ReleaseCols";
+		case cmd_FreezeOneCol:
+			return "FreezeOneCol";
+		case cmd_FreezeTwoCols:
+			return "FreezeTwoCols";
+		case cmd_FreezeThreeCols:
+			return "FreezeThreeCols";
+		case cmd_FreezeFourCols:
+			return "FreezeFourCols";
+		case cmd_SoundToggle:
+			return "SoundTogle";
+		case cmd_MouseToggle:
+			return "MouseTogle";
+		case cmd_UtfArtToggle:
+			return "UtfArtToggle";
+		case cmd_CSSearchSet:
+			return "CSSearchSet";
+		case cmd_CISearchSet:
+			return "CISearchSet";
+		case cmd_USSearchSet:
+			return "USSearchSet";
+		case cmd_HighlightLines:
+			return "HighlightLines";
+		case cmd_HighlightValues:
+			return "HighlightValues";
+		case cmd_NoHighlight:
+			return "NoHighlight";
+
+		case cmd_SetTheme_MidnightBlack:
+			return "SetTheme_MidnightBlack";
+		case cmd_SetTheme_Midnight:
+			return "SetTheme_Midnight";
+		case cmd_SetTheme_Foxpro:
+			return "SetTheme_Foxpro";
+		case cmd_SetTheme_Pdmenu:
+			return "SetTheme_Pdmenu";
+		case cmd_SetTheme_White:
+			return "SetTheme_White";
+		case cmd_SetTheme_Mutt:
+			return "SetTheme_Mutt";
+		case cmd_SetTheme_Pcfand:
+			return "SetTheme_Pcfand";
+		case cmd_SetTheme_Green:
+			return "SetTheme_Green";
+		case cmd_SetTheme_Blue:
+			return "SetTheme_Blue";
+		case cmd_SetTheme_WP:
+			return "SetTheme_WP";
+		case cmd_SetTheme_Lowcontrast:
+			return "SetTheme_Lowcontrast";
+		case cmd_SetTheme_Darkcyan:
+			return "SetTheme_Darkcyan";
+		case cmd_SetTheme_Paradox:
+			return "SetTheme_Paradox";
+		case cmd_SetTheme_DBase:
+			return "SetTheme_DBase";
+		case cmd_SetTheme_DBasemagenta:
+			return "SetTheme_DBasemagenta";
+		case cmd_SetTheme_Red:
+			return "SetTheme_Red";
+		case cmd_SetTheme_Simple:
+			return "SetTheme_Simple";
+		case cmd_SaveSetup:
+			return "SaveSetup";
+
+		case cmd_Quit:
+			return "Quit";
+		case cmd_ShowMenu:
+			return "ShowMenu";
+		case cmd_FlushBookmarks:
+			return "FlushBookmarks";
+		case cmd_ToggleBookmark:
+			return "ToggleBookmark";
+		case cmd_PrevBookmark:
+			return "PrevBookmark";
+		case cmd_NextBookmark:
+			return "NextBookmark";
+		case cmd_CursorUp:
+			return "CursorUp";
+		case cmd_CursorDown:
+			return "CursorDown";
+		case cmd_ScrollUp:
+			return "ScrollUp";
+		case cmd_ScrollDown:
+			return "ScrollDown";
+		case cmd_ScrollUpHalfPage:
+			return "ScrollUpHalfPage";
+		case cmd_ScrollDownHalfPage:
+			return "ScrollDownHalfPage";
+		case cmd_MoveLeft:
+			return "MoveLeft";
+		case cmd_MoveRight:
+			return "MoveRight";
+		case cmd_CursorFirstRow:
+			return "CursorFirstRow";
+		case cmd_CursorLastRow:
+			return "CursorLastRow";
+		case cmd_CursorFirstRowPage:
+			return "CursorFirstRowPage";
+		case cmd_CursorLastRowPage:
+			return "CursorLastRowPage";
+		case cmd_CursorHalfPage:
+			return "CursorHalfPage";
+		case cmd_PageUp:
+			return "PageUp";
+		case cmd_PageDown:
+			return "PageDown";
+		case cmd_ShowFirstCol:
+			return "ShowFirstCol";
+		case cmd_ShowLastCol:
+			return "ShowLastCol";
+		case cmd_SaveData:
+			return "SaveData";
+		case cmd_ForwardSearch:
+			return "ForwardSearch";
+		case cmd_BackwardSearch:
+			return "BackwardSearch";
+		case cmd_SearchNext:
+			return "SearchNext";
+		case cmd_SearchPrev:
+			return "SearchPrev";
+
+		default:
+			return "unknown command";
+	}
+}
+
+
 int
 translate_event(int c, bool alt)
 {
@@ -116,6 +312,11 @@ translate_event(int c, bool alt)
 				return cmd_CursorLastRow;
 		}
 	}
+
+	if (c == CTRL_HOME)
+		return cmd_CursorFirstRow;
+	else if (c == CTRL_END)
+		return cmd_CursorLastRow;
 
 	return cmd_Invalid;
 }

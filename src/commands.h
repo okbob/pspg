@@ -87,6 +87,8 @@ typedef enum PspgCommand
 	cmd_SearchPrev
 } PspgCommand;
 
+extern void initialize_special_keycodes();
+extern const char *cmd_string(int cmd);
 extern int translate_event(int c, bool alt);
 
 #endif

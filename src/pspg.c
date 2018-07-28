@@ -101,9 +101,14 @@ int		menu_group = 0;
 int		menu_data = 0;
 MEVENT		event;
 
+#define		DEBUG_PIPE		"/home/pavel/debug"
+
+#ifdef DEBUG_PIPE
+
 FILE *debug_pipe = NULL;
 int	debug_eventno = 0;
 
+#endif
 
 int
 min_int(int a, int b)
@@ -1539,6 +1544,10 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 #endif
 
+	/*
+	 * Screen should be refreshed after show any info.
+	 */
+	scrdesc->refresh_scr = true;
 }
 
 #define SEARCH_FORWARD			1
@@ -1590,25 +1599,6 @@ reset_searching_lineinfo(LineBuffer *lnb)
 	}
 }
 
-#ifdef NCURSES_EXT_FUNCS
-
-static int
-get_code(const char *capname, int fallback)
-{
-	char	*s;
-	int		result;
-
-	s = tigetstr((NCURSES_CONST char *) capname);
-
-	if (s == NULL || s == (char *) -1)
-		return fallback;
-
-	result = key_defined(s);
-	return result > 0 ? result : fallback;
-}
-
-#endif
-
 /*
  * Replace tilde by HOME dir
  */
@@ -1658,6 +1648,8 @@ get_event(MEVENT *mevent, bool *alt)
 	bool	first_event = true;
 	int		c;
 
+char buffer[20];
+
 #if NCURSES_WIDECHAR > 0
 
 	wint_t	ch;
@@ -1687,7 +1679,16 @@ repeat:
 		int	ok = getmouse(mevent);
 
 		if (ok != OK)
+		{
+
+#ifdef DEBUG_PIPE
+
+			fprintf(debug_pipe, "Attention: error reading mouse event\n");
+
+#endif
+
 			goto repeat;
+		}
 	}
 
 	if (c == 27) /* Escape (before ALT chars) */
@@ -1700,6 +1701,25 @@ repeat:
 	}
 
 	*alt = !first_event;
+
+#ifdef DEBUG_PIPE
+
+	debug_eventno += 1;
+	if (c == KEY_MOUSE)
+	{
+		sprintf(buffer, ", bstate: %08x", mevent->bstate);
+	}
+	else
+		buffer[0] = '\0';
+
+	fprintf(debug_pipe, "*** eventno: %d, key: %s%s%s ***\n",
+			  debug_eventno,
+			  *alt ? "Alt " : "",
+			  keyname(c),
+			  buffer);
+	fflush(debug_pipe);
+
+#endif
 
 	return c;
 }
@@ -1806,10 +1826,10 @@ main(int argc, char *argv[])
 {
 	int		maxx, maxy;
 	int		c;
-	int		prev_c = 0;
+	int		prev_event = 0;
 	int		command;
-	int		next_command = 0;
-	int		c4 = 0;
+	int		next_command = cmd_Invalid;
+	int		next_event = 0;
 	bool	reuse_event = false;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
@@ -1875,6 +1895,14 @@ main(int argc, char *argv[])
 	opts.theme = 1;
 
 	load_config(tilde("~/.pspgconf"), &opts);
+
+#ifdef DEBUG_PIPE
+
+	debug_pipe = fopen(DEBUG_PIPE, "w");
+	setlinebuf(debug_pipe);
+	fprintf(debug_pipe, "demo application start\n");
+
+#endif
 
 	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
 							  long_options, &option_index)) != -1)
@@ -2081,20 +2109,10 @@ reinit_theme:
 
 	set_escdelay(25);
 
-	use_extended_names(TRUE);
-
-#define CTRL_HOME		(extra_key_codes[0])
-#define CTRL_END		(extra_key_codes[1])
-
-	CTRL_HOME = get_code("kHOM5", 538);
-	CTRL_END = get_code("kEND5", 533);
-
-#else
-
-	CTRL_HOME = 538;
-	CTRL_END = 533;
-
 #endif
+
+	initialize_special_keycodes();
+
 
 	if (use_mouse)
 	{
@@ -2255,20 +2273,21 @@ reinit_theme:
 		/*
 		 * Next code allows to inject event, and later process original event again.
 		 * It is used for reuse mouse event: 1. replace top bar by menubar, 2. activate
-		 * field on menubar - possibly pulldown menu.
+		 * field on menubar - possibly pulldown menu. Following code holds event one
+		 * iteration.
 		 */
 		if (reuse_event)
 		{
 			/* unfortunately, gcc raises false warning here -Wmaybe-uninitialized */
-			if (prev_c == 0)
+			if (prev_event == 0)
 			{
-				prev_c = c;
+				prev_event = c;
 			}
 			else
 			{
-				next_command = prev_c;
+				next_event = prev_event;
 				reuse_event = false;
-				prev_c = 0;
+				prev_event = 0;
 			}
 		}
 
@@ -2276,7 +2295,7 @@ reinit_theme:
 		 * Draw windows, only when function (key) redirect was not forced.
 		 * Redirect emmit immediate redraw.
 		 */
-		if (next_command == 0)
+		if (next_command == cmd_Invalid)
 		{
 			window_fill(WINDOW_LUC,
 						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
@@ -2331,7 +2350,7 @@ reinit_theme:
 
 			if (scrdesc.fmt != NULL)
 			{
-				c4 = show_info_wait(&opts, &scrdesc,
+				next_event = show_info_wait(&opts, &scrdesc,
 									scrdesc.fmt, scrdesc.par, scrdesc.beep,
 									false, scrdesc.applytimeout);
 				if (scrdesc.fmt != NULL)
@@ -2349,25 +2368,26 @@ reinit_theme:
 				continue;
 			}
 
-			if (c4 != 0)
+			if (next_event != 0)
 			{
-				c = c4;
-				c4 = 0;
+				c = next_event;
+				next_event = 0;
 			}
 			else
 				c = get_event(&event, &press_alt);
+
 			redirect_mode = false;
 		}
 		else
 		{
 			
 			command = next_command;
-			next_command = 0;
+			next_command = cmd_Invalid;
 			redirect_mode = true;
 		}
 
 		/* Exit immediately on F10 or input error */
-		if (c == ERR || c == KEY_F(10))
+		if ((c == ERR || c == KEY_F(10)) && !redirect_mode)
 			break;
 
 
@@ -2405,12 +2425,13 @@ reinit_theme:
 hide_menu:
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
-
 				mousemask(prev_mousemask, NULL);
 				mouseinterval(200);
 
 				goto refresh;
 			}
+
+			continue;
 		}
 		else
 		{
@@ -2422,11 +2443,20 @@ hide_menu:
 
 		prev_first_row = first_row;
 
+#ifdef DEBUG_PIPE
+
+		fprintf(debug_pipe, "main switch: %s\n", cmd_string(command));
+
+#endif
+
 		if (command == cmd_Quit)
 			break;
 
+
 		switch (command)
 		{
+
+
 
 #ifdef COMPILE_MENU
 
@@ -2441,7 +2471,7 @@ hide_menu:
 #if NCURSES_MOUSE_VERSION > 1
 
 					/* BUTTON1_PRESSED | BUTTON1_RELEASED are mandatory enabled */
-						mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED, &prev_mousemask);
+					mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED, &prev_mousemask);
 
 #else
 
@@ -3297,7 +3327,7 @@ exit:
 					LineBuffer   *lnb = &desc.rows;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
-					if (c == 'n' && search_direction == SEARCH_BACKWARD && !redirect_mode)
+					if (command == cmd_SearchNext && search_direction == SEARCH_BACKWARD && !redirect_mode)
 					{
 						next_command = cmd_SearchPrev;
 						break;
@@ -3369,7 +3399,7 @@ found_next_pattern:
 					break;
 				}
 
-			cmd_BackwardSearch:
+			case cmd_BackwardSearch:
 				{
 					char	locsearchterm[256];
 
@@ -3395,7 +3425,7 @@ found_next_pattern:
 					/* continue to find next: */
 				}
 
-			cmd_SearchPrev:
+			case cmd_SearchPrev:
 				{
 					int		rowidx;
 					int		search_row;
@@ -3403,7 +3433,7 @@ found_next_pattern:
 					int		cut_bytes = 0;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
-					if (c == 'N' && search_direction == SEARCH_BACKWARD && !redirect_mode)
+					if (command == cmd_SearchPrev && search_direction == SEARCH_BACKWARD && !redirect_mode)
 					{
 						next_command = cmd_SearchNext;
 						break;
@@ -3591,9 +3621,9 @@ found_next_pattern:
 
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
-							next_command = KEY_F(9);
+							next_command = cmd_ShowMenu;
 							reuse_event = true;
-							prev_c = 0;
+							prev_event = 0;
 							break;
 						}
 
@@ -3690,7 +3720,7 @@ found_next_pattern:
 							(fresh_found_cursor_col < footer_cursor_col && next_command == cmd_MoveLeft) ||
 							(fresh_found_cursor_col == footer_cursor_col))
 							{
-								next_command = 0;
+								next_command = cmd_Invalid;
 								fresh_found = false;
 							}
 						}
@@ -3700,7 +3730,7 @@ found_next_pattern:
 							(fresh_found_cursor_col < cursor_col && next_command == cmd_MoveLeft) ||
 							(fresh_found_cursor_col == cursor_col))
 						{
-							next_command = 0;
+							next_command = cmd_Invalid;
 							fresh_found = false;
 						}
 					}
@@ -3778,6 +3808,8 @@ refresh:
 	write_history(tilde("~/.pspg_history"));
 
 #endif
+
+	fclose(debug_pipe);
 
 	return 0;
 }
