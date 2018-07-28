@@ -3809,7 +3809,11 @@ refresh:
 
 #endif
 
+#ifdef DEBUG_PIPE
+
 	fclose(debug_pipe);
+
+#endif
 
 	return 0;
 }
