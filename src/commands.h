@@ -34,6 +34,7 @@ typedef enum PspgCommand
 	cmd_HighlightLinesEnable,
 	cmd_HighlightValuesEnable,
 	cmd_NoHighlightEnable,
+
 	cmd_SetTheme_MidnightBlack,
 	cmd_SetTheme_Midnight,
 	cmd_SetTheme_Foxpro,
@@ -48,7 +49,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_Darkcyan,
 	cmd_SetTheme_Paradox,
 	cmd_SetTheme_DBase,
-	cmd_SetTheme_DBaseretro,
+	cmd_SetTheme_DBasemagenta,
 	cmd_SetTheme_red,
 	cmd_SetTheme_simple,
 	cmd_SaveSetup,
@@ -65,8 +66,8 @@ typedef enum PspgCommand
 	cmd_ScrollDown,
 	cmd_ScrollUpHalfPage,
 	cmd_ScrollDownHalfPage
-	cmd_ScrollLeft,
-	cmd_ScrollRight,
+	cmd_MoveLeft,
+	cmd_MoveRight,
 	cmd_CursorFirstRow,
 	cmd_CursorLastRow,
 	cmd_CursorFirstRowPage,
@@ -77,7 +78,7 @@ typedef enum PspgCommand
 	cmd_ShowFirstCol,
 	cmd_ShowLastCol,
 	cmd_SaveData,
-	cmd_ForwaredSearch,
+	cmd_ForwardSearch,
 	cmd_BackwardSearch,
 	cmd_SearchNext,
 	cmd_SearchPrev

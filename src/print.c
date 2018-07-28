@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
  * print.c
- *	  themes initialization
+ *	  visualisation loaded data
  *
  * Portions Copyright (c) 2017-2018 Pavel Stehule
  *

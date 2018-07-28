@@ -25,6 +25,11 @@
 
 #define MAX_STYLE					16
 
+#define MENU_CMD_GROUP				1
+#define MENU_THEME_GROUP			2
+
+#define MENU_ITEM_THEME				1
+
 typedef struct LineInfo
 {
 	char			mask;

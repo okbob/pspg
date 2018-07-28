@@ -1768,167 +1768,7 @@ main(int argc, char *argv[])
 #ifdef COMPILE_MENU
 
 	bool	menu_is_active = false;
-
-	ST_MENU_CONFIG		menu_config;
-	ST_MENU_CONFIG		menu_config2;
 	struct ST_MENU		*menu = NULL;
-	int					menu_theme;
-	int					theme_menu_code;
-
-#define		MENU_ITEM_SAVE		20
-#define		MENU_ITEM_EXIT		100
-
-#define		MENU_ITEM_SEARCH			30
-#define		MENU_ITEM_SEARCH_BACKWARD	31
-#define		MENU_ITEM_SEARCH_AGAIN		32
-#define		MENU_ITEM_SEARCH_PREV		33
-#define		MENU_ITEM_TOGGLE_BOOKMARK	34
-#define		MENU_ITEM_NEXT_BOOKMARK		35
-#define		MENU_ITEM_PREV_BOOKMARK		36
-#define		MENU_ITEM_FLUSH_BOOKMARKS	37
-
-#define		MENU_ITEM_RELEASE_COLUMNS	40
-#define		MENU_ITEM_FREEZE_ONE		41
-#define		MENU_ITEM_FREEZE_TWO		42
-#define		MENU_ITEM_FREEZE_THREE		43
-#define		MENU_ITEM_FREEZE_FOUR		44
-#define		MENU_ITEM_PREV_ROW			45
-#define		MENU_ITEM_NEXT_ROW			46
-#define		MENU_ITEM_SCROLL_LEFT		47
-#define		MENU_ITEM_SCROLL_RIGHT		48
-#define		MENU_ITEM_FIRST_ROW			49
-#define		MENU_ITEM_LAST_ROW			50
-#define		MENU_ITEM_FIRST_COLUMN		51
-#define		MENU_ITEM_LAST_COLUMN		52
-#define		MENU_ITEM_PREV_PAGE			53
-#define		MENU_ITEM_NEXT_PAGE			54
-
-#define		MENU_ITEM_MOUSE_SWITCH		60
-#define		MENU_ITEM_SEARCH_CS			61
-#define		MENU_ITEM_SEARCH_US			62
-#define		MENU_ITEM_SEARCH_IS			63
-#define		MENU_ITEM_FORCE_UNIART		64
-#define		MENU_ITEM_SOUND_SWITCH		65
-#define		MENU_ITEM_HIGHLIGHT_LINES	66
-#define		MENU_ITEM_HIGHLIGHT_VALUES	67
-#define		MENU_ITEM_HIGHLIGHT_DISABLED	68
-#define		MENU_ITEM_THEME				69
-#define		MENU_ITEM_SAVE_SETUP		70
-
-#define		MENU_ITEM_FAMILY_THEME		1
-
-#define		MENU_ITEM_THEME_MC_BLACK	80
-#define		MENU_ITEM_THEME_MC			81
-#define		MENU_ITEM_THEME_FOXPRO		82
-#define		MENU_ITEM_THEME_PDMENU		83
-#define		MENU_ITEM_THEME_WHITE		84
-#define		MENU_ITEM_THEME_MUTT		85
-#define		MENU_ITEM_THEME_PCFAND		86
-#define		MENU_ITEM_THEME_GREEN		88
-#define		MENU_ITEM_THEME_BLUE		89
-#define		MENU_ITEM_THEME_PERFECT		90
-#define		MENU_ITEM_THEME_LC_BLUE		91
-#define		MENU_ITEM_THEME_D_CYAN		92
-#define		MENU_ITEM_THEME_PARADOX		93
-#define		MENU_ITEM_THEME_DBASEIV		94
-#define		MENU_ITEM_THEME_DBASEIV_M	95
-#define		MENU_ITEM_THEME_RED			96
-#define		MENU_ITEM_THEME_SIMPLE		97
-
-#define		MENU_KEY_GROUP			1
-#define		MENU_KEY_ALT_GROUP		2
-#define		MENU_NO_KEY_GROUP		3
-#define		MENU_THEME_GROUP		4
-
-	ST_MENU_ITEM _file[] = {
-		{"~S~ave", MENU_ITEM_SAVE, "s", 's', MENU_KEY_GROUP},
-		{"--"},
-		{"E~x~it", MENU_ITEM_EXIT, "q, F10", 'q', MENU_KEY_GROUP},
-		{NULL}
-	};
-
-	ST_MENU_ITEM _search[] = {
-		{"~S~earch", MENU_ITEM_SEARCH, "/", '/', MENU_KEY_GROUP},
-		{"Search ~b~ackward", MENU_ITEM_SEARCH_BACKWARD, "?", '?', MENU_KEY_GROUP},
-		{"Search ~a~gain", MENU_ITEM_SEARCH_AGAIN, "n", 'n', MENU_KEY_GROUP},
-		{"Search p~r~evious", MENU_ITEM_SEARCH_PREV, "N", 'N', MENU_KEY_GROUP},
-		{"--"},
-		{"~T~oggle bbooookmark", MENU_ITEM_TOGGLE_BOOKMARK, "M-k", 'k', MENU_KEY_ALT_GROUP},
-		{"~P~rev bookmark", MENU_ITEM_PREV_BOOKMARK, "M-i", 'i', MENU_KEY_ALT_GROUP},
-		{"~N~ext bookmark", MENU_ITEM_NEXT_BOOKMARK, "M-j", 'j', MENU_KEY_ALT_GROUP},
-		{"~F~lush bookmarks", MENU_ITEM_FLUSH_BOOKMARKS, "M-o", 'o', MENU_KEY_ALT_GROUP},
-		{NULL}
-	};
-
-	ST_MENU_ITEM _command[] = {
-		{"_0_Release fixed columns", MENU_ITEM_RELEASE_COLUMNS, "0", '0', MENU_KEY_GROUP},
-		{"_1_Freeze one column", MENU_ITEM_FREEZE_ONE, "1", '1', MENU_KEY_GROUP},
-		{"_2_Freeze two columns", MENU_ITEM_FREEZE_TWO, "2", '2', MENU_KEY_GROUP},
-		{"_3_Freeze three columns", MENU_ITEM_FREEZE_THREE, "3", '3', MENU_KEY_GROUP},
-		{"_4_Freeze four columns", MENU_ITEM_FREEZE_FOUR, "4", '4', MENU_KEY_GROUP},
-		{"--"},
-		{"~P~rev row", MENU_ITEM_PREV_ROW, "k, Key up", 'k', MENU_KEY_GROUP},
-		{"~N~ext row", MENU_ITEM_NEXT_ROW, "j, Key down", 'j', MENU_KEY_GROUP},
-		{"Scroll to l~e~ft", MENU_ITEM_SCROLL_LEFT, "h, Key left", 'h', MENU_KEY_GROUP},
-		{"Scroll to ~r~ight", MENU_ITEM_SCROLL_RIGHT, "l, Key right", 'l', MENU_KEY_GROUP},
-		{"--"},
-		{"Go to ~f~irst row", MENU_ITEM_FIRST_ROW, "g, C-Home", 'g', MENU_KEY_GROUP},
-		{"Go to ~l~ast row", MENU_ITEM_LAST_ROW, "G, C-End", 'G', MENU_KEY_GROUP},
-		{"~S~how first column", MENU_ITEM_FIRST_COLUMN, "^, Home", '^', MENU_KEY_GROUP},
-		{"Sho~w~ last column", MENU_ITEM_LAST_COLUMN, "$, End", '$', MENU_KEY_GROUP},
-		{"--"},
-		{"Page up", MENU_ITEM_PREV_PAGE, "C-b, Prev page", KEY_PPAGE, MENU_KEY_GROUP},
-		{"Page down", MENU_ITEM_NEXT_PAGE, "C-f, space, Next page", KEY_NPAGE, MENU_KEY_GROUP},
-		{NULL}
-	};
-
-	ST_MENU_ITEM _theme[] = {
-		{"_0_Midnight black", MENU_ITEM_THEME_MC_BLACK, NULL, 0, MENU_THEME_GROUP},
-		{"_1_Midnight theme", MENU_ITEM_THEME_MC, NULL, 1, MENU_THEME_GROUP},
-		{"_2_FoxPro like", MENU_ITEM_THEME_FOXPRO, NULL, 2, MENU_THEME_GROUP},
-		{"_3_Pdmenu like", MENU_ITEM_THEME_PDMENU, NULL, 3, MENU_THEME_GROUP},
-		{"_4_White theme", MENU_ITEM_THEME_WHITE, NULL, 4, MENU_THEME_GROUP},
-		{"_5_Mutt theme",MENU_ITEM_THEME_MUTT, NULL, 5, MENU_THEME_GROUP},
-		{"_6_PC Fand like", MENU_ITEM_THEME_PCFAND, NULL, 6, MENU_THEME_GROUP},
-		{"_7_Green theme", MENU_ITEM_THEME_GREEN, NULL, 7, MENU_THEME_GROUP},
-		{"_8_Blue theme", MENU_ITEM_THEME_BLUE, NULL, 8, MENU_THEME_GROUP},
-		{"_9_Word perfect theme", MENU_ITEM_THEME_PERFECT, NULL, 9, MENU_THEME_GROUP},
-		{"_l_Low contrast blue theme", MENU_ITEM_THEME_LC_BLUE, NULL, 10, MENU_THEME_GROUP},
-		{"_c_Dark cyan theme", MENU_ITEM_THEME_D_CYAN, NULL, 11, MENU_THEME_GROUP},
-		{"_p_Paradox like", MENU_ITEM_THEME_PARADOX, NULL, 12, MENU_THEME_GROUP},
-		{"_d_DbaseIV retro", MENU_ITEM_THEME_DBASEIV, NULL, 13, MENU_THEME_GROUP},
-		{"_e_DbaseIV retro (Magenta)", MENU_ITEM_THEME_DBASEIV_M, NULL, 14, MENU_THEME_GROUP},
-		{"_r_Red white theme", MENU_ITEM_THEME_RED, NULL, 15, MENU_THEME_GROUP},
-		{"_s_Simple theme", MENU_ITEM_THEME_SIMPLE, NULL, 16, MENU_THEME_GROUP},
-		{NULL},
-	};
-
-	ST_MENU_ITEM _options[] = {
-		{"~C~ase sensitive search", MENU_ITEM_SEARCH_CS, NULL, 0, MENU_NO_KEY_GROUP},
-		{"Case ~i~nsensitive search", MENU_ITEM_SEARCH_IS, NULL, 0, MENU_NO_KEY_GROUP},
-		{"~U~pper case sensitive search", MENU_ITEM_SEARCH_US, NULL, 0, MENU_NO_KEY_GROUP},
-		{"--"},
-		{"Highlight searched ~l~ines", MENU_ITEM_HIGHLIGHT_LINES, NULL, 0, MENU_NO_KEY_GROUP},
-		{"Highlight searched ~v~alues", MENU_ITEM_HIGHLIGHT_VALUES, NULL, 0, MENU_NO_KEY_GROUP},
-		{"~W~ithout highlighting", MENU_ITEM_HIGHLIGHT_DISABLED, NULL, 0, MENU_NO_KEY_GROUP},
-		{"--"},
-		{"~M~ouse support", MENU_ITEM_MOUSE_SWITCH, "M-m", 'm', MENU_KEY_ALT_GROUP},
-		{"~Q~uiet mode", MENU_ITEM_SOUND_SWITCH, NULL, 0, MENU_NO_KEY_GROUP},
-		{"--"},
-		{"Force unicode ~b~orders", MENU_ITEM_FORCE_UNIART, NULL, 0, MENU_NO_KEY_GROUP},
-		{"~T~heme", MENU_ITEM_THEME, NULL, 0, 0,  0, _theme},
-		{"--"},
-		{"~S~ave setup", MENU_ITEM_SAVE_SETUP, NULL, 0, MENU_NO_KEY_GROUP},
-		{NULL},
-	};
-
-	ST_MENU_ITEM menubar[] = {
-	  {"~F~ile", 0, NULL, 0, 0, 0, _file},
-	  {"~S~earch", 0, NULL, 0, 0, 0, _search},
-	  {"~C~ommand", 0, NULL, 0, 0, 0, _command},
-	  {"~O~ptions", 0, NULL, 0, 0, 0, _options},
-	  {NULL}
-	};
 
 #endif
 
@@ -2144,109 +1984,6 @@ reinit_theme:
 	keypad(stdscr, TRUE);
 	curs_set(0);
 	noecho();
-
-#ifdef COMPILE_MENU
-
-	menu_config.force8bit = opts.force8bit;
-	menu_config.language = NULL;
-	menu_config.encoding = NULL;
-
-	menu_theme = ST_MENU_STYLE_MC;
-	theme_menu_code = MENU_ITEM_THEME_MC;
-
-	switch (opts.theme)
-	{
-		case 0:
-			menu_theme = ST_MENU_STYLE_MCB;
-			theme_menu_code = MENU_ITEM_THEME_MC_BLACK;
-			break;
-		case 1:
-			menu_theme = ST_MENU_STYLE_MC;
-			theme_menu_code = MENU_ITEM_THEME_MC;
-			break;
-		case 2:
-			menu_theme = ST_MENU_STYLE_FOXPRO;
-			theme_menu_code = MENU_ITEM_THEME_FOXPRO;
-			break;
-		case 3:
-			menu_theme = ST_MENU_STYLE_DOS;
-			theme_menu_code = MENU_ITEM_THEME_PDMENU;
-			break;
-		case 4:
-			menu_theme = ST_MENU_STYLE_FAND_1;
-			theme_menu_code = MENU_ITEM_THEME_WHITE;
-			break;
-		case 5:
-			menu_theme = ST_MENU_STYLE_NOCOLOR;
-			theme_menu_code = MENU_ITEM_THEME_MUTT;
-			break;
-		case 6:
-			menu_theme = ST_MENU_STYLE_FAND_1;
-			theme_menu_code = MENU_ITEM_THEME_PCFAND;
-			break;
-		case 7:
-			menu_theme = ST_MENU_STYLE_ONECOLOR;
-			theme_menu_code = MENU_ITEM_THEME_GREEN;
-			break;
-		case 8:
-			menu_theme = ST_MENU_STYLE_DOS;
-			theme_menu_code = MENU_ITEM_THEME_BLUE;
-			break;
-		case 9:
-			menu_theme = ST_MENU_STYLE_PERFECT;
-			theme_menu_code = MENU_ITEM_THEME_PERFECT;
-			break;
-		case 10:
-			menu_theme = ST_MENU_STYLE_VISION;
-			theme_menu_code = MENU_ITEM_THEME_LC_BLUE;
-			break;
-		case 11:
-			menu_theme = ST_MENU_STYLE_OLD_TURBO;
-			theme_menu_code = MENU_ITEM_THEME_D_CYAN;
-			break;
-		case 12:
-			menu_theme = ST_MENU_STYLE_VISION;
-			theme_menu_code = MENU_ITEM_THEME_PARADOX;
-			break;
-		case 13:
-			menu_theme = ST_MENU_STYLE_DBASE;
-			theme_menu_code = MENU_ITEM_THEME_DBASEIV;
-			break;
-		case 14:
-			menu_theme = ST_MENU_STYLE_OLD_TURBO;
-			theme_menu_code = MENU_ITEM_THEME_DBASEIV_M;
-			break;
-		case 15:
-			menu_theme = ST_MENU_STYLE_PERFECT;
-			theme_menu_code = MENU_ITEM_THEME_RED;
-			break;
-		case 16:
-			menu_theme = ST_MENU_STYLE_ONECOLOR;
-			theme_menu_code = MENU_ITEM_THEME_SIMPLE;
-			break;
-	}
-
-	if (menu_theme == ST_MENU_STYLE_ONECOLOR)
-	{
-		st_menu_load_style(&menu_config, ST_MENU_STYLE_ONECOLOR, 3);
-	}
-	else if (menu_theme == ST_MENU_STYLE_FREE_DOS)
-	{
-		int		fcp;
-
-		fcp = st_menu_load_style(&menu_config, menu_theme, 100);
-		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp);
-	}
-	else
-		st_menu_load_style(&menu_config, menu_theme, 100);
-
-	if (opts.theme == 1)
-		menu_config.shadow_width = 2;
-	if (opts.theme == 4)
-		menu_config.text_space = 4;
-
-#endif
-
 
 #ifdef NCURSES_EXT_FUNCS
 
@@ -2614,12 +2351,14 @@ hide_menu:
 
 		if (c == KEY_F(9))
 		{
-			if (menu == NULL)
+			if (menu == NULL || reint)
 			{
 				PANEL				*panel;
 
 				panel = new_panel(stdscr);
 				st_menu_set_desktop_panel(panel);
+
+				
 
 				if (menu_theme == ST_MENU_STYLE_FREE_DOS)
 					menu = st_menu_new_menubar2(&menu_config, &menu_config2, menubar);
