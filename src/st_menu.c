@@ -1029,13 +1029,12 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 }
 
 /*
- * Sets desktop window - it is used to draw shadow. The window
- * should be panelized.
+ * Sets desktop window - it is used to draw shadow.
  */
 void
-st_menu_set_desktop_panel(PANEL *pan)
+st_menu_set_desktop(WINDOW *win)
 {
-	desktop_win = panel_window(pan);
+	desktop_win = win;
 }
 
 /*

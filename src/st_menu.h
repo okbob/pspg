@@ -101,7 +101,7 @@ struct ST_MENU;
 
 extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn);
 
-extern void st_menu_set_desktop_panel(PANEL *pan);
+extern void st_menu_set_desktop(WINDOW *pan);
 extern struct ST_MENU *st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *items, int begin_y, int begin_x, char *title);
 extern struct ST_MENU *st_menu_new_menubar(ST_MENU_CONFIG *config, ST_MENU_ITEM *items);
 extern struct ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_MENU_ITEM *items);

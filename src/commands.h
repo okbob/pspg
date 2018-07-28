@@ -6,7 +6,7 @@
  * Portions Copyright (c) 2017-2018 Pavel Stehule
  *
  * IDENTIFICATION
- *	  src/command.h
+ *	  src/commands.h
  *
  *-------------------------------------------------------------------------
  */
@@ -20,20 +20,23 @@
 typedef enum PspgCommand
 {
 	cmd_Invalid = 0,
-	cmd_ReleaseCols,
+	cmd_RESIZE_EVENT,
+	cmd_MOUSE_EVENT,
+
+	cmd_ReleaseCols = 100,
 	cmd_FreezeOneCol,
 	cmd_FreezeTwoCols,
 	cmd_FreezeThreeCols,
 	cmd_FreezeFourCols,
-	cmd_SoundSwitchOver,
-	cmd_MouseSwitchOver,
-	cmd_UtfArtSwitchOver,
-	cmd_CSSearchEnable,
-	cmd_CISearchEnable,
-	cmd_USSearchEnable,
-	cmd_HighlightLinesEnable,
-	cmd_HighlightValuesEnable,
-	cmd_NoHighlightEnable,
+	cmd_SoundToggle,
+	cmd_MouseToggle,
+	cmd_UtfArtToggle,
+	cmd_CSSearchSet,
+	cmd_CISearchSet,
+	cmd_USSearchSet,
+	cmd_HighlightLines,
+	cmd_HighlightValues,
+	cmd_NoHighlight,
 
 	cmd_SetTheme_MidnightBlack,
 	cmd_SetTheme_Midnight,
@@ -50,14 +53,14 @@ typedef enum PspgCommand
 	cmd_SetTheme_Paradox,
 	cmd_SetTheme_DBase,
 	cmd_SetTheme_DBasemagenta,
-	cmd_SetTheme_red,
-	cmd_SetTheme_simple,
+	cmd_SetTheme_Red,
+	cmd_SetTheme_Simple,
 	cmd_SaveSetup,
 
 	cmd_Quit,
 	cmd_ShowMenu,
-	cmd_FlushBookmark,
-	cmd_SwitchOverBookmark,
+	cmd_FlushBookmarks,
+	cmd_ToggleBookmark,
 	cmd_PrevBookmark,
 	cmd_NextBookmark,
 	cmd_CursorUp,
@@ -65,13 +68,13 @@ typedef enum PspgCommand
 	cmd_ScrollUp,
 	cmd_ScrollDown,
 	cmd_ScrollUpHalfPage,
-	cmd_ScrollDownHalfPage
+	cmd_ScrollDownHalfPage,
 	cmd_MoveLeft,
 	cmd_MoveRight,
 	cmd_CursorFirstRow,
 	cmd_CursorLastRow,
 	cmd_CursorFirstRowPage,
-	cmd_CursorLastRowWPage,
+	cmd_CursorLastRowPage,
 	cmd_CursorHalfPage,
 	cmd_PageUp,
 	cmd_PageDown,
@@ -83,5 +86,7 @@ typedef enum PspgCommand
 	cmd_SearchNext,
 	cmd_SearchPrev
 } PspgCommand;
+
+extern int translate_event(int c, bool alt);
 
 #endif

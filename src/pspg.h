@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "themes.h"
+#include "st_menu.h"
 
 #define LINEINFO_NONE				0
 #define LINEINFO_BOOKMARK			1
@@ -29,6 +30,7 @@
 #define MENU_THEME_GROUP			2
 
 #define MENU_ITEM_THEME				1
+#define MENU_ITEM_OPTIONS			2
 
 typedef struct LineInfo
 {
@@ -122,6 +124,7 @@ typedef struct
 	char   *par;					/* parameter for info when refresh first is required */
 	bool	beep;					/* beep for info when refresh is required */
 	bool	applytimeout;			/* true, when saved info should be close after timeout */
+	bool	refresh_scr;			/* force rewrite screen */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
@@ -143,5 +146,9 @@ extern const char *nstrstr(const char *haystack, const char *needle);
 extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
 
 extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str);
+
+/* from menu.c */
+extern struct ST_MENU *init_menu(Options *opts, struct ST_MENU *current_menu);
+
 
 #endif
