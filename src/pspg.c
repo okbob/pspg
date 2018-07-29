@@ -122,7 +122,7 @@ min_int(int a, int b)
 /*
  * Prints error message and stops application
  */
-static void
+void
 leave_ncurses(const char *str)
 {
 	endwin();

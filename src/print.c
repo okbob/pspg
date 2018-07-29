@@ -110,11 +110,8 @@ window_fill(int window_identifier,
 
 				lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
 				if (lnb->lineinfo == NULL)
-				{
-					endwin();
-					fprintf(stderr, "out of memory");
-					exit(1);
-				}
+					leave_ncurses("out of memory");
+
 				memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 
 				for (i = 0; i < lnb->nrows; i++)
