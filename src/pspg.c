@@ -120,6 +120,17 @@ min_int(int a, int b)
 }
 
 /*
+ * Prints error message and stops application
+ */
+static void
+leave_ncurses(const char *str)
+{
+	endwin();
+	fprintf(stderr, "%s\n", str);
+	exit(1);
+}
+
+/*
  * special case insensitive searching routines
  */
 const char *
@@ -1618,11 +1629,8 @@ tilde(char *path)
 			char *home = getenv("HOME");
 
 			if (home == NULL)
-			{
-				endwin();
-				fprintf(stderr, "HOME directory is not defined");
-				exit(1);
-			}
+				leave_ncurses("HOME directory is not defined");
+
 			while (*home && chars < MAXPATHLEN - 1)
 			{
 				*w++ = *home++;
@@ -1642,13 +1650,21 @@ tilde(char *path)
 	return writebuf;
 }
 
+/*
+ * Reads keycode. When keycode is Esc - then read next keycode, and sets flag alt.
+ * When keycode is related to mouse, then get mouse event details.
+ */
 static int
 get_event(MEVENT *mevent, bool *alt)
 {
 	bool	first_event = true;
 	int		c;
 
-char buffer[20];
+#ifdef DEBUG_PIPE
+
+	char buffer[20];
+
+#endif
 
 #if NCURSES_WIDECHAR > 0
 
@@ -1683,6 +1699,11 @@ repeat:
 
 #ifdef DEBUG_PIPE
 
+			/*
+			 * This is almost all problematic error, that can disable mouse
+			 * functionality. It is based on ncurses resets (endwin) or unwanted
+			 * mouse reconfigurations (mousemask).
+			 */
 			fprintf(debug_pipe, "Attention: error reading mouse event\n");
 
 #endif
@@ -1821,15 +1842,16 @@ cmd_get_theme(int theme)
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
+
 int
 main(int argc, char *argv[])
 {
 	int		maxx, maxy;
-	int		c;
-	int		prev_event = 0;
+	int		event_keycode;
+	int		prev_event_keycode = 0;
+	int		next_event_keycode = 0;
 	int		command;
 	int		next_command = cmd_Invalid;
-	int		next_event = 0;
 	bool	reuse_event = false;
 	int		cursor_row = 0;
 	int		cursor_col = 0;
@@ -2087,11 +2109,7 @@ main(int argc, char *argv[])
 		initscr();
 
 	if(!has_colors())
-	{
-		endwin();
-		fprintf(stderr, "your terminal does not support color\n");
-		exit(1);
-	}
+		leave_ncurses("your terminal does not support color");
 
 	start_color();
 
@@ -2279,15 +2297,15 @@ reinit_theme:
 		if (reuse_event)
 		{
 			/* unfortunately, gcc raises false warning here -Wmaybe-uninitialized */
-			if (prev_event == 0)
+			if (prev_event_keycode == 0)
 			{
-				prev_event = c;
+				prev_event_keycode = event_keycode;
 			}
 			else
 			{
-				next_event = prev_event;
+				next_event_keycode = prev_event_keycode;
 				reuse_event = false;
-				prev_event = 0;
+				prev_event_keycode = 0;
 			}
 		}
 
@@ -2350,7 +2368,7 @@ reinit_theme:
 
 			if (scrdesc.fmt != NULL)
 			{
-				next_event = show_info_wait(&opts, &scrdesc,
+				next_event_keycode = show_info_wait(&opts, &scrdesc,
 									scrdesc.fmt, scrdesc.par, scrdesc.beep,
 									false, scrdesc.applytimeout);
 				if (scrdesc.fmt != NULL)
@@ -2368,13 +2386,13 @@ reinit_theme:
 				continue;
 			}
 
-			if (next_event != 0)
+			if (next_event_keycode != 0)
 			{
-				c = next_event;
-				next_event = 0;
+				event_keycode = next_event_keycode;
+				next_event_keycode = 0;
 			}
 			else
-				c = get_event(&event, &press_alt);
+				event_keycode = get_event(&event, &press_alt);
 
 			redirect_mode = false;
 		}
@@ -2387,14 +2405,14 @@ reinit_theme:
 		}
 
 		/* Exit immediately on F10 or input error */
-		if ((c == ERR || c == KEY_F(10)) && !redirect_mode)
+		if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 			break;
 
 
 #ifndef COMPILE_MENU
 
 		if (!redirect_mode)
-			command = TranslateEvent(c);
+			command = translate_event(event_keycode, press_alt);
 
 #else
 
@@ -2407,10 +2425,10 @@ reinit_theme:
 			/*
 			 * Translate clicked event to released
 			 */
-			if (c == KEY_MOUSE && event.bstate & BUTTON1_CLICKED)
+			if (event_keycode == KEY_MOUSE && event.bstate & BUTTON1_CLICKED)
 				event.bstate |= BUTTON1_RELEASED;
 
-			processed = st_menu_driver(menu, c, press_alt, &event);
+			processed = st_menu_driver(menu, event_keycode, press_alt, &event);
 
 			ami = st_menu_selected_item(&activated);
 
@@ -2420,7 +2438,7 @@ reinit_theme:
 				goto hide_menu;
 			}
 
-			if (!processed && (c == ST_MENU_ESCAPE || c == KEY_MOUSE))
+			if (!processed && (event_keycode == ST_MENU_ESCAPE || event_keycode == KEY_MOUSE))
 			{
 hide_menu:
 				st_menu_unpost(menu, true);
@@ -2436,7 +2454,7 @@ hide_menu:
 		else
 		{
 			if (!redirect_mode)
-				command = translate_event(c, press_alt);
+				command = translate_event(event_keycode, press_alt);
 		}
 
 #endif
@@ -2451,12 +2469,11 @@ hide_menu:
 
 		if (command == cmd_Quit)
 			break;
-
+		else if (command == cmd_Invalid)
+			continue;
 
 		switch (command)
 		{
-
-
 
 #ifdef COMPILE_MENU
 
@@ -2651,11 +2668,8 @@ reset_search:
 					{
 						lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
 						if (lnb->lineinfo == NULL)
-						{
-							endwin();
-							fprintf(stderr, "out of memory");
-							exit(1);
-						}
+							leave_ncurses("out of memory");
+
 						memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 					}
 
@@ -3479,11 +3493,8 @@ found_next_pattern:
 						{
 							row = malloc(strlen(rows->rows[rowidx]) + 1);
 							if (row == NULL)
-							{
-								endwin();
-								fprintf(stderr, "out of memory");
-								exit(1);
-							}
+								leave_ncurses("out of memory");
+
 							strcpy(row, rows->rows[rowidx]);
 							row[cut_bytes] = '\0';
 							free_row = true;
@@ -3623,7 +3634,7 @@ found_next_pattern:
 						{
 							next_command = cmd_ShowMenu;
 							reuse_event = true;
-							prev_event = 0;
+							prev_event_keycode = 0;
 							break;
 						}
 
