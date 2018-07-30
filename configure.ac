@@ -23,6 +23,9 @@ case "$ax_cv_ncursesw" in "no")
 	AC_MSG_WARN([This means that tig will not correctly render UTF-8.])
 esac
 
+AC_CHECK_LIB([m],[roundl])
+AC_CHECK_LIB([rt],[clock_gettime])
+
 AC_SUBST(enable_debug)
 AC_SUBST(CURSES_LIBS)
 AC_SUBST(COVERAGE_CFLAGS)
