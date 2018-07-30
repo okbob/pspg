@@ -2143,11 +2143,11 @@ reinit_theme:
 
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
+		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
 
 #else
 
-		mousemask(BUTTON1_RELEASED, NULL);
+		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED, NULL);
 
 #endif
 
@@ -3620,7 +3620,7 @@ found_next_pattern:
 
 #endif
 
-					if (event.bstate & BUTTON1_RELEASED)
+					if (event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_RELEASED)
 					{
 						int		max_cursor_row;
 						int		max_first_row;
@@ -3637,21 +3637,24 @@ found_next_pattern:
 							break;
 						}
 
-						clock_gettime(CLOCK_MONOTONIC, &spec);
-						ms = roundl(spec.tv_nsec / 1.0e6);
-						sec = spec.tv_sec;
-
-						if (last_sec > 0)
+						if (event.bstate & BUTTON1_RELEASED)
 						{
-							long	td;
+							clock_gettime(CLOCK_MONOTONIC, &spec);
+							ms = roundl(spec.tv_nsec / 1.0e6);
+							sec = spec.tv_sec;
 
-							td = (sec - last_sec) * 1000 + ms - last_ms;
-							if (td < 250)
-								is_double_click = true;
+							if (last_sec > 0)
+							{
+								long	td;
+
+								td = (sec - last_sec) * 1000 + ms - last_ms;
+								if (td < 250)
+									is_double_click = true;
+							}
+
+							last_sec = sec;
+							last_ms = ms;
 						}
-
-						last_sec = sec;
-						last_ms = ms;
 
 						cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 						if (cursor_row < 0)
