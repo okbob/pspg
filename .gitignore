@@ -55,3 +55,4 @@ pspg
 /config.cache
 /config.log
 /config.status
+/config.make
