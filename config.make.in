@@ -1,0 +1,24 @@
+# -*- makefile-gmake -*-
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+mandir = @mandir@
+docdir = @docdir@
+datarootdir = @datarootdir@
+sysconfdir = @sysconfdir@
+
+COMPILE_MENU = @COMPILE_MENU@
+
+CC = @CC@
+CFLAGS = @CFLAGS@ @COVERAGE_CFLAGS@ @DEBUG_CFLAGS@ @CURSES_CFLAGS@ @DEFS@
+LDFLAGS = @LDFLAGS@
+LDLIBS = @LIBS@ @PANEL_LIBS@ @CURSES_LIBS@
+
+config.status: configure
+	./config.status --recheck
+
+config.make: config.status
+	./config.status $@
+
+config.make: config.make.in
