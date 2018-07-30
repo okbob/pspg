@@ -54,6 +54,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 13. dBase IV retro style
 14. dBase IV retro style (Magenta labels)
 15. Red white theme
+16. Simple theme
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
@@ -134,6 +135,8 @@ In this case comment line with function set_escdelay
 
 # Note - Installation
 
+When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
+
 ## RPM (CentOS/Fedora/openSUSE/…)
 
 The pspg is available from community repository https://yum.postgresql.org/packages.php
@@ -174,6 +177,11 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 * Store data in some column format (now data are stored like array of rows). With this change can
   be possible to operate over columns - hide columns, change width, cyclic iteration over columns,
   change order of columns, mark columns and export only selected columns (selected rows).
+
+# st_menu
+
+This project uses st_menu library - implementation of CUA menubar and pulldown menu for ncurses
+https://github.com/okbob/ncurses-st-menu
 
 # Note
 
