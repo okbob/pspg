@@ -66,14 +66,12 @@
 #endif
 #endif
 
-#define PSPG_VERSION "1.2.2"
+#define PSPG_VERSION "1.3.0"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 4096
 #endif
-
-int			extra_key_codes[20];
 
 #ifdef HAVE_LIBREADLINE
 
@@ -87,20 +85,9 @@ static WINDOW *g_bottom_bar;
 
 #endif
 
-#define CTRL_HOME		(extra_key_codes[0])
-#define CTRL_END		(extra_key_codes[1])
-
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
 #define		USE_EXTENDED_NAMES
-
-static int get_event(MEVENT *mevent, bool *alt);
-
-bool	press_alt = false;
-bool	choose_menu = false;
-int		menu_group = 0;
-int		menu_data = 0;
-MEVENT		event;
 
 /* #define		DEBUG_PIPE		"/home/pavel/debug" */
 
@@ -110,6 +97,11 @@ FILE *debug_pipe = NULL;
 int	debug_eventno = 0;
 
 #endif
+
+bool	press_alt = false;
+MEVENT		event;
+
+static int get_event(MEVENT *mevent, bool *alt);
 
 int
 min_int(int a, int b)
@@ -2314,6 +2306,11 @@ reinit_theme:
 			}
 			else
 			{
+				/*
+				 * Store previous event, if this event is mouse press. With it we
+				 * can join following mouse release together, and redure useles
+				 * refresh.
+				 */
 				if (event_keycode == KEY_MOUSE && event.bstate == BUTTON1_PRESSED)
 				{
 					prev_event_is_mouse_press = true;
@@ -2335,7 +2332,6 @@ reinit_theme:
 						continue;
 					}
 				}
-
 			}
 
 			redirect_mode = false;
