@@ -102,7 +102,7 @@ int		menu_group = 0;
 int		menu_data = 0;
 MEVENT		event;
 
-//#define		DEBUG_PIPE		"/home/pavel/debug"
+/* #define		DEBUG_PIPE		"/home/pavel/debug" */
 
 #ifdef DEBUG_PIPE
 
@@ -1746,109 +1746,16 @@ repeat:
 	return c;
 }
 
-/*
- * Returns cmd for theme
- *
- */
-static int
-theme_get_cmd(int theme)
-{
-	switch (theme)
-	{
-		case 0:
-			return cmd_SetTheme_MidnightBlack;
-		case 1:
-			return cmd_SetTheme_Midnight;
-		case 2:
-			return cmd_SetTheme_Foxpro;
-		case 3:
-			return cmd_SetTheme_Pdmenu;
-		case 4:
-			return cmd_SetTheme_White;
-		case 5:
-			return cmd_SetTheme_Mutt;
-		case 6:
-			return cmd_SetTheme_Pcfand;
-		case 7:
-			return cmd_SetTheme_Green;
-		case 8:
-			return cmd_SetTheme_Blue;
-		case 9:
-			return cmd_SetTheme_WP;
-		case 10:
-			return cmd_SetTheme_Lowcontrast;
-		case 11:
-			return cmd_SetTheme_Darkcyan;
-		case 12:
-			return cmd_SetTheme_Paradox;
-		case 13:
-			return cmd_SetTheme_DBase;
-		case 14:
-			return cmd_SetTheme_DBasemagenta;
-		case 15:
-			return cmd_SetTheme_Red;
-		case 16:
-			return cmd_SetTheme_Simple;
-	};
-}
-
-/*
- * Returns theme for cmd
- *
- */
-static int
-cmd_get_theme(int theme)
-{
-	switch (theme)
-	{
-		case cmd_SetTheme_MidnightBlack:
-			return 0;
-		case cmd_SetTheme_Midnight:
-			return 1;
-		case cmd_SetTheme_Foxpro:
-			return 2;
-		case cmd_SetTheme_Pdmenu:
-			return 3;
-		case cmd_SetTheme_White:
-			return 4;
-		case cmd_SetTheme_Mutt:
-			return 5;
-		case cmd_SetTheme_Pcfand:
-			return 6;
-		case cmd_SetTheme_Green:
-			return 7;
-		case cmd_SetTheme_Blue:
-			return 8;
-		case cmd_SetTheme_WP:
-			return 9;
-		case cmd_SetTheme_Lowcontrast:
-			return 10;
-		case cmd_SetTheme_Darkcyan:
-			return 11;
-		case cmd_SetTheme_Paradox:
-			return 12;
-		case cmd_SetTheme_DBase:
-			return 13;
-		case cmd_SetTheme_DBasemagenta:
-			return 14;
-		case cmd_SetTheme_Red:
-			return 15;
-		case cmd_SetTheme_Simple:
-			return 16;
-	};
-}
-
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
 #define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
-
 int
 main(int argc, char *argv[])
 {
 	int		maxx, maxy;
-	int		event_keycode;
+	int		event_keycode = 0;
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
 	int		command;
@@ -1866,7 +1773,6 @@ main(int argc, char *argv[])
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	Options			opts;
-	int		_columns = -1;			/* default will be 1 if screen width will be enough */
 	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	FILE   *fp = NULL;
 	bool	detected_format = false;
@@ -1875,7 +1781,6 @@ main(int argc, char *argv[])
 
 	int		opt;
 	int		option_index = 0;
-	bool	use_mouse = true;
 	mmask_t		prev_mousemask = 0;
 	bool	quit_if_one_screen = false;
 	int		search_direction = SEARCH_FORWARD;
@@ -1884,6 +1789,12 @@ main(int argc, char *argv[])
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
 	bool	reinit = false;
+
+	bool	ignore_mouse_release = false;		/* after leave menu by press ignore release too */
+	bool	no_doupdate = false;				/* when we sure stdstr refresh is useles */
+	bool	prev_event_is_mouse_press = false;
+	int		prev_mouse_event_y = -1;
+	int		prev_mouse_event_x = -1;
 
 	static struct option long_options[] =
 	{
@@ -1913,11 +1824,14 @@ main(int argc, char *argv[])
 	opts.ignore_case = false;
 	opts.ignore_lower_case = false;
 	opts.no_sound = false;
+	opts.no_mouse = false;
 	opts.less_status_bar = false;
 	opts.no_highlight_search = false;
 	opts.force_uniborder = false;
 	opts.force8bit = false;
 	opts.theme = 1;
+	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
+
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -1973,7 +1887,7 @@ main(int argc, char *argv[])
 				opts.ignore_lower_case = true;
 				break;
 			case 2:
-				use_mouse = false;
+				opts.no_mouse = true;
 				break;
 			case 3:
 				opts.no_sound = true;
@@ -2042,7 +1956,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "fixed columns should be between 0 and 4.\n");
 					exit(EXIT_FAILURE);
 				}
-				_columns = n;
+				opts.freezed_cols = n;
 				break;
 			case 'f':
 				fp = fopen(optarg, "r");
@@ -2135,7 +2049,7 @@ reinit_theme:
 	initialize_special_keycodes();
 
 
-	if (use_mouse)
+	if (!opts.no_mouse)
 	{
 
 		mouseinterval(0);
@@ -2247,7 +2161,7 @@ reinit_theme:
 		}
 	}
 
-	create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
+	create_layout_dimensions(&scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
 	create_layout(&scrdesc, &desc, first_data_row, first_row);
 
 	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
@@ -2317,46 +2231,49 @@ reinit_theme:
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			window_fill(WINDOW_LUC,
-						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-						0,
-						-1,
-						&desc, &scrdesc, &opts);
+			if (!no_doupdate)
+			{
+				window_fill(WINDOW_LUC,
+							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+							0,
+							-1,
+							&desc, &scrdesc, &opts);
 
-			window_fill(WINDOW_ROWS,
-						first_data_row + first_row - fix_rows_offset,
-						scrdesc.fix_cols_cols + cursor_col,
-						cursor_row - first_row + fix_rows_offset,
-						&desc, &scrdesc, &opts);
+				window_fill(WINDOW_ROWS,
+							first_data_row + first_row - fix_rows_offset,
+							scrdesc.fix_cols_cols + cursor_col,
+							cursor_row - first_row + fix_rows_offset,
+							&desc, &scrdesc, &opts);
 
-			window_fill(WINDOW_FIX_COLS,
-						first_data_row + first_row - fix_rows_offset,
-						0,
-						cursor_row - first_row + fix_rows_offset,
-						&desc, &scrdesc, &opts);
+				window_fill(WINDOW_FIX_COLS,
+							first_data_row + first_row - fix_rows_offset,
+							0,
+							cursor_row - first_row + fix_rows_offset,
+							&desc, &scrdesc, &opts);
 
-			window_fill(WINDOW_FIX_ROWS,
-						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-						scrdesc.fix_cols_cols + cursor_col,
-						-1,
-						&desc, &scrdesc, &opts);
+				window_fill(WINDOW_FIX_ROWS,
+							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+							scrdesc.fix_cols_cols + cursor_col,
+							-1,
+							&desc, &scrdesc, &opts);
 
-			window_fill(WINDOW_FOOTER,
-						first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
-						footer_cursor_col,
-						cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
-						&desc, &scrdesc, &opts);
+				window_fill(WINDOW_FOOTER,
+							first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
+							footer_cursor_col,
+							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
+							&desc, &scrdesc, &opts);
 
-			if (w_luc(&scrdesc) != NULL)
-				wnoutrefresh(w_luc(&scrdesc));
-			if (w_rows(&scrdesc) != NULL)
-				wnoutrefresh(w_rows(&scrdesc));
-			if (w_fix_cols(&scrdesc) != NULL)
-				wnoutrefresh(w_fix_cols(&scrdesc));
-			if (w_fix_rows(&scrdesc) != NULL)
-				wnoutrefresh(w_fix_rows(&scrdesc));
-			if (w_footer(&scrdesc) != NULL)
-				wnoutrefresh(w_footer(&scrdesc));
+				if (w_luc(&scrdesc) != NULL)
+					wnoutrefresh(w_luc(&scrdesc));
+				if (w_rows(&scrdesc) != NULL)
+					wnoutrefresh(w_rows(&scrdesc));
+				if (w_fix_cols(&scrdesc) != NULL)
+					wnoutrefresh(w_fix_cols(&scrdesc));
+				if (w_fix_rows(&scrdesc) != NULL)
+					wnoutrefresh(w_fix_rows(&scrdesc));
+				if (w_footer(&scrdesc) != NULL)
+					wnoutrefresh(w_footer(&scrdesc));
+			} /* !no_doupdate */
 
 #ifdef COMPILE_MENU
 
@@ -2365,7 +2282,9 @@ reinit_theme:
 
 #endif
 
-			if (next_command == 0 || scrdesc.fmt != NULL)
+			if (no_doupdate)
+				no_doupdate = false;
+			else if (next_command == 0 || scrdesc.fmt != NULL)
 				doupdate();
 
 			if (scrdesc.fmt != NULL)
@@ -2394,7 +2313,30 @@ reinit_theme:
 				next_event_keycode = 0;
 			}
 			else
+			{
+				if (event_keycode == KEY_MOUSE && event.bstate == BUTTON1_PRESSED)
+				{
+					prev_event_is_mouse_press = true;
+					prev_mouse_event_y = event.y;
+					prev_mouse_event_x = event.x;
+				}
+				else
+					prev_event_is_mouse_press = false;
+
 				event_keycode = get_event(&event, &press_alt);
+
+				/* the comment for ignore_mouse_release follow */
+				if (ignore_mouse_release)
+				{
+					ignore_mouse_release = false;
+					if (event_keycode == KEY_MOUSE && event.bstate & event.bstate & BUTTON1_RELEASED)
+					{
+						no_doupdate = true;
+						continue;
+					}
+				}
+
+			}
 
 			redirect_mode = false;
 		}
@@ -2404,6 +2346,7 @@ reinit_theme:
 			command = next_command;
 			next_command = cmd_Invalid;
 			redirect_mode = true;
+			no_doupdate = false;
 		}
 
 		/* Exit immediately on F10 or input error */
@@ -2439,8 +2382,14 @@ reinit_theme:
 hide_menu:
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
-				mousemask(prev_mousemask, NULL);
-				mouseinterval(0);
+
+				/*
+				 * When we leave menu due mouse action, and this mouse action
+				 * is button1 press, then we would to ignore button1 release.
+				 * The behave is consistent for this mouse click (press, release).
+				 */
+				if (event_keycode == KEY_MOUSE && event.bstate & event.bstate & BUTTON1_PRESSED)
+					ignore_mouse_release = true;
 
 				goto refresh;
 			}
@@ -2481,46 +2430,9 @@ hide_menu:
 						menu = init_menu(&opts, menu);
 					}
 
-#if NCURSES_MOUSE_VERSION > 1
+					post_menu(&opts, menu);
 
-					/* BUTTON1_PRESSED | BUTTON1_RELEASED are mandatory enabled */
-					mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED, &prev_mousemask);
-
-#else
-
-					mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED, &prev_mousemask);
-
-#endif
-
-					mouseinterval(0);
-
-					st_menu_set_option(menu, cmd_ReleaseCols, ST_MENU_OPTION_MARKED, _columns == 0);
-					st_menu_set_option(menu, cmd_FreezeOneCol, ST_MENU_OPTION_MARKED, (_columns == 1 || _columns == -1));
-					st_menu_set_option(menu, cmd_FreezeTwoCols, ST_MENU_OPTION_MARKED, _columns == 2);
-					st_menu_set_option(menu, cmd_FreezeThreeCols, ST_MENU_OPTION_MARKED, _columns == 3);
-					st_menu_set_option(menu, cmd_FreezeFourCols, ST_MENU_OPTION_MARKED, _columns == 4);
-
-					st_menu_set_option(menu, cmd_SoundToggle, ST_MENU_OPTION_MARKED, opts.no_sound);
-					st_menu_set_option(menu, cmd_UtfArtToggle, ST_MENU_OPTION_MARKED, opts.force_uniborder);
-					st_menu_set_option(menu, cmd_MouseToggle, ST_MENU_OPTION_MARKED, use_mouse);
-
-					st_menu_set_option(menu, cmd_NoHighlight, ST_MENU_OPTION_MARKED, opts.no_highlight_search);
-					st_menu_set_option(menu, cmd_HighlightValues, ST_MENU_OPTION_MARKED, opts.no_highlight_lines);
-					st_menu_set_option(menu, cmd_HighlightLines, ST_MENU_OPTION_MARKED,
-													  !(opts.no_highlight_search || opts.no_highlight_lines));
-
-					st_menu_set_option(menu, cmd_CSSearchSet, ST_MENU_OPTION_MARKED, !(opts.ignore_case || opts.ignore_lower_case));
-					st_menu_set_option(menu, cmd_CISearchSet, ST_MENU_OPTION_MARKED, opts.ignore_case);
-					st_menu_set_option(menu, cmd_USSearchSet, ST_MENU_OPTION_MARKED, opts.ignore_lower_case);
-
-					st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
-					st_menu_enable_option(menu, theme_get_cmd(opts.theme), ST_MENU_OPTION_MARKED);
-
-					st_menu_post(menu);
 					menu_is_active = true;
-
-					doupdate();
-					refresh();
 					continue;
 				}
 
@@ -2608,18 +2520,18 @@ reset_search:
 
 			case cmd_MouseToggle:
 				{
-					if (use_mouse)
+					if (!opts.no_mouse)
 					{
 						mousemask(0, &prev_mousemask);
-						use_mouse = false;
+						opts.no_mouse = true;
 					}
 					else
 					{
 						mousemask(prev_mousemask, NULL);
-						use_mouse = true;
+						opts.no_mouse= false;
 					}
 
-					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", use_mouse ? "on" : "off", false, true, true);
+					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true);
 					break;
 				}
 
@@ -2798,7 +2710,7 @@ exit_search_next_bookmark:
 				break;
 
 			case cmd_ReleaseCols:
-				_columns = 0;
+				opts.freezed_cols = 0;
 
 show_first_col:
 
@@ -2807,19 +2719,19 @@ show_first_col:
 				break;
 
 			case cmd_FreezeOneCol:
-				_columns = 1;
+				opts.freezed_cols = 1;
 				goto show_first_col;
 
 			case cmd_FreezeTwoCols:
-				_columns = 2;
+				opts.freezed_cols = 2;
 				goto show_first_col;
 
 			case cmd_FreezeThreeCols:
-				_columns = 3;
+				opts.freezed_cols = 3;
 				goto show_first_col;
 
 			case cmd_FreezeFourCols:
-				_columns = 4;
+				opts.freezed_cols = 4;
 				goto show_first_col;
 
 			case cmd_CursorFirstRow:
@@ -3656,6 +3568,18 @@ found_next_pattern:
 							last_ms = ms;
 						}
 
+						/*
+						 * When current event is MOUSE RELEASE, and prev event was MOUSE_PRESS
+						 * and it is not double click, and there are same position, then we can
+						 * ignore this event.
+						 */
+						if (prev_event_is_mouse_press && !is_double_click &&
+								prev_mouse_event_y == event.y && prev_mouse_event_x == event.x)
+						{
+							no_doupdate = true;
+							continue;
+						}
+
 						cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 						if (cursor_row < 0)
 							cursor_row = 0;
@@ -3815,7 +3739,7 @@ refresh:
 			getmaxyx(stdscr, maxy, maxx);
 
 			refresh_aux_windows(&opts, &scrdesc, &desc);
-			create_layout_dimensions(&scrdesc, &desc, _columns, fixedRows, maxy, maxx);
+			create_layout_dimensions(&scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc, first_data_row, first_row);
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 

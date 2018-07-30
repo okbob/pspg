@@ -91,4 +91,7 @@ extern void initialize_special_keycodes();
 extern const char *cmd_string(int cmd);
 extern int translate_event(int c, bool alt);
 
+extern int cmd_get_theme(int cmd);
+extern int theme_get_cmd(int theme);
+
 #endif

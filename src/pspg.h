@@ -26,12 +26,6 @@
 
 #define MAX_STYLE					16
 
-#define MENU_CMD_GROUP				1
-#define MENU_THEME_GROUP			2
-
-#define MENU_ITEM_THEME				1
-#define MENU_ITEM_OPTIONS			2
-
 typedef struct LineInfo
 {
 	char			mask;
@@ -150,6 +144,6 @@ extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 
 /* from menu.c */
 extern struct ST_MENU *init_menu(Options *opts, struct ST_MENU *current_menu);
-
+extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 
 #endif

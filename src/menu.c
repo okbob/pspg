@@ -15,6 +15,9 @@
 #include "st_menu.h"
 #include "commands.h"
 
+#define MENU_ITEM_THEME				1
+#define MENU_ITEM_OPTIONS			2
+
 ST_MENU_ITEM _file[] = {
 	{"~S~ave", cmd_SaveData, "s"},
 	{"--"},
@@ -171,7 +174,6 @@ init_menu(Options *opts, struct ST_MENU *current_menu)
 
 	int		menu_theme;
 
-
 	menu_config.force8bit = opts->force8bit;
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
@@ -212,4 +214,32 @@ init_menu(Options *opts, struct ST_MENU *current_menu)
 	}
 
 	return menu;
+}
+
+void
+post_menu(Options *opts, struct ST_MENU *menu)
+{
+	st_menu_set_option(menu, cmd_ReleaseCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 0);
+	st_menu_set_option(menu, cmd_FreezeOneCol, ST_MENU_OPTION_MARKED,
+									  (opts->freezed_cols == 1 || opts->freezed_cols == -1));
+	st_menu_set_option(menu, cmd_FreezeTwoCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 2);
+	st_menu_set_option(menu, cmd_FreezeThreeCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 3);
+	st_menu_set_option(menu, cmd_FreezeFourCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 4);
+
+	st_menu_set_option(menu, cmd_SoundToggle, ST_MENU_OPTION_MARKED, opts->no_sound);
+	st_menu_set_option(menu, cmd_UtfArtToggle, ST_MENU_OPTION_MARKED, opts->force_uniborder);
+	st_menu_set_option(menu, cmd_MouseToggle, ST_MENU_OPTION_MARKED, !opts->no_mouse);
+
+	st_menu_set_option(menu, cmd_NoHighlight, ST_MENU_OPTION_MARKED, opts->no_highlight_search);
+	st_menu_set_option(menu, cmd_HighlightValues, ST_MENU_OPTION_MARKED, opts->no_highlight_lines);
+	st_menu_set_option(menu, cmd_HighlightLines, ST_MENU_OPTION_MARKED,
+									  !(opts->no_highlight_search || opts->no_highlight_lines));
+
+	st_menu_set_option(menu, cmd_CSSearchSet, ST_MENU_OPTION_MARKED,
+									  !(opts->ignore_case || opts->ignore_lower_case));
+	st_menu_set_option(menu, cmd_CISearchSet, ST_MENU_OPTION_MARKED, opts->ignore_case);
+	st_menu_set_option(menu, cmd_USSearchSet, ST_MENU_OPTION_MARKED, opts->ignore_lower_case);
+
+	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
+	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
 }

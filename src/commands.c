@@ -320,3 +320,99 @@ translate_event(int c, bool alt)
 
 	return cmd_Invalid;
 }
+
+/*
+ * Returns cmd for theme
+ *
+ */
+int
+theme_get_cmd(int theme)
+{
+	switch (theme)
+	{
+		case 0:
+			return cmd_SetTheme_MidnightBlack;
+		case 1:
+			return cmd_SetTheme_Midnight;
+		case 2:
+			return cmd_SetTheme_Foxpro;
+		case 3:
+			return cmd_SetTheme_Pdmenu;
+		case 4:
+			return cmd_SetTheme_White;
+		case 5:
+			return cmd_SetTheme_Mutt;
+		case 6:
+			return cmd_SetTheme_Pcfand;
+		case 7:
+			return cmd_SetTheme_Green;
+		case 8:
+			return cmd_SetTheme_Blue;
+		case 9:
+			return cmd_SetTheme_WP;
+		case 10:
+			return cmd_SetTheme_Lowcontrast;
+		case 11:
+			return cmd_SetTheme_Darkcyan;
+		case 12:
+			return cmd_SetTheme_Paradox;
+		case 13:
+			return cmd_SetTheme_DBase;
+		case 14:
+			return cmd_SetTheme_DBasemagenta;
+		case 15:
+			return cmd_SetTheme_Red;
+		case 16:
+			return cmd_SetTheme_Simple;
+	};
+
+	return cmd_Invalid;
+}
+
+/*
+ * Returns theme for cmd
+ *
+ */
+int
+cmd_get_theme(int cmd)
+{
+	switch (cmd)
+	{
+		case cmd_SetTheme_MidnightBlack:
+			return 0;
+		case cmd_SetTheme_Midnight:
+			return 1;
+		case cmd_SetTheme_Foxpro:
+			return 2;
+		case cmd_SetTheme_Pdmenu:
+			return 3;
+		case cmd_SetTheme_White:
+			return 4;
+		case cmd_SetTheme_Mutt:
+			return 5;
+		case cmd_SetTheme_Pcfand:
+			return 6;
+		case cmd_SetTheme_Green:
+			return 7;
+		case cmd_SetTheme_Blue:
+			return 8;
+		case cmd_SetTheme_WP:
+			return 9;
+		case cmd_SetTheme_Lowcontrast:
+			return 10;
+		case cmd_SetTheme_Darkcyan:
+			return 11;
+		case cmd_SetTheme_Paradox:
+			return 12;
+		case cmd_SetTheme_DBase:
+			return 13;
+		case cmd_SetTheme_DBasemagenta:
+			return 14;
+		case cmd_SetTheme_Red:
+			return 15;
+		case cmd_SetTheme_Simple:
+			return 16;
+	};
+
+	return 1;
+}
