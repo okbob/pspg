@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1851,6 +1852,8 @@ main(int argc, char *argv[])
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
 	int		command;
+	long	last_ms = 0;							/* time of last mouse release in ms */
+	time_t	last_sec = 0;							/* time of last mouse release in sec */
 	int		next_command = cmd_Invalid;
 	bool	reuse_event = false;
 	int		cursor_row = 0;
@@ -2135,17 +2138,16 @@ reinit_theme:
 	if (use_mouse)
 	{
 
-		mouseinterval(200);
+		mouseinterval(0);
 
 
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT |
-				  BUTTON1_DOUBLE_CLICKED, NULL);
+		mousemask(BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
 
 #else
 
-		mousemask(BUTTON1_CLICKED | BUTTON1_RELEASED, NULL);
+		mousemask(BUTTON1_RELEASED, NULL);
 
 #endif
 
@@ -2422,12 +2424,6 @@ reinit_theme:
 			bool	activated = false;
 			ST_MENU_ITEM		*ami;
 
-			/*
-			 * Translate clicked event to released
-			 */
-			if (event_keycode == KEY_MOUSE && event.bstate & BUTTON1_CLICKED)
-				event.bstate |= BUTTON1_RELEASED;
-
 			processed = st_menu_driver(menu, event_keycode, press_alt, &event);
 
 			ami = st_menu_selected_item(&activated);
@@ -2444,7 +2440,7 @@ hide_menu:
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
 				mousemask(prev_mousemask, NULL);
-				mouseinterval(200);
+				mouseinterval(0);
 
 				goto refresh;
 			}
@@ -3624,11 +3620,14 @@ found_next_pattern:
 
 #endif
 
-					if (event.bstate & BUTTON1_CLICKED || event.bstate & BUTTON1_DOUBLE_CLICKED ||
-							event.bstate & BUTTON1_RELEASED)
+					if (event.bstate & BUTTON1_RELEASED)
 					{
 						int		max_cursor_row;
 						int		max_first_row;
+						bool	is_double_click = false;
+						long	ms;
+						time_t	sec;
+						struct timespec spec;
 
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
@@ -3637,6 +3636,22 @@ found_next_pattern:
 							prev_event_keycode = 0;
 							break;
 						}
+
+						clock_gettime(CLOCK_MONOTONIC, &spec);
+						ms = roundl(spec.tv_nsec / 1.0e6);
+						sec = spec.tv_sec;
+
+						if (last_sec > 0)
+						{
+							long	td;
+
+							td = (sec - last_sec) * 1000 + ms - last_ms;
+							if (td < 250)
+								is_double_click = true;
+						}
+
+						last_sec = sec;
+						last_ms = ms;
 
 						cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 						if (cursor_row < 0)
@@ -3658,7 +3673,7 @@ found_next_pattern:
 						if (first_row > max_first_row)
 							first_row = max_first_row;
 
-						if (event.bstate & BUTTON_ALT && event.bstate & BUTTON1_DOUBLE_CLICKED)
+						if (event.bstate & BUTTON_ALT && is_double_click)
 							next_command = cmd_ToggleBookmark;
 					}
 					break;
