@@ -24,7 +24,11 @@ case "$ax_cv_ncursesw" in "no")
 esac
 
 AC_CHECK_LIB([m],[roundl])
-AC_CHECK_LIB([rt],[clock_gettime])
+
+AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+   [],
+   [AC_MSG_ERROR([Function clock_gettime not available.])]
+)
 
 AC_SUBST(enable_debug)
 AC_SUBST(CURSES_LIBS)
