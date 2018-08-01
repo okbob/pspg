@@ -3457,13 +3457,13 @@ found_next_pattern:
 
 					if (event.bstate & BUTTON_ALT && event.bstate & BUTTON5_PRESSED)
 					{
-						next_command = cmd_MoveLeft;
+						next_command = cmd_MoveRight;
 						break;
 					}
 
 					if (event.bstate & BUTTON_ALT && event.bstate & BUTTON4_PRESSED)
 					{
-						next_command = cmd_MoveRight;
+						next_command = cmd_MoveLeft;
 						break;
 					}
 
