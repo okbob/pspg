@@ -2308,7 +2308,7 @@ reinit_theme:
 			{
 				/*
 				 * Store previous event, if this event is mouse press. With it we
-				 * can join following mouse release together, and redure useles
+				 * can join following mouse release together, and reduce useles
 				 * refresh.
 				 */
 				if (event_keycode == KEY_MOUSE && event.bstate == BUTTON1_PRESSED)
@@ -2357,7 +2357,12 @@ reinit_theme:
 
 #else
 
-		if (menu_is_active)
+		/*
+		 * Don't send RESIZE to menu. It cannot to handle this event, and it
+		 * cannot to translate this event. This event is lost in menu.
+		 * So, don't do it.
+		 */
+		if (menu_is_active && event_keycode != KEY_RESIZE)
 		{
 			bool	processed = false;
 			bool	activated = false;
