@@ -1117,7 +1117,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 		w_top_bar(scrdesc) = NULL;
 	}
 
-	if (opts->less_status_bar)
+	if (opts->less_status_bar || opts->no_topbar)
 		scrdesc->top_bar_rows = 0;
 	else
 	{
@@ -1152,7 +1152,8 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 
 	if (bottom_bar != NULL)
 	{
-		scrdesc->main_maxy -= 1;
+		if (!opts->no_commandbar)
+			scrdesc->main_maxy -= 1;
 	}
 }
 
@@ -1765,9 +1766,12 @@ main(int argc, char *argv[])
 		{"HILITE-SEARCH", no_argument, 0, 'G'},
 		{"ignore-case", no_argument, 0, 'i'},
 		{"IGNORE-CASE", no_argument, 0, 'I'},
+		{"no-bars", no_argument, 0, 8},
 		{"no-mouse", no_argument, 0, 2},
 		{"no-sound", no_argument, 0, 3},
 		{"less-status-bar", no_argument, 0, 4},
+		{"without-commandbar", no_argument, 0, 6},
+		{"without-topbar", no_argument, 0, 7},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -1790,6 +1794,8 @@ main(int argc, char *argv[])
 	opts.no_highlight_search = false;
 	opts.force_uniborder = false;
 	opts.force8bit = false;
+	opts.no_commandbar = false;
+	opts.no_topbar = false;
 	opts.theme = 1;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 
@@ -1837,6 +1843,10 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  -F, --quit-if-one-screen\n");
 				fprintf(stderr, "                 quit if content is one screen\n");
+				fprintf(stderr, "  --without-commandbar\n");
+				fprintf(stderr, "  --without-topbar\n");
+				fprintf(stderr, "  --no-bars\n");
+				fprintf(stderr, "                 don't show bottom or top bar\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -1858,6 +1868,16 @@ main(int argc, char *argv[])
 				break;
 			case 5:
 				opts.force_uniborder = true;
+				break;
+			case 6:
+				opts.no_commandbar = true;
+				break;
+			case 7:
+				opts.no_topbar = true;
+				break;
+			case 8:
+				opts.no_commandbar = true;
+				opts.no_topbar = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2161,7 +2181,7 @@ reinit_theme:
 #ifdef COMPILE_MENU
 
 	init_menu_config(&opts);
-	if (!opts.less_status_bar)
+	if (!opts.less_status_bar && !opts.no_commandbar)
 		cmdbar = init_cmdbar(cmdbar);
 
 #endif
