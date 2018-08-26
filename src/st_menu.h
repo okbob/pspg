@@ -29,7 +29,12 @@
 
 #define ST_MENU_OPTION_DEFAULT		1
 #define ST_MENU_OPTION_DISABLED		2
-#define	ST_MENU_OPTION_MARKED		4
+#define ST_MENU_OPTION_MARKED		4
+
+#define ST_MENU_FOCUS_FULL			0		/* all possible events can be processed */
+#define ST_MENU_FOCUS_ALT_MOUSE		1		/* only mouse, ALT key events */
+#define ST_MENU_FOCUS_MOUSE_ONLY	2		/* only mouse events are processed */
+#define ST_MENU_FOCUS_NONE			3		/* menu has not any focus */
 
 /*
  * Uncomment it and set for your environment when you would to
@@ -71,12 +76,15 @@ typedef struct
 	bool	wide_hborders;			/* wide horizontal menu borders like custom menu mc */
 	bool	draw_box;				/* when true, then box is created */
 	bool	left_alligned_shortcuts;	/* when true, a shortcuts are left alligned */
+	bool	funckey_bar_style;		/* when true, menu bar is displayed as mc toolbar */
 	bool	extra_inner_space;		/* when true, then there 2 spaces between text and border */
 	int		shadow_width;			/* when shadow_width is higher than zero, shadow is visible */
 	int		menu_background_cpn;	/* draw area color pair number */
 	int		menu_background_attr;	/* draw area attributte */
-	int		menu_shadow_cpn;		/* draw area color pair number */
-	int		menu_shadow_attr;		/* draw area attributte */
+	int		menu_unfocused_cpn;		/* draw area color pair number when menu has not focus */
+	int		menu_unfocused_attr;	/* draw area attribute when menu has not focus */
+	int		menu_shadow_cpn;		/* menu shadow color pair number */
+	int		menu_shadow_attr;		/* menu shadow area attributte */
 	int		accelerator_cpn;		/* color pair of accelerators */
 	int		accelerator_attr;		/* accelerator attributes */
 	int		cursor_cpn;				/* cursor color pair */
@@ -99,9 +107,20 @@ typedef struct
 
 struct ST_MENU;
 
+typedef struct
+{
+	char	   *text;				/* text of command bar field */
+	bool		alt;				/* should be used like Alt+FX */
+	int			fkey;				/* Func key number */
+	int			code;				/* code of command bar item */
+	int			option;				/* locked, marked, ... (optional) */
+} ST_CMDBAR_ITEM;
+
+struct ST_CMDBAR;
+
 extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn);
 
-extern void st_menu_set_desktop(WINDOW *pan);
+extern void st_menu_set_desktop_window(WINDOW *win);
 extern struct ST_MENU *st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *items, int begin_y, int begin_x, char *title);
 extern struct ST_MENU *st_menu_new_menubar(ST_MENU_CONFIG *config, ST_MENU_ITEM *items);
 extern struct ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_MENU_ITEM *items);
@@ -114,11 +133,18 @@ extern void st_menu_save(struct ST_MENU *menu, int *cursor_rows, int max_rows);
 extern void st_menu_load(struct ST_MENU *menu, int *cursor_rows);
 
 extern ST_MENU_ITEM *st_menu_selected_item(bool *activated);
+extern ST_CMDBAR_ITEM *st_menu_selected_command(bool *activated);
 
 extern bool st_menu_enable_option(struct ST_MENU *menu, int code, int option);
 extern bool st_menu_reset_option(struct ST_MENU *menu, int code, int option);
 extern bool st_menu_set_option(struct ST_MENU *menu, int code, int option, bool value);
 extern bool st_menu_reset_all_submenu_options(struct ST_MENU *menu, int menu_code, int option);
 extern bool st_menu_reset_all_options(struct ST_MENU *menu, int option);
+extern void st_menu_set_focus(struct ST_MENU *menu, int focus);
+
+extern struct ST_CMDBAR *st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items);
+extern void st_cmdbar_post(struct ST_CMDBAR *cmdbar);
+extern void st_cmdbar_unpost(struct ST_CMDBAR *cmdbar);
+extern void st_cmdbar_free(struct ST_CMDBAR *cmdbar);
 
 #endif

@@ -1139,38 +1139,6 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	w_bottom_bar(scrdesc) = bottom_bar;
 	werase(bottom_bar);
 
-	if (!opts->less_status_bar > 0)
-	{
-		wattron(bottom_bar, COLOR_PAIR(21) | A_BOLD);
-		mvwaddstr(bottom_bar, 0, 0, " 9");
-		wattroff(bottom_bar, COLOR_PAIR(21) | A_BOLD);
-		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-		mvwprintw(bottom_bar, 0, 2, "%-4s", "Menu ");
-		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
-
-		wattron(bottom_bar, COLOR_PAIR(21) | A_BOLD);
-		mvwaddstr(bottom_bar, 0, 7, "10");
-		wattroff(bottom_bar, COLOR_PAIR(21) | A_BOLD);
-		wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-		mvwaddstr(bottom_bar, 0, 9, "Q");
-		wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
-		wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-		mvwprintw(bottom_bar, 0, 10, "%-4s", "uit");
-		wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
-
-		if (desc->headline_transl != NULL)
-		{
-			wattron(bottom_bar, bottom_bar_theme->bottom_light_attr);
-			mvwaddstr(bottom_bar, 0, 15, "0..4");
-			wattroff(bottom_bar, bottom_bar_theme->bottom_light_attr);
-			wattron(bottom_bar, bottom_bar_theme->bottom_attr);
-			mvwprintw(bottom_bar, 0, 19, "%s", " Col.Freeze ");
-			wattroff(bottom_bar, bottom_bar_theme->bottom_attr);
-		}
-
-		wnoutrefresh(bottom_bar);
-	}
-
 	scrdesc->main_maxy = maxy;
 	scrdesc->main_maxx = maxx;
 	scrdesc->main_start_y = 0;
@@ -1809,6 +1777,7 @@ main(int argc, char *argv[])
 
 	bool	menu_is_active = false;
 	struct ST_MENU		*menu = NULL;
+	struct ST_CMDBAR	*cmdbar = NULL;
 
 #endif
 
@@ -2189,6 +2158,15 @@ reinit_theme:
 
 #endif
 
+#ifdef COMPILE_MENU
+
+	init_menu_config(&opts);
+	if (!opts.less_status_bar)
+		cmdbar = init_cmdbar(cmdbar);
+
+#endif
+
+
 	while (true)
 	{
 		bool		refresh_scr = false;
@@ -2269,8 +2247,14 @@ reinit_theme:
 
 #ifdef COMPILE_MENU
 
+			if (cmdbar)
+				st_cmdbar_post(cmdbar);
+
 			if (menu != NULL && menu_is_active)
+			{
 				st_menu_post(menu);
+				st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
+			}
 
 #endif
 
@@ -2338,7 +2322,6 @@ reinit_theme:
 		}
 		else
 		{
-			
 			command = next_command;
 			next_command = cmd_Invalid;
 			redirect_mode = true;
@@ -2362,27 +2345,38 @@ reinit_theme:
 		 * cannot to translate this event. This event is lost in menu.
 		 * So, don't do it.
 		 */
-		if (menu_is_active && event_keycode != KEY_RESIZE)
+		if (!redirect_mode && event_keycode != KEY_RESIZE)
 		{
 			bool	processed = false;
 			bool	activated = false;
 			ST_MENU_ITEM		*ami;
+			ST_CMDBAR_ITEM		*aci;
 
 			processed = st_menu_driver(menu, event_keycode, press_alt, &event);
-
-			ami = st_menu_selected_item(&activated);
-
-			if (processed && activated)
+			if (processed)
 			{
-				next_command = ami->code;
-				goto hide_menu;
+				ami = st_menu_selected_item(&activated);
+				if (activated)
+				{
+					next_command = ami->code;
+					goto hide_menu;
+				}
+
+				aci = st_menu_selected_command(&activated);
+				if (activated)
+				{
+					next_command = aci->code;
+					goto refresh;
+				}
 			}
 
-			if (!processed && (event_keycode == ST_MENU_ESCAPE || event_keycode == KEY_MOUSE))
+			if (menu_is_active && !processed &&
+					(event_keycode == ST_MENU_ESCAPE || event_keycode == KEY_MOUSE))
 			{
 hide_menu:
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
+				st_menu_set_focus(menu, ST_MENU_FOCUS_NONE);
 
 				/*
 				 * When we leave menu due mouse action, and this mouse action
@@ -2395,7 +2389,10 @@ hide_menu:
 				goto refresh;
 			}
 
-			continue;
+			if (!processed)
+				command = translate_event(event_keycode, press_alt);
+			else
+				continue;
 		}
 		else
 		{
@@ -2427,10 +2424,12 @@ hide_menu:
 				{
 					if (menu == NULL || reinit)
 					{
-						st_menu_set_desktop(stdscr);
-						menu = init_menu(&opts, menu);
+						st_menu_set_desktop_window(stdscr);
+						init_menu_config(&opts);
+						menu = init_menu(menu);
 					}
 
+					st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
 					post_menu(&opts, menu);
 
 					menu_is_active = true;
@@ -3743,6 +3742,9 @@ refresh:
 			create_layout_dimensions(&scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&scrdesc, &desc, first_data_row, first_row);
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+
+			if (cmdbar)
+				cmdbar = init_cmdbar(cmdbar);
 
 			refresh_scr = false;
 			scrdesc.refresh_scr = false;

@@ -18,6 +18,12 @@
 #define MENU_ITEM_THEME				1
 #define MENU_ITEM_OPTIONS			2
 
+ST_CMDBAR_ITEM _bottombar[] = {
+	{"Menu", false, 9, cmd_ShowMenu},
+	{"Quit", false, 10, cmd_Quit},
+	{NULL}
+};
+
 ST_MENU_ITEM _file[] = {
 	{"~S~ave", cmd_SaveData, "s"},
 	{"--"},
@@ -115,6 +121,7 @@ ST_MENU_ITEM menubar[] = {
 
 ST_MENU_CONFIG		menu_config;
 ST_MENU_CONFIG		menu_config2;
+int menu_theme = -1;
 
 
 /*
@@ -165,15 +172,11 @@ get_menu_style(int main_theme)
 }
 
 /*
- * Prepare configuration and initialize menu
+ * Prepare configuration for st_menu
  */
-struct ST_MENU *
-init_menu(Options *opts, struct ST_MENU *current_menu)
+void
+init_menu_config(Options *opts)
 {
-	struct ST_MENU		*menu = NULL;
-
-	int		menu_theme;
-
 	menu_config.force8bit = opts->force8bit;
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
@@ -198,6 +201,16 @@ init_menu(Options *opts, struct ST_MENU *current_menu)
 		menu_config.shadow_width = 2;
 	else if (opts->theme == 4)
 		menu_config.text_space = 4;
+}
+
+
+/*
+ * Prepare configuration and initialize menu
+ */
+struct ST_MENU *
+init_menu(struct ST_MENU *current_menu)
+{
+	struct ST_MENU		*menu = NULL;
 
 	if (menu_theme == ST_MENU_STYLE_FREE_DOS)
 		menu = st_menu_new_menubar2(&menu_config, &menu_config2, menubar);
@@ -214,6 +227,22 @@ init_menu(Options *opts, struct ST_MENU *current_menu)
 	}
 
 	return menu;
+}
+
+struct ST_CMDBAR *
+init_cmdbar(struct ST_CMDBAR *current_cmdbar)
+{
+	struct ST_CMDBAR	   *cmdbar = NULL;
+
+	cmdbar = st_cmdbar_new(&menu_config, _bottombar);
+
+	if (current_cmdbar)
+	{
+		st_cmdbar_unpost(current_cmdbar);
+		st_cmdbar_free(current_cmdbar);
+	}
+
+	return cmdbar;
 }
 
 void
