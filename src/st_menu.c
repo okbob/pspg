@@ -564,6 +564,10 @@ menubar_draw(struct ST_MENU *menu)
 
 	selected_item = NULL;
 
+	/* do nothing when content is invisible */
+	if (menu->focus == ST_MENU_FOCUS_NONE)
+		return;
+
 	has_focus = menu->focus == ST_MENU_FOCUS_FULL;
 	has_accelerators = menu->focus == ST_MENU_FOCUS_FULL || 
 								menu->focus == ST_MENU_FOCUS_ALT_MOUSE;
@@ -2378,11 +2382,11 @@ cmdbar_driver(struct ST_CMDBAR *cmdbar, int c, bool alt, MEVENT *mevent)
 						}
 					}
 				}
-
-				selected_command = false;
-				return false;
 			}
 		}
+
+		selected_command = NULL;
+		return true;
 	}
 	else
 	{
