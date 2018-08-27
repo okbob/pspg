@@ -89,6 +89,8 @@ save_config(char *path, Options *opts)
 	fprintf(f, "no_highlight_lines = %s\n", opts->no_highlight_lines ? "true" : "false");
 	fprintf(f, "force_uniborder = %s\n", opts->force_uniborder ? "true" : "false");
 	fprintf(f, "theme = %d\n", opts->theme);
+	fprintf(f, "without_commandbar = %s\n", opts->no_commandbar ? "true" : "false");
+	fprintf(f, "without_topbar = %s\n", opts->no_topbar ? "true" : "false");
 
 	fclose(f);
 
@@ -136,6 +138,10 @@ load_config(char *path, Options *opts)
 				opts->force_uniborder = bool_val;
 			else if (strcmp(key, "theme") == 0)
 				opts->theme = int_val;
+			else if (strcmp(key, "without_commandbar") == 0)
+				opts->no_commandbar = bool_val;
+			else if (strcmp(key, "without_topbar") == 0)
+				opts->no_topbar = bool_val;
 
 			free(line);
 			line = NULL;
