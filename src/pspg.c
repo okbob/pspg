@@ -1117,7 +1117,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 		w_top_bar(scrdesc) = NULL;
 	}
 
-	if (opts->less_status_bar && opts->no_topbar)
+	if (opts->no_topbar)
 		scrdesc->top_bar_rows = 0;
 	else
 	{
