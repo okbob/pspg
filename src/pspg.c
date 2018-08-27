@@ -28,6 +28,7 @@
 #include <sys/ioctl.h>
 
 #include <sys/param.h>
+#include <time.h>
 
 #include "commands.h"
 #include "config.h"
