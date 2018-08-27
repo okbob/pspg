@@ -84,7 +84,9 @@ typedef enum PspgCommand
 	cmd_ForwardSearch,
 	cmd_BackwardSearch,
 	cmd_SearchNext,
-	cmd_SearchPrev
+	cmd_SearchPrev,
+	cmd_ShowTopBar,
+	cmd_ShowBottomBar
 } PspgCommand;
 
 extern void initialize_special_keycodes();

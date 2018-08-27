@@ -1212,6 +1212,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		(void) maxy;
 
+		werase(top_bar);
+
 		wattron(top_bar, top_bar_theme->title_attr);
 		if (desc->title[0] != '\0' && desc->title_rows > 0)
 			mvwprintw(top_bar, 0, 0, "%s", desc->title);
@@ -1846,7 +1848,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --without-commandbar\n");
 				fprintf(stderr, "  --without-topbar\n");
 				fprintf(stderr, "  --no-bars\n");
-				fprintf(stderr, "                 don't show bottom or top bar\n");
+				fprintf(stderr, "                 don't show bottom, top bar or both\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -2494,6 +2496,28 @@ reset_search:
 				scrdesc.searchterm_char_size = 0;
 
 				reset_searching_lineinfo(&desc.rows);
+				break;
+
+			case cmd_ShowTopBar:
+				opts.no_topbar = !opts.no_topbar;
+				refresh_scr = true;
+				break;
+
+			case cmd_ShowBottomBar:
+				opts.no_commandbar = !opts.no_commandbar;
+				if (opts.no_commandbar)
+				{
+					if (cmdbar)
+					{
+						st_cmdbar_unpost(cmdbar);
+						st_cmdbar_free(cmdbar);
+						cmdbar = NULL;
+					}
+				}
+				else
+					cmdbar = init_cmdbar(cmdbar);
+
+				refresh_scr = true;
 				break;
 
 			case cmd_UtfArtToggle:

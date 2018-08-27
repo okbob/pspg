@@ -103,6 +103,9 @@ ST_MENU_ITEM _options[] = {
 	{"~M~ouse support", cmd_MouseToggle, "M-m"},
 	{"~Q~uiet mode", cmd_SoundToggle, NULL},
 	{"--"},
+	{"Show top bar", cmd_ShowTopBar, NULL},
+	{"Show bottom bar", cmd_ShowBottomBar, NULL},
+	{"--"},
 	{"Force unicode ~b~orders", cmd_UtfArtToggle, NULL},
 	{"~T~heme", MENU_ITEM_THEME, NULL, 0, 0,  0, _theme},
 	{"--"},
@@ -268,6 +271,9 @@ post_menu(Options *opts, struct ST_MENU *menu)
 									  !(opts->ignore_case || opts->ignore_lower_case));
 	st_menu_set_option(menu, cmd_CISearchSet, ST_MENU_OPTION_MARKED, opts->ignore_case);
 	st_menu_set_option(menu, cmd_USSearchSet, ST_MENU_OPTION_MARKED, opts->ignore_lower_case);
+
+	st_menu_set_option(menu, cmd_ShowTopBar, ST_MENU_OPTION_MARKED, !opts->no_topbar);
+	st_menu_set_option(menu, cmd_ShowBottomBar, ST_MENU_OPTION_MARKED, !opts->no_commandbar);
 
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
