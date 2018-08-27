@@ -66,7 +66,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "1.4.0"
+#define PSPG_VERSION "1.4.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -1117,7 +1117,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 		w_top_bar(scrdesc) = NULL;
 	}
 
-	if (opts->less_status_bar || opts->no_topbar)
+	if (opts->less_status_bar && opts->no_topbar)
 		scrdesc->top_bar_rows = 0;
 	else
 	{
@@ -1250,7 +1250,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		mvwprintw(top_bar, 0, maxx - strlen(buffer), "%s", buffer);
 		wnoutrefresh(top_bar);
 	}
-	else
+
+	if (opts->less_status_bar);
 	{
 		/* less-status-bar */
 		char	title[65];
@@ -1965,6 +1966,18 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (opts.less_status_bar)
+	{
+		if (opts.no_commandbar)
+		{
+			fprintf(stderr,
+					"less-status-bar cannot be used together with without-commandbar or no-bars options\n");
+			exit(EXIT_FAILURE);
+		}
+
+		opts.no_topbar = true;
+	}
+
 	setlocale(LC_ALL, "");
 
 	/* Don't use UTF when terminal doesn't use UTF */
@@ -2515,6 +2528,7 @@ reset_search:
 					}
 				}
 				else
+					if (!opts.less_status_bar)
 					cmdbar = init_cmdbar(cmdbar);
 
 				refresh_scr = true;
