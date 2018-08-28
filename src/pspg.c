@@ -67,7 +67,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "1.4.1"
+#define PSPG_VERSION "1.4.2"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -1252,7 +1252,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		wnoutrefresh(top_bar);
 	}
 
-	if (opts->less_status_bar);
+	if (opts->less_status_bar)
 	{
 		/* less-status-bar */
 		char	title[65];
@@ -1968,16 +1968,7 @@ main(int argc, char *argv[])
 	}
 
 	if (opts.less_status_bar)
-	{
-		if (opts.no_commandbar)
-		{
-			fprintf(stderr,
-					"less-status-bar cannot be used together with without-commandbar or no-bars options\n");
-			exit(EXIT_FAILURE);
-		}
-
 		opts.no_topbar = true;
-	}
 
 	setlocale(LC_ALL, "");
 
