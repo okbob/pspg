@@ -203,6 +203,14 @@ cmd_string(int cmd)
 			return "SearchNext";
 		case cmd_SearchPrev:
 			return "SearchPrev";
+		case cmd_ShowTopBar:
+			return "ShowTopBar";
+		case cmd_ShowBottomBar:
+			return "ShowBottomBar";
+		case cmd_RowNumToggle:
+			return "RowNumToggle";
+		case cmd_GotoLine:
+			return "GotoLine";
 
 		default:
 			return "unknown command";
@@ -217,6 +225,8 @@ translate_event(int c, bool alt)
 	{
 		switch (c)
 		{
+			case 'l':
+				return cmd_GotoLine;
 			case 'm':
 				return cmd_MouseToggle;
 			case 'n':

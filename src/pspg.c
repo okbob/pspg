@@ -3297,6 +3297,58 @@ recheck_end:
 					break;
 				}
 
+			case cmd_GotoLine:
+				{
+					char	linenotxt[256];
+
+					get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1);
+					if (linenotxt[0] != '\0')
+					{
+						char   *endptr;
+						long lineno;
+
+						errno = 0;
+						lineno = strtol(linenotxt, &endptr, 10);
+
+						if (endptr == linenotxt)
+							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number", NULL, true, true, false);
+						else if (errno != 0)
+							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false);
+						else
+						{
+							int max_cursor_row;
+							int max_first_row;
+
+							cursor_row = lineno - 1;
+							if (cursor_row < 0)
+								cursor_row = 0;
+
+							max_cursor_row = MAX_CURSOR_ROW;
+		  					if (cursor_row > max_cursor_row)
+							{
+								cursor_row = max_cursor_row;
+								make_beep(&opts);
+							}
+
+							if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
+							{
+								max_first_row = MAX_FIRST_ROW;
+
+								if (max_first_row < 0)
+									max_first_row = 0;
+
+								first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+
+								if (first_row > max_first_row)
+									first_row = max_first_row;
+								if (first_row < 0)
+									first_row = 0;
+							}
+						}
+					}
+					break;
+				}
+
 			case cmd_SaveData:
 				{
 					char	buffer[MAXPATHLEN + 1024];
