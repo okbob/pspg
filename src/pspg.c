@@ -83,6 +83,7 @@ static unsigned char	input;
 static bool input_avail = false;
 
 static WINDOW *g_bottom_bar;
+static WINDOW *counting_rows = NULL;
 
 #endif
 
@@ -102,6 +103,7 @@ int	debug_eventno = 0;
 bool	press_alt = false;
 MEVENT		event;
 
+static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt);
 
 int
@@ -942,12 +944,20 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
  * Prepare dimensions of windows layout
  */
 static void
-create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
+create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 				   int fixCols, int fixRows,
 				   int maxy, int maxx)
 {
 	scrdesc->maxy = maxy;
 	scrdesc->maxx = maxx;
+
+	if (opts->show_rownum)
+	{
+		int startx = number_width(desc->maxy) + 1;
+
+		scrdesc->main_start_x = startx;
+		scrdesc->main_maxx -= startx;
+	}
 
 	scrdesc->fix_cols_cols = 0;
 
@@ -984,10 +994,10 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	/* disable fixed parts when is not possible draw in screen */
-	if (scrdesc->fix_cols_cols > maxx)
+	if (scrdesc->fix_cols_cols > scrdesc->main_maxx)
 		scrdesc->fix_cols_cols = 0;
 
-	if (scrdesc->fix_rows_rows > maxy)
+	if (scrdesc->fix_rows_rows > scrdesc->main_maxy)
 		scrdesc->fix_rows_rows = 0;
 
 	if (scrdesc->fix_rows_rows == 0 && !desc->is_expanded_mode)
@@ -1000,8 +1010,11 @@ create_layout_dimensions(ScrDesc *scrdesc, DataDesc *desc,
 }
 
 static void
-create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
+create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
 {
+	/* protect display against unwanted artefacts */
+	werase(stdscr);
+
 	if (w_luc(scrdesc) != NULL)
 	{
 		delwin(w_luc(scrdesc));
@@ -1022,11 +1035,20 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		delwin(w_rows(scrdesc));
 		w_rows(scrdesc) = NULL;
 	}
-
 	if (w_footer(scrdesc) != NULL)
 	{
 		delwin(w_footer(scrdesc));
 		w_footer(scrdesc) = NULL;
+	}
+	if (w_rownum(scrdesc) != NULL)
+	{
+		delwin(w_rownum(scrdesc));
+		w_rownum(scrdesc) = NULL;
+	}
+	if (w_rownum_luc(scrdesc) != NULL)
+	{
+		delwin(w_rownum_luc(scrdesc));
+		w_rownum_luc(scrdesc) = NULL;
 	}
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
@@ -1054,8 +1076,11 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 
 		if (scrdesc->footer_rows > 0)
 		{
-			w_footer(scrdesc) = subwin(stdscr, scrdesc->footer_rows,
-									scrdesc->maxx, scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows, 0);
+			w_footer(scrdesc) = subwin(stdscr,
+										scrdesc->footer_rows,
+										scrdesc->main_maxx,
+										scrdesc->main_start_y + scrdesc->fix_rows_rows + scrdesc->rows_rows,
+										scrdesc->main_start_x);
 		}
 	}
 	else if (desc->headline_transl != NULL)
@@ -1068,32 +1093,70 @@ create_layout(ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_ro
 		scrdesc->rows_rows = 0;
 		scrdesc->fix_rows_rows = 0;
 		scrdesc->footer_rows = min_int(scrdesc->main_maxy, desc->last_row + 1);
-		w_footer(scrdesc) = subwin(stdscr, scrdesc->footer_rows, scrdesc->main_maxx, scrdesc->main_start_y, 0);
+		w_footer(scrdesc) = subwin(stdscr,
+									scrdesc->footer_rows,
+									scrdesc->main_maxx,
+									scrdesc->main_start_y,
+									scrdesc->main_start_x);
 	}
 
 	if (scrdesc->fix_rows_rows > 0)
 	{
-		w_fix_rows(scrdesc) = subwin(stdscr, scrdesc->fix_rows_rows,
-								   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
-								   scrdesc->main_start_y, scrdesc->fix_cols_cols);
+		w_fix_rows(scrdesc) = subwin(stdscr,
+									  scrdesc->fix_rows_rows,
+									  scrdesc->main_maxx - scrdesc->fix_cols_cols,
+									  scrdesc->main_start_y,
+									  scrdesc->fix_cols_cols + scrdesc->main_start_x);
 	}
 
 	if (scrdesc->fix_cols_cols > 0 && scrdesc->rows_rows > 0)
 	{
-		w_fix_cols(scrdesc) = subwin(stdscr, scrdesc->rows_rows, scrdesc->fix_cols_cols,
-									 scrdesc->fix_rows_rows + scrdesc->main_start_y, 0);
+		w_fix_cols(scrdesc) = subwin(stdscr,
+									  scrdesc->rows_rows,
+									  scrdesc->fix_cols_cols,
+									  scrdesc->fix_rows_rows + scrdesc->main_start_y,
+									  scrdesc->main_start_x);
 	}
 
 	if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 	{
-		w_luc(scrdesc) = subwin(stdscr, scrdesc->fix_rows_rows, scrdesc->fix_cols_cols, scrdesc->main_start_y, 0);
+		w_luc(scrdesc) = subwin(stdscr,
+								scrdesc->fix_rows_rows,
+								scrdesc->fix_cols_cols,
+								scrdesc->main_start_y,
+								scrdesc->main_start_x);
 	}
 
 	if (scrdesc->rows_rows > 0)
 	{
 		w_rows(scrdesc) = subwin(stdscr, scrdesc->rows_rows,
-							   min_int(scrdesc->maxx - scrdesc->fix_cols_cols, scrdesc->maxx - scrdesc->fix_cols_cols + 1),
-							   scrdesc->fix_rows_rows + scrdesc->main_start_y, scrdesc->fix_cols_cols);
+								   scrdesc->main_maxx - scrdesc->fix_cols_cols,
+								   scrdesc->fix_rows_rows + scrdesc->main_start_y,
+								   scrdesc->fix_cols_cols + scrdesc->main_start_x);
+	}
+
+	if (scrdesc->fix_rows_rows > 0 && opts->show_rownum)
+	{
+		Theme   *theme = &scrdesc->themes[WINDOW_ROWNUM_LUC];
+
+		w_rownum_luc(scrdesc) = subwin(stdscr,
+								   scrdesc->fix_rows_rows,
+								   scrdesc->main_start_x,
+								   scrdesc->main_start_y,
+								   0);
+
+		wbkgd(w_rownum_luc(scrdesc), theme->data_attr);
+		werase(w_rownum_luc(scrdesc));
+	}
+	if (scrdesc->rows_rows + scrdesc->footer_rows > 0 && opts->show_rownum)
+	{
+		Theme   *theme = &scrdesc->themes[WINDOW_ROWNUM];
+
+		w_rownum(scrdesc) = subwin(stdscr,
+								   scrdesc->rows_rows + scrdesc->footer_rows,
+								   scrdesc->main_start_x,
+								   scrdesc->fix_rows_rows + scrdesc->main_start_y,
+								   0);
 	}
 }
 
@@ -1104,9 +1167,9 @@ static void
 refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 {
 	int		maxy, maxx;
+	int		startx;
 	WINDOW	   *top_bar = w_top_bar(scrdesc);
 	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
-	Theme	   *bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
 	refresh();
 	getmaxyx(stdscr, maxy, maxx);
@@ -1158,6 +1221,9 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	}
 }
 
+/*
+ * Returns width of number
+ */
 static int
 number_width(int num)
 {
@@ -1202,8 +1268,31 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	char	buffer[200];
 	WINDOW   *top_bar = w_top_bar(scrdesc);
 	WINDOW   *bottom_bar = w_bottom_bar(scrdesc);
+	WINDOW   *rownum = w_rownum(scrdesc);
 	Theme	*top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
 	Theme	*bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+	Theme   *rownum_theme = &scrdesc->themes[WINDOW_ROWNUM];
+
+/*
+	if (rownum)
+	{
+		int		i;
+
+		werase(rownum);
+
+		for (i = 0; i < scrdesc->main_maxy - desc->fixed_rows + fix_rows_offset; i++)
+		{
+			if (first_row + i + 1 - fix_rows_offset > 0)
+				mvwprintw(rownum, i + desc->fixed_rows - fix_rows_offset, 0,
+							"%*d",
+								  number_width(desc->maxy),
+								  first_row + i + 1 - fix_rows_offset);
+		}
+
+		wnoutrefresh(rownum);
+	}
+
+*/
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
@@ -1801,6 +1890,7 @@ main(int argc, char *argv[])
 	opts.no_commandbar = false;
 	opts.no_topbar = false;
 	opts.theme = 1;
+	opts.show_rownum = true;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 
 
@@ -2149,14 +2239,18 @@ reinit_theme:
 		}
 	}
 
-	create_layout_dimensions(&scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
-	create_layout(&scrdesc, &desc, first_data_row, first_row);
+	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
+	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
+
+	create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
+	create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
 	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
 	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_COLS]);
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
+
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
@@ -2260,16 +2354,32 @@ reinit_theme:
 							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
 							&desc, &scrdesc, &opts);
 
-				if (w_luc(&scrdesc) != NULL)
+				window_fill(WINDOW_ROWNUM_LUC,
+							0,
+							0,
+							0,
+							&desc, &scrdesc, &opts);
+
+				window_fill(WINDOW_ROWNUM,
+							first_data_row + first_row - fix_rows_offset,
+							0,
+							cursor_row - first_row + fix_rows_offset,
+							&desc, &scrdesc, &opts);
+
+				if (w_luc(&scrdesc))
 					wnoutrefresh(w_luc(&scrdesc));
-				if (w_rows(&scrdesc) != NULL)
+				if (w_rows(&scrdesc))
 					wnoutrefresh(w_rows(&scrdesc));
-				if (w_fix_cols(&scrdesc) != NULL)
+				if (w_fix_cols(&scrdesc))
 					wnoutrefresh(w_fix_cols(&scrdesc));
-				if (w_fix_rows(&scrdesc) != NULL)
+				if (w_fix_rows(&scrdesc))
 					wnoutrefresh(w_fix_rows(&scrdesc));
-				if (w_footer(&scrdesc) != NULL)
+				if (w_footer(&scrdesc))
 					wnoutrefresh(w_footer(&scrdesc));
+				if (w_rownum(&scrdesc))
+					wnoutrefresh(w_rownum(&scrdesc));
+				if (w_rownum_luc(&scrdesc))
+					wnoutrefresh(w_rownum_luc(&scrdesc));
 			} /* !no_doupdate */
 
 #ifdef COMPILE_MENU
@@ -3789,8 +3899,8 @@ refresh:
 			getmaxyx(stdscr, maxy, maxx);
 
 			refresh_aux_windows(&opts, &scrdesc, &desc);
-			create_layout_dimensions(&scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
-			create_layout(&scrdesc, &desc, first_data_row, first_row);
+			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
+			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 			if (cmdbar)

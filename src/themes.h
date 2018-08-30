@@ -35,6 +35,7 @@ typedef struct
 	attr_t bottom_attr;				/* colors for bottom text */
 	attr_t bottom_light_attr;		/* colors for lighter bottom text */
 	attr_t prompt_attr;				/* less prompt color */
+	attr_t cursor_rownum_attr;		/* colors for cursor rownum column */
 } Theme;
 
 #define		WINDOW_LUC				0
@@ -44,6 +45,8 @@ typedef struct
 #define		WINDOW_FOOTER			4
 #define		WINDOW_TOP_BAR			5
 #define		WINDOW_BOTTOM_BAR		6
+#define		WINDOW_ROWNUM			7
+#define		WINDOW_ROWNUM_LUC		8
 
 extern void initialize_color_pairs(int theme);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);

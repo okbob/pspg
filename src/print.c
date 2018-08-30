@@ -39,6 +39,8 @@ window_fill(int window_identifier,
 	Theme		*t;
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
+	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
+	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	int			positions[100][2];
 	int			npositions;
 
@@ -55,6 +57,13 @@ window_fill(int window_identifier,
 	/* fast leaving */
 	if (win == NULL)
 		return;
+
+	if (is_rownum_luc)
+	{
+		/* just clean */
+		werase(win);
+		return;
+	}
 
 	/* skip first x LineBuffers */
 	while (srcy > 1000)
@@ -78,6 +87,7 @@ window_fill(int window_identifier,
 		bool		is_cursor_row = false;
 		bool		is_found_row = false;
 		bool		is_pattern_row = false;
+		char		rownum_buffer[10];
 
 		is_cursor_row = row == cursor_row;
 
@@ -87,7 +97,14 @@ window_fill(int window_identifier,
 			lnb_row = 0;
 		}
 
-		if (lnb != NULL && lnb_row < lnb->nrows)
+		if (is_rownum)
+		{
+			int rowno = row + srcy_bak + 1 - desc->first_data_row;
+
+			snprintf(rownum_buffer, sizeof(rownum_buffer), "%*d ", maxx - 1, rowno);
+			rowstr = rownum_buffer;
+		}
+		else if (lnb != NULL && lnb_row < lnb->nrows)
 		{
 			rowstr = lnb->rows[lnb_row];
 			if (lnb->lineinfo != NULL)
@@ -248,6 +265,14 @@ window_fill(int window_identifier,
 		wattron(win, active_attr);
 
 		wmove(win, row++, 0);
+
+		if (is_rownum)
+		{
+			/* row numbers can be displayed simply */
+			waddstr(win, rowstr);
+			wattroff(win, active_attr);
+			continue;
+		}
 
 		if (rowstr != NULL)
 		{

@@ -98,12 +98,12 @@ typedef struct
 	int		maxy;					/* max y size of screen */
 	int		maxx;					/* max x size of screen */
 	int		main_maxy;				/* max y size of main place (fixed + data + footer rows) */
-	int		main_maxx;				/* max x size of main place (should be same like maxx) */
+	int		main_maxx;				/* max x size of main place (maxx - main_start_x) */
 	int		main_start_y;			/* y position of first row of main place */
 	int		main_start_x;			/* x position of first row of main place */
 	int		top_bar_rows;			/* 1 or 0 when top bar is not used */
-	WINDOW	*wins[7];
-	Theme	themes[7];
+	WINDOW	*wins[9];
+	Theme	themes[9];
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */
@@ -128,6 +128,8 @@ typedef struct
 #define		w_footer(scrdesc)		((scrdesc)->wins[WINDOW_FOOTER])
 #define		w_top_bar(scrdesc)		((scrdesc)->wins[WINDOW_TOP_BAR])
 #define		w_bottom_bar(scrdesc)	((scrdesc)->wins[WINDOW_BOTTOM_BAR])
+#define		w_rownum(scrdesc)		((scrdesc)->wins[WINDOW_ROWNUM])
+#define		w_rownum_luc(scrdesc)	((scrdesc)->wins[WINDOW_ROWNUM_LUC])
 
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, DataDesc *desc, ScrDesc *scrdesc, Options *opts);

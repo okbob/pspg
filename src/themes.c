@@ -70,6 +70,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, -1, -1);		/* color of marked search pattern in no-hl line mode */
 			init_pair(19, -1, -1);		/* color of marked search pattern in cursor */
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			init_pair(21, -1, -1);							/* rownum colors */
 
 			break;
 		case 1:
@@ -94,6 +95,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_GREEN, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			init_pair(21, COLOR_WHITE, COLOR_CYAN);
 			break;
 		case 2:
 			assume_default_colors(COLOR_WHITE, COLOR_CYAN);
@@ -117,7 +119,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-
+			init_pair(21, COLOR_BLACK, COLOR_WHITE);
 			break;
 		case 3:
 			assume_default_colors(COLOR_BLACK, COLOR_CYAN);
@@ -597,6 +599,20 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->pattern_data_attr |= 0;
 			t->pattern_line_attr |= 0;
 			t->cursor_pattern_attr |= A_REVERSE;
+			break;
+
+		case WINDOW_ROWNUM:
+		case WINDOW_ROWNUM_LUC:
+			t->data_attr = COLOR_PAIR(21);
+			t->cursor_data_attr = COLOR_PAIR(10);
+			t->bookmark_data_attr = COLOR_PAIR(14);
+			t->cursor_bookmark_attr = COLOR_PAIR(14);
+			t->pattern_data_attr = COLOR_PAIR(16);
+
+			t->data_attr |= _in(theme, (int[]) { 1, 12, 13, 14, -1}, A_BOLD,0);
+			t->cursor_data_attr |= _notin(theme, (int[]) {14, 1, -1}, A_BOLD, 0);
+			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
+			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
 			break;
 	}
 

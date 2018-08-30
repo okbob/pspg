@@ -30,6 +30,7 @@ typedef struct
 	bool	force8bit;
 	bool	no_commandbar;
 	bool	no_topbar;
+	bool	show_rownum;
 	int		theme;
 	int		freezed_cols;
 } Options;
