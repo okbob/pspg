@@ -219,6 +219,8 @@ translate_event(int c, bool alt)
 		{
 			case 'm':
 				return cmd_MouseToggle;
+			case 'n':
+				return cmd_RowNumToggle;
 			case 'o':
 				return cmd_FlushBookmarks;
 			case 'k':

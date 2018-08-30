@@ -1012,9 +1012,6 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 static void
 create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
 {
-	/* protect display against unwanted artefacts */
-	werase(stdscr);
-
 	if (w_luc(scrdesc) != NULL)
 	{
 		delwin(w_luc(scrdesc));
@@ -1146,7 +1143,6 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 								   0);
 
 		wbkgd(w_rownum_luc(scrdesc), theme->data_attr);
-		werase(w_rownum_luc(scrdesc));
 	}
 	if (scrdesc->rows_rows + scrdesc->footer_rows > 0 && opts->show_rownum)
 	{
@@ -1271,28 +1267,6 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	WINDOW   *rownum = w_rownum(scrdesc);
 	Theme	*top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
 	Theme	*bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
-	Theme   *rownum_theme = &scrdesc->themes[WINDOW_ROWNUM];
-
-/*
-	if (rownum)
-	{
-		int		i;
-
-		werase(rownum);
-
-		for (i = 0; i < scrdesc->main_maxy - desc->fixed_rows + fix_rows_offset; i++)
-		{
-			if (first_row + i + 1 - fix_rows_offset > 0)
-				mvwprintw(rownum, i + desc->fixed_rows - fix_rows_offset, 0,
-							"%*d",
-								  number_width(desc->maxy),
-								  first_row + i + 1 - fix_rows_offset);
-		}
-
-		wnoutrefresh(rownum);
-	}
-
-*/
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
@@ -1865,6 +1839,7 @@ main(int argc, char *argv[])
 		{"less-status-bar", no_argument, 0, 4},
 		{"without-commandbar", no_argument, 0, 6},
 		{"without-topbar", no_argument, 0, 7},
+		{"show-line-numbers", no_argument, 0, 9},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -1890,7 +1865,7 @@ main(int argc, char *argv[])
 	opts.no_commandbar = false;
 	opts.no_topbar = false;
 	opts.theme = 1;
-	opts.show_rownum = true;
+	opts.show_rownum = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 
 
@@ -1972,6 +1947,9 @@ main(int argc, char *argv[])
 			case 8:
 				opts.no_commandbar = true;
 				opts.no_topbar = true;
+				break;
+			case 9:
+				opts.show_rownum = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2636,6 +2614,11 @@ reset_search:
 				refresh_scr = true;
 				break;
 
+			case cmd_RowNumToggle:
+				opts.show_rownum = !opts.show_rownum;
+				refresh_scr = true;
+				break;
+
 			case cmd_UtfArtToggle:
 				opts.force_uniborder = !opts.force_uniborder;
 				refresh_scr = true;
@@ -3102,7 +3085,7 @@ recheck_right:
 
 					if (_is_footer_cursor)
 					{
-						int max_footer_cursor_col = desc.footer_char_size - maxx;
+						int max_footer_cursor_col = desc.footer_char_size - scrdesc.main_maxx;
 
 						if (footer_cursor_col + 1 >= max_footer_cursor_col && scrdesc.rows_rows >= 0)
 						{
@@ -3140,9 +3123,9 @@ recheck_right:
 						new_cursor_col += move_right;
 
 						if (desc.headline_transl != NULL)
-							max_cursor_col = desc.headline_char_size - maxx;
+							max_cursor_col = desc.headline_char_size - scrdesc.main_maxx;
 						else
-							max_cursor_col = desc.maxx - maxx - 1;
+							max_cursor_col = desc.maxx - scrdesc.maxx - 1;
 
 						max_cursor_col = max_cursor_col > 0 ? max_cursor_col : 0;
 
@@ -3283,11 +3266,11 @@ recheck_end:
 
 					if (_is_footer_cursor)
 					{
-						if (footer_cursor_col < desc.footer_char_size - maxx)
-							footer_cursor_col = desc.footer_char_size - maxx;
+						if (footer_cursor_col < desc.footer_char_size - scrdesc.main_maxx)
+							footer_cursor_col = desc.footer_char_size - scrdesc.main_maxx;
 						else if (scrdesc.rows_rows > 0)
 						{
-							footer_cursor_col = desc.footer_char_size - maxx;
+							footer_cursor_col = desc.footer_char_size - scrdesc.main_maxx;
 							_is_footer_cursor = false;
 							goto recheck_end;
 						}
@@ -3297,7 +3280,7 @@ recheck_end:
 						int		new_cursor_col;
 
 						if (desc.headline != NULL)
-							new_cursor_col = desc.headline_char_size - maxx;
+							new_cursor_col = desc.headline_char_size - scrdesc.main_maxx;
 						else
 							new_cursor_col = desc.maxx - maxx - 1;
 

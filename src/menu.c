@@ -100,6 +100,8 @@ ST_MENU_ITEM _options[] = {
 	{"Highlight searched ~v~alues", cmd_HighlightValues, NULL},
 	{"~W~ithout highlighting", cmd_NoHighlight, NULL},
 	{"--"},
+	{"Show line ~n~umbers", cmd_RowNumToggle, "M-n"},
+	{"--"},
 	{"~M~ouse support", cmd_MouseToggle, "M-m"},
 	{"~Q~uiet mode", cmd_SoundToggle, NULL},
 	{"--"},
@@ -274,6 +276,8 @@ post_menu(Options *opts, struct ST_MENU *menu)
 
 	st_menu_set_option(menu, cmd_ShowTopBar, ST_MENU_OPTION_MARKED, !opts->no_topbar);
 	st_menu_set_option(menu, cmd_ShowBottomBar, ST_MENU_OPTION_MARKED, !opts->no_commandbar);
+
+	st_menu_set_option(menu, cmd_RowNumToggle, ST_MENU_OPTION_MARKED, opts->show_rownum);
 
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);

@@ -38,6 +38,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--without-commandbar`  the bottom bar will be hidden
 * `--without-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
+* `--show-line-numbers`  show left column with line numbers
 
 ## Themes
 
@@ -88,6 +89,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>n</kbd> - for next match
 * <kbd>N</kbd> - for next match in reverse direction
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
+* <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
 * <kbd>F9</kbd> - show menu

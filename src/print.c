@@ -87,7 +87,7 @@ window_fill(int window_identifier,
 		bool		is_cursor_row = false;
 		bool		is_found_row = false;
 		bool		is_pattern_row = false;
-		char		rownum_buffer[10];
+		char		buffer[10];
 
 		is_cursor_row = row == cursor_row;
 
@@ -97,14 +97,7 @@ window_fill(int window_identifier,
 			lnb_row = 0;
 		}
 
-		if (is_rownum)
-		{
-			int rowno = row + srcy_bak + 1 - desc->first_data_row;
-
-			snprintf(rownum_buffer, sizeof(rownum_buffer), "%*d ", maxx - 1, rowno);
-			rowstr = rownum_buffer;
-		}
-		else if (lnb != NULL && lnb_row < lnb->nrows)
+		if (lnb != NULL && lnb_row < lnb->nrows)
 		{
 			rowstr = lnb->rows[lnb_row];
 			if (lnb->lineinfo != NULL)
@@ -112,6 +105,15 @@ window_fill(int window_identifier,
 			else
 				lineinfo = NULL;
 			lnb_row += 1;
+
+			/* when rownum is printed, don't process original text */
+			if (is_rownum)
+			{
+				int rowno = row + srcy_bak + 1 - desc->first_data_row;
+
+				snprintf(buffer, sizeof(buffer), "%*d ", maxx - 1, rowno);
+				rowstr = buffer;
+			}
 		}
 		else
 			rowstr = NULL;
@@ -225,9 +227,11 @@ window_fill(int window_identifier,
 			}
 		}
 
+		active_attr = 0;
+
 		if (is_bookmark_row)
 		{
-			if (!is_footer)
+			if (!is_footer && !is_rownum)
 			{
 				if (desc->border_type == 2)
 					active_attr = is_cursor_row ? t->cursor_bookmark_attr : t->bookmark_line_attr;
@@ -237,7 +241,8 @@ window_fill(int window_identifier,
 			else
 				active_attr = is_cursor_row ? t->cursor_bookmark_attr : t->bookmark_data_attr;
 		}
-		else if (is_pattern_row)
+		/* would not to show pattern colors in rownum window */
+		else if (is_pattern_row && !is_rownum)
 		{
 			if (!is_footer)
 			{
@@ -251,7 +256,7 @@ window_fill(int window_identifier,
 		}
 		else
 		{
-			if (!is_footer)
+			if (!is_footer && !is_rownum)
 			{
 				if (desc->border_type == 2)
 					active_attr = is_cursor_row ? t->cursor_line_attr : t->line_attr;
@@ -268,7 +273,6 @@ window_fill(int window_identifier,
 
 		if (is_rownum)
 		{
-			/* row numbers can be displayed simply */
 			waddstr(win, rowstr);
 			wattroff(win, active_attr);
 			continue;
