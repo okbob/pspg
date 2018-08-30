@@ -953,7 +953,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 	if (opts->show_rownum)
 	{
-		int startx = number_width(desc->maxy) + 1;
+		int startx = number_width(desc->maxy) + 2;
 
 		scrdesc->main_start_x = startx;
 		scrdesc->main_maxx -= startx;

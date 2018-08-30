@@ -119,7 +119,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_BLACK, COLOR_WHITE);
+			init_pair(21, COLOR_WHITE, COLOR_CYAN);
 			break;
 		case 3:
 			assume_default_colors(COLOR_BLACK, COLOR_CYAN);
@@ -143,6 +143,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_WHITE, COLOR_GREEN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLACK);
 			init_pair(20, COLOR_WHITE, COLOR_BLUE);
+			init_pair(21, COLOR_BLACK, COLOR_CYAN);
 
 			break;
 		case 4:
@@ -239,6 +240,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_CYAN, COLOR_BLACK);
 			init_pair(19, COLOR_CYAN, COLOR_GREEN);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			init_pair(21, COLOR_CYAN, COLOR_BLACK);
 
 			break;
 		case 8:
@@ -263,6 +265,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_CYAN, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
+			init_pair(21, COLOR_CYAN, COLOR_BLUE);
 
 			break;
 		case 9:
@@ -287,6 +290,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
+			init_pair(21, COLOR_WHITE, COLOR_BLUE);
 
 			break;
 		case 10:
@@ -311,6 +315,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			init_pair(21, COLOR_BLUE, COLOR_CYAN);
 
 			break;
 		case 11:
@@ -359,6 +364,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(19, COLOR_CYAN, COLOR_BLUE);
 			init_pair(20, COLOR_WHITE, COLOR_MAGENTA);
+			init_pair(21, COLOR_BLUE, COLOR_CYAN);
 
 			break;
 		case 13:
@@ -407,6 +413,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_CYAN, COLOR_BLUE);
 			init_pair(19, COLOR_WHITE, COLOR_CYAN);
 			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			init_pair(21, COLOR_WHITE, COLOR_BLUE);
 			break;
 
 		case 15:
@@ -455,10 +462,9 @@ initialize_color_pairs(int theme)
 			init_pair(18, -1, -1);
 			init_pair(19, -1, -1);
 			init_pair(20, -1, -1);
+			init_pair(21, -1, -1);
 			break;
-
 	}
-
 }
 
 #define _in			if_in_int
@@ -609,10 +615,14 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->cursor_bookmark_attr = COLOR_PAIR(14);
 			t->pattern_data_attr = COLOR_PAIR(16);
 
-			t->data_attr |= _in(theme, (int[]) { 1, 12, 13, 14, -1}, A_BOLD,0);
+			t->data_attr |= _in(theme, (int[]) { 1, 2, 12, 13, 14, -1}, A_BOLD,0);
 			t->cursor_data_attr |= _notin(theme, (int[]) {14, 1, -1}, A_BOLD, 0);
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
+
+			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
+			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
+
 			break;
 	}
 
