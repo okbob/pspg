@@ -83,7 +83,6 @@ static unsigned char	input;
 static bool input_avail = false;
 
 static WINDOW *g_bottom_bar;
-static WINDOW *counting_rows = NULL;
 
 #endif
 
@@ -1146,8 +1145,6 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 	}
 	if (scrdesc->rows_rows + scrdesc->footer_rows > 0 && opts->show_rownum)
 	{
-		Theme   *theme = &scrdesc->themes[WINDOW_ROWNUM];
-
 		w_rownum(scrdesc) = subwin(stdscr,
 								   scrdesc->rows_rows + scrdesc->footer_rows,
 								   scrdesc->main_start_x,
@@ -1163,7 +1160,6 @@ static void
 refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 {
 	int		maxy, maxx;
-	int		startx;
 	WINDOW	   *top_bar = w_top_bar(scrdesc);
 	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
 
@@ -1264,7 +1260,6 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	char	buffer[200];
 	WINDOW   *top_bar = w_top_bar(scrdesc);
 	WINDOW   *bottom_bar = w_bottom_bar(scrdesc);
-	WINDOW   *rownum = w_rownum(scrdesc);
 	Theme	*top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
 	Theme	*bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
