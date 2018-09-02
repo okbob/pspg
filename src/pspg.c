@@ -1280,9 +1280,35 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			mvwprintw(top_bar, 0, 0, "%s", desc->filename);
 		wattroff(top_bar, top_bar_theme->title_attr);
 
-		if (desc->headline_transl)
+		if (opts->no_cursor)
 		{
-			snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+			if (desc->headline_transl)
+			{
+				snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
+								number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+								number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+								number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+								number_width(desc->headline_char_size), desc->headline_char_size,
+								number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
+								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+								(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+			}
+			else
+			{
+				snprintf(buffer, 199, "C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
+								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
+								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
+								number_width(desc->maxx), desc->maxx,
+								number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + scrdesc->main_maxy,
+								number_width(desc->last_row), desc->last_row + 1,
+								((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0);
+			}
+		}
+		else
+		{
+			if (desc->headline_transl)
+			{
+				snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
 								number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
 								number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
 								number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
@@ -1292,10 +1318,10 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
 								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
 								(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
-		}
-		else
-		{
-			snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+			}
+			else
+			{
+				snprintf(buffer, 199, "C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
 								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
 								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
 								number_width(desc->maxx), desc->maxx,
@@ -1304,6 +1330,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 								number_width(desc->last_row), cursor_row + 1,
 								number_width(desc->last_row), desc->last_row + 1,
 								((cursor_row + 1) / ((double) (desc->last_row + 1))) * 100.0);
+			}
 		}
 
 		mvwprintw(top_bar, 0, maxx - strlen(buffer), "%s", buffer);
@@ -1832,9 +1859,11 @@ main(int argc, char *argv[])
 		{"no-mouse", no_argument, 0, 2},
 		{"no-sound", no_argument, 0, 3},
 		{"less-status-bar", no_argument, 0, 4},
-		{"without-commandbar", no_argument, 0, 6},
-		{"without-topbar", no_argument, 0, 7},
-		{"show-line-numbers", no_argument, 0, 9},
+		{"no-commandbar", no_argument, 0, 6},
+		{"no-topbar", no_argument, 0, 7},
+		{"no-cursor", no_argument, 0, 10},
+		{"tabular-cursor", no_argument, 0, 11},
+		{"line-numbers", no_argument, 0, 9},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -1861,6 +1890,8 @@ main(int argc, char *argv[])
 	opts.no_topbar = false;
 	opts.theme = 1;
 	opts.show_rownum = false;
+	opts.no_cursor = false;
+	opts.tabular_cursor = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 
 
@@ -1894,6 +1925,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --help         show this help\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
+				fprintf(stderr, "  -F, --quit-if-one-screen\n");
+				fprintf(stderr, "                 quit if content is one screen\n");
 				fprintf(stderr, "  -g --hlite-search\n");
 				fprintf(stderr, "  -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                 don't highlight lines for searches\n");
@@ -1905,12 +1938,13 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 status bar like less pager\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
-				fprintf(stderr, "  -F, --quit-if-one-screen\n");
-				fprintf(stderr, "                 quit if content is one screen\n");
-				fprintf(stderr, "  --without-commandbar\n");
-				fprintf(stderr, "  --without-topbar\n");
+				fprintf(stderr, "  --no-cursor    row cursor will be hidden\n");
+				fprintf(stderr, "  --no-commandbar\n");
+				fprintf(stderr, "  --no-topbar\n");
 				fprintf(stderr, "  --no-bars\n");
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
+				fprintf(stderr, "  --tabular-cursor\n");
+				fprintf(stderr, "                 cursor is visible only when data has table format\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -1945,6 +1979,12 @@ main(int argc, char *argv[])
 				break;
 			case 9:
 				opts.show_rownum = true;
+				break;
+			case 10:
+				opts.no_cursor = true;
+				break;
+			case 11:
+				opts.tabular_cursor = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2211,6 +2251,9 @@ reinit_theme:
 			}
 		}
 	}
+
+	if (opts.tabular_cursor && !opts.no_cursor)
+		opts.no_cursor = desc.headline_transl == NULL;
 
 	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
 	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
@@ -2673,6 +2716,11 @@ reset_search:
 					break;
 				}
 
+			case cmd_ShowCursor:
+				opts.no_cursor = !opts.no_cursor;
+				refresh_scr = true;
+				break;
+
 			case cmd_FlushBookmarks:
 				{
 					LineBuffer *lnb = &desc.rows;
@@ -2885,32 +2933,49 @@ show_first_col:
 				break;
 
 			case cmd_CursorUp:
-				if (cursor_row > 0)
 				{
-					/*
-					 * When we are on data position, and we are going up, and a fixed rows are hidden,
-					 * then unhide fixed rows first (by decreasing first_row)
-					 */
-					if (fix_rows_offset > 0 && !is_footer_cursor(cursor_row, &scrdesc, &desc))
-						first_row -= 1;
-					else
-						cursor_row -= 1;
+					if (opts.no_cursor)
+					{
+						next_command = cmd_ScrollUp;
+						break;
+					}
 
-					/*
-					 * When fixed rows are hidden, then gap between first row and cursor row
-					 * can be bigger (about fix_rows_offset.
-					 */
-					if (cursor_row + fix_rows_offset < first_row)
-						first_row = cursor_row + fix_rows_offset;
+					if (cursor_row > 0)
+					{
+						/*
+						 * When we are on data position, and we are going up, and a
+						 * fixed rows are hidden, then unhide fixed rows first (by
+						 * decreasing first_row)
+						 */
+						if (fix_rows_offset > 0 &&
+								!is_footer_cursor(cursor_row, &scrdesc, &desc))
+							first_row -= 1;
+						else
+							cursor_row -= 1;
+
+						/*
+						 * When fixed rows are hidden, then gap between first
+						 * row and cursor row can be bigger (about fix_rows_offset.
+						 */
+						if (cursor_row + fix_rows_offset < first_row)
+							first_row = cursor_row + fix_rows_offset;
+					}
+					else
+						make_beep(&opts);
+
+					break;
 				}
-				else
-					make_beep(&opts);
-				break;
 
 			case cmd_CursorDown:
 				{
 					int		max_cursor_row;
 					int		max_first_row;
+
+					if (opts.no_cursor)
+					{
+						next_command = cmd_ScrollDown;
+						break;
+					}
 
 					max_cursor_row = MAX_CURSOR_ROW;
 

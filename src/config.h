@@ -31,6 +31,8 @@ typedef struct
 	bool	no_commandbar;
 	bool	no_topbar;
 	bool	show_rownum;
+	bool	no_cursor;
+	bool	tabular_cursor;
 	int		theme;
 	int		freezed_cols;
 } Options;

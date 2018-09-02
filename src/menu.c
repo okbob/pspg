@@ -102,6 +102,7 @@ ST_MENU_ITEM _options[] = {
 	{"Highlight searched ~v~alues", cmd_HighlightValues, NULL},
 	{"~W~ithout highlighting", cmd_NoHighlight, NULL},
 	{"--"},
+	{"Show cursor", cmd_ShowCursor, "M-c"},
 	{"Show line ~n~umbers", cmd_RowNumToggle, "M-n"},
 	{"--"},
 	{"~M~ouse support", cmd_MouseToggle, "M-m"},

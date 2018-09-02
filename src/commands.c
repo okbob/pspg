@@ -212,6 +212,9 @@ cmd_string(int cmd)
 		case cmd_GotoLine:
 			return "GotoLine";
 
+		case cmd_ShowCursor:
+			return "ShowCursor";
+
 		default:
 			return "unknown command";
 	}
@@ -225,6 +228,8 @@ translate_event(int c, bool alt)
 	{
 		switch (c)
 		{
+			case 'c':
+				return cmd_ShowCursor;
 			case 'l':
 				return cmd_GotoLine;
 			case 'm':

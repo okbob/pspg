@@ -35,10 +35,12 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-sound`  without sound effect
 * `-F`, `--quit-if-one-screen`  quit if content is one screen
 * `-V`, `--version`  show version
-* `--without-commandbar`  the bottom bar will be hidden
-* `--without-topbar`  the top bar will be hidden
+* `--no-cursor`  the line cursor will be hidden
+* `--no-commandbar`  the bottom bar will be hidden
+* `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
 * `--show-line-numbers`  show left column with line numbers
+* `--tabular-cursor`  cursor is displayed only for table
 
 ## Themes
 

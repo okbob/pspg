@@ -89,7 +89,7 @@ window_fill(int window_identifier,
 		bool		is_pattern_row = false;
 		char		buffer[10];
 
-		is_cursor_row = row == cursor_row;
+		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
 		if (lnb_row == 1000)
 		{

@@ -88,7 +88,8 @@ typedef enum PspgCommand
 	cmd_ShowTopBar,
 	cmd_ShowBottomBar,
 	cmd_RowNumToggle,
-	cmd_GotoLine
+	cmd_GotoLine,
+	cmd_ShowCursor
 } PspgCommand;
 
 extern void initialize_special_keycodes();
