@@ -281,6 +281,7 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	st_menu_set_option(menu, cmd_ShowBottomBar, ST_MENU_OPTION_MARKED, !opts->no_commandbar);
 
 	st_menu_set_option(menu, cmd_RowNumToggle, ST_MENU_OPTION_MARKED, opts->show_rownum);
+	st_menu_set_option(menu, cmd_ShowCursor, ST_MENU_OPTION_MARKED, !opts->no_cursor);
 
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
