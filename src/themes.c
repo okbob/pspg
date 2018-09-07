@@ -464,6 +464,36 @@ initialize_color_pairs(int theme)
 			init_pair(20, -1, -1);
 			init_pair(21, -1, -1);
 			break;
+
+		case 17:
+
+			init_color(234, 13, 98, 119);
+			init_color(235, 18, 141, 172);
+			init_color(240, 110, 146, 200);
+
+			assume_default_colors(245, 234);
+
+			init_pair(2, 245, 235);
+			init_pair(3, 244, 234);
+			init_pair(4, 37, 234);
+			init_pair(5, 235, 136);
+			init_pair(6, 235, 136);
+			init_pair(7, 33, 235);
+			init_pair(8, 33, 235);
+			init_pair(9, -1, -1);
+			init_pair(10, 235, 136);
+			init_pair(11, 235, 136);
+			init_pair(12, -1, -1);
+			init_pair(13, -1, -1);
+			init_pair(14, 230, 160);
+			init_pair(15, -1, -1);
+			init_pair(16, 244, 240);
+			init_pair(17, 244, 240);
+			init_pair(18, -1, -1);
+			init_pair(19, -1, -1);
+			init_pair(20, -1, -1);
+			init_pair(21, 244, 235);
+			break;
 	}
 }
 

@@ -55,6 +55,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_DBasemagenta,
 	cmd_SetTheme_Red,
 	cmd_SetTheme_Simple,
+	cmd_SetTheme_SolarDark,
 	cmd_SaveSetup,
 
 	cmd_Quit,

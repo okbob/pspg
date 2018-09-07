@@ -144,6 +144,8 @@ cmd_string(int cmd)
 			return "SetTheme_Red";
 		case cmd_SetTheme_Simple:
 			return "SetTheme_Simple";
+		case cmd_SetTheme_SolarDark:
+			return "SetTheme_SolarDark";
 		case cmd_SaveSetup:
 			return "SaveSetup";
 
@@ -381,6 +383,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_Red;
 		case 16:
 			return cmd_SetTheme_Simple;
+		case 17:
+			return cmd_SetTheme_SolarDark;
 	};
 
 	return cmd_Invalid;
@@ -429,6 +433,8 @@ cmd_get_theme(int cmd)
 			return 15;
 		case cmd_SetTheme_Simple:
 			return 16;
+		case cmd_SetTheme_SolarDark:
+			return 17;
 	};
 
 	return 1;

@@ -90,6 +90,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_e_DbaseIV retro (Magenta)", cmd_SetTheme_DBasemagenta},
 	{"_r_Red white theme", cmd_SetTheme_Red},
 	{"_s_Simple theme", cmd_SetTheme_Simple},
+	{"_o_Solar Dark theme", cmd_SetTheme_SolarDark},
 	{NULL},
 };
 
