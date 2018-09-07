@@ -2696,6 +2696,7 @@ reset_search:
 			case cmd_SetTheme_Red:
 			case cmd_SetTheme_Simple:
 			case cmd_SetTheme_SolarDark:
+			case cmd_SetTheme_SolarLight:
 				opts.theme = cmd_get_theme(command);
 				reinit = true;
 				goto reinit_theme;

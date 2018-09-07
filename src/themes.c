@@ -466,16 +466,21 @@ initialize_color_pairs(int theme)
 			break;
 
 		case 17:
-
-			init_color(234, 13, 98, 119);
-			init_color(235, 18, 141, 172);
-			init_color(240, 110, 146, 200);
+			init_color(235, 27, 212, 259);
+			init_color(234, 0, 169, 212);
+			init_color(240, 345, 431, 459);
+			init_color(244, 557, 616, 624);
+			init_color(245, 576, 631, 631);
+			init_color(254, 933, 910, 835);
+			init_color(136, 710, 537, 0);
+			init_color(33, 149, 545, 824);
+			init_color(160, 863, 196, 184);
 
 			assume_default_colors(245, 234);
 
 			init_pair(2, 245, 235);
 			init_pair(3, 244, 234);
-			init_pair(4, 37, 234);
+			init_pair(4, 33, 234);
 			init_pair(5, 235, 136);
 			init_pair(6, 235, 136);
 			init_pair(7, 33, 235);
@@ -486,13 +491,44 @@ initialize_color_pairs(int theme)
 			init_pair(12, -1, -1);
 			init_pair(13, -1, -1);
 			init_pair(14, 230, 160);
-			init_pair(15, -1, -1);
-			init_pair(16, 244, 240);
-			init_pair(17, 244, 240);
+			init_pair(15, 254, 235);
+			
+			init_pair(16, 245, 235);
+			init_pair(17, 245, 235);
+			
 			init_pair(18, -1, -1);
 			init_pair(19, -1, -1);
-			init_pair(20, -1, -1);
+			init_pair(20, 254, 136);
 			init_pair(21, 244, 235);
+			break;
+
+		case 18:
+			init_color(234, 13, 98, 119);
+			init_color(235, 18, 141, 172);
+			init_color(240, 110, 146, 200);
+
+			assume_default_colors(234, 245);
+
+			init_pair(2, 235, 244);
+			init_pair(3, 234, 245);
+			init_pair(4, 17, 245);
+			init_pair(5, 235, 136);
+			init_pair(6, 235, 136);
+			init_pair(7, 17, 244);
+			init_pair(8, 17, 235);
+			init_pair(9, 17, 245);
+			init_pair(10, 235, 136);
+			init_pair(11, 235, 136);
+			init_pair(12, -1, -1);
+			init_pair(13, -1, -1);
+			init_pair(14, 255, 160);
+			init_pair(15, 255, 244);
+			init_pair(16, 240, 244);
+			init_pair(17, 240, 244);
+			init_pair(18, -1, -1);
+			init_pair(19, -1, -1);
+			init_pair(20, 255, 136);
+			init_pair(21, 235, 244);
 			break;
 	}
 }
