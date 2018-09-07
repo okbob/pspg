@@ -61,7 +61,8 @@ This pager can be used from `mysql` and `pgcli` clients too.
 14. dBase IV retro style (Magenta labels)
 15. Red white theme
 16. Simple theme
-17. Solarized theme
+17. Solarized dark theme 
+18. Solarized light theme
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
