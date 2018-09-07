@@ -480,7 +480,7 @@ initialize_color_pairs(int theme)
 			init_pair(6, 235, 136);
 			init_pair(7, 33, 235);
 			init_pair(8, 33, 235);
-			init_pair(9, -1, -1);
+			init_pair(9, 61, 234);
 			init_pair(10, 235, 136);
 			init_pair(11, 235, 136);
 			init_pair(12, -1, -1);
