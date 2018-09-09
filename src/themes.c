@@ -364,7 +364,7 @@ initialize_color_pairs(int theme)
 			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
 			init_pair(19, COLOR_CYAN, COLOR_BLUE);
 			init_pair(20, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(21, COLOR_BLUE, COLOR_CYAN);
+			init_pair(21, COLOR_CYAN, COLOR_CYAN);
 
 			break;
 		case 13:
