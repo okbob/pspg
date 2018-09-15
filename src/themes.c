@@ -599,7 +599,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->found_str_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
+			t->found_str_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | (no_highlight_lines ? A_ITALIC : 0), 0);
 			t->cursor_pattern_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | A_REVERSE, 0);
 			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
 			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
