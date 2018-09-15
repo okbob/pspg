@@ -33,6 +33,7 @@ window_fill(int window_identifier,
 	LineBuffer *lnb = &desc->rows;
 	int			lnb_row;
 	attr_t		active_attr;
+	attr_t		pattern_fix;
 	int			srcy_bak = srcy;
 	char		*free_row;
 	WINDOW		*win;
@@ -46,6 +47,8 @@ window_fill(int window_identifier,
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
+
+	pattern_fix = t->found_str_attr & A_UNDERLINE;
 
 	/* when we want to detect expanded records titles */
 	if (desc->is_expanded_mode)
@@ -471,7 +474,7 @@ window_fill(int window_identifier,
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-								new_attr = new_attr ^ A_REVERSE;
+								new_attr = new_attr ^ A_REVERSE | pattern_fix;
 							else if (is_pattern_row && htrpos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
