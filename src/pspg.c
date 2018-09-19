@@ -2126,7 +2126,6 @@ reinit_theme:
 
 	initialize_color_pairs(opts.theme);
 
-	clear();
 	cbreak();
 	keypad(stdscr, TRUE);
 	curs_set(0);
@@ -2277,7 +2276,6 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_COLS]);
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
-
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
 
