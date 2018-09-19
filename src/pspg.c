@@ -1846,6 +1846,8 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
 
+	struct winsize size;
+
 	static struct option long_options[] =
 	{
 		/* These options set a flag. */
@@ -1893,7 +1895,6 @@ main(int argc, char *argv[])
 	opts.no_cursor = false;
 	opts.tabular_cursor = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
-
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -2182,7 +2183,17 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
 	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
 
+	/*
+	 * The issue #75 - COLUMNS, LINES are not correctly initialized.
+	 * Get real terminal size, and refresh ncurses data.
+	 */
+	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
+		resize_term(size.ws_row, size.ws_col);
+
+	clear();
+
 	refresh_aux_windows(&opts, &scrdesc, &desc);
+
 	getmaxyx(stdscr, maxy, maxx);
 
 	if (quit_if_one_screen)
@@ -3976,8 +3987,6 @@ found_next_pattern:
 		{
 			if (resize_scr)
 			{
-				struct winsize size;
-
 				/*
 				 * Workaround - the variables COLS, LINES are not refreshed
 				 * when pager is resized and executed inside psql.
