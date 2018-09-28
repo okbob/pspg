@@ -956,6 +956,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	}
 }
 
+#define FIXVTE		1
+
 void
 draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		  int first_data_row, int first_row, int cursor_col,
@@ -963,32 +965,39 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 {
 	struct winsize size;
 	int		i;
+	int		nrows;
 
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
-
 		for (i = 0; i < min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1); i++)
 			printf("\eD");
 
 		/* Go wit cursor to up */
 		printf("\e[%dA", min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1));
 
-		/* Save cursor */
+		/*
+		 * Save cursor - Attention, there are a Fedora29 bug, and it doesn't work
+		 */
 		printf("\e[s");
 
 		if (scrdesc->fix_cols_cols > 0)
 		{
 			draw_rectange(scrdesc->fix_rows_rows, 0,
-						  scrdesc->rows_rows , scrdesc->fix_cols_cols,
+						  scrdesc->rows_rows, scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, 0,
 						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
+			nrows = scrdesc->fix_rows_rows + scrdesc->rows_rows;
 		}
-		if (scrdesc->fix_rows_rows > 0)
+		if (scrdesc->fix_rows_rows > 0 )
 		{
-			/* Go to saved position */
-			printf("\e[u\e[s");
+			if (FIXVTE)
+				/* Go wit cursor to up */
+				printf("\e[%dA", nrows);
+			else
+				/* Go to saved position */
+				printf("\e[u\e[s");
 
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
@@ -996,12 +1005,17 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  true);
+			nrows = 0 + scrdesc->fix_rows_rows;
 		}
 
 		if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 		{
-			/* Go to saved position */
-			printf("\e[u\e[s");
+			if (FIXVTE)
+				/* Go wit cursor to up */
+				printf("\e[%dA", nrows);
+			else
+				/* Go to saved position */
+				printf("\e[u\e[s");
 
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
@@ -1009,12 +1023,18 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						  opts, desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
+
+			nrows = 0 + scrdesc->fix_rows_rows;
 		}
 
-		if (scrdesc->rows_rows > 0 )
+		if (scrdesc->rows_rows > 0)
 		{
-			/* Go to saved position */
-			printf("\e[u\e[s");
+			if (FIXVTE)
+				/* Go wit cursor to up */
+				printf("\e[%dA", nrows);
+			else
+				/* Go to saved position */
+				printf("\e[u\e[s");
 
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
@@ -1028,8 +1048,12 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		if (w_footer(scrdesc) != NULL)
 		{
-			/* Go to saved position */
-			printf("\e[u\e[s");
+			if (FIXVTE)
+				/* Go wit cursor to up */
+				printf("\e[%dA", nrows);
+			else
+				/* Go to saved position */
+				printf("\e[u\e[s");
 
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
 						  scrdesc->footer_rows, scrdesc->maxx,
