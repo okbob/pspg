@@ -1920,7 +1920,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "Options:\n");
 				fprintf(stderr, "  -b             black-white style\n");
 				fprintf(stderr, "  -s N           set color style number (0..%d)\n", MAX_STYLE);
-				fprintf(stderr, "  -c N           fix N columns (0..4)\n");
+				fprintf(stderr, "  -c N           fix N columns (0..9)\n");
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --help         show this help\n");
@@ -2033,16 +2033,16 @@ main(int argc, char *argv[])
 				n = atoi(optarg);
 				if (n < 0 || n > MAX_STYLE)
 				{
-					fprintf(stderr, "only color schemas 0 .. %d are supported.\n", MAX_STYLE);
+					fprintf(stderr, "only color schemas 0 .. %d are supported\n", MAX_STYLE);
 					exit(EXIT_FAILURE);
 				}
 				opts.theme = n;
 				break;
 			case 'c':
 				n = atoi(optarg);
-				if (n < 0 || n > 4)
+				if (n < 0 || n > 9)
 				{
-					fprintf(stderr, "fixed columns should be between 0 and 4.\n");
+					fprintf(stderr, "fixed columns should be between 0 and 4\n");
 					exit(EXIT_FAILURE);
 				}
 				opts.freezed_cols = n;
@@ -2929,6 +2929,26 @@ show_first_col:
 
 			case cmd_FreezeFourCols:
 				opts.freezed_cols = 4;
+				goto show_first_col;
+
+			case cmd_FreezeFiveCols:
+				opts.freezed_cols = 5;
+				goto show_first_col;
+
+			case cmd_FreezeSixCols:
+				opts.freezed_cols = 6;
+				goto show_first_col;
+
+			case cmd_FreezeSevenCols:
+				opts.freezed_cols = 7;
+				goto show_first_col;
+
+			case cmd_FreezeEightCols:
+				opts.freezed_cols = 8;
+				goto show_first_col;
+
+			case cmd_FreezeNineCols:
+				opts.freezed_cols = 9;
 				goto show_first_col;
 
 			case cmd_CursorFirstRow:

@@ -91,6 +91,16 @@ cmd_string(int cmd)
 			return "FreezeThreeCols";
 		case cmd_FreezeFourCols:
 			return "FreezeFourCols";
+		case cmd_FreezeFiveCols:
+			return "FreezeFiveCols";
+		case cmd_FreezeSixCols:
+			return "FreezeSixCols";
+		case cmd_FreezeSevenCols:
+			return "FreezeSevenCols";
+		case cmd_FreezeEightCols:
+			return "FreezeEightCols";
+		case cmd_FreezeNineCols:
+			return "FreezeNineCols";
 		case cmd_SoundToggle:
 			return "SoundTogle";
 		case cmd_MouseToggle:
@@ -284,6 +294,16 @@ translate_event(int c, bool alt)
 				return cmd_FreezeThreeCols;
 			case '4':
 				return cmd_FreezeFourCols;
+			case '5':
+				return cmd_FreezeFiveCols;
+			case '6':
+				return cmd_FreezeSixCols;
+			case '7':
+				return cmd_FreezeSevenCols;
+			case '8':
+				return cmd_FreezeEightCols;
+			case '9':
+				return cmd_FreezeNineCols;
 			case 4:		/* CTRL D */
 				return cmd_ScrollDownHalfPage;
 			case 21:	/* CTRL U */

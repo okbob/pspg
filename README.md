@@ -69,7 +69,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 ## Keyboard commands
 
-* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, <kbd>4</kbd> - freeze first N columns
+* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, .., <kbd>9</kbd> - freeze first N columns
 * <kbd>KEY_UP</kbd>, <kbd>k</kbd> - navigate backward by one line
 * <kbd>KEY_DOWN</kbd>, <kbd>j</kbd> - navigate forward by one line
 * <kbd>KEY_LEFT</kbd>, <kbd>h</kbd> - scroll to left
