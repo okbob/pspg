@@ -1937,6 +1937,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 ignore case in all searches\n");
 				fprintf(stderr, "  --less-status-bar\n");
 				fprintf(stderr, "                 status bar like less pager\n");
+				fprintf(stderr, "  --line-numbers\n");
+				fprintf(stderr, "                 show line number column\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  --no-cursor    row cursor will be hidden\n");

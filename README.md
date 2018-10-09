@@ -31,6 +31,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-i --ignore-case`  ignore case in searches that do not contain uppercase
 * `-I --IGNORE-CASE`  ignore case in all searches
 * `--less-status-bar`  status bar like less pager
+* `--line-numbers`  show line number column
 * `--no-mouse`  without own mouse handling (cannot be changed in app)
 * `--no-sound`  without sound effect
 * `-F`, `--quit-if-one-screen`  quit if content is one screen
