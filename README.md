@@ -40,7 +40,6 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-commandbar`  the bottom bar will be hidden
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
-* `--show-line-numbers`  show left column with line numbers
 * `--tabular-cursor`  cursor is displayed only for table
 
 ## Themes
