@@ -173,6 +173,10 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
     # pkg install pspg
     
+## Linuxbrew
+
+    # brew install pspg
+
 ## macOS
 
 ### Using Homebrew
