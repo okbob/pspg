@@ -2678,6 +2678,11 @@ reset_search:
 				refresh_scr = true;
 				break;
 
+			case cmd_MenuAsciiArtToggle:
+				opts.force_ascii_art = !opts.force_ascii_art;
+				reinit = true;
+				goto reinit_theme;
+
 			case cmd_SoundToggle:
 				opts.no_sound = !opts.no_sound;
 				break;

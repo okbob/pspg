@@ -81,9 +81,12 @@ save_config(char *path, Options *opts)
 	if (f == NULL)
 		return false;
 
+	fprintf(f, "ascii_menu = %s\n", opts->force_ascii_art ? "true" : "false");
 	fprintf(f, "ignore_case = %s\n", opts->ignore_case ? "true" : "false");
 	fprintf(f, "ignore_lower_case = %s\n", opts->ignore_lower_case ? "true" : "false");
+	fprintf(f, "no_cursor = %s\n", opts->no_cursor ? "true" : "false");
 	fprintf(f, "no_sound = %s\n", opts->no_sound ? "true" : "false");
+	fprintf(f, "no_mouse = %s\n", opts->no_mouse ? "true" : "false");
 	fprintf(f, "less_status_bar = %s\n", opts->less_status_bar ? "true" : "false");
 	fprintf(f, "no_highlight_search = %s\n", opts->no_highlight_search ? "true" : "false");
 	fprintf(f, "no_highlight_lines = %s\n", opts->no_highlight_lines ? "true" : "false");
@@ -122,12 +125,19 @@ load_config(char *path, Options *opts)
 
 		if (parse_cfg(line, key, &bool_val, &int_val))
 		{
+			if (strcmp(key, "ascii_menu") == 0)
+				opts->force_ascii_art = bool_val;
 			if (strcmp(key, "ignore_case") == 0)
 				opts->ignore_case = bool_val;
 			else if (strcmp(key, "ignore_lower_case") == 0)
 				opts->ignore_lower_case = bool_val;
 			else if (strcmp(key, "no_sound") == 0)
 				opts->no_sound = bool_val;
+			else if (strcmp(key, "no_cursor") == 0)
+				opts->no_cursor = bool_val;
+			else if (strcmp(key, "no_mouse") == 0)
+				opts->no_mouse = bool_val;
+
 			else if (strcmp(key, "less_status_bar") == 0)
 				opts->less_status_bar = bool_val;
 			else if (strcmp(key, "no_highlight_search") == 0)

@@ -36,6 +36,7 @@ typedef enum PspgCommand
 	cmd_SoundToggle,
 	cmd_MouseToggle,
 	cmd_UtfArtToggle,
+	cmd_MenuAsciiArtToggle,
 	cmd_CSSearchSet,
 	cmd_CISearchSet,
 	cmd_USSearchSet,

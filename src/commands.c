@@ -107,6 +107,8 @@ cmd_string(int cmd)
 			return "MouseTogle";
 		case cmd_UtfArtToggle:
 			return "UtfArtToggle";
+		case cmd_MenuAsciiArtToggle:
+			return "MenuAsciiArtToggle";
 		case cmd_CSSearchSet:
 			return "CSSearchSet";
 		case cmd_CISearchSet:
