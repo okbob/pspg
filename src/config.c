@@ -91,6 +91,7 @@ save_config(char *path, Options *opts)
 	fprintf(f, "no_highlight_search = %s\n", opts->no_highlight_search ? "true" : "false");
 	fprintf(f, "no_highlight_lines = %s\n", opts->no_highlight_lines ? "true" : "false");
 	fprintf(f, "force_uniborder = %s\n", opts->force_uniborder ? "true" : "false");
+	fprintf(f, "show_rownum = %s\n", opts->show_rownum ? "true" : "false");
 	fprintf(f, "theme = %d\n", opts->theme);
 	fprintf(f, "without_commandbar = %s\n", opts->no_commandbar ? "true" : "false");
 	fprintf(f, "without_topbar = %s\n", opts->no_topbar ? "true" : "false");
@@ -137,7 +138,6 @@ load_config(char *path, Options *opts)
 				opts->no_cursor = bool_val;
 			else if (strcmp(key, "no_mouse") == 0)
 				opts->no_mouse = bool_val;
-
 			else if (strcmp(key, "less_status_bar") == 0)
 				opts->less_status_bar = bool_val;
 			else if (strcmp(key, "no_highlight_search") == 0)
@@ -146,6 +146,8 @@ load_config(char *path, Options *opts)
 				opts->no_highlight_lines = bool_val;
 			else if (strcmp(key, "force_uniborder") == 0)
 				opts->force_uniborder = bool_val;
+			else if (strcmp(key, "show_rownum") == 0)
+				opts->show_rownum = bool_val;
 			else if (strcmp(key, "theme") == 0)
 				opts->theme = int_val;
 			else if (strcmp(key, "without_commandbar") == 0)
