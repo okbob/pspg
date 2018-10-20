@@ -862,6 +862,7 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	int		maxy, maxx;
 	int		text_min_x, text_max_x;
 	int		*options = menu->options;
+	bool	force_ascii_art = config->force_ascii_art;
 
 	selected_item = NULL;
 
@@ -890,7 +891,12 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	(void) maxy;
 
 	if (draw_box)
-		box(draw_area, 0, 0);
+	{
+		if (!force_ascii_art)
+			box(draw_area, 0, 0);
+		else
+			wborder(draw_area, '|', '|','-','-','+','+','+','+');
+	}
 
 	text_min_x = (draw_box ? 1 : 0) + (config->extra_inner_space ? 1 : 0);
 	text_max_x = maxx - (draw_box ? 1 : 0) - (config->extra_inner_space ? 1 : 0);
@@ -917,16 +923,29 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 			if (draw_box)
 			{
 				wmove(draw_area, row, 0);
-				waddch(draw_area, ACS_LTEE);
+				if (!force_ascii_art)
+					waddch(draw_area, ACS_LTEE);
+				else
+					waddch(draw_area, '|');
 			}
 			else
 				wmove(draw_area, row - 1, 0);
 
 			for(i = 0; i < maxx - 1 - (draw_box ? 1 : -1); i++)
-				waddch(draw_area, ACS_HLINE);
+			{
+				if (!force_ascii_art)
+					waddch(draw_area, ACS_HLINE);
+				else
+					waddch(draw_area, '-');
+			}
 
 			if (draw_box)
-				waddch(draw_area, ACS_RTEE);
+			{
+				if (!force_ascii_art)
+					waddch(draw_area, ACS_RTEE);
+				else
+					waddch(draw_area, '|');
+			}
 		}
 		else
 		{

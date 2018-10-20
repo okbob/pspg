@@ -188,6 +188,7 @@ void
 init_menu_config(Options *opts)
 {
 	menu_config.force8bit = opts->force8bit;
+	menu_config.force_ascii_art = opts->force_ascii_art;
 	menu_config.language = NULL;
 	menu_config.encoding = NULL;
 
@@ -211,6 +212,9 @@ init_menu_config(Options *opts)
 		menu_config.shadow_width = 2;
 	else if (opts->theme == 4)
 		menu_config.text_space = 4;
+
+	menu_config.force_ascii_art = opts->force_ascii_art;
+	menu_config2.force_ascii_art = opts->force_ascii_art;
 }
 
 

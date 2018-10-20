@@ -33,6 +33,7 @@ typedef struct
 	bool	show_rownum;
 	bool	no_cursor;
 	bool	tabular_cursor;
+	bool	force_ascii_art;
 	int		theme;
 	int		freezed_cols;
 } Options;

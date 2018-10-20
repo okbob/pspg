@@ -1895,6 +1895,7 @@ main(int argc, char *argv[])
 	opts.no_cursor = false;
 	opts.tabular_cursor = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
+	opts.force_ascii_art = false;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -1906,7 +1907,7 @@ main(int argc, char *argv[])
 
 #endif
 
-	while ((opt = getopt_long(argc, argv, "bs:c:f:XVFgGiI",
+	while ((opt = getopt_long(argc, argv, "abs:c:f:XVFgGiI",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -1918,6 +1919,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "Usage:\n");
 				fprintf(stderr, "  %s [OPTION]\n\n", argv[0]);
 				fprintf(stderr, "Options:\n");
+				fprintf(stderr, "  -a             force ascii menu border\n");
 				fprintf(stderr, "  -b             black-white style\n");
 				fprintf(stderr, "  -s N           set color style number (0..%d)\n", MAX_STYLE);
 				fprintf(stderr, "  -c N           fix N columns (0..9)\n");
@@ -1952,6 +1954,9 @@ main(int argc, char *argv[])
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
 
+			case 'a':
+				opts.force_ascii_art = true;
+				break;
 			case 'I':
 				opts.ignore_case = true;
 				break;

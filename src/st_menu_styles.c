@@ -17,6 +17,7 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 	config->mark_tag = '*';
 	config->draw_box = true;
 	config->extern_accel_text_space = 2;
+	config->force_ascii_art = false;
 
 	config->submenu_offset_y = 0;
 	config->submenu_offset_x = 0;

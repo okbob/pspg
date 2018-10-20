@@ -78,6 +78,7 @@ typedef struct
 	bool	left_alligned_shortcuts;	/* when true, a shortcuts are left alligned */
 	bool	funckey_bar_style;		/* when true, menu bar is displayed as mc toolbar */
 	bool	extra_inner_space;		/* when true, then there 2 spaces between text and border */
+	bool	force_ascii_art;		/* use ascii chars for borders */
 	int		shadow_width;			/* when shadow_width is higher than zero, shadow is visible */
 	int		menu_background_cpn;	/* draw area color pair number */
 	int		menu_background_attr;	/* draw area attributte */

@@ -19,6 +19,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 
 ## Options
 
+* `-a`       menu will use ascii borders
 * `-b`       black/white theme
 * `-X`       doesn't clean screen on the end
 * `-s N`     use theme (default theme is mc theme)
