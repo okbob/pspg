@@ -22,8 +22,12 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 	config->submenu_offset_y = 0;
 	config->submenu_offset_x = 0;
 
+#if defined  HAVE_NCURSESW
+
 	if (!config->force8bit)
 		config->mark_tag = L'\x2714';
+
+#endif
 
 	config->funckey_bar_style = false;
 

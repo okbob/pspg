@@ -789,7 +789,8 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 		wmaxy = smaxy - 1;
 		wmaxx = smaxx - config->shadow_width;
 
-#if NCURSES_WIDECHAR > 0
+
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 		for (i = 0; i <= smaxy; i++)
 			for (j = 0; j <= smaxx; j++)

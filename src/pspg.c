@@ -1728,7 +1728,7 @@ get_event(MEVENT *mevent, bool *alt)
 
 repeat:
 
-#if NCURSES_WIDECHAR > 0
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 	ret = get_wch(&ch);
 	(void) ret;
