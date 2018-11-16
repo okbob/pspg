@@ -38,6 +38,16 @@ if_notin_int(int v, const int *s, int v1, int v2)
 	return v1;
 }
 
+/* 0..255 rgb based colors */
+static void
+init_color_rgb_ff(short color, short r, short g, short b)
+{
+	init_color(color,
+			   (r / 255.0) * 1000.0,
+			   (g / 255.0) * 1000.0,
+			   (b / 255.0) * 1000.0);
+}
+
 /*
  * Set color pairs based on style
  */
@@ -506,6 +516,10 @@ initialize_color_pairs(int theme)
 			init_color(234, 13, 98, 119);
 			init_color(235, 18, 141, 172);
 			init_color(240, 110, 146, 200);
+			init_color(245, 576, 631, 631);
+			init_color(244, 557, 616, 624);
+			init_color(136, 710, 537, 0);
+			init_color(160, 863, 196, 184);
 
 			assume_default_colors(234, 245);
 
@@ -530,6 +544,45 @@ initialize_color_pairs(int theme)
 			init_pair(20, 255, 136);
 			init_pair(21, 235, 244);
 			break;
+
+		case 19:
+			init_color_rgb_ff(200, 0xff, 0xff, 0xd7); /* background */
+			init_color_rgb_ff(201, 0x26, 0x26, 0x26); /* foreground */
+			init_color_rgb_ff(202, 0xaf, 0xaf, 0x87); /* modeline bg */
+			init_color_rgb_ff(203, 0x4e, 0x4e, 0x4e); /* modeline fg */
+			init_color_rgb_ff(204, 0xd7, 0xd6, 0xaf); /* table decor */
+			init_color_rgb_ff(205, 0xeb, 0xdb, 0xb2); /* cursor bg */
+			init_color_rgb_ff(206, 0xaf, 0xaf, 0xaf); /* footer */
+			init_color_rgb_ff(207, 0xff, 0xff, 0xaf); /* lineno bg */
+
+			init_color_rgb_ff(210, 0x87, 0x00, 0x00); /* keyword - red */
+			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
+			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
+
+			init_color(240, 40, 50, 200);
+
+			assume_default_colors(204, 200);
+
+			init_pair(2, 203, 202);
+			init_pair(3, 201, 200);
+			init_pair(4, 210, 200);
+			init_pair(5, 210, 205);
+			init_pair(6, 203, 205);
+			init_pair(7, 203, 202);
+			init_pair(8, 17, 200);
+			init_pair(9, 206, 200);
+			init_pair(10, 206, 205);
+			init_pair(11, 204, 205);
+			init_pair(13, 203, 202);
+			init_pair(14, COLOR_WHITE, 211);
+			init_pair(15, 212, 204);
+			init_pair(16, 201, 204);
+			init_pair(17, 206, 204);
+			init_pair(18, -1, -1);
+			init_pair(19, -1, -1);
+			init_pair(20, 212, 205);
+			init_pair(21, 206, 207);
+			break;
 	}
 }
 
@@ -550,7 +603,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 		case WINDOW_LUC:
 		case WINDOW_FIX_ROWS:
 			t->data_attr = COLOR_PAIR(4);
-			t->data_attr |= _notin(theme, (int[]) {12, 15, -1}, A_BOLD, 0);
+			t->data_attr |= _notin(theme, (int[]) {12, 15, 19, -1}, A_BOLD, 0);
 			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
 			t->data_attr |= _in(theme, (int[]) {16, -1}, A_ITALIC, 0);
 			break;
@@ -565,7 +618,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->bottom_attr = COLOR_PAIR(12);
 			t->bottom_light_attr = COLOR_PAIR(13);
 
-			t->prompt_attr |= _notin(theme, (int[]) {0, 1, -1}, A_BOLD, 0);
+			t->prompt_attr |= _notin(theme, (int[]) {0, 1, 19, -1}, A_BOLD, 0);
 			t->bottom_attr |= _notin(theme, (int[]) {13, 14, -1}, A_BOLD, 0);
 			t->bottom_light_attr |= A_BOLD;
 			break;
@@ -585,7 +638,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->pattern_data_attr = COLOR_PAIR(16);
 			t->pattern_line_attr = COLOR_PAIR(17);
 
-			t->data_attr |= _notin(theme, (int[]) { 12, 15, -1}, A_BOLD, 0);
+			t->data_attr |= _notin(theme, (int[]) { 12, 15, 19, -1}, A_BOLD, 0);
 			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
 			t->line_attr |= 0;
 			t->expi_attr |= A_BOLD;

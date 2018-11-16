@@ -92,6 +92,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_s_Simple theme", cmd_SetTheme_Simple},
 	{"_o_Solar Dark theme", cmd_SetTheme_SolarDark},
 	{"_g_Solar Light theme", cmd_SetTheme_SolarLight},
+	{"_u_Gruvbox Light theme", cmd_SetTheme_GruvboxLight},
 	{NULL},
 };
 

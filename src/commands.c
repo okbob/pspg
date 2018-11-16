@@ -160,6 +160,8 @@ cmd_string(int cmd)
 			return "SetTheme_SolarDark";
 		case cmd_SetTheme_SolarLight:
 			return "SetTheme_SolarLight";
+		case cmd_SetTheme_GruvboxLight:
+			return "SetTheme_GruvboxLight";
 		case cmd_SaveSetup:
 			return "SaveSetup";
 
@@ -411,6 +413,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_SolarDark;
 		case 18:
 			return cmd_SetTheme_SolarLight;
+		case 19:
+			return cmd_SetTheme_GruvboxLight;
 	};
 
 	return cmd_Invalid;
@@ -463,6 +467,8 @@ cmd_get_theme(int cmd)
 			return 17;
 		case cmd_SetTheme_SolarLight:
 			return 18;
+		case cmd_SetTheme_GruvboxLight:
+			return 19;
 	};
 
 	return 1;

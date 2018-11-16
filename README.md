@@ -64,6 +64,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 16. Simple theme
 17. Solarized dark theme 
 18. Solarized light theme
+19. Gruvbox light theme
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 

@@ -24,7 +24,7 @@
 #define LINEINFO_FOUNDSTR_MULTI		4
 #define LINEINFO_UNKNOWN			8
 
-#define MAX_STYLE					18
+#define MAX_STYLE					19
 
 typedef struct LineInfo
 {

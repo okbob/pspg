@@ -1195,6 +1195,10 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	w_bottom_bar(scrdesc) = bottom_bar;
 	werase(bottom_bar);
 
+	/* data colours are better than default */
+	wbkgd(bottom_bar, COLOR_PAIR(3));
+	wnoutrefresh(bottom_bar);
+
 	scrdesc->main_maxy = maxy;
 	scrdesc->main_maxx = maxx;
 	scrdesc->main_start_y = 0;
@@ -2718,6 +2722,7 @@ reset_search:
 			case cmd_SetTheme_Simple:
 			case cmd_SetTheme_SolarDark:
 			case cmd_SetTheme_SolarLight:
+			case cmd_SetTheme_GruvboxLight:
 				opts.theme = cmd_get_theme(command);
 				reinit = true;
 				goto reinit_theme;
