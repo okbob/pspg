@@ -559,8 +559,6 @@ initialize_color_pairs(int theme)
 			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
 			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
 
-			init_color(240, 40, 50, 200);
-
 			assume_default_colors(204, 200);
 
 			init_pair(2, 203, 202);
@@ -582,6 +580,50 @@ initialize_color_pairs(int theme)
 			init_pair(19, -1, -1);
 			init_pair(20, 212, 205);
 			init_pair(21, 206, 207);
+			break;
+
+		case 20:
+			init_color_rgb_ff(200, 0xf1, 0xf1, 0xf1); /* background */
+			init_color_rgb_ff(201, 0x61, 0x61, 0x61); /* foreground */
+			init_color_rgb_ff(202, 0xfc, 0xfc, 0xfc); /* modeline bg */
+			init_color_rgb_ff(203, 0x17, 0x17, 0x17); /* modeline fg */
+			init_color_rgb_ff(204, 0x9e, 0x9e, 0x9e); /* table decor */
+			init_color_rgb_ff(205, 0x4e, 0x4e, 0x4e); /* cursor bg */
+			init_color_rgb_ff(213, 0xf6, 0xf6, 0xf6); /* cursor fg */
+			init_color_rgb_ff(206, 0x9e, 0x9e, 0x9e); /* footer */
+			init_color_rgb_ff(207, 0xf6, 0xf6, 0xf6); /* lineno bg */
+
+			init_color_rgb_ff(210, 0x00, 0x00, 0x00); /* keyword - red */
+			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
+			init_color_rgb_ff(212, 0xff, 0xff, 0xff); /* mark fg - white */
+			init_color_rgb_ff(215, 0xc3, 0xc3, 0xc3); /* mark bg */
+			init_color_rgb_ff(214, 0xda, 0xda, 0xda); /* marked line bg */
+			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+
+
+			init_color(240, 40, 50, 200);
+
+			assume_default_colors(204, 200);
+
+			init_pair(2, 203, 202);
+			init_pair(3, 201, 200);
+			init_pair(4, 210, 200);
+			init_pair(5, 213, 205);
+			init_pair(6, 213, 205);
+			init_pair(7, 203, 202);
+			init_pair(8, 17, 200);
+			init_pair(9, 206, 200);
+			init_pair(10, 206, 205);
+			init_pair(11, 204, 205);
+			init_pair(13, 203, 202);
+			init_pair(14, COLOR_WHITE, 211);
+			init_pair(15, 216, 214);
+			init_pair(16, 201, 214);
+			init_pair(17, 206, 214);
+			init_pair(18, -1, -1);
+			init_pair(19, -1, -1);
+			init_pair(20, 212, 205);
+			init_pair(21, 204, 207);
 			break;
 	}
 }
@@ -689,7 +731,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->found_str_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
+			t->found_str_attr |= _in(theme, (int[]) {16,  -1}, A_UNDERLINE, 0);
 			t->cursor_pattern_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | A_REVERSE, 0);
 			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
 			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);

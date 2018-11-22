@@ -2723,6 +2723,7 @@ reset_search:
 			case cmd_SetTheme_SolarDark:
 			case cmd_SetTheme_SolarLight:
 			case cmd_SetTheme_GruvboxLight:
+			case cmd_SetTheme_TaoLight:
 				opts.theme = cmd_get_theme(command);
 				reinit = true;
 				goto reinit_theme;

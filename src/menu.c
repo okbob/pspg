@@ -93,6 +93,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_o_Solar Dark theme", cmd_SetTheme_SolarDark},
 	{"_g_Solar Light theme", cmd_SetTheme_SolarLight},
 	{"_u_Gruvbox Light theme", cmd_SetTheme_GruvboxLight},
+	{"_t_Tao Light theme", cmd_SetTheme_TaoLight},
 	{NULL},
 };
 
