@@ -12,6 +12,8 @@ This pager can be used from `mysql` and `pgcli` clients too.
 
 
 ## Screenshots
+![Screenshot](screenshots/pspg-modern.png)
+
 ![Screenshot](screenshots/theme1.gif)
 
 ![Screenshot](screenshots/theme3.gif)
