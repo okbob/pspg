@@ -14,7 +14,8 @@
 #include <curses.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
+#include <termio.h>
+#include <unistd.h>
 
 #include "pspg.h"
 #include "unicode.h"

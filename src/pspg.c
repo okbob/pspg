@@ -24,7 +24,6 @@
 #error "SysV or X/Open-compatible Curses header file required"
 #endif
 
-#include <curses.h>
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
@@ -36,13 +35,10 @@
 #include <langinfo.h>
 #include <libgen.h>
 #include <locale.h>
-#include <unistd.h>
-
 #include <signal.h>
-#include <sys/ioctl.h>
-
-#include <sys/param.h>
+#include <termio.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "commands.h"
 #include "config.h"
