@@ -10,6 +10,20 @@
  *
  *-------------------------------------------------------------------------
  */
+#if defined HAVE_NCURSESW_CURSES_H
+#include <ncursesw/curses.h>
+#elif defined HAVE_NCURSESW_H
+#include <ncursesw.h>
+#elif defined HAVE_NCURSES_CURSES_H
+#include <ncurses/curses.h>
+#elif defined HAVE_NCURSES_H
+#include <ncurses.h>
+#elif defined HAVE_CURSES_H
+#include <curses.h>
+#else
+#error "SysV or X/Open-compatible Curses header file required"
+#endif
+
 #include <curses.h>
 #include <ctype.h>
 #include <errno.h>
@@ -728,12 +742,12 @@ strncpytrim(Options *opts, char *dest, const char *src,
 
 	while(nsrc > 0)
 	{
-		int	clen;
+		size_t	clen;
 
 		if (*src == '\0')
 			break;
 
-		clen = opts->force8bit ? 1 : utf8charlen(*src);
+		clen = (size_t) opts->force8bit ? 1 : utf8charlen(*src);
 		if (clen <= ndest && clen <= nsrc)
 		{
 			int		i;
@@ -1346,7 +1360,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		/* less-status-bar */
 		char	title[65];
 		char	*str;
-		int		bytes = sizeof(title) - 2;
+		size_t	bytes = sizeof(title) - 2;
 		char	*ptr = title;
 
 		if (desc->title_rows > 0 && desc->title[0] != '\0')
@@ -1521,7 +1535,7 @@ readline_redisplay()
 
 	if (!force8bit)
 	{
-		int prompt_dsplen = utf_string_dsplen(rl_display_prompt, SIZE_MAX);
+		size_t prompt_dsplen = utf_string_dsplen(rl_display_prompt, SIZE_MAX);
 
 		cursor_col = prompt_dsplen
 					  + readline_utf_string_dsplen(rl_line_buffer, rl_point, prompt_dsplen);

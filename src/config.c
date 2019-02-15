@@ -23,7 +23,7 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val)
 	int		key_length = 0;
 
 	/* skip initial spaces */
-	while (*line == ' ' && *line != '\0')
+	while (*line == ' ')
 		line++;
 
 	/* copy key to key array */
@@ -48,7 +48,7 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val)
 		line += 1;
 
 		/* skip spaces */
-		while (*line == ' ' && *line != '\0')
+		while (*line == ' ')
 			line++;
 
 		if (*line >= '0' && *line <= '9')

@@ -341,16 +341,16 @@ readline_utf_string_dsplen(const char *s, size_t max_bytes, size_t offset)
  */
 typedef struct conv_table
 {
-    unsigned int first;
-    unsigned int last;
+    wchar_t first;
+    wchar_t last;
     int step;
     int offset;
 } conv_table;
 
 typedef struct range_table
 {
-    unsigned int first;
-    unsigned int last;
+    wchar_t first;
+    wchar_t last;
     int step;
 } range_table;
 

@@ -382,7 +382,7 @@ window_fill(int window_identifier,
 					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
 					{
 						int		pos = srcx + i;
-						int		new_attr;
+						attr_t		new_attr;
 
 						if (is_cursor_row)
 							new_attr = pos >= ei_min && pos <= ei_max ? t->cursor_expi_attr : t->cursor_line_attr;
@@ -409,7 +409,7 @@ window_fill(int window_identifier,
 					else if (!fix_line_attr_style)
 					{
 						int		htrpos = srcx + i;
-						int		new_attr = active_attr;
+						attr_t	new_attr = active_attr;
 						bool	print_acs_vline = false;
 						char	column_format;
 
@@ -474,7 +474,7 @@ window_fill(int window_identifier,
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
-								new_attr = new_attr ^ A_REVERSE | pattern_fix;
+								new_attr = new_attr ^ ( A_REVERSE | pattern_fix );
 							else if (is_pattern_row && htrpos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
@@ -880,7 +880,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 					if (is_expand_head)
 					{
 						int		pos = srcx + i;
-						int		new_attr;
+						attr_t	new_attr;
 
 						new_attr = pos >= ei_min && pos <= ei_max ? expi_attr : line_attr;
 
@@ -904,7 +904,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 						if (htrpos < desc->headline_char_size)
 						{
-							int		new_attr;
+							attr_t	new_attr;
 
 							new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
 
@@ -965,7 +965,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 {
 	struct winsize size;
 	int		i;
-	int		nrows;
+	int		nrows = 0;
 
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
