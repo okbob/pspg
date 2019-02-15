@@ -21,7 +21,8 @@
 #elif defined HAVE_CURSES_H
 #include <curses.h>
 #else
-#error "SysV or X/Open-compatible Curses header file required"
+/* fallback */
+#include <ncursesw/ncurses.h>
 #endif
 
 #include <ctype.h>

@@ -11,7 +11,8 @@
 #elif defined HAVE_CURSES_H
 #include <curses.h>
 #else
-#error "SysV or X/Open-compatible Curses header file required"
+/* fallback */
+#include <ncursesw/ncurses.h>
 #endif
 
 #if defined HAVE_NCURSESW_PANEL_H
@@ -21,7 +22,8 @@
 #elif defined HAVE_PANEL_H
 #include <panel.h>
 #else
-#error "SysV-compatible Curses Panel header file required"
+/* fallback */
+#include <ncursesw/panel.h>
 #endif
 
 #include <stdlib.h>
