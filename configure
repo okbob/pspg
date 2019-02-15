@@ -3240,6 +3240,67 @@ $as_echo "#define STDC_HEADERS 1" >>confdefs.h
 fi
 
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether termios.h defines TIOCGWINSZ" >&5
+$as_echo_n "checking whether termios.h defines TIOCGWINSZ... " >&6; }
+if ${ac_cv_sys_tiocgwinsz_in_termios_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <termios.h>
+#ifdef TIOCGWINSZ
+  yes
+#endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "yes" >/dev/null 2>&1; then :
+  ac_cv_sys_tiocgwinsz_in_termios_h=yes
+else
+  ac_cv_sys_tiocgwinsz_in_termios_h=no
+fi
+rm -f conftest*
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sys_tiocgwinsz_in_termios_h" >&5
+$as_echo "$ac_cv_sys_tiocgwinsz_in_termios_h" >&6; }
+
+if test $ac_cv_sys_tiocgwinsz_in_termios_h != yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether sys/ioctl.h defines TIOCGWINSZ" >&5
+$as_echo_n "checking whether sys/ioctl.h defines TIOCGWINSZ... " >&6; }
+if ${ac_cv_sys_tiocgwinsz_in_sys_ioctl_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#ifdef TIOCGWINSZ
+  yes
+#endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "yes" >/dev/null 2>&1; then :
+  ac_cv_sys_tiocgwinsz_in_sys_ioctl_h=yes
+else
+  ac_cv_sys_tiocgwinsz_in_sys_ioctl_h=no
+fi
+rm -f conftest*
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sys_tiocgwinsz_in_sys_ioctl_h" >&5
+$as_echo "$ac_cv_sys_tiocgwinsz_in_sys_ioctl_h" >&6; }
+
+  if test $ac_cv_sys_tiocgwinsz_in_sys_ioctl_h = yes; then
+
+$as_echo "#define GWINSZ_IN_SYS_IOCTL 1" >>confdefs.h
+
+  fi
+fi
+
+
 
 
 # ensure CFLAGS are set
