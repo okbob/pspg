@@ -44,7 +44,7 @@ window_fill(int window_identifier,
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	int			positions[100][2];
-	int			npositions;
+	int			npositions = 0;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];

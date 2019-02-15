@@ -1822,7 +1822,7 @@ main(int argc, char *argv[])
 	int		event_keycode = 0;
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
-	int		command;
+	int		command = cmd_Invalid;
 	long	last_ms = 0;							/* time of last mouse release in ms */
 	time_t	last_sec = 0;							/* time of last mouse release in sec */
 	int		next_command = cmd_Invalid;
