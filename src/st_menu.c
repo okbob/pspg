@@ -12,7 +12,7 @@
 #include <curses.h>
 #else
 /* fallback */
-#include <ncursesw/ncurses.h>
+#include <ncurses/ncurses.h>
 #endif
 
 #if defined HAVE_NCURSESW_PANEL_H
@@ -23,7 +23,7 @@
 #include <panel.h>
 #else
 /* fallback */
-#include <ncursesw/panel.h>
+#include <ncurses/panel.h>
 #endif
 
 #include <stdlib.h>

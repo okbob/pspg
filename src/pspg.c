@@ -22,7 +22,7 @@
 #include <curses.h>
 #else
 /* fallback */
-#include <ncursesw/ncurses.h>
+#include <ncurses/ncurses.h>
 #endif
 
 #include <ctype.h>
