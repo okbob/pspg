@@ -15,12 +15,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef HAVE_TERMIOS_H
-# include <termios.h>
-#endif
-
 #ifdef GWINSZ_IN_SYS_IOCTL
 # include <sys/ioctl.h>
+#else
+# include <termios.h>
 #endif
 
 #include <unistd.h>
