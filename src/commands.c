@@ -169,6 +169,8 @@ cmd_string(int cmd)
 
 		case cmd_Quit:
 			return "Quit";
+		case cmd_RawOutputQuit:
+			return "RawOutputQuit";
 		case cmd_ShowMenu:
 			return "ShowMenu";
 		case cmd_FlushBookmarks:
@@ -264,6 +266,8 @@ translate_event(int c, bool alt)
 				return cmd_PrevBookmark;
 			case 'j':
 				return cmd_NextBookmark;
+			case 'q':
+				return cmd_RawOutputQuit;
 			case '9':
 				return cmd_ShowMenu;
 			case 27:

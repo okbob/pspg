@@ -27,6 +27,7 @@ ST_CMDBAR_ITEM _bottombar[] = {
 ST_MENU_ITEM _file[] = {
 	{"~S~ave", cmd_SaveData, "s"},
 	{"--"},
+	{"Raw output ~q~uit", cmd_RawOutputQuit, "M-q"},
 	{"E~x~it", cmd_Quit, "q, F10"},
 	{NULL}
 };

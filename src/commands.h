@@ -68,6 +68,7 @@ typedef enum PspgCommand
 	cmd_SaveSetup,
 
 	cmd_Quit,
+	cmd_RawOutputQuit,
 	cmd_ShowMenu,
 	cmd_FlushBookmarks,
 	cmd_ToggleBookmark,

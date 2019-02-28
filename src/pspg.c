@@ -1867,6 +1867,8 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
 
+	bool	raw_output_quit = false;
+
 	struct winsize size;
 
 	static struct option long_options[] =
@@ -2604,6 +2606,11 @@ hide_menu:
 			break;
 		else if (command == cmd_Invalid)
 			continue;
+		else if (command == cmd_RawOutputQuit)
+		{
+			raw_output_quit = true;
+			break;
+		}
 
 		switch (command)
 		{
@@ -4072,6 +4079,14 @@ refresh:
 
 	endwin();
 
+	if (raw_output_quit)
+	{
+		LineBuffer *lnb = &desc.rows;
+		int			lnb_row = 0;
+
+		while (lnb_row < lnb->nrows)
+			printf("%s\n", lnb->rows[lnb_row++]);
+	}
 	if (no_alternate_screen)
 	{
 		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,

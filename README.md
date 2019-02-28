@@ -104,6 +104,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
 * <kbd>F9</kbd> - show menu
 * <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>Esc</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
+* <kbd>Alt</kbd>+<kbd>q</kbd> - quit wit raw (unformatted) output
 * <kbd>Alt</kbd>+<kbd>k</kbd> - switch bookmark
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
 * <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
