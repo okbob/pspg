@@ -4087,7 +4087,7 @@ refresh:
 		while (lnb_row < lnb->nrows)
 			printf("%s\n", lnb->rows[lnb_row++]);
 	}
-	if (no_alternate_screen)
+	else if (no_alternate_screen)
 	{
 		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,
 				  footer_cursor_col, fix_rows_offset);
