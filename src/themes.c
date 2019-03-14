@@ -14,6 +14,30 @@
 #include "themes.h"
 #include <string.h>
 
+attr_t		theme_attrs[50];
+
+#define theme_attr(id)		(COLOR_PAIR(id) | theme_attrs[id])
+
+static void
+set_colour(short id, short foreground, short background, bool light, attr_t attrs)
+{
+	if (COLORS == 8 || foreground == -1)
+	{
+		init_pair(id, foreground, background);
+		theme_attrs[id] = attrs | (light ? A_BOLD : 0);
+	}
+	else if (foreground < 8)
+	{
+		init_pair(id, foreground + (light ? 8 : 0), background);
+		theme_attrs[id] = attrs;
+	}
+	else
+	{
+		init_pair(id, foreground, background);
+		theme_attrs[id] = attrs;
+	}
+}
+
 static int
 if_in_int(int v, const int *s, int v1, int v2)
 {
@@ -24,18 +48,6 @@ if_in_int(int v, const int *s, int v1, int v2)
 		s += 1;
 	}
 	return v2;
-}
-
-static int
-if_notin_int(int v, const int *s, int v1, int v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v2;
-		s += 1;
-	}
-	return v1;
 }
 
 /* 0..255 rgb based colors */
@@ -61,418 +73,418 @@ initialize_color_pairs(int theme)
 		case 0:
 			use_default_colors();
 
-			init_pair(2, COLOR_BLACK, COLOR_WHITE);			/* top bar colors */
-			init_pair(3, -1, -1);							/* data alphanumeric */
-			init_pair(4, -1, -1);							/* fix rows, columns */
-			init_pair(5, COLOR_BLACK, COLOR_WHITE);			/* active cursor over fixed cols */
-			init_pair(6, COLOR_BLACK, COLOR_WHITE);			/* active cursor */
-			init_pair(7, COLOR_BLACK, COLOR_WHITE);			/* title color */
-			init_pair(8, COLOR_BLACK, COLOR_WHITE);			/* expanded header */
-			init_pair(9, -1, -1);							/* footer */
-			init_pair(10, COLOR_BLACK, COLOR_WHITE);		/* footer cursor */
-			init_pair(11, COLOR_BLACK, COLOR_WHITE);		/* cursor over decoration */
-			init_pair(12, COLOR_BLACK, COLOR_WHITE);		/* bottom bar colors */
-			init_pair(13, COLOR_BLACK, COLOR_WHITE);		/* light bottom bar colors */
-			init_pair(14, COLOR_BLACK, COLOR_WHITE);		/* color of bookmark lines */
-			init_pair(15, COLOR_WHITE, COLOR_BLACK);		/* color of marked search pattern */
-			init_pair(16, -1, -1);							/* color of line with pattern */
-			init_pair(17, -1, -1);							/* color of line art with pattern */
-			init_pair(18, -1, -1);		/* color of marked search pattern in no-hl line mode */
-			init_pair(19, -1, -1);		/* color of marked search pattern in cursor */
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, -1, -1);							/* rownum colors */
+			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);			/* top bar colors */
+			set_colour(3, -1, -1, false, 0);							/* data alphanumeric */
+			set_colour(4, -1, -1, true, 0);							/* fix rows, columns */
+			set_colour(5, COLOR_BLACK, COLOR_WHITE, true, 0);			/* active cursor over fixed cols */
+			set_colour(6, COLOR_BLACK, COLOR_WHITE, false, 0);			/* active cursor */
+			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);			/* title color */
+			set_colour(8, COLOR_BLACK, COLOR_WHITE, false, 0);			/* expanded header */
+			set_colour(9, -1, -1, false, 0);							/* footer */
+			set_colour(10, COLOR_BLACK, COLOR_WHITE, false, 0);		/* footer cursor */
+			set_colour(11, COLOR_BLACK, COLOR_WHITE, false, 0);		/* cursor over decoration */
+			set_colour(12, COLOR_BLACK, COLOR_WHITE, false, 0);		/* bottom bar colors */
+			set_colour(13, COLOR_BLACK, COLOR_WHITE, false, 0);		/* light bottom bar colors */
+			set_colour(14, COLOR_BLACK, COLOR_WHITE, false, 0);		/* color of bookmark lines */
+			set_colour(15, COLOR_WHITE, COLOR_BLACK, false, 0);		/* color of marked search pattern */
+			set_colour(16, -1, -1, false, 0);							/* color of line with pattern */
+			set_colour(17, -1, -1, false, 0);							/* color of line art with pattern */
+			set_colour(18, -1, -1, false, 0);		/* color of marked search pattern in no-hl line mode */
+			set_colour(19, -1, -1, false, 0);		/* color of marked search pattern in cursor */
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(21, -1, -1, false, 0);							/* rownum colors */
 
 			break;
 		case 1:
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
-			init_pair(2, COLOR_BLACK, COLOR_CYAN);
-			init_pair(3, COLOR_WHITE, COLOR_BLUE);
-			init_pair(4, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(5, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(6, COLOR_BLACK, COLOR_CYAN);
-			init_pair(7, COLOR_BLACK, COLOR_CYAN);
-			init_pair(8, COLOR_RED, COLOR_BLUE);
-			init_pair(9, COLOR_CYAN, COLOR_BLUE);
-			init_pair(10, COLOR_BLACK, COLOR_CYAN);
-			init_pair(11, COLOR_WHITE, COLOR_CYAN);
-			init_pair(12, COLOR_WHITE, COLOR_CYAN);
-			init_pair(13, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_GREEN, COLOR_BLUE);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_WHITE, COLOR_CYAN);
+			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(4, COLOR_YELLOW, COLOR_BLUE, true, 0);
+			set_colour(5, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(13, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_GREEN, COLOR_BLUE, false, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
 			break;
 		case 2:
 			assume_default_colors(COLOR_WHITE, COLOR_CYAN);
 
-			init_pair(2, COLOR_BLACK, COLOR_WHITE);
-			init_pair(3, COLOR_WHITE, COLOR_CYAN);
-			init_pair(4, COLOR_WHITE, COLOR_CYAN);
-			init_pair(5, COLOR_WHITE, COLOR_BLUE);
-			init_pair(6, COLOR_WHITE, COLOR_BLUE);
-			init_pair(7, COLOR_YELLOW, COLOR_WHITE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_BLUE, COLOR_CYAN);
-			init_pair(10, COLOR_WHITE, COLOR_BLUE);
-			init_pair(11, COLOR_WHITE, COLOR_BLUE);
-			init_pair(12, COLOR_WHITE, COLOR_BLUE);
-			init_pair(13, COLOR_WHITE, COLOR_BLUE);
-			init_pair(14, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_WHITE, COLOR_CYAN);
+			set_colour(2, COLOR_BLACK, COLOR_WHITE, false,0);
+			set_colour(3, COLOR_WHITE, COLOR_CYAN, true,0);
+			set_colour(4, COLOR_WHITE, COLOR_CYAN, true,0);
+			set_colour(5, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(6, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(7, COLOR_YELLOW, COLOR_WHITE, true,0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(9, COLOR_BLUE, COLOR_CYAN, false,0);
+			set_colour(10, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(11, COLOR_WHITE, COLOR_BLUE, false,0);
+			set_colour(12, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(13, COLOR_WHITE, COLOR_BLUE, true,0);
+			set_colour(14, COLOR_WHITE, COLOR_MAGENTA, true,0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true,0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false,0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false,0);
+			set_colour(18, COLOR_YELLOW, COLOR_GREEN, true,0);
+			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true,0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false,0);
+			set_colour(21, COLOR_WHITE, COLOR_CYAN, false,0);
 			break;
 		case 3:
 			assume_default_colors(COLOR_BLACK, COLOR_CYAN);
 
-			init_pair(2, COLOR_BLACK, COLOR_WHITE);
-			init_pair(3, COLOR_BLACK, COLOR_CYAN);
-			init_pair(4, COLOR_WHITE, COLOR_CYAN);
-			init_pair(5, COLOR_WHITE, COLOR_BLACK);
-			init_pair(6, COLOR_CYAN, COLOR_BLACK);
-			init_pair(7, COLOR_BLACK, COLOR_WHITE);
-			init_pair(8, COLOR_WHITE, COLOR_CYAN);
-			init_pair(9, COLOR_BLACK, COLOR_CYAN);
-			init_pair(10, COLOR_CYAN, COLOR_BLACK);
-			init_pair(11, COLOR_CYAN, COLOR_BLACK);
-			init_pair(12, COLOR_CYAN, COLOR_BLACK);
-			init_pair(13, COLOR_WHITE, COLOR_BLACK);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_WHITE, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_BLACK, COLOR_GREEN);
-			init_pair(18, COLOR_WHITE, COLOR_GREEN);
-			init_pair(19, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(20, COLOR_WHITE, COLOR_BLUE);
-			init_pair(21, COLOR_BLACK, COLOR_CYAN);
+			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(3, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(4, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(6, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(9, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(10, COLOR_CYAN, COLOR_BLACK, true, 0);
+			set_colour(11, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(12, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_BLACK, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(21, COLOR_BLACK, COLOR_CYAN, false, 0);
 
 			break;
 		case 4:
 			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
 
-			init_pair(2, COLOR_BLACK, COLOR_CYAN);
-			init_pair(3, COLOR_BLACK, COLOR_WHITE);
-			init_pair(4, COLOR_BLACK, COLOR_WHITE);
-			init_pair(5, COLOR_WHITE, COLOR_BLUE);
-			init_pair(6, COLOR_WHITE, COLOR_BLUE);
-			init_pair(7, COLOR_BLACK, COLOR_CYAN);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_BLACK, COLOR_WHITE);
-			init_pair(10, COLOR_WHITE, COLOR_BLUE);
-			init_pair(11, COLOR_WHITE, COLOR_BLUE);
-			init_pair(12, COLOR_WHITE, COLOR_BLUE);
-			init_pair(13, COLOR_WHITE, COLOR_BLUE);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_BLACK, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(4, COLOR_BLACK, COLOR_WHITE, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(11, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
 
 			break;
 		case 5:
 			use_default_colors();
 
-			init_pair(2, COLOR_GREEN, COLOR_BLUE);
-			init_pair(3, -1, -1);
-			init_pair(4, COLOR_CYAN, -1);
-			init_pair(5, COLOR_BLACK, COLOR_CYAN);
-			init_pair(6, COLOR_BLACK, COLOR_CYAN);
-			init_pair(7, COLOR_GREEN, COLOR_BLUE);
-			init_pair(8, COLOR_BLACK, COLOR_BLUE);
-			init_pair(9, COLOR_BLACK, COLOR_CYAN);
-			init_pair(10, COLOR_BLACK, COLOR_CYAN);
-			init_pair(11, -1, COLOR_CYAN);
-			init_pair(12, COLOR_BLACK, COLOR_CYAN);
-			init_pair(13, COLOR_BLACK, COLOR_CYAN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, -1, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_CYAN);
+			set_colour(2, COLOR_GREEN, COLOR_BLUE, false, 0);
+			set_colour(3, -1, -1, false, 0);
+			set_colour(4, COLOR_CYAN, -1, true, 0);
+			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(7, COLOR_GREEN, COLOR_BLUE, false, 0);
+			set_colour(8, COLOR_BLACK, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(11, -1, COLOR_CYAN, false, 0);
+			set_colour(12, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(13, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, -1, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
 
 			break;
 		case 6:
 			assume_default_colors(COLOR_WHITE, COLOR_BLACK);
 
-			init_pair(2, COLOR_BLACK, COLOR_CYAN);
-			init_pair(3, COLOR_WHITE, COLOR_BLACK);
-			init_pair(4, COLOR_CYAN, COLOR_BLACK);
-			init_pair(5, COLOR_WHITE, COLOR_BLUE);
-			init_pair(6, COLOR_WHITE, COLOR_BLUE);
-			init_pair(7, COLOR_BLACK, COLOR_CYAN);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_CYAN, COLOR_BLACK);
-			init_pair(10, COLOR_WHITE, COLOR_BLUE);
-			init_pair(11, COLOR_WHITE, COLOR_BLUE);
-			init_pair(12, COLOR_WHITE, COLOR_BLUE);
-			init_pair(13, COLOR_WHITE, COLOR_BLUE);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(19, COLOR_CYAN, COLOR_BLUE);
-			init_pair(20, COLOR_CYAN, COLOR_BLUE);
+			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(4, COLOR_CYAN, COLOR_BLACK, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(11, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_BLACK, false, 0);
+			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(20, COLOR_CYAN, COLOR_BLUE, false, 0);
 
 			break;
 		case 7:
 			assume_default_colors(COLOR_GREEN, COLOR_BLACK);
 
-			init_pair(2, COLOR_CYAN, COLOR_BLACK);
-			init_pair(3, COLOR_GREEN, COLOR_BLACK);
-			init_pair(4, COLOR_GREEN, COLOR_BLACK);
-			init_pair(5, COLOR_WHITE, COLOR_GREEN);
-			init_pair(6, COLOR_WHITE, COLOR_GREEN);
-			init_pair(7, COLOR_CYAN, COLOR_BLACK);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_CYAN, COLOR_BLACK);
-			init_pair(10, COLOR_WHITE, COLOR_GREEN);
-			init_pair(11, COLOR_WHITE, COLOR_GREEN);
-			init_pair(12, COLOR_WHITE, COLOR_GREEN);
-			init_pair(13, COLOR_WHITE, COLOR_GREEN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_WHITE, COLOR_CYAN);
-			init_pair(16, COLOR_BLACK, COLOR_CYAN);
-			init_pair(17, COLOR_GREEN, COLOR_CYAN);
-			init_pair(18, COLOR_CYAN, COLOR_BLACK);
-			init_pair(19, COLOR_CYAN, COLOR_GREEN);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_CYAN, COLOR_BLACK);
+			set_colour(2, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(3, COLOR_GREEN, COLOR_BLACK, false, 0);
+			set_colour(4, COLOR_GREEN, COLOR_BLACK, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(7, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(11, COLOR_GREEN, COLOR_GREEN, true, 0);
+			set_colour(12, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_GREEN, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(16, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(17, COLOR_GREEN, COLOR_CYAN, false, 0);
+			set_colour(18, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(19, COLOR_CYAN, COLOR_GREEN, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(21, COLOR_CYAN, COLOR_BLACK, false, 0);
 
 			break;
 		case 8:
 			assume_default_colors(COLOR_CYAN, COLOR_BLUE);
 
-			init_pair(2, COLOR_WHITE, COLOR_BLUE);
-			init_pair(3, COLOR_WHITE, COLOR_BLUE);
-			init_pair(4, COLOR_WHITE, COLOR_BLUE);
-			init_pair(5, COLOR_WHITE, COLOR_CYAN);
-			init_pair(6, COLOR_WHITE, COLOR_CYAN);
-			init_pair(7, COLOR_WHITE, COLOR_BLUE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_WHITE, COLOR_BLUE);
-			init_pair(10, COLOR_WHITE, COLOR_CYAN);
-			init_pair(11, COLOR_BLUE, COLOR_CYAN);
-			init_pair(12, COLOR_WHITE, COLOR_CYAN);
-			init_pair(13, COLOR_WHITE, COLOR_CYAN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_CYAN, COLOR_GREEN);
-			init_pair(18, COLOR_CYAN, COLOR_BLUE);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(21, COLOR_CYAN, COLOR_BLUE);
+			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(4, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(11, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_CYAN, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
+			set_colour(21, COLOR_CYAN, COLOR_BLUE, false, 0);
 
 			break;
 		case 9:
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
-			init_pair(2, COLOR_BLACK, COLOR_WHITE);
-			init_pair(3, COLOR_WHITE, COLOR_BLUE);
-			init_pair(4, COLOR_CYAN, COLOR_BLUE);
-			init_pair(5, COLOR_WHITE, COLOR_CYAN);
-			init_pair(6, COLOR_WHITE, COLOR_CYAN);
-			init_pair(7, COLOR_BLACK, COLOR_WHITE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_WHITE, COLOR_BLUE);
-			init_pair(10, COLOR_WHITE, COLOR_CYAN);
-			init_pair(11, COLOR_WHITE, COLOR_CYAN);
-			init_pair(12, COLOR_WHITE, COLOR_CYAN);
-			init_pair(13, COLOR_WHITE, COLOR_CYAN);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(19, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(20, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(21, COLOR_WHITE, COLOR_BLUE);
+			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(4, COLOR_CYAN, COLOR_BLUE, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_BLUE, true, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
+			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
 
 			break;
 		case 10:
 			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
-			init_pair(2, COLOR_BLUE, COLOR_CYAN);
-			init_pair(3, COLOR_BLUE, COLOR_CYAN);
-			init_pair(4, COLOR_WHITE, COLOR_CYAN);
-			init_pair(5, COLOR_WHITE, COLOR_BLUE);
-			init_pair(6, COLOR_WHITE, COLOR_BLUE);
-			init_pair(7, COLOR_BLUE, COLOR_CYAN);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_BLUE, COLOR_CYAN);
-			init_pair(10, COLOR_WHITE, COLOR_BLUE);
-			init_pair(11, COLOR_CYAN, COLOR_BLUE);
-			init_pair(12, COLOR_WHITE, COLOR_BLUE);
-			init_pair(13, COLOR_WHITE, COLOR_BLUE);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_BLUE, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(19, COLOR_YELLOW, COLOR_BLUE);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_BLUE, COLOR_CYAN);
+			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(3, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(4, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(7, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(11, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_BLUE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(21, COLOR_BLUE, COLOR_CYAN, false, 0);
 
 			break;
 		case 11:
 			assume_default_colors(COLOR_CYAN, COLOR_BLACK);
 
-			init_pair(2, COLOR_WHITE, COLOR_BLUE);
-			init_pair(3, COLOR_CYAN, COLOR_BLACK);
-			init_pair(4, COLOR_CYAN, COLOR_BLACK);
-			init_pair(5, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(6, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(7, COLOR_WHITE, COLOR_BLUE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_WHITE, COLOR_BLACK);
-			init_pair(10, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(11, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(12, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(13, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_CYAN, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(19, COLOR_CYAN, COLOR_MAGENTA);
-			init_pair(20, COLOR_WHITE, COLOR_BLUE);
+			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(3, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(4, COLOR_CYAN, COLOR_BLACK, true, 0);
+			set_colour(5, COLOR_WHITE, COLOR_MAGENTA, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_MAGENTA, true, 0);
+			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_MAGENTA, true, 0);
+			set_colour(11, COLOR_WHITE, COLOR_MAGENTA, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_MAGENTA, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_MAGENTA, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_CYAN, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
+			set_colour(19, COLOR_CYAN, COLOR_MAGENTA, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLUE, false, 0);
 
 			break;
 		case 12:
 			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
-			init_pair(2, COLOR_BLUE, COLOR_CYAN);
-			init_pair(3, COLOR_WHITE, COLOR_CYAN);
-			init_pair(4, COLOR_BLUE, COLOR_CYAN);
-			init_pair(5, COLOR_WHITE, COLOR_BLUE);
-			init_pair(6, COLOR_WHITE, COLOR_BLUE);
-			init_pair(7, COLOR_BLUE, COLOR_CYAN);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_BLUE, COLOR_CYAN);
-			init_pair(10, COLOR_WHITE, COLOR_BLUE);
-			init_pair(11, COLOR_CYAN, COLOR_BLUE);
-			init_pair(12, COLOR_WHITE, COLOR_BLUE);
-			init_pair(13, COLOR_WHITE, COLOR_BLUE);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_BLUE, COLOR_GREEN);
-			init_pair(18, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(19, COLOR_CYAN, COLOR_BLUE);
-			init_pair(20, COLOR_WHITE, COLOR_MAGENTA);
-			init_pair(21, COLOR_CYAN, COLOR_CYAN);
+			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(4, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(7, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(11, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_BLUE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_MAGENTA, false, 0);
+			set_colour(21, COLOR_CYAN, COLOR_CYAN, true, 0);
 
 			break;
 		case 13:
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
-			init_pair(2, COLOR_WHITE, COLOR_BLACK);
-			init_pair(3, COLOR_WHITE, COLOR_BLUE);
-			init_pair(4, COLOR_WHITE, COLOR_BLUE);
-			init_pair(5, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(6, COLOR_YELLOW, COLOR_CYAN);
-			init_pair(7, COLOR_WHITE, COLOR_BLACK);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_WHITE, COLOR_BLUE);
-			init_pair(10, COLOR_BLACK, COLOR_CYAN);
-			init_pair(11, COLOR_WHITE, COLOR_CYAN);
-			init_pair(12, COLOR_WHITE, COLOR_BLACK);
-			init_pair(13, COLOR_WHITE, COLOR_BLACK);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_CYAN, COLOR_BLUE);
-			init_pair(19, COLOR_WHITE, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			set_colour(2, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(4, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(5, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(6, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(7, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(11, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 
 			break;
 		case 14:
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
-			init_pair(2, COLOR_WHITE, COLOR_BLUE);
-			init_pair(3, COLOR_WHITE, COLOR_BLUE);
-			init_pair(4, COLOR_MAGENTA, COLOR_BLUE);
-			init_pair(5, COLOR_BLACK, COLOR_CYAN);
-			init_pair(6, COLOR_BLACK, COLOR_CYAN);
-			init_pair(7, COLOR_WHITE, COLOR_BLUE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_WHITE, COLOR_BLUE);
-			init_pair(10, COLOR_BLACK, COLOR_CYAN);
-			init_pair(11, COLOR_WHITE, COLOR_CYAN);
-			init_pair(12, COLOR_WHITE, COLOR_BLACK);
-			init_pair(13, COLOR_WHITE, COLOR_BLACK);
-			init_pair(14, COLOR_WHITE, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_GREEN);
-			init_pair(16, COLOR_BLACK, COLOR_GREEN);
-			init_pair(17, COLOR_WHITE, COLOR_GREEN);
-			init_pair(18, COLOR_CYAN, COLOR_BLUE);
-			init_pair(19, COLOR_WHITE, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
-			init_pair(21, COLOR_WHITE, COLOR_BLUE);
+			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(4, COLOR_MAGENTA, COLOR_BLUE, true, 0);
+			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
+			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
 			break;
 
 		case 15:
 			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
 
-			init_pair(2, COLOR_BLACK, COLOR_WHITE);
-			init_pair(3, COLOR_BLACK, COLOR_WHITE);
-			init_pair(4, COLOR_RED, COLOR_WHITE);
-			init_pair(5, COLOR_WHITE, COLOR_RED);
-			init_pair(6, COLOR_WHITE, COLOR_RED);
-			init_pair(7, COLOR_BLACK, COLOR_WHITE);
-			init_pair(8, COLOR_WHITE, COLOR_BLUE);
-			init_pair(9, COLOR_BLACK, COLOR_WHITE);
-			init_pair(10, COLOR_WHITE, COLOR_RED);
-			init_pair(11, COLOR_BLACK, COLOR_RED);
-			init_pair(12, COLOR_WHITE, COLOR_BLACK);
-			init_pair(13, COLOR_WHITE, COLOR_BLACK);
-			init_pair(14, COLOR_YELLOW, COLOR_RED);
-			init_pair(15, COLOR_YELLOW, COLOR_BLACK);
-			init_pair(16, COLOR_WHITE, COLOR_BLACK);
-			init_pair(17, COLOR_WHITE, COLOR_BLACK);
-			init_pair(18, COLOR_CYAN, COLOR_BLUE);
-			init_pair(19, COLOR_WHITE, COLOR_CYAN);
-			init_pair(20, COLOR_WHITE, COLOR_BLACK);
+			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(4, COLOR_RED, COLOR_WHITE, false, A_DIM);
+			set_colour(5, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(6, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_BLACK, COLOR_WHITE, false, 0);
+			set_colour(10, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(11, COLOR_BLACK, COLOR_RED, false, 0);
+			set_colour(12, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(14, COLOR_YELLOW, COLOR_RED, true, A_REVERSE | A_BOLD);
+			set_colour(15, COLOR_YELLOW, COLOR_BLACK, true, 0);
+			set_colour(16, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(17, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(18, COLOR_CYAN, COLOR_BLUE, true, 0);
+			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 			break;
 
 		case 16:
 			use_default_colors();
 
-			init_pair(2, -1, -1);
-			init_pair(3, -1, -1);
-			init_pair(4, -1, -1);
-			init_pair(5, -1, -1);
-			init_pair(6, -1, -1);
-			init_pair(7, -1, -1);
-			init_pair(8, -1, -1);
-			init_pair(9, -1, -1);
-			init_pair(10, -1, -1);
-			init_pair(11, -1, -1);
-			init_pair(12, -1, -1);
-			init_pair(13, -1, -1);
-			init_pair(14, -1, -1);
-			init_pair(15, -1, -1);
-			init_pair(16, -1, -1);
-			init_pair(17, -1, -1);
-			init_pair(18, -1, -1);
-			init_pair(19, -1, -1);
-			init_pair(20, -1, -1);
-			init_pair(21, -1, -1);
+			set_colour(2, -1, -1, false, 0);
+			set_colour(3, -1, -1, false, 0);
+			set_colour(4, -1, -1, true, A_ITALIC);
+			set_colour(5, -1, -1, true, A_REVERSE);
+			set_colour(6, -1, -1, false, A_REVERSE);
+			set_colour(7, -1, -1, false, 0);
+			set_colour(8, -1, -1, false, 0);
+			set_colour(9, -1, -1, false, 0);
+			set_colour(10, -1, -1, true, A_REVERSE);
+			set_colour(11, -1, -1, false, A_REVERSE);
+			set_colour(12, -1, -1, false, 0);
+			set_colour(13, -1, -1, true, 0);
+			set_colour(14, -1, -1, false, A_UNDERLINE);
+			set_colour(15, -1, -1, false, A_UNDERLINE);
+			set_colour(16, -1, -1, false, 0);
+			set_colour(17, -1, -1, false, 0);
+			set_colour(18, -1, -1, false, A_UNDERLINE);
+			set_colour(19, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
+			set_colour(20, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
+			set_colour(21, -1, -1, false, 0);
 			break;
 
 		case 17:
@@ -644,50 +656,39 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 	{
 		case WINDOW_LUC:
 		case WINDOW_FIX_ROWS:
-			t->data_attr = COLOR_PAIR(4);
-			t->data_attr |= _notin(theme, (int[]) {12, 15, 19, -1}, A_BOLD, 0);
-			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
-			t->data_attr |= _in(theme, (int[]) {16, -1}, A_ITALIC, 0);
+			t->data_attr = theme_attr(4);
 			break;
 
 		case WINDOW_TOP_BAR:
-			t->title_attr = COLOR_PAIR(7);
-			t->title_attr |= _in(theme, (int[]) {2, -1}, A_BOLD, 0);
+			t->title_attr = theme_attr(7);
 			break;
 
 		case WINDOW_BOTTOM_BAR:
-			t->prompt_attr = _in(theme, (int[]) {0, 1, -1}, COLOR_PAIR(2), COLOR_PAIR(13));
-			t->bottom_attr = COLOR_PAIR(12);
-			t->bottom_light_attr = COLOR_PAIR(13);
-
-			t->prompt_attr |= _notin(theme, (int[]) {0, 1, 19, -1}, A_BOLD, 0);
-			t->bottom_attr |= _notin(theme, (int[]) {13, 14, -1}, A_BOLD, 0);
-			t->bottom_light_attr |= A_BOLD;
+			t->prompt_attr = _in(theme, (int[]) {0, 1, -1}, theme_attr(2), theme_attr(13));
+			t->bottom_attr = theme_attr(12);
+			t->bottom_light_attr = A_BOLD | theme_attr(13);
 			break;
 
 		case WINDOW_FIX_COLS:
-			t->data_attr = COLOR_PAIR(4);
+			t->data_attr = theme_attr(4);
 			t->line_attr = 0;
-			t->expi_attr = COLOR_PAIR(8);
-			t->cursor_data_attr = COLOR_PAIR(5);
-			t->cursor_line_attr = COLOR_PAIR(11);
-			t->cursor_expi_attr = COLOR_PAIR(6);
-			t->cursor_pattern_attr = COLOR_PAIR(20);
-			t->bookmark_data_attr = COLOR_PAIR(14);
-			t->bookmark_line_attr = COLOR_PAIR(14);
-			t->cursor_bookmark_attr = COLOR_PAIR(14);
-			t->found_str_attr = !no_highlight_lines ? COLOR_PAIR(15) : COLOR_PAIR(18);
-			t->pattern_data_attr = COLOR_PAIR(16);
-			t->pattern_line_attr = COLOR_PAIR(17);
+			t->expi_attr = theme_attr(8);
+			t->cursor_data_attr = theme_attr(5);
+			t->cursor_line_attr = theme_attr(11);
+			t->cursor_expi_attr = theme_attr(6);
+			t->cursor_pattern_attr = theme_attr(20);
+			t->bookmark_data_attr = theme_attr(14);
+			t->bookmark_line_attr = theme_attr(14);
+			t->cursor_bookmark_attr = theme_attr(14);
+			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
+			t->pattern_data_attr = theme_attr(16);
+			t->pattern_line_attr = theme_attr(17);
 
-			t->data_attr |= _notin(theme, (int[]) { 12, 15, 19, -1}, A_BOLD, 0);
-			t->data_attr |= _in(theme, (int[]) {15, -1}, A_DIM, 0);
 			t->line_attr |= 0;
 			t->expi_attr |= A_BOLD;
-			t->cursor_data_attr |= _notin(theme, (int[]) {14, -1}, A_BOLD, 0);
-			t->cursor_line_attr |= 0;
-			t->cursor_expi_attr |= A_BOLD;
-			t->cursor_pattern_attr |= A_BOLD;
+//			t->cursor_line_attr |= 0;
+//			t->cursor_expi_attr |= A_BOLD;
+//			t->cursor_pattern_attr |= A_BOLD;
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
 			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
@@ -695,36 +696,28 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->found_str_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | (no_highlight_lines ? A_ITALIC : 0), 0);
-			t->cursor_pattern_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | A_REVERSE, 0);
-			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
-			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
-			t->data_attr |= _in(theme, (int[]) {16, -1}, A_ITALIC, 0);
-			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
-			t->bookmark_line_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
 			break;
 
 		case WINDOW_ROWS:
-			t->data_attr = COLOR_PAIR(3);
+			t->data_attr = theme_attr(3);
 			t->line_attr = 0;
-			t->expi_attr = COLOR_PAIR(8);
-			t->cursor_data_attr = COLOR_PAIR(6);
-			t->cursor_line_attr = COLOR_PAIR(11);
-			t->cursor_expi_attr = COLOR_PAIR(6);
-			t->cursor_pattern_attr = COLOR_PAIR(19);
-			t->bookmark_data_attr = COLOR_PAIR(14);
-			t->bookmark_line_attr = COLOR_PAIR(14);
-			t->cursor_bookmark_attr = COLOR_PAIR(14);
-			t->found_str_attr = !no_highlight_lines ? COLOR_PAIR(15) : COLOR_PAIR(18);
-			t->pattern_data_attr = COLOR_PAIR(16);
-			t->pattern_line_attr = COLOR_PAIR(17);
+			t->expi_attr = theme_attr(8);
+			t->cursor_data_attr = theme_attr(6);
+			t->cursor_line_attr = theme_attr(11);
+			t->cursor_expi_attr = theme_attr(6);
+			t->cursor_pattern_attr = theme_attr(19);
+			t->bookmark_data_attr = theme_attr(14);
+			t->bookmark_line_attr = theme_attr(14);
+			t->cursor_bookmark_attr = theme_attr(14);
+			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
+			t->pattern_data_attr = theme_attr(16);
+			t->pattern_line_attr = theme_attr(17);
 
-			t->data_attr |= _in(theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0);
-			t->line_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, -1}, A_BOLD, 0)) : 0;
+			//t->line_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, -1}, A_BOLD, 0)) : 0;
 			t->expi_attr |= A_BOLD;
-			t->cursor_data_attr |= _notin(theme, (int[]) {14, 1, -1}, A_BOLD, 0);
-			t->cursor_line_attr |= !is_tabular_fmt ? A_BOLD : 0;
-			t->cursor_expi_attr |= A_BOLD;
-			t->cursor_pattern_attr |= A_BOLD;
+			//t->cursor_line_attr |= !is_tabular_fmt ? A_BOLD : 0;
+			//t->cursor_expi_attr |= A_BOLD;
+			//t->cursor_pattern_attr |= A_BOLD;
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
 			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
@@ -732,36 +725,29 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
 			t->found_str_attr |= _in(theme, (int[]) {16,  -1}, A_UNDERLINE, 0);
-			t->cursor_pattern_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | A_REVERSE, 0);
-			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
-			t->cursor_line_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
-			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
-			t->bookmark_line_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
 			break;
 
 		case WINDOW_FOOTER:
-			t->data_attr = is_tabular_fmt ? COLOR_PAIR(9) : COLOR_PAIR(3);
+			t->data_attr = is_tabular_fmt ? theme_attr(9) : theme_attr(3);
 			t->line_attr = 0;
 			t->expi_attr = 0;
-			t->cursor_data_attr = COLOR_PAIR(10);
+			t->cursor_data_attr = theme_attr(10);
 			t->cursor_line_attr = 0;
 			t->cursor_expi_attr = 0;
-			t->cursor_pattern_attr = COLOR_PAIR(19);
-			t->bookmark_data_attr = COLOR_PAIR(14);
-			t->bookmark_line_attr = COLOR_PAIR(14);
-			t->cursor_bookmark_attr = COLOR_PAIR(14);
-			t->found_str_attr = !no_highlight_lines ? COLOR_PAIR(15) : COLOR_PAIR(18);
-			t->pattern_data_attr = COLOR_PAIR(16);
-			t->pattern_line_attr = COLOR_PAIR(17);
+			t->cursor_pattern_attr = theme_attr(19);
+			t->bookmark_data_attr = theme_attr(14);
+			t->bookmark_line_attr = theme_attr(14);
+			t->cursor_bookmark_attr = theme_attr(14);
+			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
+			t->pattern_data_attr = theme_attr(16);
+			t->pattern_line_attr = theme_attr(17);
 
-			t->data_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, 12, 13, 14, -1}, A_BOLD, 0)) : 0;
 			t->line_attr |= 0,
 			t->expi_attr |= 0;
-			t->cursor_data_attr |= _notin(theme, (int[]) { 13, 14, 1, -1}, A_BOLD, 0);
 			t->cursor_line_attr |= 0;
 			t->cursor_expi_attr |= 0;
-			t->cursor_pattern_attr |= A_BOLD;
-			t->bookmark_data_attr |= A_BOLD;
+//			t->cursor_pattern_attr |= A_BOLD;
+//			t->bookmark_data_attr |= A_BOLD;
 			t->bookmark_line_attr |= 0;
 			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : A_BOLD;
@@ -772,19 +758,14 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 
 		case WINDOW_ROWNUM:
 		case WINDOW_ROWNUM_LUC:
-			t->data_attr = COLOR_PAIR(21);
-			t->cursor_data_attr = COLOR_PAIR(10);
-			t->bookmark_data_attr = COLOR_PAIR(14);
-			t->cursor_bookmark_attr = COLOR_PAIR(14);
-			t->pattern_data_attr = COLOR_PAIR(16);
+			t->data_attr = theme_attr(21);
+			t->cursor_data_attr = theme_attr(10);
+			t->bookmark_data_attr = theme_attr(14);
+			t->cursor_bookmark_attr = theme_attr(14);
+			t->pattern_data_attr = theme_attr(16);
 
-			t->data_attr |= _in(theme, (int[]) { 1, 2, 12, 13, 14, -1}, A_BOLD,0);
-			t->cursor_data_attr |= _notin(theme, (int[]) {14, 1, -1}, A_BOLD, 0);
-			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
+//			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
-
-			t->cursor_data_attr |= _in(theme, (int[]) {16, -1}, A_REVERSE, 0);
-			t->bookmark_data_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE, 0);
 
 			break;
 	}

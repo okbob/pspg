@@ -4,6 +4,31 @@
 #include <string.h>
 
 /*
+ * Set ligh colour
+ */
+static attr_t
+slc(short id, short foreground, short background)
+{
+	if (COLORS == 8 || foreground == -1)
+	{
+		init_pair(id, foreground, background);
+		return A_BOLD;
+	}
+	else if (foreground < 8)
+	{
+		init_pair(id, foreground + 8, background);
+		return 0;
+	}
+	else
+	{
+		init_pair(id, foreground, background);
+		return 0;
+	}
+}
+
+#define islc(f,b)		(slc(start_from_cpn++, f, b))
+
+/*
  * Prepared styles - config settings. start_from_cpn is first color pair 
  * number that can be used by st_menu library. For ST_MENU_STYLE_ONECOLOR
  * style it is number of already existing color pair.
@@ -47,16 +72,14 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->accelerator_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_cpn = start_from_cpn;
 			config->cursor_attr = 0;
 			init_pair(start_from_cpn++, -1, -1);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->disabled_cpn = config->menu_background_cpn;
 			config->disabled_attr = A_BOLD;
@@ -77,8 +100,7 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 
 		case ST_MENU_STYLE_MC:
 			config->menu_background_cpn = start_from_cpn;
-			config->menu_background_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_CYAN);
+			config->menu_background_attr = islc(COLOR_WHITE, COLOR_CYAN);
 
 			config->menu_unfocused_cpn = start_from_cpn;
 			config->menu_unfocused_attr = 0;
@@ -89,20 +111,16 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
+			config->accelerator_attr = islc(COLOR_YELLOW, COLOR_CYAN);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_YELLOW, COLOR_BLACK);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = true;
 			config->wide_vborders = false;
@@ -145,8 +163,7 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_RED, COLOR_GREEN);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = true;
@@ -181,20 +198,17 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_WHITE);
+			config->accelerator_attr = islc(COLOR_WHITE, COLOR_WHITE);
 
 			config->cursor_cpn = start_from_cpn;
 			config->cursor_attr = 0;
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -227,16 +241,13 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_RED, COLOR_CYAN);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->cursor_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->cursor_accel_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -268,20 +279,16 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_CYAN, COLOR_CYAN);
+			config->accelerator_attr = islc(COLOR_CYAN, COLOR_CYAN);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->cursor_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->cursor_accel_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -313,21 +320,18 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_WHITE);
+			config->accelerator_attr = islc(COLOR_WHITE, COLOR_WHITE);
 
 			config->cursor_cpn = start_from_cpn;
 			config->cursor_attr = 0;
 			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_CYAN);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_CYAN);
 
 			/* This is different, from original, but cyan text is not readable */
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_DIM;
-			init_pair(start_from_cpn++, COLOR_CYAN, COLOR_WHITE);
+			config->disabled_attr = A_DIM | islc(COLOR_CYAN, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -360,16 +364,13 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_RED, COLOR_WHITE);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_RED);
+			config->cursor_attr = islc(COLOR_WHITE, COLOR_RED);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = 0;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_RED);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_RED);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -480,16 +481,13 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_RED, COLOR_WHITE);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -518,20 +516,17 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_CYAN);
+			config->accelerator_attr = islc(COLOR_WHITE, COLOR_CYAN);
 
 			config->cursor_cpn = start_from_cpn;
 			config->cursor_attr = 0;
 			init_pair(start_from_cpn++, COLOR_CYAN, COLOR_BLACK);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -548,28 +543,22 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 
 		case ST_MENU_STYLE_OLD_TURBO:
 			config->menu_background_cpn = start_from_cpn;
-			config->menu_background_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->menu_background_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->menu_unfocused_cpn = start_from_cpn;
-			config->menu_unfocused_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLUE);
+			config->menu_unfocused_attr = islc(COLOR_YELLOW, COLOR_BLUE);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_CYAN, COLOR_BLUE);
+			config->accelerator_attr = islc(COLOR_CYAN, COLOR_BLUE);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_MAGENTA);
+			config->cursor_attr = islc(COLOR_YELLOW, COLOR_MAGENTA);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_MAGENTA);
+			config->cursor_accel_attr = islc(COLOR_YELLOW, COLOR_MAGENTA);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_DIM;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLUE);
+			config->disabled_attr = A_DIM | islc(COLOR_WHITE, COLOR_BLUE);
 
 			config->left_alligned_shortcuts = true;
 			config->wide_vborders = false;
@@ -611,8 +600,7 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 
 			/* This is different, from original, but cyan text is not readable */
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_WHITE);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_WHITE);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -654,8 +642,7 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 
 			/* This is different, from original, but cyan text is not readable */
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
@@ -684,20 +671,16 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
+			config->accelerator_attr = islc(COLOR_YELLOW, COLOR_CYAN);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->cursor_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_BLACK);
+			config->cursor_accel_attr = islc(COLOR_YELLOW, COLOR_BLACK);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_BLACK, COLOR_CYAN);
+			config->disabled_attr = islc(COLOR_BLACK, COLOR_CYAN);
 
 			config->left_alligned_shortcuts = true;
 			config->wide_vborders = false;
@@ -716,32 +699,26 @@ st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
 
 		case ST_MENU_STYLE_DBASE:
 			config->menu_background_cpn = start_from_cpn;
-			config->menu_background_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->menu_background_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->menu_unfocused_cpn = start_from_cpn;
-			config->menu_unfocused_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->menu_unfocused_attr = islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->menu_shadow_cpn = start_from_cpn;
 			config->menu_shadow_attr = 0;
 			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
 
 			config->accelerator_cpn = start_from_cpn;
-			config->accelerator_attr = A_UNDERLINE | A_BOLD;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->accelerator_attr = A_UNDERLINE | islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->cursor_cpn = start_from_cpn;
-			config->cursor_attr = A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
+			config->cursor_attr = islc(COLOR_YELLOW, COLOR_CYAN);
 
 			config->cursor_accel_cpn = start_from_cpn;
-			config->cursor_accel_attr = A_UNDERLINE | A_BOLD;
-			init_pair(start_from_cpn++, COLOR_YELLOW, COLOR_CYAN);
+			config->cursor_accel_attr = A_UNDERLINE | islc(COLOR_YELLOW, COLOR_CYAN);
 
 			config->disabled_cpn = start_from_cpn;
-			config->disabled_attr = A_DIM;
-			init_pair(start_from_cpn++, COLOR_WHITE, COLOR_BLACK);
+			config->disabled_attr = A_DIM | islc(COLOR_WHITE, COLOR_BLACK);
 
 			config->left_alligned_shortcuts = true;
 			config->wide_vborders = false;
