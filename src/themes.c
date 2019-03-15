@@ -18,6 +18,10 @@ attr_t		theme_attrs[50];
 
 #define theme_attr(id)		(COLOR_PAIR(id) | theme_attrs[id])
 
+#ifndef A_ITALIC
+#define A_ITALIC	A_DIM
+#endif
+
 static void
 set_colour(short id, short foreground, short background, bool light, attr_t attrs)
 {
@@ -646,9 +650,6 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 #define _in			if_in_int
 #define _notin		if_notin_int
 
-#ifndef A_ITALIC
-#define A_ITALIC	A_DIM
-#endif
 
 void
 initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t)
