@@ -82,6 +82,8 @@ save_config(char *path, Options *opts)
 		return false;
 
 	fprintf(f, "ascii_menu = %s\n", opts->force_ascii_art ? "true" : "false");
+	fprintf(f, "bold_labels = %s\n", opts->bold_labels ? "true" : "false");
+	fprintf(f, "bold_cursor = %s\n", opts->bold_cursor ? "true" : "false");
 	fprintf(f, "ignore_case = %s\n", opts->ignore_case ? "true" : "false");
 	fprintf(f, "ignore_lower_case = %s\n", opts->ignore_lower_case ? "true" : "false");
 	fprintf(f, "no_cursor = %s\n", opts->no_cursor ? "true" : "false");
@@ -128,7 +130,11 @@ load_config(char *path, Options *opts)
 		{
 			if (strcmp(key, "ascii_menu") == 0)
 				opts->force_ascii_art = bool_val;
-			if (strcmp(key, "ignore_case") == 0)
+			else if (strcmp(key, "bold_labels") == 0)
+				opts->bold_labels = bool_val;
+			else if (strcmp(key, "bold_cursor") == 0)
+				opts->bold_cursor = bool_val;
+			else if (strcmp(key, "ignore_case") == 0)
 				opts->ignore_case = bool_val;
 			else if (strcmp(key, "ignore_lower_case") == 0)
 				opts->ignore_lower_case = bool_val;

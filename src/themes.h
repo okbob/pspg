@@ -48,7 +48,7 @@ typedef struct
 #define		WINDOW_ROWNUM			7
 #define		WINDOW_ROWNUM_LUC		8
 
-extern void initialize_color_pairs(int theme);
+extern void initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
 
 #endif

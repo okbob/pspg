@@ -1891,6 +1891,8 @@ main(int argc, char *argv[])
 		{"line-numbers", no_argument, 0, 9},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
 		{"version", no_argument, 0, 'V'},
+		{"bold-labels", no_argument, 0, 12},
+		{"bold-cursor", no_argument, 0, 13},
 		{0, 0, 0, 0}
 	};
 
@@ -1919,6 +1921,8 @@ main(int argc, char *argv[])
 	opts.tabular_cursor = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 	opts.force_ascii_art = false;
+	opts.bold_labels = false;
+	opts.bold_cursor = false;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -1948,6 +1952,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -c N           fix N columns (0..9)\n");
 				fprintf(stderr, "  -f file        open file\n");
 				fprintf(stderr, "  -X             don't use alternate screen\n");
+				fprintf(stderr, "  --bold-labels  row, column labels use bold font\n");
+				fprintf(stderr, "  --bold-cursor  cursor use bold font\n");
 				fprintf(stderr, "  --help         show this help\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
@@ -2016,6 +2022,12 @@ main(int argc, char *argv[])
 				break;
 			case 11:
 				opts.tabular_cursor = true;
+				break;
+			case 12:
+				opts.bold_labels = true;
+				break;
+			case 13:
+				opts.bold_cursor = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -2154,7 +2166,7 @@ main(int argc, char *argv[])
 
 reinit_theme:
 
-	initialize_color_pairs(opts.theme);
+	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
 
 	cbreak();
 	keypad(stdscr, TRUE);

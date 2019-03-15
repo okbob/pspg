@@ -36,6 +36,8 @@ typedef struct
 	bool	force_ascii_art;
 	int		theme;
 	int		freezed_cols;
+	bool	bold_labels;
+	bool	bold_cursor;
 } Options;
 
 extern bool save_config(char *path, Options *opts);
