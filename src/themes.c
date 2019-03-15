@@ -110,7 +110,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
 			set_colour(9, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(11, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(13, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
@@ -584,7 +584,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(7, 203, 202);
 			init_pair(8, 17, 200);
 			init_pair(9, 206, 200);
-			init_pair(10, 206, 205);
+			init_pair(10, 203, 205);
 			init_pair(11, 204, 205);
 			init_pair(13, 203, 202);
 			init_pair(14, COLOR_WHITE, 211);
@@ -628,7 +628,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(7, 203, 202);
 			init_pair(8, 17, 200);
 			init_pair(9, 206, 200);
-			init_pair(10, 206, 205);
+			init_pair(10, 213, 205);
 			init_pair(11, 204, 205);
 			init_pair(13, 203, 202);
 			init_pair(14, COLOR_WHITE, 211);
@@ -713,9 +713,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->pattern_data_attr = theme_attr(16);
 			t->pattern_line_attr = theme_attr(17);
 
-			//t->line_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, -1}, A_BOLD, 0)) : 0;
 			t->expi_attr |= A_BOLD;
-			//t->cursor_line_attr |= !is_tabular_fmt ? A_BOLD : 0;
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
 			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
