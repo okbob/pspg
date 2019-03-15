@@ -105,7 +105,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(4, COLOR_YELLOW, COLOR_BLUE, true, labels_attr);
 			set_colour(5, COLOR_YELLOW, COLOR_CYAN, true, cursor_attr);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
 			set_colour(9, COLOR_CYAN, COLOR_BLUE, false, 0);
@@ -201,9 +201,9 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(2, COLOR_GREEN, COLOR_BLUE, true, 0);
 			set_colour(3, -1, -1, false, 0);
 			set_colour(4, COLOR_CYAN, -1, true, labels_attr);
-			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(7, COLOR_GREEN, COLOR_BLUE, false, 0);
+			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(7, COLOR_GREEN, COLOR_BLUE, true, 0);
 			set_colour(8, COLOR_BLACK, COLOR_BLUE, false, 0);
 			set_colour(9, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
@@ -422,8 +422,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(4, COLOR_MAGENTA, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
+			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -689,9 +689,6 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 
 			t->line_attr |= 0;
 			t->expi_attr |= A_BOLD;
-//			t->cursor_line_attr |= 0;
-//			t->cursor_expi_attr |= A_BOLD;
-//			t->cursor_pattern_attr |= A_BOLD;
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
 			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
@@ -719,8 +716,6 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			//t->line_attr |= !is_tabular_fmt ? (_in(theme, (int[]) { 2, -1}, A_BOLD, 0)) : 0;
 			t->expi_attr |= A_BOLD;
 			//t->cursor_line_attr |= !is_tabular_fmt ? A_BOLD : 0;
-			//t->cursor_expi_attr |= A_BOLD;
-			//t->cursor_pattern_attr |= A_BOLD;
 			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
 			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
@@ -749,8 +744,6 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->expi_attr |= 0;
 			t->cursor_line_attr |= 0;
 			t->cursor_expi_attr |= 0;
-//			t->cursor_pattern_attr |= A_BOLD;
-//			t->bookmark_data_attr |= A_BOLD;
 			t->bookmark_line_attr |= 0;
 			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
 			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : A_BOLD;
@@ -766,8 +759,6 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 			t->bookmark_data_attr = theme_attr(14);
 			t->cursor_bookmark_attr = theme_attr(14);
 			t->pattern_data_attr = theme_attr(16);
-
-//			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
 			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
 
 			break;

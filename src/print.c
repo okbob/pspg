@@ -290,7 +290,7 @@ window_fill(int window_identifier,
 
 		if (rowstr != NULL)
 		{
-			int		i;
+			int		i = 0;
 			int		effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
 			bool	fix_line_attr_style;
 			bool	is_expand_head;
@@ -379,11 +379,11 @@ window_fill(int window_identifier,
 
 			ptr = rowstr;
 			bytes = 0;
+			i = 0;
 
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
-				i = 0;
 				while (i < maxx)
 				{
 					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
@@ -592,9 +592,6 @@ window_fill(int window_identifier,
 					}
 				} /* end while */
 			}
-			else if (is_cursor_row)
-				/* in this case i is not valid, but it is necessary for cursor line printing */
-				i = 1;
 
 			if (bytes > 0)
 			{
