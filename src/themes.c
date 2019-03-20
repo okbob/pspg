@@ -521,14 +521,17 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(13, -1, -1);
 			init_pair(14, 230, 160);
 			init_pair(15, 254, 235);
-			
 			init_pair(16, 245, 235);
 			init_pair(17, 245, 235);
-			
 			init_pair(18, -1, -1);
 			init_pair(19, -1, -1);
 			init_pair(20, 254, 136);
 			init_pair(21, 244, 235);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
 			break;
 
 		case 18:
@@ -562,6 +565,11 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 255, 136);
 			init_pair(21, 235, 244);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
 			break;
 
 		case 19:
@@ -599,6 +607,11 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 212, 205);
 			init_pair(21, 206, 207);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
 			break;
 
 		case 20:
@@ -618,7 +631,6 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color_rgb_ff(215, 0xc3, 0xc3, 0xc3); /* mark bg */
 			init_color_rgb_ff(214, 0xda, 0xda, 0xda); /* marked line bg */
 			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
-
 
 			init_color(240, 40, 50, 200);
 
@@ -643,6 +655,11 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 212, 205);
 			init_pair(21, 204, 207);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
 			break;
 	}
 }
