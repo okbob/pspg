@@ -1,5 +1,4 @@
 # pspg - Postgres Pager
-
 Everybody who uses `psql` uses `less` pager. It is working well, but there is not any special
 support for tabular data. I found few projects, but no one was completed for this purpose.
 I decided to write some small specialized pager for usage as `psql` pager.
@@ -20,7 +19,6 @@ This pager can be used from `mysql` and `pgcli` clients too.
 
 
 ## Options
-
 * `-a`       menu will use ascii borders
 * `-b`       black/white theme
 * `-X`       doesn't clean screen on the end
@@ -44,9 +42,11 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
 * `--tabular-cursor`  cursor is displayed only for table
+* `--bold-labels`  bold font for row, column labels
+* `--bold-cursor`  bold font for cursor
+
 
 ## Themes
-
 0. black & white
 1. Midnight Commander like
 2. FoxPro like
@@ -73,7 +73,6 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 
 ## Keyboard commands
-
 * <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, .., <kbd>9</kbd> - freeze first N columns
 * <kbd>KEY_UP</kbd>, <kbd>k</kbd> - navigate backward by one line
 * <kbd>KEY_DOWN</kbd>, <kbd>j</kbd> - navigate forward by one line
@@ -134,7 +133,6 @@ MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 `LC_CTYPE` should be correct.
 
 # Note - compilation issue
-
 Some linker issues can be fixed by:
 <pre>
 I changed 
@@ -145,16 +143,14 @@ gcc pager.c -o pspg -ggdb -lncursesw
 
 On some old systems a compilation fails with error
 <pre>
-/home/user/Src/pspg-0.6/src/pspg.c:2403: undefined reference to `set_escdelay'
+/home/user/Src/pspg-0.6/src/pspg.c:2403: undefined reference to `set_escdelay`
 </pre>
 In this case comment line with function set_escdelay
 
 # Note - Installation
-
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
 ## RPM (CentOS/Fedora/openSUSE/…)
-
 The pspg is available from community repository https://yum.postgresql.org/packages.php
 
 ## Alpine Linux
