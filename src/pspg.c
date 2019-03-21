@@ -2764,6 +2764,16 @@ reset_search:
 				reinit = true;
 				goto reinit_theme;
 
+			case cmd_BoldLabelsToggle:
+				opts.bold_labels = !opts.bold_labels;
+				reinit = true;
+				goto reinit_theme;
+
+			case cmd_BoldCursorToggle:
+				opts.bold_cursor = !opts.bold_cursor;
+				reinit = true;
+				goto reinit_theme;
+
 			case cmd_MouseToggle:
 				{
 					if (!opts.no_mouse)

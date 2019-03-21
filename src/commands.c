@@ -237,6 +237,11 @@ cmd_string(int cmd)
 		case cmd_ShowCursor:
 			return "ShowCursor";
 
+		case cmd_BoldLabelsToggle:
+			return "BoldLabelsToggle";
+		case cmd_BoldCursorToggle:
+			return "BoldCursorToggle";
+
 		default:
 			return "unknown command";
 	}
@@ -250,6 +255,8 @@ translate_event(int c, bool alt)
 	{
 		switch (c)
 		{
+			case 'b':
+				return cmd_BoldLabelsToggle;
 			case 'c':
 				return cmd_ShowCursor;
 			case 'l':
