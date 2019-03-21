@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	1.6.2
+Version: 	1.6.4
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Thu Mar 21 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- use higher 8 colours when it is possible (fix Fodora 30 issue)
+- new themes
+- new options: bold labels, bold cursors
+
 * Mon Sep 10 2018 Pavel Stehule <pavel.stehule@gmail.com>
 - possibility to show line numbers and hide cursor, menu and status bar
 - new themes
