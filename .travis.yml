@@ -1,0 +1,13 @@
+language: c
+addons:
+  apt:
+    update: true
+    packages:
+      - libncurses-dev
+      - libreadline-dev
+      - build-essential
+before_script:
+  - ./configure
+script: 
+  - make
+
