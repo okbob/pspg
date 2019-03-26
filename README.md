@@ -150,7 +150,11 @@ In this case comment line with function set_escdelay
 # Note - Installation
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
-## RPM (CentOS/Fedora/openSUSE/…)
+## Fedora (28 and later)
+
+    # dnf install pspg
+    
+## RPM (CentOS/openSUSE/…)
 The pspg is available from community repository https://yum.postgresql.org/packages.php
 
 ## Alpine Linux
