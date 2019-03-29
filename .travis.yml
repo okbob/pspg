@@ -13,3 +13,6 @@ script:
 after_success:
   - bash <(curl -s https://codecov.io/bash)
   
+env:
+  global:
+  - CODECOV_TOKEN=f5247bfc-2837-40e7-b4f8-285ad10c7dfc
