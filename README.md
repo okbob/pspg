@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/okbob/pspg.svg?branch=master)](https://travis-ci.org/okbob/pspg)
+
 # pspg - Postgres Pager
 Everybody who uses `psql` uses `less` pager. It is working well, but there is not any special
 support for tabular data. I found few projects, but no one was completed for this purpose.
@@ -150,7 +152,11 @@ In this case comment line with function set_escdelay
 # Note - Installation
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
-## RPM (CentOS/Fedora/openSUSE/…)
+## Fedora (28 and later)
+
+    # dnf install pspg
+    
+## RPM (CentOS/openSUSE/…)
 The pspg is available from community repository https://yum.postgresql.org/packages.php
 
 ## Alpine Linux
