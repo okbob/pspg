@@ -697,6 +697,22 @@ menubar_draw(struct ST_MENU *menu)
 		pulldownmenu_draw(menu->active_submenu, true);
 }
 
+#ifdef DEBUG_PIPE
+
+static void
+debug_print_size(WINDOW *window, char *name)
+{
+	int		rows, cols;
+	int		y, x;
+
+	getbegyx(window, y, x);
+	getmaxyx(window, rows, cols);
+
+	fprintf(debug_pipe, "window \"%s\" y: %d, x: %d, rows: %d. cols: %d\n", name, y, x, rows, cols);
+}
+
+#endif
+
 /*
  * adjust pulldown possition - move panels from ideal position to any position
  * where can be fully displayed.
@@ -706,10 +722,65 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 {
 	ST_MENU_CONFIG	*config = menu->config;
 
-	int		y, x;
+	int		rows, cols;
 	int		new_y, new_x;
+	int		y, x;
 
 	getbegyx(menu->window, y, x);
+	getmaxyx(menu->window, rows, cols);
+
+	/*
+	 * Hypothesis: when panel is moved, then assigned windows is moved
+	 * to and possibly reduced (when terminal is smaller). But when terminal
+	 * grows, then size of assigned window grows too, more than was original
+	 * size. So we should to recheck size of assigned window, and fix it, when
+	 * it is bigger than should be.
+	 */
+	if (rows != menu->rows || cols != menu->cols)
+	{
+		int		new_rows = y + menu->rows <= maxy ? menu->rows : maxy - y + 1;
+		int		new_cols = x + menu->cols <= maxx ? menu->cols : maxx - x + 1;
+
+		if (new_rows != rows || new_cols != cols)
+			wresize(menu->window, new_rows, new_cols);
+	}
+
+#ifdef DEBUG_PIPE
+
+	debug_print_size(menu->window, "menu window");
+
+#endif
+
+	/*
+	 * Previous issue is same for shadow window. But with different timing.
+	 * Visibility of shadow needs one row and one column more. The begin of
+	 * shadow window should be in relation to begin of menu window.
+	 */
+	if (config->shadow_width > 0)
+	{
+		int		srows, scols;
+
+		/* panel move can move shadow window. Force correct position now */
+
+		getmaxyx(menu->shadow_window, srows, scols);
+		mvwin(menu->shadow_window, y+1 , x+config->shadow_width);
+
+		if (srows != menu->rows || scols != menu->cols)
+		{
+			int		new_srows, new_scols;
+
+			new_srows = y + 1 + menu->rows <= maxy ? menu->rows :  maxy - y - 1;
+			new_scols = x + config->shadow_width + menu->cols <= maxx ? menu->cols : maxx - x - config->shadow_width;
+
+			wresize(menu->shadow_window, new_srows, new_scols);
+		}
+	}
+
+#ifdef DEBUG_PIPE
+
+	debug_print_size(menu->shadow_window, "menu shadow window");
+
+#endif
 
 	if (menu->ideal_x_pos + menu->cols > maxx)
 	{
@@ -753,7 +824,7 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 
 			getmaxyx(menu->shadow_window, smaxy, smaxx);
 
-			if (new_cols != smaxx || new_rows != smaxy)
+			if (new_cols <= smaxx || new_rows <= smaxy)
 			{
 				WINDOW   *new_shadow_window;
 
