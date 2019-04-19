@@ -1738,7 +1738,7 @@ get_event(MEVENT *mevent, bool *alt)
 
 #endif
 
-#if NCURSES_WIDECHAR > 0
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 	wint_t	ch;
 	int		ret;
