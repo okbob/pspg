@@ -1866,6 +1866,7 @@ main(int argc, char *argv[])
 	bool	prev_event_is_mouse_press = false;
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
+	bool	only_for_tables = false;
 
 	bool	raw_output_quit = false;
 
@@ -1893,6 +1894,7 @@ main(int argc, char *argv[])
 		{"version", no_argument, 0, 'V'},
 		{"bold-labels", no_argument, 0, 12},
 		{"bold-cursor", no_argument, 0, 13},
+		{"only-for-tables", no_argument, 0, 14},
 		{0, 0, 0, 0}
 	};
 
@@ -1979,6 +1981,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
 				fprintf(stderr, "  --tabular-cursor\n");
 				fprintf(stderr, "                 cursor is visible only when data has table format\n");
+				fprintf(stderr, "  --only-for-tables\n");
+				fprintf(stderr, "                 use std pager when content is not table\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -2029,6 +2033,10 @@ main(int argc, char *argv[])
 			case 13:
 				opts.bold_cursor = true;
 				break;
+			case 14:
+				only_for_tables = true;
+				break;
+
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
@@ -2128,6 +2136,58 @@ main(int argc, char *argv[])
 		fp = NULL;
 	}
 
+	if (desc.headline != NULL)
+		detected_format = translate_headline(&opts, &desc);
+
+	if (!detected_format && only_for_tables)
+	{
+		const char *pagerprog;
+		FILE	   *fout = NULL;
+		LineBuffer *lnb = &desc.rows;
+		int			lnb_row = 0;
+
+		pagerprog = getenv("PSPG_TEXT_PAGER");
+		if (!pagerprog)
+			pagerprog = getenv("PAGER");
+		if (!pagerprog)
+			pagerprog = "more";
+		else
+		{
+			/* if PAGER is empty or all-white-space, don't use pager */
+			if (strspn(pagerprog, " \t\r\n") == strlen(pagerprog))
+				fout = stdout;
+		}
+
+		if (!fout)
+		{
+			fout = popen(pagerprog, "w");
+			if (!fout)
+			{
+				/* if popen fails, silently proceed without pager */
+				fout = stdout;
+			}
+		}
+
+		if (fout != stdout)
+		{
+			signal(SIGPIPE, SIG_IGN);
+			signal(SIGINT, SIG_IGN);
+		}
+
+		while (lnb_row < lnb->nrows)
+		{
+			int r;
+			r = fprintf(fout, "%s\n", lnb->rows[lnb_row++]);
+			if (r < 0)
+				break;
+		}
+
+		if (fout != stdout)
+			pclose(fout);
+
+		return 0;
+	}
+
 	if (!isatty(fileno(stdin)))
 	{
 		if (freopen("/dev/tty", "r", stdin) != NULL)
@@ -2199,9 +2259,6 @@ reinit_theme:
 #endif
 
 	}
-
-	if (desc.headline != NULL)
-		detected_format = translate_headline(&opts, &desc);
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 		desc.first_data_row = desc.border_head_row + 1;

@@ -44,6 +44,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
 * `--tabular-cursor`  cursor is displayed only for table
+* `--only-for-tables`  use std pager when content is not a table
 * `--bold-labels`  bold font for row, column labels
 * `--bold-cursor`  bold font for cursor
 
