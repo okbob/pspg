@@ -20,7 +20,14 @@
 #elif defined HAVE_NCURSES_PANEL_H
 #include <ncurses/panel.h>
 #elif defined HAVE_PANEL_H
+
+/* workaround for solaris */
+#if defined HAVE_NCURSES_CURSES_H
+#include <ncurses/panel.h>
+#else
 #include <panel.h>
+#endif
+
 #else
 /* fallback */
 #include <ncurses/panel.h>
