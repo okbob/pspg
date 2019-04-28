@@ -197,10 +197,10 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
 ## Solaris
 
-There are few issues requires manual code changes for successful compilation - and still this
-pager doesn't work there.
+There are few issues requires manual code changes for successful compilation - we successfully
+tested `pspg`, but although `pspg` was linked with ncursesw libraries, the utf8 encoding support
+didn't work correctly.
 
-* `configure --without-ncursesw`,
 * remove unsupported functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include`,
 * remove link on `termcap` library from `config.make`. It is unwanted artefact under config
   tests of readline library.

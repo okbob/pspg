@@ -3239,7 +3239,6 @@ $as_echo "#define STDC_HEADERS 1" >>confdefs.h
 
 fi
 
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether termios.h defines TIOCGWINSZ" >&5
 $as_echo_n "checking whether termios.h defines TIOCGWINSZ... " >&6; }
 if ${ac_cv_sys_tiocgwinsz_in_termios_h+:} false; then :
@@ -3299,6 +3298,7 @@ $as_echo "#define GWINSZ_IN_SYS_IOCTL 1" >>confdefs.h
 
   fi
 fi
+
 
 
 

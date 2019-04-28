@@ -11,6 +11,8 @@
  *-------------------------------------------------------------------------
  */
 
+#include <stdbool.h>
+
 #include "pspg.h"
 #include "st_menu.h"
 #include "commands.h"

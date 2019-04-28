@@ -13,6 +13,7 @@
 
 #include "themes.h"
 #include <string.h>
+#include <stdbool.h>
 
 attr_t		theme_attrs[50];
 
