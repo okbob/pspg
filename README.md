@@ -201,9 +201,20 @@ There are few issues requires manual code changes for successful compilation - w
 tested `pspg`, but although `pspg` was linked with ncursesw libraries, the utf8 encoding support
 didn't work correctly.
 
+### builtin libraries
+
+* run
+
+     export CURSES_CFLAGS="-I/usr/include/ncurses/"
+     export PANEL_LIBS="-lpanelw"
+     ./configure
+
 * remove unsupported functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include`,
 * remove link on `termcap` library from `config.make`. It is unwanted artefact under config
   tests of readline library.
+
+### OpenCSW development
+
 
 # Possible ToDo
 
