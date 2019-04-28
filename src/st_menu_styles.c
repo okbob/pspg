@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "st_menu.h"
 
 #if defined HAVE_NCURSESW_CURSES_H

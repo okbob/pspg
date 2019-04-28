@@ -14,6 +14,8 @@
 #ifndef PSPG_THEMES_H
 #define PSPG_THEMES_H
 
+#include <stdbool.h>
+
 #if defined HAVE_NCURSESW_CURSES_H
 #include <ncursesw/curses.h>
 #elif defined HAVE_NCURSESW_H
