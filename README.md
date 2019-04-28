@@ -205,9 +205,9 @@ didn't work correctly.
 
 * run
 
-     export CURSES_CFLAGS="-I/usr/include/ncurses/"
-     export PANEL_LIBS="-lpanelw"
-     ./configure
+      export CURSES_CFLAGS="-I/usr/include/ncurses/"
+      export PANEL_LIBS="-lpanelw"
+      ./configure
 
 * remove unsupported functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include`,
 * remove link on `termcap` library from `config.make`. It is unwanted artefact under config
