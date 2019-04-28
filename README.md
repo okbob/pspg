@@ -195,6 +195,16 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
     # port install pspg
 
+## Solaris
+
+There are few issues requires manual code changes for successful compilation - and still this
+pager doesn't work there.
+
+* `configure --without-ncursesw`,
+* remove unsupported functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include`,
+* remove link on `termcap` library from `config.make`. It is unwanted artefact under config
+  tests of readline library.
+
 # Possible ToDo
 
 * Store data in some column format (now data are stored like array of rows). With this change can
