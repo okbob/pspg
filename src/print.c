@@ -611,6 +611,16 @@ window_fill(int window_identifier,
 			if (bytes > 0)
 			{
 				if (!fix_line_attr_style || !(desc->linestyle == 'a' && opts->force_uniborder))
+					/*
+					 * I am not sure, if appending utf8 string is correct. Probably better is
+					 * translation to wchar_t type and passing via waddwstr function:
+					 *
+					 *    wchar_t *ptr = malloc(bytes * 4);
+					 *    utf2wchar_with_len((const unsigned char *) rowstr, ptr, bytes);
+					 *    waddwstr(win, ptr);
+					 *    free(ptr);
+					 *
+					 */
 					waddnstr(win, rowstr, bytes);
 				else
 				{

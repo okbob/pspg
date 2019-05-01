@@ -28,5 +28,7 @@ extern const char *utf8_nstrstr_ignore_lower_case(const char *haystack, const ch
 extern bool utf8_isupper(const char *s);
 extern unsigned char *unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size);
 extern int utf8_tofold(const char *s);
+extern int utf2wchar_with_len(const unsigned char *from, wchar_t *to, int len);
+
 
 #endif

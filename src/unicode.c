@@ -633,3 +633,62 @@ utf8_isupper(const char *s)
 	return find_in_range(upper_table, table_size(upper_table),
 						utf8_to_unicode((const unsigned char *) s)) != 0;
 }
+
+int
+utf2wchar_with_len(const unsigned char *from, wchar_t *to, int len)
+{
+	int			cnt = 0;
+	uint		c1,
+				c2,
+				c3,
+				c4;
+
+	while (len > 0 && *from)
+	{
+		if ((*from & 0x80) == 0)
+		{
+			*to = *from++;
+			len--;
+		}
+		else if ((*from & 0xe0) == 0xc0)
+		{
+			if (len < 2)
+				break;			/* drop trailing incomplete char */
+			c1 = *from++ & 0x1f;
+			c2 = *from++ & 0x3f;
+			*to = (c1 << 6) | c2;
+			len -= 2;
+		}
+		else if ((*from & 0xf0) == 0xe0)
+		{
+			if (len < 3)
+				break;			/* drop trailing incomplete char */
+			c1 = *from++ & 0x0f;
+			c2 = *from++ & 0x3f;
+			c3 = *from++ & 0x3f;
+			*to = (c1 << 12) | (c2 << 6) | c3;
+			len -= 3;
+		}
+		else if ((*from & 0xf8) == 0xf0)
+		{
+			if (len < 4)
+				break;			/* drop trailing incomplete char */
+			c1 = *from++ & 0x07;
+			c2 = *from++ & 0x3f;
+			c3 = *from++ & 0x3f;
+			c4 = *from++ & 0x3f;
+			*to = (c1 << 18) | (c2 << 12) | (c3 << 6) | c4;
+			len -= 4;
+		}
+		else
+		{
+			/* treat a bogus char as length 1; not ours to raise error */
+			*to = *from++;
+			len--;
+		}
+		to++;
+		cnt++;
+	}
+	*to = 0;
+	return cnt;
+}
