@@ -199,22 +199,32 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
 There are few issues requires manual code changes for successful compilation - we successfully
 tested `pspg`, but although `pspg` was linked with ncursesw libraries, the utf8 encoding support
-didn't work correctly.
+didn't work fully correctly - probably due some issues in `libc` library. There are problems with
+chars encoded to 3bytes - unicode borders, .. Two bytes unicode chars should be displayed well.
+
+You can use `pspg` with usual accented chars, but unicode bordes should not be used. Replacement
+ascii borders by special borders chars (by ncurses technology) works well - looks on `Options|Force unicode borders`
+option.
+
+* Solaris `make` doesn't support conditional statements - should be removed So, remove unsupported
+  functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include` first.
+
+* After running `configure` remove link on `termcap` library from `config.make`. It is garabage
+  produced by `readline` automake script. Combination with `ncurses` libraries makes some
+  linking issues.
 
 ### builtin libraries
 
-* run
-
-      export CURSES_CFLAGS="-I/usr/include/ncurses/"
-      export PANEL_LIBS="-lpanelw"
-      ./configure
-
-* remove unsupported functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include`,
-* remove link on `termcap` library from `config.make`. It is unwanted artefact under config
-  tests of readline library.
+    export CURSES_CFLAGS="-I/usr/include/ncurses/"
+    export PANEL_LIBS="-lpanelw"
+    ./configure
 
 ### OpenCSW development
 
+    export CFLAGS="-m64 -I/opt/csw/include"
+    export LDFLAGS="-L/opt/csw/lib/64 -R/opt/csw/lib/64"
+    export PKG_CONFIG_PATH="/opt/csw/lib/64/pkgconfig"
+    ./configure
 
 # Possible ToDo
 
