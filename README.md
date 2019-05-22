@@ -153,6 +153,14 @@ In this case comment line with function set_escdelay
 # Note - Installation
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
+If you would to display UTF-8 characters, then `pspg` should be linked with `ncursesw`
+library. UTF-8 characters are displayed badly when library `ncursesw` is used. You can
+see broken characters with incorrect locale setting too.
+
+You can check wide chars support by `pspg --version`. Row `ncurses with wide char support`
+is expected. Re-run `configure` with `--with-ncursesw` option. When this command fails check
+if development package for ncuresesw library is installed.
+
 ## Fedora (28 and later)
 
     # dnf install pspg
