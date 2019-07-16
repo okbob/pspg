@@ -3271,7 +3271,7 @@ recheck_left:
 								if (pos < 0)
 									break;
 
-								if (desc.headline_transl[i] == 'I')
+								if (desc.headline_transl[pos] == 'I')
 								{
 									move_left = i;
 									break;
