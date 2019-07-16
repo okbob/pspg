@@ -3273,7 +3273,7 @@ recheck_left:
 
 								if (desc.headline_transl[pos] == 'I')
 								{
-									move_left = i;
+									move_left = i - 1;
 									break;
 								}
 							}
