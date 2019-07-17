@@ -3266,12 +3266,12 @@ recheck_left:
 
 							for (i = 1; i <= 30; i++)
 							{
-								int		pos = scrdesc.fix_cols_cols + cursor_col - i;
+								int		pos = scrdesc.fix_cols_cols + cursor_col - i - 1;
 
 								if (pos < 0)
 									break;
 
-								if (desc.headline_transl[i] == 'I')
+								if (desc.headline_transl[pos] == 'I')
 								{
 									move_left = i;
 									break;
