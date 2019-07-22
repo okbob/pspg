@@ -76,6 +76,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 	init_pair(21, COLOR_WHITE, COLOR_BLACK);		/* Fx keys */
 
+	memset(theme_attrs, 0, sizeof(theme_attrs));
+
 	switch (theme)
 	{
 		case 0:
