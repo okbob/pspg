@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	1.6.5
+Version: 	1.6.6
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+
+
+* Wed Jul 24 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- fix minor issues - left scrolling and theme changing
+
 * Mon Apr 8 2019 Pavel Stehule <pavel.stehule@gmail.com>
 - fix minor issue related to draw menu, when terminal is resized
 
