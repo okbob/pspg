@@ -638,10 +638,10 @@ int
 utf2wchar_with_len(const unsigned char *from, wchar_t *to, int len)
 {
 	int			cnt = 0;
-	uint		c1,
-				c2,
-				c3,
-				c4;
+	unsigned int	c1,
+					c2,
+					c3,
+					c4;
 
 	while (len > 0 && *from)
 	{
