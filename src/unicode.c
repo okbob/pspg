@@ -11,6 +11,8 @@
  *-------------------------------------------------------------------------
  */
 
+#define _GNU_SOURCE 1
+#include <sys/types.h> /* required with _GNU_SOURCE for uint */
 #include <stdbool.h>
 
 #include "unicode.h"
