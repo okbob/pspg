@@ -161,6 +161,11 @@ You can check wide chars support by `pspg --version`. Row `ncurses with wide cha
 is expected. Re-run `configure` with `--with-ncursesw` option. When this command fails check
 if development package for ncuresesw library is installed.
 
+## Debian
+
+    # apt-cache search pspg
+    # apt-get install pspg
+
 ## Fedora (28 and later)
 
     # dnf install pspg
