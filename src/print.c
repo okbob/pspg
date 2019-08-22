@@ -46,6 +46,7 @@ window_fill(int window_identifier,
 			int srcy,
 			int srcx,						/* offset to displayed data */
 			int cursor_row,					/* row of row cursor */
+			int cursor_column,				/* column of column cursor */
 			DataDesc *desc,
 			ScrDesc *scrdesc,
 			Options *opts)
@@ -66,11 +67,22 @@ window_fill(int window_identifier,
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	int			positions[100][2];
 	int			npositions = 0;
+	int			vcursor_xmin = -1;
+	int			vcursor_xmax = -1;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
 
 	pattern_fix = t->found_str_attr & A_UNDERLINE;
+
+	if (cursor_column > 0 && opts->vertical_cursor)
+	{
+		if (cursor_column > desc->columns)
+			leave_ncurses("unexpected number of columns");
+
+		vcursor_xmin = desc->cranges[cursor_column - 1].xmin;
+		vcursor_xmax = desc->cranges[cursor_column - 1].xmax;
+	}
 
 	/* when we want to detect expanded records titles */
 	if (desc->is_expanded_mode)
@@ -396,33 +408,31 @@ window_fill(int window_identifier,
 			bytes = 0;
 			i = 0;
 
-bool _is_cursor_row = is_cursor_row;
-
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
 				while (i < maxx)
 				{
-bool	is_cross_cursor = false;
+					bool	is_cursor;
+					bool	is_cross_cursor = false;
+					int		pos = srcx + i;
 
+					if (pos >= vcursor_xmin && pos  <= vcursor_xmax)
+					{
+						is_cross_cursor = is_cursor_row;
+						is_cursor = !is_cursor_row;
+					}
+					else
+					{
+						is_cross_cursor = false;
+						is_cursor = is_cursor_row;
+					}
 
-if (opts->vertical_cursor && (i > 46 && i < 56))
-{
-	is_cursor_row = !_is_cursor_row;
-	is_cross_cursor = _is_cursor_row;
-//	is_cross_cursor = _is_cursor_row;
-}
-else
-{
-	is_cursor_row = _is_cursor_row;
-	is_cross_cursor = false;
-}
 					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
 					{
-						int		pos = srcx + i;
 						attr_t		new_attr;
 
-						if (is_cursor_row)
+						if (is_cursor)
 							new_attr = pos >= ei_min && pos <= ei_max ? t->cursor_expi_attr : t->cursor_line_attr;
 						else
 							new_attr = pos >= ei_min && pos <= ei_max ? t->expi_attr : t->line_attr;
@@ -473,7 +483,7 @@ else
 							else
 								new_attr = t->cursor_bookmark_attr;
 						}
-						else if (is_pattern_row && !is_cursor_row)
+						else if (is_pattern_row && !is_cursor)
 						{
 							if (is_footer)
 								new_attr = t->pattern_data_attr;
@@ -503,16 +513,16 @@ else
 							}
 						}
 						else if (is_footer)
-							new_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
+							new_attr = is_cursor ? t->cursor_data_attr : t->data_attr;
 						else if (htrpos < desc->headline_char_size)
 						{
-							if (is_cursor_row )
+							if (is_cursor )
 								new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
 							else
 								new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
 						}
 
-						if (is_cursor_row)
+						if (is_cursor)
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
@@ -577,7 +587,7 @@ else
 						{
 							int		new_attr;
 
-							if (is_cursor_row)
+							if (is_cursor)
 								new_attr = t->cursor_line_attr;
 							else
 								new_attr = t->line_attr;

@@ -110,7 +110,7 @@ ST_MENU_ITEM _options[] = {
 	{"~W~ithout highlighting", cmd_NoHighlight, NULL},
 	{"--"},
 	{"Show cursor", cmd_ShowCursor, "M-c"},
-	{"Show vertical cursor", cmd_ShowVerticalCursor, "M-h"},
+	{"Show vertical cursor", cmd_ShowVerticalCursor, "M-v"},
 	{"Show line ~n~umbers", cmd_RowNumToggle, "M-n"},
 	{"Show top bar", cmd_ShowTopBar, NULL},
 	{"Show bottom bar", cmd_ShowBottomBar, NULL},

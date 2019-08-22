@@ -261,8 +261,6 @@ translate_event(int c, bool alt)
 				return cmd_BoldLabelsToggle;
 			case 'c':
 				return cmd_ShowCursor;
-			case 'h':
-				return cmd_ShowVerticalCursor;
 			case 'l':
 				return cmd_GotoLine;
 			case 'm':
@@ -279,6 +277,8 @@ translate_event(int c, bool alt)
 				return cmd_NextBookmark;
 			case 'q':
 				return cmd_RawOutputQuit;
+			case 'v':
+				return cmd_ShowVerticalCursor;
 			case '9':
 				return cmd_ShowMenu;
 			case 27:

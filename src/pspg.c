@@ -108,8 +108,6 @@ static WINDOW *g_bottom_bar;
 
 #define		USE_EXTENDED_NAMES
 
-/* #define		DEBUG_PIPE		"/home/pavel/debug" */
-
 #ifdef DEBUG_PIPE
 
 FILE *debug_pipe = NULL;
@@ -288,6 +286,9 @@ translate_headline(Options *opts, DataDesc *desc)
 	desc->border_type = 0;
 
 	desc->expanded_info_minx = -1;
+
+	desc->cranges = NULL;
+	desc->columns = 0;
 
 	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
 	{
@@ -511,8 +512,41 @@ translate_headline(Options *opts, DataDesc *desc)
 	/* trim ending spaces */
 	if (!broken_format && last_black_char != 0)
 	{
+		char	   *ptr;
+		int			i;
+		int			offset;
+
 		last_black_char[1] = '\0';
 		desc->headline_char_size = strlen(desc->headline_transl);
+
+		desc->columns = 1;
+
+		ptr = desc->headline_transl;
+		while (*ptr)
+		{
+			if (*ptr++ == 'I')
+				desc->columns += 1;
+		}
+
+		desc->cranges = malloc(desc->columns * sizeof(CRange));
+
+		i = 0; offset = 0;
+		ptr = desc->headline_transl;
+		desc->cranges[0].xmin = 0;
+
+		while (*ptr)
+		{
+			if (*ptr == 'I')
+			{
+				desc->cranges[i++].xmax = offset;
+				desc->cranges[i].xmin = offset;
+			}
+
+			offset += 1;
+			ptr +=1;
+		}
+
+		desc->cranges[i].xmax = offset - 1;
 
 		return true;
 	}
@@ -1838,6 +1872,7 @@ main(int argc, char *argv[])
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
+	int		horizontal_cursor_column = 2;			/* table columns are counted from one */
 	int		first_row = 0;
 	int		prev_first_row;
 	int		first_data_row;
@@ -2460,33 +2495,38 @@ reinit_theme:
 							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
 							0,
 							-1,
+							horizontal_cursor_column,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWS,
 							first_data_row + first_row - fix_rows_offset,
 							scrdesc.fix_cols_cols + cursor_col,
 							cursor_row - first_row + fix_rows_offset,
+							horizontal_cursor_column,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_COLS,
 							first_data_row + first_row - fix_rows_offset,
 							0,
 							cursor_row - first_row + fix_rows_offset,
+							horizontal_cursor_column,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_ROWS,
 							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
 							scrdesc.fix_cols_cols + cursor_col,
-							-1,
+							-1, horizontal_cursor_column,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FOOTER,
 							first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 							footer_cursor_col,
 							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
+							-1,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWNUM_LUC,
+							0,
 							0,
 							0,
 							0,
@@ -2496,6 +2536,7 @@ reinit_theme:
 							first_data_row + first_row - fix_rows_offset,
 							0,
 							cursor_row - first_row + fix_rows_offset,
+							0,
 							&desc, &scrdesc, &opts);
 
 				if (w_luc(&scrdesc))

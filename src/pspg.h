@@ -43,6 +43,15 @@ typedef struct LineBuffer
 } LineBuffer;
 
 /*
+ * Column range
+ */
+typedef struct
+{
+	int		xmin;
+	int		xmax;
+} CRange;
+
+/*
  * Available formats of headline chars
  *
  *  L, R   .. outer border
@@ -74,6 +83,8 @@ typedef struct
 	int		headline_size;			/* size of headerline in bytes */
 	char   *headline_transl;		/* translated headline */
 	int		headline_char_size;		/* size of headerline in chars */
+	CRange *cranges;				/* pairs of start, end of columns */
+	int		columns;				/* number of columns */
 	int		first_data_row;			/* fist data row line (starts by zero) */
 	int		last_data_row;			/* last line of data row */
 	int		footer_row;				/* nrow of first footer row or -1 */
@@ -132,7 +143,7 @@ typedef struct
 #define		w_rownum_luc(scrdesc)	((scrdesc)->wins[WINDOW_ROWNUM_LUC])
 
 /* from print.c */
-extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
+extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int cursor_column, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 
 /* from pspg.c */
@@ -149,5 +160,22 @@ extern void init_menu_config(Options *opts);
 extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
+
+/*
+ * REMOVE THIS COMMENT FOR DEBUG OUTPUT
+ * and modify a path.
+ *
+
+#define DEBUG_PIPE				"/home/pavel/debug"
+
+*/
+
+#ifdef DEBUG_PIPE
+
+extern FILE *debug_pipe;
+extern int	debug_eventno;
+
+#endif
+
 
 #endif
