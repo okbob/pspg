@@ -1889,6 +1889,7 @@ main(int argc, char *argv[])
 		{"no-commandbar", no_argument, 0, 6},
 		{"no-topbar", no_argument, 0, 7},
 		{"no-cursor", no_argument, 0, 10},
+		{"vertical-cursor", no_argument, 0, 15},
 		{"tabular-cursor", no_argument, 0, 11},
 		{"line-numbers", no_argument, 0, 9},
 		{"quit-if-one-screen", no_argument, 0, 'F'},
@@ -1921,6 +1922,7 @@ main(int argc, char *argv[])
 	opts.theme = 1;
 	opts.show_rownum = false;
 	opts.no_cursor = false;
+	opts.vertical_cursor = false;
 	opts.tabular_cursor = false;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 	opts.force_ascii_art = false;
@@ -1982,6 +1984,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
 				fprintf(stderr, "  --tabular-cursor\n");
 				fprintf(stderr, "                 cursor is visible only when data has table format\n");
+				fprintf(stderr, "  --vertical-cursor\n");
+				fprintf(stderr, "                 show vertical column cursor\n");
 				fprintf(stderr, "  --only-for-tables\n");
 				fprintf(stderr, "                 use std pager when content is not table\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
@@ -2036,6 +2040,9 @@ main(int argc, char *argv[])
 				break;
 			case 14:
 				only_for_tables = true;
+				break;
+			case 15:
+				opts.vertical_cursor = true;
 				break;
 
 			case 'V':
@@ -2851,6 +2858,11 @@ reset_search:
 
 			case cmd_ShowCursor:
 				opts.no_cursor = !opts.no_cursor;
+				refresh_scr = true;
+				break;
+
+			case cmd_ShowVerticalCursor:
+				opts.vertical_cursor = !opts.vertical_cursor;
 				refresh_scr = true;
 				break;
 

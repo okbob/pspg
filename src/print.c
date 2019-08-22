@@ -396,11 +396,27 @@ window_fill(int window_identifier,
 			bytes = 0;
 			i = 0;
 
+bool _is_cursor_row = is_cursor_row;
+
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
 				while (i < maxx)
 				{
+bool	is_cross_cursor = false;
+
+
+if (opts->vertical_cursor && (i > 46 && i < 56))
+{
+	is_cursor_row = !_is_cursor_row;
+	is_cross_cursor = _is_cursor_row;
+//	is_cross_cursor = _is_cursor_row;
+}
+else
+{
+	is_cursor_row = _is_cursor_row;
+	is_cross_cursor = false;
+}
 					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
 					{
 						int		pos = srcx + i;
@@ -446,7 +462,11 @@ window_fill(int window_identifier,
 							}
 						}
 
-						if (is_bookmark_row)
+						if (is_cross_cursor)
+						{
+							new_attr = column_format == 'd' ? t->cross_cursor_attr : t->cross_cursor_line_attr;
+						}
+						else if (is_bookmark_row)
 						{
 							if (!is_cursor_row )
 								new_attr = column_format == 'd' ? t->bookmark_data_attr : t->bookmark_line_attr;

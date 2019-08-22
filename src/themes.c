@@ -81,31 +81,35 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	switch (theme)
 	{
 		case 0:
+			/* mc black theme */
 			use_default_colors();
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);			/* top bar colors */
 			set_colour(3, -1, -1, false, 0);							/* data alphanumeric */
-			set_colour(4, -1, -1, true, labels_attr);							/* fix rows, columns */
-			set_colour(5, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);			/* active cursor over fixed cols */
-			set_colour(6, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);			/* active cursor */
+			set_colour(4, -1, -1, true, labels_attr);						/* fix rows, columns */
+			set_colour(5, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);		/* active cursor over fixed cols */
+			set_colour(6, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);		/* active cursor */
 			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);			/* title color */
 			set_colour(8, COLOR_BLACK, COLOR_WHITE, false, 0);			/* expanded header */
 			set_colour(9, -1, -1, false, 0);							/* footer */
-			set_colour(10, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);		/* footer cursor */
-			set_colour(11, COLOR_BLACK, COLOR_WHITE, false, 0);		/* cursor over decoration */
-			set_colour(12, COLOR_BLACK, COLOR_WHITE, false, 0);		/* bottom bar colors */
-			set_colour(13, COLOR_BLACK, COLOR_WHITE, false, 0);		/* light bottom bar colors */
-			set_colour(14, COLOR_BLACK, COLOR_WHITE, false, 0);		/* color of bookmark lines */
-			set_colour(15, COLOR_WHITE, COLOR_BLACK, false, 0);		/* color of marked search pattern */
+			set_colour(10, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);	/* footer cursor */
+			set_colour(11, COLOR_BLACK, COLOR_WHITE, false, 0);			/* cursor over decoration */
+			set_colour(12, COLOR_BLACK, COLOR_WHITE, false, 0);			/* bottom bar colors */
+			set_colour(13, COLOR_BLACK, COLOR_WHITE, false, 0);			/* light bottom bar colors */
+			set_colour(14, COLOR_BLACK, COLOR_WHITE, false, 0);			/* color of bookmark lines */
+			set_colour(15, COLOR_WHITE, COLOR_BLACK, false, 0);			/* color of marked search pattern */
 			set_colour(16, -1, -1, false, 0);							/* color of line with pattern */
 			set_colour(17, -1, -1, false, 0);							/* color of line art with pattern */
 			set_colour(18, -1, -1, false, 0);		/* color of marked search pattern in no-hl line mode */
 			set_colour(19, -1, -1, false, 0);		/* color of marked search pattern in cursor */
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 			set_colour(21, -1, -1, false, 0);							/* rownum colors */
-
+			set_colour(22, -1, -1, false, A_REVERSE);					/* cross cursor data */
+			set_colour(23, -1, -1, false, A_REVERSE);					/* cross cursor line */
 			break;
+
 		case 1:
+			/* mc theme */
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
@@ -128,8 +132,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
 			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
 			break;
+
 		case 2:
+			/* FoxPro theme */
 			assume_default_colors(COLOR_WHITE, COLOR_CYAN);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false,0);
@@ -151,9 +159,13 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_YELLOW, COLOR_GREEN, true,0);
 			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true,0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false,0);
-			set_colour(21, COLOR_WHITE, COLOR_CYAN, false,0);
+			set_colour(21, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
 			break;
+
 		case 3:
+			/* PD Menu theme */
 			assume_default_colors(COLOR_BLACK, COLOR_CYAN);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
@@ -176,9 +188,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(21, COLOR_BLACK, COLOR_CYAN, false, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_CYAN, true, A_REVERSE);
 			break;
+
 		case 4:
+			/* White theme */
 			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
@@ -200,9 +215,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
 			break;
+
 		case 5:
+			/* Mutt theme */
 			use_default_colors();
 
 			set_colour(2, COLOR_GREEN, COLOR_BLUE, true, 0);
@@ -224,9 +242,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, false, cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
 			break;
+
 		case 6:
+			/* PC Fand theme */
 			assume_default_colors(COLOR_WHITE, COLOR_BLACK);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
@@ -248,9 +269,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_YELLOW, COLOR_BLACK, false, 0);
 			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(20, COLOR_CYAN, COLOR_BLUE, false, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_CYAN, false, 0);
 			break;
+
 		case 7:
+			/* Green theme */
 			assume_default_colors(COLOR_GREEN, COLOR_BLACK);
 
 			set_colour(2, COLOR_CYAN, COLOR_BLACK, false, 0);
@@ -273,9 +297,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_CYAN, COLOR_GREEN, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 			set_colour(21, COLOR_CYAN, COLOR_BLACK, false, 0);
-
+			set_colour(22, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE |  cursor_attr);
+			set_colour(23, COLOR_GREEN, COLOR_GREEN, true, A_REVERSE);
 			break;
+
 		case 8:
+			/* Blue theme */
 			assume_default_colors(COLOR_CYAN, COLOR_BLUE);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -298,9 +325,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(21, COLOR_CYAN, COLOR_BLUE, false, 0);
-
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_BLUE, true, A_REVERSE);
 			break;
+
 		case 9:
+			/* Word Perfect theme */
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
@@ -323,9 +353,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
-
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
 			break;
+
 		case 10:
+			/* low contrast theme */
 			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
 			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
@@ -348,9 +381,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
 			set_colour(21, COLOR_BLUE, COLOR_CYAN, false, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
 			break;
+
 		case 11:
+			/* Dark cyan theme */
 			assume_default_colors(COLOR_CYAN, COLOR_BLACK);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, true, 0);
@@ -372,9 +408,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(19, COLOR_CYAN, COLOR_MAGENTA, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLUE, true, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_BLUE, false, 0);
 			break;
+
 		case 12:
+			/* Paradox like theme */
 			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
 
 			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
@@ -397,9 +436,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_MAGENTA, false, 0);
 			set_colour(21, COLOR_CYAN, COLOR_CYAN, true, 0);
-
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
 			break;
+
 		case 13:
+			/* DBase retro theme */
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLACK, false, 0);
@@ -421,9 +463,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
-
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
 			break;
+
 		case 14:
+			/* DBase retro magenta */
 			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -446,9 +491,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 15:
+			/* Red theme */
 			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
@@ -470,9 +518,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(18, COLOR_CYAN, COLOR_BLUE, true, 0);
 			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_RED, COLOR_BLACK, false, 0);
 			break;
 
 		case 16:
+			/* Simple theme */
 			use_default_colors();
 
 			set_colour(2, -1, -1, false, 0);
@@ -495,9 +546,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(19, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
 			set_colour(20, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
 			set_colour(21, -1, -1, false, 0);
+			set_colour(22, -1, -1, true, cursor_attr);
+			set_colour(23, -1, -1, false, 0);
 			break;
 
 		case 17:
+			/* Solar Dark theme */
 			init_color(235, 27, 212, 259);
 			init_color(234, 0, 169, 212);
 			init_color(240, 345, 431, 459);
@@ -505,6 +559,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color(245, 576, 631, 631);
 			init_color(254, 933, 910, 835);
 			init_color(136, 710, 537, 0);
+			init_color(137, 800, 627, 0);
 			init_color(33, 149, 545, 824);
 			init_color(160, 863, 196, 184);
 
@@ -530,6 +585,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 254, 136);
 			init_pair(21, 244, 235);
+			init_pair(22, 235, 137);
+			init_pair(23, 235, 137);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -538,6 +595,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			break;
 
 		case 18:
+			/* Solar Light theme */
 			init_color(234, 13, 98, 119);
 			init_color(235, 18, 141, 172);
 			init_color(240, 110, 146, 200);
@@ -545,6 +603,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color(244, 557, 616, 624);
 			init_color(136, 710, 537, 0);
 			init_color(160, 863, 196, 184);
+			init_color(137, 780, 607, 0);
 
 			assume_default_colors(234, 245);
 
@@ -568,6 +627,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 255, 136);
 			init_pair(21, 235, 244);
+			init_pair(22, 235, 137);
+			init_pair(23, 235, 137);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -576,6 +637,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			break;
 
 		case 19:
+			/* Gruvbox light theme */
 			init_color_rgb_ff(200, 0xff, 0xff, 0xd7); /* background */
 			init_color_rgb_ff(201, 0x26, 0x26, 0x26); /* foreground */
 			init_color_rgb_ff(202, 0xaf, 0xaf, 0x87); /* modeline bg */
@@ -588,6 +650,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color_rgb_ff(210, 0x87, 0x00, 0x00); /* keyword - red */
 			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
 			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
+			init_color_rgb_ff(213, 0xfb, 0xf1, 0xc7); /* cursor bg */
 
 			assume_default_colors(204, 200);
 
@@ -610,6 +673,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(19, -1, -1);
 			init_pair(20, 212, 205);
 			init_pair(21, 206, 207);
+			init_pair(22, 203, 213);
+			init_pair(23, 204, 213);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -618,6 +683,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			break;
 
 		case 20:
+			/* Tao theme */
 			init_color_rgb_ff(200, 0xf1, 0xf1, 0xf1); /* background */
 			init_color_rgb_ff(201, 0x61, 0x61, 0x61); /* foreground */
 			init_color_rgb_ff(202, 0xfc, 0xfc, 0xfc); /* modeline bg */
@@ -659,6 +725,9 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(20, 212, 205);
 			init_pair(21, 204, 207);
 
+			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
+			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
+
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
 			theme_attrs[6] = cursor_attr;
@@ -681,6 +750,9 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 		case WINDOW_LUC:
 		case WINDOW_FIX_ROWS:
 			t->data_attr = theme_attr(4);
+			t->cursor_data_attr = theme_attr(5);
+			t->cursor_line_attr = theme_attr(11);
+			t->cursor_expi_attr = theme_attr(6);
 			break;
 
 		case WINDOW_TOP_BAR:
@@ -788,4 +860,8 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 		t->pattern_data_attr = t->data_attr;
 		t->pattern_line_attr = t->line_attr;
 	}
+
+	/* cross cursor - initial setting */
+	t->cross_cursor_attr = theme_attr(22);// | A_BOLD;
+	t->cross_cursor_line_attr = theme_attr(23);
 }

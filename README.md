@@ -100,6 +100,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>n</kbd> - for next match
 * <kbd>N</kbd> - for next match in reverse direction
 * <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
+* <kbd>Alt</kbd>+<kbd>h</kbd> - switch (on, off) drawing column cursor
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
 * Mouse button wheel - scroll vertical

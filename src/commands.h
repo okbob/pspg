@@ -101,6 +101,7 @@ typedef enum PspgCommand
 	cmd_RowNumToggle,
 	cmd_GotoLine,
 	cmd_ShowCursor,
+	cmd_ShowVerticalCursor,
 	cmd_BoldLabelsToggle,
 	cmd_BoldCursorToggle
 } PspgCommand;

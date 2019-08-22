@@ -110,6 +110,7 @@ ST_MENU_ITEM _options[] = {
 	{"~W~ithout highlighting", cmd_NoHighlight, NULL},
 	{"--"},
 	{"Show cursor", cmd_ShowCursor, "M-c"},
+	{"Show vertical cursor", cmd_ShowVerticalCursor, "M-h"},
 	{"Show line ~n~umbers", cmd_RowNumToggle, "M-n"},
 	{"Show top bar", cmd_ShowTopBar, NULL},
 	{"Show bottom bar", cmd_ShowBottomBar, NULL},
@@ -296,6 +297,7 @@ post_menu(Options *opts, struct ST_MENU *menu)
 
 	st_menu_set_option(menu, cmd_RowNumToggle, ST_MENU_OPTION_MARKED, opts->show_rownum);
 	st_menu_set_option(menu, cmd_ShowCursor, ST_MENU_OPTION_MARKED, !opts->no_cursor);
+	st_menu_set_option(menu, cmd_ShowVerticalCursor, ST_MENU_OPTION_MARKED, opts->vertical_cursor);
 
 	st_menu_set_option(menu, cmd_BoldLabelsToggle, ST_MENU_OPTION_MARKED, opts->bold_labels);
 	st_menu_set_option(menu, cmd_BoldCursorToggle, ST_MENU_OPTION_MARKED, opts->bold_cursor);
