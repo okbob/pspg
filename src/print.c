@@ -46,7 +46,8 @@ window_fill(int window_identifier,
 			int srcy,
 			int srcx,						/* offset to displayed data */
 			int cursor_row,					/* row of row cursor */
-			int cursor_column,				/* column of column cursor */
+			int vcursor_xmin,				/* xmin in display coordinates */
+			int vcursor_xmax,				/* xmax in display coordinates */
 			DataDesc *desc,
 			ScrDesc *scrdesc,
 			Options *opts)
@@ -67,22 +68,11 @@ window_fill(int window_identifier,
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	int			positions[100][2];
 	int			npositions = 0;
-	int			vcursor_xmin = -1;
-	int			vcursor_xmax = -1;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
 
 	pattern_fix = t->found_str_attr & A_UNDERLINE;
-
-	if (cursor_column > 0 && opts->vertical_cursor)
-	{
-		if (cursor_column > desc->columns)
-			leave_ncurses("unexpected number of columns");
-
-		vcursor_xmin = desc->cranges[cursor_column - 1].xmin;
-		vcursor_xmax = desc->cranges[cursor_column - 1].xmax;
-	}
 
 	/* when we want to detect expanded records titles */
 	if (desc->is_expanded_mode)
@@ -417,7 +407,7 @@ window_fill(int window_identifier,
 					bool	is_cross_cursor = false;
 					int		pos = srcx + i;
 
-					if (pos >= vcursor_xmin && pos  <= vcursor_xmax)
+					if (vcursor_xmin <= i && i <= vcursor_xmax)
 					{
 						is_cross_cursor = is_cursor_row;
 						is_cursor = !is_cursor_row;
@@ -587,10 +577,18 @@ window_fill(int window_identifier,
 						{
 							int		new_attr;
 
-							if (is_cursor)
+							if (is_cross_cursor)
+							{
+								new_attr = t->cross_cursor_line_attr;
+							}
+							else if (is_cursor)
+							{
 								new_attr = t->cursor_line_attr;
+							}
 							else
+							{
 								new_attr = t->line_attr;
+							}
 
 							if (new_attr != active_attr)
 							{

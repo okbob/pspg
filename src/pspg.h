@@ -143,7 +143,7 @@ typedef struct
 #define		w_rownum_luc(scrdesc)	((scrdesc)->wins[WINDOW_ROWNUM_LUC])
 
 /* from print.c */
-extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int cursor_column, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
+extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 
 /* from pspg.c */
@@ -166,9 +166,10 @@ extern void post_menu(Options *opts, struct ST_MENU *current_menu);
  * and modify a path.
  *
 
+*/
 #define DEBUG_PIPE				"/home/pavel/debug"
 
-*/
+
 
 #ifdef DEBUG_PIPE
 

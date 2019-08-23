@@ -1872,7 +1872,8 @@ main(int argc, char *argv[])
 	int		cursor_row = 0;
 	int		cursor_col = 0;
 	int		footer_cursor_col = 0;
-	int		horizontal_cursor_column = 2;			/* table columns are counted from one */
+	int		horizontal_cursor_column = -1;			/* table columns are counted from one */
+	int		last_x_focus = -1;						/* it is used for repeated vertical cursor display */
 	int		first_row = 0;
 	int		prev_first_row;
 	int		first_data_row;
@@ -2407,6 +2408,20 @@ reinit_theme:
 	if (opts.tabular_cursor && !opts.no_cursor)
 		opts.no_cursor = desc.headline_transl == NULL;
 
+	if (opts.vertical_cursor)
+	{
+		int freezed_cols = opts.freezed_cols != -1 ?  opts.freezed_cols : 1;
+
+		/* The position of vertical cursor should be set */
+		if (freezed_cols + 1 <= desc.columns)
+			horizontal_cursor_column = freezed_cols + 1;
+		else
+			horizontal_cursor_column = 1;
+
+		/* in this moment, there are not any vertical offset, calculation is simple */
+		last_x_focus = desc.cranges[horizontal_cursor_column - 1].xmin;
+	}
+
 	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
 	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
 
@@ -2491,52 +2506,86 @@ reinit_theme:
 		{
 			if (!no_doupdate)
 			{
+				int		vcursor_xmin_fix = -1;
+				int		vcursor_xmax_fix = -1;
+				int		vcursor_xmin_data = -1;
+				int		vcursor_xmax_data = -1;
+
+				if (opts.vertical_cursor)
+				{
+					int		vcursor_xmin = desc.cranges[horizontal_cursor_column - 1].xmin;
+					int		vcursor_xmax = desc.cranges[horizontal_cursor_column - 1].xmax;
+
+					if (vcursor_xmin < scrdesc.fix_cols_cols)
+					{
+						vcursor_xmin_fix = vcursor_xmin;
+						vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols;
+					}
+					else
+					{
+						vcursor_xmin_fix = vcursor_xmin - cursor_col;
+						vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols - cursor_col;
+					}
+
+					if (vcursor_xmax < scrdesc.fix_cols_cols)
+					{
+						vcursor_xmax_fix = vcursor_xmax;
+						vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols;
+					}
+					else
+					{
+						vcursor_xmax_fix = vcursor_xmax - cursor_col;
+						vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols - cursor_col;
+					}
+				}
+
 				window_fill(WINDOW_LUC,
 							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
 							0,
 							-1,
-							horizontal_cursor_column,
+							vcursor_xmin_fix, vcursor_xmax_fix,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWS,
 							first_data_row + first_row - fix_rows_offset,
 							scrdesc.fix_cols_cols + cursor_col,
 							cursor_row - first_row + fix_rows_offset,
-							horizontal_cursor_column,
+							vcursor_xmin_data, vcursor_xmax_data,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_COLS,
 							first_data_row + first_row - fix_rows_offset,
 							0,
 							cursor_row - first_row + fix_rows_offset,
-							horizontal_cursor_column,
+							vcursor_xmin_fix, vcursor_xmax_fix,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_ROWS,
 							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
 							scrdesc.fix_cols_cols + cursor_col,
-							-1, horizontal_cursor_column,
+							-1,
+							vcursor_xmin_data, vcursor_xmax_data,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FOOTER,
 							first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 							footer_cursor_col,
 							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
-							-1,
+							-1, -1,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWNUM_LUC,
 							0,
 							0,
 							0,
-							0,
+							-1, -1,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWNUM,
 							first_data_row + first_row - fix_rows_offset,
 							0,
 							cursor_row - first_row + fix_rows_offset,
-							0,
+							-1, -1,
 							&desc, &scrdesc, &opts);
 
 				if (w_luc(&scrdesc))
@@ -2903,8 +2952,50 @@ reset_search:
 				break;
 
 			case cmd_ShowVerticalCursor:
-				opts.vertical_cursor = !opts.vertical_cursor;
-				refresh_scr = true;
+				{
+					opts.vertical_cursor = !opts.vertical_cursor;
+
+					if (opts.vertical_cursor)
+					{
+						int		i;
+						int		xpoint;
+
+						if (last_x_focus == -1)
+						{
+							/* try to find first visible columns after fixed columns */
+							last_x_focus = scrdesc.fix_cols_cols;
+						}
+
+						if (last_x_focus >= scrdesc.fix_cols_cols - 1)
+							xpoint = last_x_focus + cursor_col;
+						else
+							xpoint = last_x_focus;
+
+						for (i = 0; i  < desc.columns; i++)
+						{
+							if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
+							{
+								horizontal_cursor_column = i + 1;
+
+								if (horizontal_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+								{
+									if (desc.cranges[i].xmax > scrdesc.main_maxx + cursor_col)
+									{
+										cursor_col = desc.cranges[i].xmax - scrdesc.main_maxx;
+									}
+									else if (desc.cranges[i].xmin < scrdesc.fix_cols_cols + cursor_col)
+									{
+										cursor_col = desc.cranges[i].xmin - scrdesc.fix_cols_cols + 1;
+									}
+								}
+
+								break;
+							}
+						}
+					}
+
+					refresh_scr = true;
+				}
 				break;
 
 			case cmd_FlushBookmarks:
@@ -4060,6 +4151,53 @@ found_next_pattern:
 							max_first_row = 0;
 						if (first_row > max_first_row)
 							first_row = max_first_row;
+
+						/*
+						 * Save last x focused point. It will be used for repeated hide/unhide
+						 * vertical cursor.
+						 */
+						last_x_focus = event.x;
+
+						if (opts.vertical_cursor)
+						{
+							int		xpoint;
+							int		i;
+
+							if (event.x >= scrdesc.fix_cols_cols - 1)
+								xpoint = event.x + cursor_col;
+							else
+								xpoint = event.x;
+
+							for (i = 0; i  < desc.columns; i++)
+							{
+								if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
+								{
+									int		xmin = desc.cranges[i].xmin;
+									int		xmax = desc.cranges[i].xmax;
+
+									horizontal_cursor_column = i + 1;
+
+									if (horizontal_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+									{
+										if (xmax > scrdesc.main_maxx + cursor_col)
+										{
+											cursor_col = xmax - scrdesc.main_maxx;
+										}
+										else if (xmin < scrdesc.fix_cols_cols + cursor_col)
+										{
+											cursor_col = xmin - scrdesc.fix_cols_cols + 1;
+										}
+									}
+
+									if (xmin > scrdesc.fix_cols_cols)
+										last_x_focus = xmin - cursor_col;
+									else
+										last_x_focus = xmin;
+
+									break;
+								}
+							}
+						}
 
 						if (event.bstate & BUTTON_ALT && is_double_click)
 							next_command = cmd_ToggleBookmark;
