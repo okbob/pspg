@@ -2422,7 +2422,8 @@ reinit_theme:
 	if (opts.tabular_cursor && !opts.no_cursor)
 		opts.no_cursor = desc.headline_transl == NULL;
 
-	if (opts.vertical_cursor)
+	/* run this part only once, don't repeat it when theme is reinitialized */
+	if (opts.vertical_cursor && vertical_cursor_column == -1)
 	{
 		int freezed_cols = opts.freezed_cols != -1 ?  opts.freezed_cols : 1;
 

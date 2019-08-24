@@ -98,6 +98,7 @@ save_config(char *path, Options *opts)
 	fprintf(f, "theme = %d\n", opts->theme);
 	fprintf(f, "without_commandbar = %s\n", opts->no_commandbar ? "true" : "false");
 	fprintf(f, "without_topbar = %s\n", opts->no_topbar ? "true" : "false");
+	fprintf(f, "vertical_cursor = %s\n", opts->vertical_cursor ? "true" : "false");
 
 	fclose(f);
 
@@ -161,6 +162,8 @@ load_config(char *path, Options *opts)
 				opts->no_commandbar = bool_val;
 			else if (strcmp(key, "without_topbar") == 0)
 				opts->no_topbar = bool_val;
+			else if (strcmp(key, "vertical_cursor") == 0)
+				opts->vertical_cursor = bool_val;
 
 			free(line);
 			line = NULL;
