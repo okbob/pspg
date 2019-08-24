@@ -14,7 +14,8 @@ This pager can be used from `mysql` and `pgcli` clients too.
 
 ## Screenshots
 ![Screenshot](screenshots/pspg-modern.png)
-
+![Screenshot](screenshots/vc-mc.png)
+![Screenshot](screenshots/vc-tao.png)
 ![Screenshot](screenshots/theme1.gif)
 
 ![Screenshot](screenshots/theme3.gif)
@@ -47,6 +48,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--only-for-tables`  use std pager when content is not a table
 * `--bold-labels`  bold font for row, column labels
 * `--bold-cursor`  bold font for cursor
+* `--vertical-cursor`  show column cursor
 
 
 ## Themes
@@ -100,9 +102,9 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>n</kbd> - for next match
 * <kbd>N</kbd> - for next match in reverse direction
 * <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
-* <kbd>Alt</kbd>+<kbd>h</kbd> - switch (on, off) drawing column cursor
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
+* <kbd>Alt</kbd>+<kbd>v</kbd> - switch (on, off) drawing column cursor
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
 * <kbd>F9</kbd> - show menu

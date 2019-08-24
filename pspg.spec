@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	1.6.8
+Version: 	1.7.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -44,6 +44,8 @@ CFLAGS="$RPM_OPT_FLAGS"
 
 %changelog
 
+* Sat Aug 24 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- vertical (column) cursor support
 
 * Wed Jul 24 2019 Pavel Stehule <pavel.stehule@gmail.com>
 - fix minor issues - left scrolling and theme changing
