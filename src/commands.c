@@ -236,6 +236,8 @@ cmd_string(int cmd)
 
 		case cmd_ShowCursor:
 			return "ShowCursor";
+		case cmd_ShowVerticalCursor:
+			return "ShowVerticalCursor";
 
 		case cmd_BoldLabelsToggle:
 			return "BoldLabelsToggle";
@@ -275,6 +277,8 @@ translate_event(int c, bool alt)
 				return cmd_NextBookmark;
 			case 'q':
 				return cmd_RawOutputQuit;
+			case 'v':
+				return cmd_ShowVerticalCursor;
 			case '9':
 				return cmd_ShowMenu;
 			case 27:

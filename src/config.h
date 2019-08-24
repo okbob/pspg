@@ -32,6 +32,7 @@ typedef struct
 	bool	no_topbar;
 	bool	show_rownum;
 	bool	no_cursor;
+	bool	vertical_cursor;
 	bool	tabular_cursor;
 	bool	force_ascii_art;
 	int		theme;

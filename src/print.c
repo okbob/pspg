@@ -46,6 +46,8 @@ window_fill(int window_identifier,
 			int srcy,
 			int srcx,						/* offset to displayed data */
 			int cursor_row,					/* row of row cursor */
+			int vcursor_xmin,				/* xmin in display coordinates */
+			int vcursor_xmax,				/* xmax in display coordinates */
 			DataDesc *desc,
 			ScrDesc *scrdesc,
 			Options *opts)
@@ -401,12 +403,26 @@ window_fill(int window_identifier,
 			{
 				while (i < maxx)
 				{
+					bool	is_cursor;
+					bool	is_cross_cursor = false;
+					int		pos = srcx + i;
+
+					if (vcursor_xmin <= i && i <= vcursor_xmax)
+					{
+						is_cross_cursor = is_cursor_row;
+						is_cursor = !is_cursor_row;
+					}
+					else
+					{
+						is_cross_cursor = false;
+						is_cursor = is_cursor_row;
+					}
+
 					if (is_expand_head && !is_pattern_row && !is_bookmark_row)
 					{
-						int		pos = srcx + i;
 						attr_t		new_attr;
 
-						if (is_cursor_row)
+						if (is_cursor)
 							new_attr = pos >= ei_min && pos <= ei_max ? t->cursor_expi_attr : t->cursor_line_attr;
 						else
 							new_attr = pos >= ei_min && pos <= ei_max ? t->expi_attr : t->line_attr;
@@ -446,14 +462,18 @@ window_fill(int window_identifier,
 							}
 						}
 
-						if (is_bookmark_row)
+						if (is_cross_cursor)
+						{
+							new_attr = column_format == 'd' ? t->cross_cursor_attr : t->cross_cursor_line_attr;
+						}
+						else if (is_bookmark_row)
 						{
 							if (!is_cursor_row )
 								new_attr = column_format == 'd' ? t->bookmark_data_attr : t->bookmark_line_attr;
 							else
 								new_attr = t->cursor_bookmark_attr;
 						}
-						else if (is_pattern_row && !is_cursor_row)
+						else if (is_pattern_row && !is_cursor)
 						{
 							if (is_footer)
 								new_attr = t->pattern_data_attr;
@@ -483,16 +503,16 @@ window_fill(int window_identifier,
 							}
 						}
 						else if (is_footer)
-							new_attr = is_cursor_row ? t->cursor_data_attr : t->data_attr;
+							new_attr = is_cursor ? t->cursor_data_attr : t->data_attr;
 						else if (htrpos < desc->headline_char_size)
 						{
-							if (is_cursor_row )
+							if (is_cursor )
 								new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
 							else
 								new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
 						}
 
-						if (is_cursor_row)
+						if (is_cursor)
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
@@ -557,10 +577,18 @@ window_fill(int window_identifier,
 						{
 							int		new_attr;
 
-							if (is_cursor_row)
+							if (is_cross_cursor)
+							{
+								new_attr = t->cross_cursor_line_attr;
+							}
+							else if (is_cursor)
+							{
 								new_attr = t->cursor_line_attr;
+							}
 							else
+							{
 								new_attr = t->line_attr;
+							}
 
 							if (new_attr != active_attr)
 							{
