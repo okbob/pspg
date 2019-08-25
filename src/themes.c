@@ -3,7 +3,7 @@
  * themes.c
  *	  themes initialization
  *
- * Portions Copyright (c) 2017-2018 Pavel Stehule
+ * Portions Copyright (c) 2017-2019 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/themes.c

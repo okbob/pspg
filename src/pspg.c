@@ -3,7 +3,7 @@
  * pspg.c
  *	  a terminal pager designed for usage from psql
  *
- * Portions Copyright (c) 2017-2018 Pavel Stehule
+ * Portions Copyright (c) 2017-2019 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/pspg.c
@@ -1918,7 +1918,6 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
 	bool	only_for_tables = false;
-
 	bool	raw_output_quit = false;
 
 	struct winsize size;
@@ -2489,6 +2488,8 @@ reinit_theme:
 	{
 		bool		refresh_scr = false;
 		bool		resize_scr = false;
+		bool		after_freeze_signal = false;
+		bool		recheck_vertical_cursor_visibility = false;
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
@@ -3192,44 +3193,58 @@ exit_search_next_bookmark:
 
 show_first_col:
 
-				cursor_col = 0;
+				if (after_freeze_signal && opts.vertical_cursor &&
+						vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+					recheck_vertical_cursor_visibility = true;
+				else
+					cursor_col = 0;
+
 				refresh_scr = true;
 				break;
 
 			case cmd_FreezeOneCol:
 				opts.freezed_cols = 1;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeTwoCols:
 				opts.freezed_cols = 2;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeThreeCols:
 				opts.freezed_cols = 3;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeFourCols:
 				opts.freezed_cols = 4;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeFiveCols:
 				opts.freezed_cols = 5;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeSixCols:
 				opts.freezed_cols = 6;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeSevenCols:
 				opts.freezed_cols = 7;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeEightCols:
 				opts.freezed_cols = 8;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_FreezeNineCols:
 				opts.freezed_cols = 9;
+				after_freeze_signal = true;
 				goto show_first_col;
 
 			case cmd_CursorFirstRow:
@@ -4269,37 +4284,38 @@ found_next_pattern:
 
 						if (opts.vertical_cursor)
 						{
-							int		xpoint;
+							int		xpoint = event.x - scrdesc.main_start_x;
 							int		i;
 
-							if (event.x >= scrdesc.fix_cols_cols - 1)
-								xpoint = event.x + cursor_col;
-							else
-								xpoint = event.x;
+							if (xpoint > scrdesc.fix_cols_cols - 1)
+								xpoint += cursor_col;
 
-							for (i = 0; i  < desc.columns; i++)
+							if (xpoint >= 0)
 							{
-								if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
+								for (i = 0; i  < desc.columns; i++)
 								{
-									int		xmin = desc.cranges[i].xmin;
-									int		xmax = desc.cranges[i].xmax;
-
-									vertical_cursor_column = i + 1;
-
-									if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
 									{
-										if (xmax > scrdesc.main_maxx + cursor_col)
-										{
-											cursor_col = xmax - scrdesc.main_maxx;
-										}
-										else if (xmin < scrdesc.fix_cols_cols + cursor_col)
-										{
-											cursor_col = xmin - scrdesc.fix_cols_cols + 1;
-										}
-									}
+										int		xmin = desc.cranges[i].xmin;
+										int		xmax = desc.cranges[i].xmax;
 
-									last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
-									break;
+										vertical_cursor_column = i + 1;
+
+										if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+										{
+											if (xmax > scrdesc.main_maxx + cursor_col)
+											{
+												cursor_col = xmax - scrdesc.main_maxx;
+											}
+											else if (xmin < scrdesc.fix_cols_cols + cursor_col)
+											{
+												cursor_col = xmin - scrdesc.fix_cols_cols + 1;
+											}
+										}
+
+										last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+										break;
+									}
 								}
 							}
 						}
@@ -4443,6 +4459,17 @@ refresh:
 			refresh_aux_windows(&opts, &scrdesc, &desc);
 			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+
+			/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
+			if (recheck_vertical_cursor_visibility)
+			{
+				int		vminx = desc.cranges[vertical_cursor_column - 1].xmin;
+				int		left_border = scrdesc.fix_cols_cols + cursor_col - 1;
+
+				if (vminx < left_border)
+					cursor_col = vminx -  scrdesc.fix_cols_cols + 1;
+			}
+
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
 
 			if (cmdbar)
