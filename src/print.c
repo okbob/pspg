@@ -410,7 +410,7 @@ window_fill(int window_identifier,
 					if (vcursor_xmin <= i && i <= vcursor_xmax)
 					{
 						is_cross_cursor = is_cursor_row;
-						is_cursor = !is_cursor_row;
+						is_cursor = !is_cursor_row && !is_pattern_row;
 					}
 					else
 					{
