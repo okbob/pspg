@@ -85,6 +85,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd> - scroll to right
 * <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd> - go to the start of file
 * <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd> - go to the end of file
+* <kbd>Alt</kbd>+<kbd>l</kbd> - go to line number
 * <kbd>H</kbd> - go to first line of current window
 * <kbd>M</kbd> - go to half of current window
 * <kbd>L</kbd> - go to end of current window
@@ -113,6 +114,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>k</kbd> - switch bookmark
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
 * <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
+* <kbd>Alt</kbd>+<kbd>o</kbd> - flush bookmarks
+
 
 # Recommended psql configuration
 <pre>
