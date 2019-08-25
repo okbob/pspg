@@ -512,7 +512,7 @@ window_fill(int window_identifier,
 								new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
 						}
 
-						if (is_cursor)
+						if (is_cursor || is_cross_cursor)
 						{
 							if (is_found_row && htrpos >= scrdesc->found_start_x &&
 									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)

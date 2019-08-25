@@ -1879,6 +1879,8 @@ main(int argc, char *argv[])
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
 	int		command = cmd_Invalid;
+	int		translated_command = cmd_Invalid;
+	int		translated_command_history = cmd_Invalid;
 	long	last_ms = 0;							/* time of last mouse release in ms */
 	time_t	last_sec = 0;							/* time of last mouse release in sec */
 	int		next_command = cmd_Invalid;
@@ -2514,6 +2516,8 @@ reinit_theme:
 			}
 		}
 
+
+
 		/*
 		 * Draw windows, only when function (key) redirect was not forced.
 		 * Redirect emmit immediate redraw.
@@ -2711,7 +2715,11 @@ reinit_theme:
 #ifndef COMPILE_MENU
 
 		if (!redirect_mode)
+		{
+			translated_command_history = translated_command;
 			command = translate_event(event_keycode, press_alt);
+			translated_command = command;
+		}
 
 #else
 
@@ -2765,14 +2773,22 @@ hide_menu:
 			}
 
 			if (!processed)
+			{
+				translated_command_history = translated_command;
 				command = translate_event(event_keycode, press_alt);
+				translated_command = command;
+			}
 			else
 				continue;
 		}
 		else
 		{
 			if (!redirect_mode)
+			{
+				translated_command_history = translated_command;
 				command = translate_event(event_keycode, press_alt);
+				translated_command = command;
+			}
 		}
 
 #endif
@@ -2971,10 +2987,31 @@ reset_search:
 				{
 					opts.vertical_cursor = !opts.vertical_cursor;
 
-					if (opts.vertical_cursor)
+					if (opts.vertical_cursor && !is_footer_cursor(cursor_row, &scrdesc, &desc))
 					{
 						int		i;
 						int		xpoint;
+						int		prev_command = translated_command_history;
+
+						if (scrdesc.found && (
+								prev_command == cmd_SearchPrev || prev_command == cmd_SearchNext ||
+								prev_command == cmd_ForwardSearch || prev_command == cmd_BackwardSearch))
+						{
+							/*
+							 * When immediately previous command was some search command, try to
+							 * set vertical cursor by searching result.
+							 */
+							for (i = 0; i < desc.columns; i++)
+							{
+								if (desc.cranges[i].xmin <= scrdesc.found_start_x &&
+										scrdesc.found_start_x < desc.cranges[i].xmax)
+								{
+									vertical_cursor_column = i + 1;
+									last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+									break;
+								}
+							}
+						}
 
 						if (last_x_focus == -1)
 						{
@@ -4334,6 +4371,22 @@ found_next_pattern:
 			bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
 
 			UNUSED(maxy);
+
+			if (opts.vertical_cursor && !_is_footer_cursor)
+			{
+				int		i;
+
+				for (i = 0; i < desc.columns; i++)
+				{
+					if (desc.cranges[i].xmin <= scrdesc.found_start_x &&
+						scrdesc.found_start_x < desc.cranges[i].xmax)
+					{
+						vertical_cursor_column = i + 1;
+						last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+						break;
+					}
+				}
+			}
 
 			if (fresh_found && w_fix_cols(&scrdesc) != NULL)
 			{

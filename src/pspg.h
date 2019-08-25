@@ -164,9 +164,9 @@ extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+// */
 
 #ifdef DEBUG_PIPE
 
