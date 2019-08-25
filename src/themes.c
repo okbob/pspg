@@ -87,12 +87,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);			/* top bar colors */
 			set_colour(3, -1, -1, false, 0);							/* data alphanumeric */
 			set_colour(4, -1, -1, true, labels_attr);						/* fix rows, columns */
-			set_colour(5, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);		/* active cursor over fixed cols */
-			set_colour(6, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);		/* active cursor */
+			set_colour(5, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);		/* active cursor over fixed cols */
+			set_colour(6, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);		/* active cursor */
 			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);			/* title color */
 			set_colour(8, COLOR_BLACK, COLOR_WHITE, false, 0);			/* expanded header */
 			set_colour(9, -1, -1, false, 0);							/* footer */
-			set_colour(10, COLOR_BLACK, COLOR_WHITE, true, cursor_attr);	/* footer cursor */
+			set_colour(10, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);	/* footer cursor */
 			set_colour(11, COLOR_BLACK, COLOR_WHITE, false, 0);			/* cursor over decoration */
 			set_colour(12, COLOR_BLACK, COLOR_WHITE, false, 0);			/* bottom bar colors */
 			set_colour(13, COLOR_BLACK, COLOR_WHITE, false, 0);			/* light bottom bar colors */
