@@ -17,7 +17,8 @@ Possible ToDo
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
 * support fetched data - columns width can be different
-* vertical cursor + sort over cursor's column
+* sort over vertical cursor's column
+* column searching
 
 Similar projects
 ================
