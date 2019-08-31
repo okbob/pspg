@@ -44,6 +44,8 @@ ST_MENU_ITEM _search[] = {
 	{"Search ~a~gain", cmd_SearchNext, "n"},
 	{"Search p~r~evious", cmd_SearchPrev, "N"},
 	{"--"},
+	{"Search ~c~olumn", cmd_SearchColumn, "c"},
+	{"--"},
 	{"~T~oggle bookmark", cmd_ToggleBookmark, "M-k"},
 	{"~P~rev bookmark", cmd_PrevBookmark, "M-i"},
 	{"~N~ext bookmark", cmd_NextBookmark, "M-j"},

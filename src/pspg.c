@@ -181,6 +181,52 @@ nstrstr(const char *haystack, const char *needle)
 	return haystack;
 }
 
+
+static const char *
+nstrstr_with_sizes(const char *haystack,
+				   const int haystack_size,
+				   const char *needle,
+				   int needle_size)
+{
+	const char *haystack_cur, *needle_cur, *needle_prev;
+	const char *haystack_end, *needle_end;
+	int		f1 = 0, f2 = 0;
+
+	needle_cur = needle;
+	needle_prev = NULL;
+	haystack_cur = haystack;
+
+	haystack_end = haystack + haystack_size;
+	needle_end = needle + needle_size;
+
+	while (needle_cur < needle_end)
+	{
+		if (haystack_cur == haystack_end)
+			return NULL;
+
+		if (needle_prev != needle_cur)
+		{
+			needle_prev = needle_cur;
+			f1 = toupper(*needle_cur);
+		}
+
+		f2 = toupper(*haystack_cur);
+		if (f1 == f2)
+		{
+			needle_cur += 1;
+			haystack_cur += 1;
+		}
+		else
+		{
+			needle_cur = needle;
+			haystack_cur = haystack += 1;
+		}
+	}
+
+	return haystack;
+}
+
+
 /*
  * Special string searching, lower chars are case insensitive,
  * upper chars are case sensitive.
@@ -509,15 +555,20 @@ translate_headline(Options *opts, DataDesc *desc)
 	else if (desc->is_expanded_mode && desc->expanded_info_minx == -1)
 		broken_format = true;
 
-	/* trim ending spaces */
-	if (!broken_format && last_black_char != 0)
+	if (!broken_format)
 	{
+		char	   *namesline = desc->namesline;
+		char	   *first_char = NULL;				/* first non space char of column name */
+		int			offset;
 		char	   *ptr;
 		int			i;
-		int			offset;
 
-		last_black_char[1] = '\0';
-		desc->headline_char_size = strlen(desc->headline_transl);
+		/* trim ending spaces */
+		if (last_black_char != 0)
+		{
+			last_black_char[1] = '\0';
+			desc->headline_char_size = strlen(desc->headline_transl);
+		}
 
 		desc->columns = 1;
 
@@ -533,20 +584,59 @@ translate_headline(Options *opts, DataDesc *desc)
 		i = 0; offset = 0;
 		ptr = desc->headline_transl;
 		desc->cranges[0].xmin = 0;
+		desc->cranges[0].name_pos = -1;
+		desc->cranges[0].name_size = -1;
 
 		while (*ptr)
 		{
+			char	   *nextchar = NULL;
+
+			if (namesline)
+			{
+				/* invalidate namesline if there are not good enough chars */
+				if (!*namesline)
+				{
+					namesline = NULL;
+					nextchar = NULL;
+				}
+				else
+					nextchar = namesline + (opts->force8bit ? 1 : utf8charlen(*namesline));
+			}
+
 			if (*ptr == 'I')
 			{
 				desc->cranges[i++].xmax = offset;
 				desc->cranges[i].xmin = offset;
+				desc->cranges[i].name_pos = -1;
+				desc->cranges[i].name_size = -1;
 			}
+			else if (*ptr == 'd')
+			{
+				if (namesline && *namesline != ' ')
+				{
+					if (desc->cranges[i].name_pos == -1)
+					{
+						first_char = namesline;
+						desc->cranges[i].name_pos = namesline - desc->namesline;
+						desc->cranges[i].name_size = nextchar - namesline;
+						first_char = namesline;
+					}
+					else
+						desc->cranges[i].name_size = nextchar - first_char;
+				}
+			}
+
+			if (namesline && nextchar)
+				namesline = nextchar;
 
 			offset += 1;
 			ptr +=1;
 		}
 
 		desc->cranges[i].xmax = offset - 1;
+
+		if (!namesline)
+			desc->namesline = NULL;
 
 		return true;
 	}
@@ -845,6 +935,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	desc->footer_row = -1;
 	desc->alt_footer_row = -1;
 	desc->is_pgcli_fmt = false;
+	desc->namesline = NULL;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -855,7 +946,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 	errno = 0;
 
-	while (( read = getline(&line, &len, fp)) != -1)
+	while ((read = getline(&line, &len, fp)) != -1)
 	{
 		int		clen;
 
@@ -970,6 +1061,10 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 		if (desc->last_data_row == -1)
 			desc->last_data_row = desc->last_row - 1;
+
+		if (desc->border_head_row > 1)
+			desc->namesline = desc->rows.rows[desc->border_head_row - 1];
+
 	}
 	else if (desc->is_expanded_mode && desc->border_top_row != -1)
 	{
@@ -1755,6 +1850,34 @@ tilde(char *path)
 	*w = '\0';
 
 	return writebuf;
+}
+
+/*
+ * Set cursor_col to ensure visibility of vertical column
+ */
+static int
+get_cursor_col_for_vertical_column(int vertical_cursor_column,
+								   int cursor_col,
+								   DataDesc *desc,
+								   ScrDesc *scrdesc)
+{
+	int		xmin = desc->cranges[vertical_cursor_column - 1].xmin;
+	int		xmax = desc->cranges[vertical_cursor_column - 1].xmax;
+
+	/* Do nothing if vertical cursor is visible already */
+	if (xmax < scrdesc->fix_cols_cols)
+		return 0;
+	else if (xmin > scrdesc->fix_cols_cols && xmax < scrdesc->main_maxx + cursor_col)
+		return cursor_col;
+	else
+	{
+		int max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
+
+		cursor_col = ((xmin + xmax) / 2) - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
+		cursor_col = cursor_col < max_cursor_col ? cursor_col : max_cursor_col;
+
+		return cursor_col > 0 ? cursor_col : 0;
+	}
 }
 
 /*
@@ -4171,6 +4294,110 @@ found_next_pattern:
 
 					if (!scrdesc.found)
 						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
+
+					break;
+				}
+
+			case cmd_SearchColumn:
+				{
+					if (desc.namesline)
+					{
+						char	locsearchterm[256];
+						int		startcolumn = 1;
+						int		colnum;
+						bool	found = false;
+						bool	search_from_start = false;
+
+						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1);
+
+						if (locsearchterm[0] != '\0')
+						{
+							strncpy(scrdesc.searchcolterm, locsearchterm, sizeof(scrdesc.searchcolterm));
+							scrdesc.searchcolterm_size = strlen(scrdesc.searchcolterm);
+						}
+
+						if (scrdesc.searchcolterm[0] != '\0')
+						{
+							/*
+							 * Where we should to start searching?
+							 * 1. after visible vertical cursor
+							 * 2. after cursor_col
+							 * 3. from first column
+							 */
+							if (opts.vertical_cursor)
+								startcolumn = vertical_cursor_column + 1;
+							else if (cursor_col > 0)
+							{
+								int		first_x = scrdesc.fix_cols_cols + cursor_col;
+								int		i;
+
+								/* fallback */
+								startcolumn = 1;
+
+								for (i = 0; i < desc.columns; i++)
+								{
+									if (desc.cranges[i].xmin <= first_x &&
+										first_x < desc.cranges[i].xmax)
+									{
+										startcolumn = i + 1;
+										break;
+									}
+								}
+							}
+							else
+								startcolumn = 1;
+
+							for (colnum = startcolumn; colnum <= desc.columns; colnum++)
+							{
+								if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+													   desc.cranges[colnum - 1].name_size,
+													   scrdesc.searchcolterm,
+													   scrdesc.searchcolterm_size))
+								{
+									found = true;
+									break;
+								}
+							}
+
+							if (!found)
+							{
+								search_from_start = true;
+
+								for (colnum = 1; colnum < startcolumn; colnum++)
+								{
+									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+														   desc.cranges[colnum - 1].name_size,
+														   scrdesc.searchcolterm,
+														   scrdesc.searchcolterm_size))
+									{
+										found = true;
+										break;
+									}
+								}
+							}
+
+							if (found)
+							{
+								if (search_from_start)
+									show_info_wait(&opts, &scrdesc, " Search from first column (press any key)", NULL, true, true, true);
+
+								opts.vertical_cursor = true;
+								vertical_cursor_column = colnum;
+
+						cursor_col = get_cursor_col_for_vertical_column(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+						last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+
+							}
+
+							else
+								show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
+						}
+						else
+							show_info_wait(&opts, &scrdesc, " Search pattern is a empty string (press any key)", NULL, true, true, true);
+
+					}
+					else
+						show_info_wait(&opts, &scrdesc, " Columns names are not detected (press any key)", NULL, true, true, true);
 
 					break;
 				}

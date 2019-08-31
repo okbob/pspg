@@ -49,6 +49,8 @@ typedef struct
 {
 	int		xmin;
 	int		xmax;
+	int		name_pos;				/* column's name position */
+	int		name_size;				/* size of column name in bytes */
 } CRange;
 
 /*
@@ -79,6 +81,7 @@ typedef struct
 	int		maxy;					/* maxy of used pad area with data */
 	int		maxx;					/* maxx of used pad area with data */
 	int		maxbytes;				/* max length of line in bytes */
+	char   *namesline;				/* header column's names line */
 	char   *headline;				/* header separator line */
 	int		headline_size;			/* size of headerline in bytes */
 	char   *headline_transl;		/* translated headline */
@@ -125,6 +128,8 @@ typedef struct
 	int		found_row;				/* row of found pattern */
 	int		first_rec_title_y;		/* y of first displayed record title in expanded mode */
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
+	char	searchcolterm[256];		/* last searched column patterm */
+	int		searchcolterm_size;		/* length of searched column pattern in bytes */
 	char   *fmt;					/* format string for info when refresh first is required */
 	char   *par;					/* parameter for info when refresh first is required */
 	bool	beep;					/* beep for info when refresh is required */

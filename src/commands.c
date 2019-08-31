@@ -225,6 +225,8 @@ cmd_string(int cmd)
 			return "SearchNext";
 		case cmd_SearchPrev:
 			return "SearchPrev";
+		case cmd_SearchColumn:
+			return "SearchColumn";
 		case cmd_ShowTopBar:
 			return "ShowTopBar";
 		case cmd_ShowBottomBar:
@@ -372,6 +374,8 @@ translate_event(int c, bool alt)
 				return cmd_CursorFirstRow;
 			case 'G':
 				return cmd_CursorLastRow;
+			case 'c':
+				return cmd_SearchColumn;
 		}
 	}
 

@@ -102,6 +102,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>?</kbd> - search for a pattern which will take you to the previous occurrence
 * <kbd>n</kbd> - for next match
 * <kbd>N</kbd> - for next match in reverse direction
+* <kbd>c</kbd> - column search
 * <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
@@ -116,6 +117,12 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
 * <kbd>Alt</kbd>+<kbd>o</kbd> - flush bookmarks
 
+## Column search
+
+Column search is case insensitive every time. Searched column is marked by vertical cursor.
+Last non empty string searching pattern is used when current searching pattern is empty string.
+Searching is starting after visible vertical column or on first visible not freezed columns (after
+some horizontal scrolling) or on first column. After last column searching starts from first again.
 
 # Recommended psql configuration
 <pre>
