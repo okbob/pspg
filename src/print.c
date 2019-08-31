@@ -1013,7 +1013,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	}
 }
 
-#define FIXVTE		1
+#define FIXVTE		0
 
 void
 draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,

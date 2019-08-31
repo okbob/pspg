@@ -1948,6 +1948,7 @@ main(int argc, char *argv[])
 		{"bold-labels", no_argument, 0, 12},
 		{"bold-cursor", no_argument, 0, 13},
 		{"only-for-tables", no_argument, 0, 14},
+		{"about", no_argument, 0, 16},
 		{0, 0, 0, 0}
 	};
 
@@ -2002,6 +2003,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "Usage:\n");
 				fprintf(stderr, "  %s [OPTION]\n\n", argv[0]);
 				fprintf(stderr, "Options:\n");
+				fprintf(stderr, "  --about        about authors\n");
 				fprintf(stderr, "  -a             force ascii menu border\n");
 				fprintf(stderr, "  -b             black-white style\n");
 				fprintf(stderr, "  -s N           set color style number (0..%d)\n", MAX_STYLE);
@@ -2094,6 +2096,12 @@ main(int argc, char *argv[])
 				break;
 			case 15:
 				opts.vertical_cursor = true;
+				break;
+			case 16:
+				fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
+				fprintf(stdout, "Authors:\n");
+				fprintf(stdout, "    2017-2019 Pavel Stehule, Benesov district, Czech Republic\n");
+				exit(0);
 				break;
 
 			case 'V':
