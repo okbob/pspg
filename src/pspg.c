@@ -590,6 +590,7 @@ translate_headline(Options *opts, DataDesc *desc)
 		while (*ptr)
 		{
 			char	   *nextchar = NULL;
+			int			display_width;
 
 			if (namesline)
 			{
@@ -626,11 +627,17 @@ translate_headline(Options *opts, DataDesc *desc)
 				}
 			}
 
-			if (namesline && nextchar)
+			/* possibly some chars can hold more display possitions */
+			if (namesline)
+			{
+				display_width = utf_dsplen(namesline);
 				namesline = nextchar;
+			}
+			else
+				display_width = 1;
 
-			offset += 1;
-			ptr +=1;
+			offset += display_width;
+			ptr += display_width;
 		}
 
 		desc->cranges[i].xmax = offset - 1;
@@ -1404,7 +1411,8 @@ is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 
 static void
 print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
-						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset)
+						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset,
+						 int vertical_cursor_column)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
@@ -1435,14 +1443,35 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		{
 			if (desc->headline_transl)
 			{
-				snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
-								number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
-								number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
-								number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
-								number_width(desc->headline_char_size), desc->headline_char_size,
-								number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
-								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
-								(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				if (opts->vertical_cursor)
+				{
+					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
+					int		vmaxx = desc->cranges[vertical_cursor_column - 1].xmax;
+
+					snprintf(buffer, 199, "V:[%*d/%*d %*d..%*d] [FC:%*d C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
+									number_width(desc->columns), vertical_cursor_column,
+									number_width(desc->columns), desc->columns,
+									number_width(desc->headline_char_size), vminx + 1,
+									number_width(desc->headline_char_size), vmaxx + 1,
+									number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+									number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+									number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+									number_width(desc->headline_char_size), desc->headline_char_size,
+									number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+									(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				}
+				else
+				{
+					snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
+									number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+									number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+									number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+									number_width(desc->headline_char_size), desc->headline_char_size,
+									number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+									(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				}
 			}
 			else
 			{
@@ -1459,16 +1488,39 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		{
 			if (desc->headline_transl)
 			{
-				snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
-								number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
-								number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
-								number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
-								number_width(desc->headline_char_size), desc->headline_char_size,
-								number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
-								number_width(smaxy), cursor_row - first_row + fix_rows_offset,
-								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
-								number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
-								(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				if (opts->vertical_cursor)
+				{
+					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
+					int		vmaxx = desc->cranges[vertical_cursor_column - 1].xmax;
+
+					snprintf(buffer, 199, "V:[%*d/%*d %*d..%*d] FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+									number_width(desc->columns), vertical_cursor_column,
+									number_width(desc->columns), desc->columns,
+									number_width(desc->headline_char_size), vminx + 1,
+									number_width(desc->headline_char_size), vmaxx + 1,
+									number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+									number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+									number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+									number_width(desc->headline_char_size), desc->headline_char_size,
+									number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
+									number_width(smaxy), cursor_row - first_row + fix_rows_offset,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+									(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				}
+				else
+				{
+					snprintf(buffer, 199, "FC:%*d C:%*d..%*d/%*d  L:[%*d + %*d  %*d/%*d] %3.0f%%",
+									number_width(desc->headline_char_size), scrdesc->fix_cols_cols,
+									number_width(desc->headline_char_size), cursor_col + scrdesc->fix_cols_cols + 1,
+									number_width(desc->headline_char_size), min_int(smaxx + cursor_col, desc->headline_char_size),
+									number_width(desc->headline_char_size), desc->headline_char_size,
+									number_width(desc->maxy - desc->fixed_rows), first_row + 1 - fix_rows_offset,
+									number_width(smaxy), cursor_row - first_row + fix_rows_offset,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), cursor_row + 1,
+									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
+									(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+				}
 			}
 			else
 			{
@@ -2595,7 +2647,7 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
-	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0);
+	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
 
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
@@ -4723,7 +4775,7 @@ found_next_pattern:
 				fresh_found = false;
 		}
 
-		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 
 		if (first_row != prev_first_row)
 		{
@@ -4778,7 +4830,7 @@ refresh:
 					cursor_col = vminx -  scrdesc.fix_cols_cols + 1;
 			}
 
-			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset);
+			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 
 			if (cmdbar)
 				cmdbar = init_cmdbar(cmdbar);

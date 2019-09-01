@@ -124,6 +124,13 @@ Last non empty string searching pattern is used when current searching pattern i
 Searching is starting after visible vertical column or on first visible not freezed columns (after
 some horizontal scrolling) or on first column. After last column searching starts from first again.
 
+## Status line description
+* `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char possitions from) .. (char possitions to)
+* `FC: d` - freezed columns length in chars
+* `C: d..d/d` - unfreezed visible data in chars (from .. to)/(total)
+* `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
+* `d%` - percent of already displayed data
+
 # Recommended psql configuration
 <pre>
 \pset linestyle unicode
