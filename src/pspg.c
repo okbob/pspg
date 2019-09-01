@@ -85,7 +85,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "1.7.0"
+#define PSPG_VERSION "1.7.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -1871,12 +1871,24 @@ get_cursor_col_for_vertical_column(int vertical_cursor_column,
 		return cursor_col;
 	else
 	{
-		int max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
+		int		max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
+		int		column_center = (xmin + xmax) / 2;
+		int		cursor_fixed;
 
-		cursor_col = ((xmin + xmax) / 2) - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
+		cursor_col = column_center - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
 		cursor_col = cursor_col < max_cursor_col ? cursor_col : max_cursor_col;
 
-		return cursor_col > 0 ? cursor_col : 0;
+		cursor_col = cursor_col > 0 ? cursor_col : 0;
+
+		/* try to show starts chars when it is possible */
+		if (xmin < scrdesc->fix_cols_cols + cursor_col)
+		{
+			cursor_fixed = xmin - scrdesc->fix_cols_cols + 1;
+			if (column_center < scrdesc->main_maxx + cursor_fixed)
+				cursor_col = cursor_fixed;
+		}
+
+		return cursor_col;
 	}
 }
 
@@ -2223,7 +2235,9 @@ main(int argc, char *argv[])
 			case 16:
 				fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
 				fprintf(stdout, "Authors:\n");
-				fprintf(stdout, "    2017-2019 Pavel Stehule, Benesov district, Czech Republic\n");
+				fprintf(stdout, "    2017-2019 Pavel Stehule, Benesov district, Czech Republic\n\n");
+				fprintf(stdout, "Licence:\n");
+				fprintf(stdout, "    Distributed under BSD licence\n\n");
 				exit(0);
 				break;
 
@@ -2647,8 +2661,6 @@ reinit_theme:
 			}
 		}
 
-
-
 		/*
 		 * Draw windows, only when function (key) redirect was not forced.
 		 * Redirect emmit immediate redraw.
@@ -2688,6 +2700,14 @@ reinit_theme:
 						vcursor_xmax_fix = vcursor_xmax - cursor_col;
 						vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols - cursor_col;
 					}
+
+					/*
+					 * When vertical cursor is not in freezed columns, then it cannot to
+					 * overwrite fixed col cols. Only last char position can be shared.
+					 */
+					if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+						if (vcursor_xmin_fix < scrdesc.fix_cols_cols - 1)
+							vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
 				}
 
 				window_fill(WINDOW_LUC,
