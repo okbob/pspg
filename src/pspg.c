@@ -4316,6 +4316,8 @@ recheck_end:
 						xmax = desc.cranges[vertical_cursor_column - 1].xmax;
 
 						sortbuf = malloc(desc.total_rows * sizeof(SortData));
+						if (sortbuf == NULL)
+							leave_ncurses("out of memory");
 
 						while (lnb)
 						{
@@ -4354,9 +4356,16 @@ recheck_end:
 								    command == cmd_SortDesc);
 
 						if (!desc.order_map)
+						{
 							desc.order_map = malloc(desc.total_rows * sizeof(MappedLine));
+							if (desc.order_map == NULL)
+								leave_ncurses("out of memory");
+						}
 
 						map = malloc(desc.total_rows * sizeof(int));
+						if (map == NULL)
+							leave_ncurses("out of memory");
+
 						for (i = 0; i < desc.total_rows; i++)
 							map[sortbuf[i].lineno] = i;
 
@@ -4372,6 +4381,12 @@ recheck_end:
 							}
 							lnb = lnb->next;
 						}
+
+						/*
+						 * We cannot to say nothing about found_row, so most
+						 * correct solution is clean it now.
+						 */
+						scrdesc.found_row = -1;
 
 						free(map);
 					}
@@ -4489,39 +4504,67 @@ exit:
 
 					scrdesc.found = false;
 
-					/* skip first x LineBuffers */
-					while (rownum_cursor_row > 1000 && lnb != NULL)
+					if (desc.order_map)
 					{
-						lnb = lnb->next;
-						rownum_cursor_row -= 1000;
-						rownum += 1000;
-					}
+						rownum = rownum_cursor_row;
 
-					rownum += rownum_cursor_row;
-
-					while (lnb != NULL)
-					{
-						while (rownum_cursor_row < lnb->nrows)
+						while (rownum < desc.total_rows)
 						{
+							MappedLine *mp = &desc.order_map[rownum];
 							const char	   *str;
+							const char	   *rowstr;
 
-							str = pspg_search(&opts, &scrdesc, lnb->rows[rownum_cursor_row] + skip_bytes);
-
+							rowstr = mp->lnb->rows[mp->lnb_row];
+							str = pspg_search(&opts, &scrdesc, rowstr + skip_bytes);
 							if (str != NULL)
 							{
-								scrdesc.found_start_x = opts.force8bit ? str - lnb->rows[rownum_cursor_row] : utf8len_start_stop(lnb->rows[rownum_cursor_row], str);
-								scrdesc.found_start_bytes = str - lnb->rows[rownum_cursor_row];
+								scrdesc.found_start_x = opts.force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
+								scrdesc.found_start_bytes = str - rowstr;
 								scrdesc.found = true;
 								goto found_next_pattern;
 							}
 
 							rownum += 1;
-							rownum_cursor_row += 1;
 							skip_bytes = 0;
 						}
+					}
+					else
+					{
+						/* skip first x LineBuffers */
+						while (rownum_cursor_row > 1000 && lnb != NULL)
+						{
+							lnb = lnb->next;
+							rownum_cursor_row -= 1000;
+							rownum += 1000;
+						}
 
-						rownum_cursor_row = 0;
-						lnb = lnb->next;
+						rownum += rownum_cursor_row;
+
+						while (lnb != NULL)
+						{
+							while (rownum_cursor_row < lnb->nrows)
+							{
+								const char	   *str;
+								const char	   *rowstr = lnb->rows[rownum_cursor_row];
+
+								str = pspg_search(&opts, &scrdesc, rowstr + skip_bytes);
+
+								if (str != NULL)
+								{
+									scrdesc.found_start_x = opts.force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
+									scrdesc.found_start_bytes = str - rowstr;
+									scrdesc.found = true;
+									goto found_next_pattern;
+								}
+
+								rownum += 1;
+								rownum_cursor_row += 1;
+								skip_bytes = 0;
+							}
+
+							rownum_cursor_row = 0;
+							lnb = lnb->next;
+						}
 					}
 
 found_next_pattern:
