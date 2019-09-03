@@ -3443,13 +3443,24 @@ reset_search:
 			case cmd_ToggleBookmark:
 				{
 					LineBuffer *lnb = &desc.rows;
+					int			lnb_row;
 					int			_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
 
-					/* skip first x LineBuffers */
-					while (_cursor_row > 1000)
+					if (desc.order_map)
 					{
-						lnb = lnb->next;
-						_cursor_row -= 1000;
+						lnb = desc.order_map[_cursor_row].lnb;
+						lnb_row = desc.order_map[_cursor_row].lnb_row;
+					}
+					else
+					{
+						/* skip first x LineBuffers */
+						while (_cursor_row > 1000)
+						{
+							lnb = lnb->next;
+							_cursor_row -= 1000;
+						}
+
+						lnb_row = _cursor_row;
 					}
 
 					if (lnb->lineinfo == NULL)
@@ -3461,7 +3472,7 @@ reset_search:
 						memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 					}
 
-					lnb->lineinfo[_cursor_row].mask ^= LINEINFO_BOOKMARK;
+					lnb->lineinfo[lnb_row].mask ^= LINEINFO_BOOKMARK;
 				}
 				break;
 
@@ -3477,38 +3488,60 @@ reset_search:
 
 					if (rownum_cursor_row >= 0)
 					{
-						/* skip first x LineBuffers */
-						while (rownum_cursor_row >= 1000 && lnb != NULL)
+						if (desc.order_map)
 						{
-							lnb = lnb->next;
-							rownum_cursor_row -= 1000;
-							rownum += 1000;
-						}
-
-						rownum += rownum_cursor_row;
-
-						while (lnb != NULL)
-						{
-							if (lnb->lineinfo != NULL)
+							while (rownum_cursor_row >= 0)
 							{
-								if (rownum_cursor_row < 0)
-									rownum_cursor_row = lnb->nrows - 1;
+								MappedLine *mp = &desc.order_map[rownum_cursor_row];
 
-								while (rownum_cursor_row >= 0)
+								if (mp->lnb->lineinfo)
 								{
-									if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
+									if ((mp->lnb->lineinfo[mp->lnb_row].mask & LINEINFO_BOOKMARK) != 0)
 									{
 										found = true;
+										rownum = rownum_cursor_row;
 										goto exit_search_prev_bookmark;
 									}
-									rownum -= 1;
-									rownum_cursor_row -= 1;
 								}
-							}
-							else
-								rownum -= 1000;
 
-							lnb = lnb->prev;
+								rownum_cursor_row -= 1;
+							}
+						}
+						else
+						{
+							/* skip first x LineBuffers */
+							while (rownum_cursor_row >= 1000 && lnb != NULL)
+							{
+								lnb = lnb->next;
+								rownum_cursor_row -= 1000;
+								rownum += 1000;
+							}
+
+							rownum += rownum_cursor_row;
+
+							while (lnb != NULL)
+							{
+								if (lnb->lineinfo != NULL)
+								{
+									if (rownum_cursor_row < 0)
+										rownum_cursor_row = lnb->nrows - 1;
+
+									while (rownum_cursor_row >= 0)
+									{
+										if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
+										{
+											found = true;
+											goto exit_search_prev_bookmark;
+										}
+										rownum -= 1;
+										rownum_cursor_row -= 1;
+									}
+								}
+								else
+									rownum -= 1000;
+
+								lnb = lnb->prev;
+							}
 						}
 					}
 
@@ -3519,7 +3552,7 @@ exit_search_prev_bookmark:
 						cursor_row = rownum - CURSOR_ROW_OFFSET;
 						if (cursor_row < first_row)
 							first_row = cursor_row;
-						}
+					}
 					else
 						make_beep(&opts);
 				}
@@ -3535,36 +3568,58 @@ exit_search_prev_bookmark:
 					/* start after (next line) cursor line */
 					rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET + 1;
 
-					/* skip first x LineBuffers */
-					while (rownum_cursor_row >= 1000 && lnb != NULL)
+					if (desc.order_map)
 					{
-						lnb = lnb->next;
-						rownum_cursor_row -= 1000;
-						rownum += 1000;
-					}
-
-					rownum += rownum_cursor_row;
-
-					while (lnb != NULL)
-					{
-						if (lnb->lineinfo != NULL)
+						while (rownum_cursor_row < desc.total_rows)
 						{
-							while (rownum_cursor_row < lnb->nrows)
+							MappedLine *mp = &desc.order_map[rownum_cursor_row];
+
+							if (mp->lnb->lineinfo)
 							{
-								if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
+								if ((mp->lnb->lineinfo[mp->lnb_row].mask & LINEINFO_BOOKMARK) != 0)
 								{
 									found = true;
+									rownum = rownum_cursor_row;
 									goto exit_search_next_bookmark;
 								}
-								rownum += 1;
-								rownum_cursor_row += 1;
 							}
-						}
-						else
-							rownum += 1000;
 
-						rownum_cursor_row = 0;
-						lnb = lnb->next;
+							rownum_cursor_row += 1;
+						}
+					}
+					else
+					{
+						/* skip first x LineBuffers */
+						while (rownum_cursor_row >= 1000 && lnb != NULL)
+						{
+							lnb = lnb->next;
+							rownum_cursor_row -= 1000;
+							rownum += 1000;
+						}
+
+						rownum += rownum_cursor_row;
+
+						while (lnb != NULL)
+						{
+							if (lnb->lineinfo != NULL)
+							{
+								while (rownum_cursor_row < lnb->nrows)
+								{
+									if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
+									{
+										found = true;
+										goto exit_search_next_bookmark;
+									}
+									rownum += 1;
+									rownum_cursor_row += 1;
+								}
+							}
+							else
+								rownum += 1000;
+
+							rownum_cursor_row = 0;
+							lnb = lnb->next;
+						}
 					}
 
 exit_search_next_bookmark:
@@ -4369,6 +4424,7 @@ recheck_end:
 
 							fclose(fp);
 						}
+
 exit:
 
 						if (!ok)

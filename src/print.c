@@ -850,18 +850,35 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	{
 		int			bytes;
 		char	   *ptr;
-		char	   *rowstr;
+		char	   *rowstr = NULL;
 
-		if (lnb_row == 1000)
+		if (desc->order_map)
 		{
-			lnb = lnb->next;
-			lnb_row = 0;
-		}
+			int		rowno = row + srcy_bak;
 
-		if (lnb != NULL && lnb_row < lnb->nrows)
-			rowstr = lnb->rows[lnb_row++];
+			if (rowno <= desc->last_row)
+			{
+				MappedLine *mp = &desc->order_map[rowno];
+
+				lnb = mp->lnb;
+				lnb_row = mp->lnb_row;
+				rowstr = lnb->rows[lnb_row];
+			}
+		}
 		else
-			rowstr = NULL;
+		{
+			if (lnb_row == 1000)
+			{
+				lnb = lnb ? lnb->next : NULL;
+				lnb_row = 0;
+			}
+
+			if (lnb != NULL && lnb_row < lnb->nrows)
+			{
+				rowstr = lnb->rows[lnb_row];
+				lnb_row += 1;
+			}
+		}
 
 		active_attr = line_attr;
 		printf("%s", ansi_attr(active_attr));
