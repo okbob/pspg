@@ -504,6 +504,53 @@ utf8_tofold(const char *s)
 }
 
 const char *
+utf8_nstrstr_with_sizes(const char *haystack,
+						int haystack_size,
+						const char *needle,
+						int needle_size)
+{
+	const char *haystack_cur, *needle_cur, *needle_prev;
+	const char *haystack_end, *needle_end;
+	int		f1 = 0, f2 = 0;
+	int		needle_char_len = 0; /* be compiler quiet */
+
+	needle_cur = needle;
+	needle_prev = NULL;
+	haystack_cur = haystack;
+
+	haystack_end = haystack + haystack_size;
+	needle_end = needle + needle_size;
+
+	while (needle_cur < needle_end)
+	{
+		if (haystack_cur == haystack_end)
+			return NULL;
+
+		if (needle_prev != needle_cur)
+		{
+			needle_prev = needle_cur;
+			needle_char_len = utf8charlen(*needle_cur);
+			f1 = utf8_tofold(needle_cur);
+		}
+
+		f2 = utf8_tofold(haystack_cur);
+		if (f1 == f2)
+		{
+			needle_cur += needle_char_len;
+			haystack_cur += utf8charlen(*haystack_cur);
+		}
+		else
+		{
+			needle_cur = needle;
+			haystack_cur = haystack += utf8charlen(*haystack);
+		}
+	}
+
+	return haystack;
+}
+
+
+const char *
 utf8_nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;

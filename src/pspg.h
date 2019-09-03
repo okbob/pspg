@@ -42,6 +42,27 @@ typedef struct LineBuffer
 	struct LineBuffer *prev;
 } LineBuffer;
 
+typedef struct
+{
+	LineBuffer	   *lnb;
+	int				lnb_row;
+} MappedLine;
+
+typedef enum
+{
+	INFO_LOCKED,
+	INFO_UNKNOWN,
+	INFO_DOUBLE
+} SortDataInfo;
+
+typedef struct
+{
+  SortDataInfo		info;
+  int				lineno;
+  double			d;
+} SortData;
+
+
 /*
  * Column range
  */
@@ -78,6 +99,8 @@ typedef struct
 	int		title_rows;				/* number of rows used as table title (skipped later) */
 	char	filename[65];			/* filename (printed on top bar) */
 	LineBuffer rows;				/* list of rows buffers */
+	int		total_rows;				/* number of input rows */
+	MappedLine   *order_map;		/* maps sorted lines to original lines */
 	int		maxy;					/* maxy of used pad area with data */
 	int		maxx;					/* maxx of used pad area with data */
 	int		maxbytes;				/* max length of line in bytes */
@@ -166,12 +189,16 @@ extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 
+/* from sort.c */
+extern void sort_column(SortData *sortbuf, int rows, int rmin, int rmax, bool desc);
+
+
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

@@ -108,7 +108,8 @@ window_fill(int window_identifier,
 	{
 		int			bytes;
 		char	   *ptr;
-		char	   *rowstr;
+		char	   *rowstr = NULL;
+		bool		line_is_valid = false;
 		LineInfo   *lineinfo = NULL;
 		bool		is_bookmark_row = false;
 		bool		is_cursor_row = false;
@@ -118,32 +119,51 @@ window_fill(int window_identifier,
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
-		if (lnb_row == 1000)
+		if (desc->order_map)
 		{
-			lnb = lnb->next;
-			lnb_row = 0;
-		}
+			int		rowno = row + srcy_bak;
 
-		if (lnb != NULL && lnb_row < lnb->nrows)
-		{
-			rowstr = lnb->rows[lnb_row];
-			if (lnb->lineinfo != NULL)
-				lineinfo = &lnb->lineinfo[lnb_row];
-			else
-				lineinfo = NULL;
-			lnb_row += 1;
-
-			/* when rownum is printed, don't process original text */
-			if (is_rownum)
+			if (rowno <= desc->last_row)
 			{
-				int rowno = row + srcy_bak + 1 - desc->first_data_row;
+				MappedLine *mp = &desc->order_map[rowno];
 
-				snprintf(buffer, sizeof(buffer), "%*d ", maxx - 1, rowno);
-				rowstr = buffer;
+				lnb = mp->lnb;
+				lnb_row = mp->lnb_row;
+				rowstr = lnb->rows[lnb_row];
+				lineinfo = lnb->lineinfo ? &lnb->lineinfo[lnb_row] : NULL;
+
+				line_is_valid = true;
 			}
 		}
 		else
-			rowstr = NULL;
+		{
+			if (lnb_row == 1000)
+			{
+				lnb = lnb ? lnb->next : NULL;
+				lnb_row = 0;
+			}
+
+			if (lnb != NULL && lnb_row < lnb->nrows)
+			{
+				rowstr = lnb->rows[lnb_row];
+				if (lnb->lineinfo != NULL)
+					lineinfo = &lnb->lineinfo[lnb_row];
+				else
+					lineinfo = NULL;
+				lnb_row += 1;
+
+				line_is_valid = true;
+			}
+		}
+
+		/* when rownum is printed, don't process original text */
+		if (is_rownum && line_is_valid)
+		{
+			int rowno = row + srcy_bak + 1 - desc->first_data_row;
+
+			snprintf(buffer, sizeof(buffer), "%*d ", maxx - 1, rowno);
+			rowstr = buffer;
+		}
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 

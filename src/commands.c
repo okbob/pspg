@@ -246,6 +246,13 @@ cmd_string(int cmd)
 		case cmd_BoldCursorToggle:
 			return "BoldCursorToggle";
 
+		case cmd_SortAsc:
+			return "SortAsc";
+		case cmd_SortDesc:
+			return "SortDesc";
+		case cmd_OriginalSort:
+			return "OriginalSort";
+
 		default:
 			return "unknown command";
 	}
@@ -376,6 +383,12 @@ translate_event(int c, bool alt)
 				return cmd_CursorLastRow;
 			case 'c':
 				return cmd_SearchColumn;
+			case 'a':
+				return cmd_SortAsc;
+			case 'd':
+				return cmd_SortDesc;
+			case 'u':
+				return cmd_OriginalSort;
 		}
 	}
 

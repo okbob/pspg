@@ -116,6 +116,9 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
 * <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
 * <kbd>Alt</kbd>+<kbd>o</kbd> - flush bookmarks
+* <kbd>a</kbd> - sort ascendent
+* <kbd>d</kbd> - sort descendent
+* <kbd>u</kbd> - unsorted (sorted in origin order)
 
 ## Column search
 

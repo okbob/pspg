@@ -74,6 +74,10 @@ ST_MENU_ITEM _command[] = {
 	{"--"},
 	{"Page up", cmd_PageUp, "C-b, Prev page"},
 	{"Page down", cmd_PageDown, "C-f, space, Next page"},
+	{"--"},
+	{"As~c~ending order", cmd_SortAsc, "a"},
+	{"~D~escending order", cmd_SortDesc, "d"},
+	{"~O~riginal order", cmd_OriginalSort, "u"},
 	{NULL}
 };
 

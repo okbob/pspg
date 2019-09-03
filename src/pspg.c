@@ -142,6 +142,24 @@ leave_ncurses(const char *str)
 }
 
 /*
+ * Case insensitive string comparation.
+ */
+static bool
+nstreq(const char *str1, const char *str2)
+{
+	while (*str1 != '\0')
+	{
+		if (*str2 == '\0')
+			return false;
+
+		if (toupper(*str1++) != toupper(*str2++))
+			return false;
+	}
+
+	return *str2 == '\0';
+}
+
+/*
  * special case insensitive searching routines
  */
 const char *
@@ -655,6 +673,145 @@ translate_headline(Options *opts, DataDesc *desc)
 }
 
 /*
+ * Try to cut numeric (double) value from row defined by specified xmin, xmax positions.
+ * Units (bytes, kB, MB, GB, TB) are supported. Returns true, when returned value is valid.
+ */
+static bool
+cut_numeric_value(char *str, int xmin, int xmax, double *d)
+{
+	char		buffer[255];
+	char	   *buffptr;
+	char	   *after_last_nospace = NULL;
+	char	   *first_nospace_nodigit = NULL;
+	char		decimal_point = '\0';
+	bool		only_digits = false;
+	bool		only_digits_with_point = false;
+	bool		skip_initial_spaces = true;
+	int			x = 0;
+	long		mp = 1;
+
+	if (str)
+	{
+		after_last_nospace = buffptr = buffer;
+		memset(buffer, 0, 255);
+
+		while (*str)
+		{
+			int		char_width = utf8charlen(*str);
+
+			if (x > xmin)
+			{
+				char	c =  *str;
+
+				if (skip_initial_spaces)
+				{
+					if (c == ' ')
+					{
+						x += 1;
+						str += 1;
+						continue;
+					}
+
+					/* first char should be a digit */
+					if (!isdigit(c))
+						return false;
+
+					skip_initial_spaces = false;
+					only_digits = true;
+				}
+
+				memcpy(buffptr, str, char_width);
+
+				/* trim from right */
+				if (c != ' ')
+				{
+					bool	only_digits_prev = only_digits;
+					bool	only_digits_with_point_prev = only_digits_with_point;
+
+					after_last_nospace = buffptr + char_width;
+
+					if (c == '.' || c == ',')
+					{
+						if (only_digits)
+						{
+							only_digits = false;
+							only_digits_with_point = true;
+							decimal_point = c;
+						}
+						else
+							return false;
+					}
+					else if (!isdigit(c))
+					{
+						only_digits = false;
+						only_digits_with_point = false;
+					}
+
+
+					/* Save point of chage between digits and other */
+					if ((only_digits_prev || only_digits_with_point_prev) &&
+					   !(only_digits || only_digits_with_point))
+					{
+						first_nospace_nodigit = buffptr;
+					}
+				}
+				buffptr += char_width;
+			}
+
+			x += utf_dsplen(str);
+			str += char_width;
+
+			if (x >= xmax)
+				break;
+		} /* while (*str) */
+
+		/* trim spaces from right */
+		*after_last_nospace = '\0';
+
+		if (first_nospace_nodigit)
+		{
+			if (nstreq(first_nospace_nodigit, "bytes"))
+				mp = 1l;
+			else if (nstreq(first_nospace_nodigit, "kB"))
+				mp = 1024l;
+			else if (nstreq(first_nospace_nodigit, "MB"))
+				mp = 1024l * 1024;
+			else if (nstreq(first_nospace_nodigit, "GB"))
+				mp = 1024l * 1024 * 1024;
+			else if (nstreq(first_nospace_nodigit, "TB"))
+				mp = 1024l * 1024 * 1024 * 1024;
+			else
+				/* unknown unit */
+				return false;
+
+			*first_nospace_nodigit = '\0';
+		}
+
+		if (decimal_point == ',')
+		{
+			char   *ptr = buffer;
+
+			while (*ptr)
+			{
+				if (*ptr == ',')
+					*ptr = '.';
+				ptr += 1;
+			}
+		}
+
+		errno = 0;
+		*d = strtod(buffer, NULL);
+		if (errno == 0)
+		{
+			*d = *d * mp;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
  * Trim footer rows - We should to trim footer rows and calculate footer_char_size
  */
 static void
@@ -943,6 +1100,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	desc->alt_footer_row = -1;
 	desc->is_pgcli_fmt = false;
 	desc->namesline = NULL;
+	desc->order_map = NULL;
+	desc->total_rows = 0;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -1045,6 +1204,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
 		exit(1);
 	}
+
+	desc->total_rows = nrows;
 
 	/*
 	 * border headline cannot be higher than 1000, to simply find it
@@ -4070,6 +4231,101 @@ recheck_end:
 					break;
 				}
 
+			case cmd_OriginalSort:
+				if (desc.order_map)
+				{
+					free(desc.order_map);
+					desc.order_map = NULL;
+				}
+				break;
+
+			case cmd_SortAsc:
+			case cmd_SortDesc:
+				{
+					if (!desc.namesline)
+					{
+						show_info_wait(&opts, &scrdesc, " Columns are not detected", NULL, true, true, true);
+						break;
+					}
+				
+					if (opts.vertical_cursor)
+					{
+						LineBuffer	   *lnb = &desc.rows;
+						int				xmin, xmax;
+						int				lineno = 0;
+						SortData	   *sortbuf;
+						int			   *map;
+						int			i;
+
+						xmin = desc.cranges[vertical_cursor_column - 1].xmin;
+						xmax = desc.cranges[vertical_cursor_column - 1].xmax;
+
+						sortbuf = malloc(desc.total_rows * sizeof(SortData));
+
+						while (lnb)
+						{
+							for (i = 0; i < lnb->nrows; i++)
+							{
+								sortbuf[lineno].lineno = lineno;
+
+								if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
+								{
+									if (cut_numeric_value(lnb->rows[i],
+														   xmin, xmax,
+														   &sortbuf[lineno].d))
+										sortbuf[lineno].info = INFO_DOUBLE;
+									else
+										sortbuf[lineno].info = INFO_UNKNOWN;
+								}
+								else
+								{
+									sortbuf[lineno].info = INFO_LOCKED;
+									sortbuf[lineno].lineno = lineno;
+								}
+
+								lineno += 1;
+							}
+
+							lnb = lnb->next;
+						}
+
+						if (lineno != desc.total_rows)
+							leave_ncurses("unexpected processed rows after sort prepare");
+
+						sort_column(sortbuf,
+								    desc.total_rows,
+								    desc.first_data_row,
+								    desc.last_data_row,
+								    command == cmd_SortDesc);
+
+						if (!desc.order_map)
+							desc.order_map = malloc(desc.total_rows * sizeof(MappedLine));
+
+						map = malloc(desc.total_rows * sizeof(int));
+						for (i = 0; i < desc.total_rows; i++)
+							map[sortbuf[i].lineno] = i;
+
+						lineno = 0;
+						lnb = &desc.rows;
+						while (lnb)
+						{
+							for (i = 0; i <lnb->nrows; i++)
+							{
+								desc.order_map[map[lineno]].lnb = lnb;
+								desc.order_map[map[lineno]].lnb_row = i;
+								lineno += 1;
+							}
+							lnb = lnb->next;
+						}
+
+						free(map);
+					}
+					else
+							show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true);
+
+					break;
+				}
+
 			case cmd_SaveData:
 				{
 					char	buffer[MAXPATHLEN + 1024];
@@ -4421,13 +4677,27 @@ found_next_pattern:
 
 							for (colnum = startcolumn; colnum <= desc.columns; colnum++)
 							{
-								if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
-													   desc.cranges[colnum - 1].name_size,
-													   scrdesc.searchcolterm,
-													   scrdesc.searchcolterm_size))
+								if (opts.force8bit)
 								{
-									found = true;
-									break;
+									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+														   desc.cranges[colnum - 1].name_size,
+														   scrdesc.searchcolterm,
+														   scrdesc.searchcolterm_size))
+									{
+										found = true;
+										break;
+									}
+								}
+								else
+								{
+									if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+														   desc.cranges[colnum - 1].name_size,
+														   scrdesc.searchcolterm,
+														   scrdesc.searchcolterm_size))
+									{
+										found = true;
+										break;
+									}
 								}
 							}
 
@@ -4456,17 +4726,14 @@ found_next_pattern:
 								opts.vertical_cursor = true;
 								vertical_cursor_column = colnum;
 
-						cursor_col = get_cursor_col_for_vertical_column(vertical_cursor_column, cursor_col, &desc, &scrdesc);
-						last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
-
+								cursor_col = get_cursor_col_for_vertical_column(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+								last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 							}
-
 							else
 								show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
 						}
 						else
 							show_info_wait(&opts, &scrdesc, " Search pattern is a empty string (press any key)", NULL, true, true, true);
-
 					}
 					else
 						show_info_wait(&opts, &scrdesc, " Columns names are not detected (press any key)", NULL, true, true, true);

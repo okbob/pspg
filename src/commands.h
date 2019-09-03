@@ -104,7 +104,10 @@ typedef enum PspgCommand
 	cmd_ShowCursor,
 	cmd_ShowVerticalCursor,
 	cmd_BoldLabelsToggle,
-	cmd_BoldCursorToggle
+	cmd_BoldCursorToggle,
+	cmd_SortAsc,
+	cmd_SortDesc,
+	cmd_OriginalSort
 } PspgCommand;
 
 extern void initialize_special_keycodes();
