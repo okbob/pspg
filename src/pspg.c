@@ -4292,6 +4292,13 @@ recheck_end:
 					free(desc.order_map);
 					desc.order_map = NULL;
 				}
+
+				/*
+				 * We cannot to say nothing about found_row, so most
+				 * correct solution is clean it now.
+				 */
+				scrdesc.found_row = -1;
+
 				break;
 
 			case cmd_SortAsc:
@@ -4302,7 +4309,7 @@ recheck_end:
 						show_info_wait(&opts, &scrdesc, " Columns are not detected", NULL, true, true, true);
 						break;
 					}
-				
+
 					if (opts.vertical_cursor)
 					{
 						LineBuffer	   *lnb = &desc.rows;

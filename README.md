@@ -9,6 +9,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 
 ## Main target
 * possibility to freeze first few rows, first few columns
+* possibility to sort data by specified numeric column
 * possibility to use fancy colors - like `mcview` or `FoxPro`
 
 
@@ -40,6 +41,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-sound`  without sound effect
 * `-F`, `--quit-if-one-screen`  quit if content is one screen
 * `-V`, `--version`  show version
+* `--about`  show info about authors
 * `--no-cursor`  the line cursor will be hidden
 * `--no-commandbar`  the bottom bar will be hidden
 * `--no-topbar`  the top bar will be hidden
@@ -108,11 +110,11 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
 * <kbd>Alt</kbd>+<kbd>v</kbd> - switch (on, off) drawing column cursor
 * Mouse button wheel - scroll vertical
-* <kbd>Alt</kbd>+ Mouse button wheel - scroll horizontal
+* <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd> - scroll horizontal
 * <kbd>F9</kbd> - show menu
 * <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>Esc</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
 * <kbd>Alt</kbd>+<kbd>q</kbd> - quit wit raw (unformatted) output
-* <kbd>Alt</kbd>+<kbd>k</kbd> - switch bookmark
+* <kbd>Alt</kbd>+<kbd>k</kbd>, <kbd>Alt</kbd>+<kbd>double click</kbd> - switch bookmark
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
 * <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
 * <kbd>Alt</kbd>+<kbd>o</kbd> - flush bookmarks
