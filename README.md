@@ -108,7 +108,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
-* <kbd>Alt</kbd>+<kbd>v</kbd> - switch (on, off) drawing column cursor
+* <kbd>Alt</kbd>+<kbd>v</kbd>, double click on column header - switch (on, off) drawing column cursor
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd> - scroll horizontal
 * <kbd>F9</kbd> - show menu
@@ -135,6 +135,12 @@ some horizontal scrolling) or on first column. After last column searching start
 * `C: d..d/d` - unfreezed visible data in chars (from .. to)/(total)
 * `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
 * `d%` - percent of already displayed data
+
+## Limits
+
+Row's reorder doesn't work well on tables with mutiline records. `pspg` cannot to detect
+correctly borders betwwen records, cannot to different between null, empty string and no value
+due multiline field in some othe column.
 
 # Recommended psql configuration
 <pre>

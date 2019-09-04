@@ -4973,6 +4973,13 @@ found_next_pattern:
 							continue;
 						}
 
+						if (is_double_click && event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows)
+						{
+							last_x_focus = event.x;
+							next_command = cmd_ShowVerticalCursor;
+							continue;
+						}
+
 						cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 						if (cursor_row < 0)
 							cursor_row = 0;
@@ -4999,7 +5006,10 @@ found_next_pattern:
 						 */
 						last_x_focus = event.x;
 
-						if (opts.vertical_cursor)
+						if (event.bstate & BUTTON_ALT && is_double_click)
+							next_command = cmd_ToggleBookmark;
+
+						else if (!(event.bstate & BUTTON_ALT) && (event.bstate & BUTTON1_PRESSED) && opts.vertical_cursor)
 						{
 							int		xpoint = event.x - scrdesc.main_start_x;
 							int		i;
@@ -5036,9 +5046,6 @@ found_next_pattern:
 								}
 							}
 						}
-
-						if (event.bstate & BUTTON_ALT && is_double_click)
-							next_command = cmd_ToggleBookmark;
 					}
 					break;
 				}
