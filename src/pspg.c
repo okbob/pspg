@@ -25,6 +25,8 @@
 #include <ncurses/ncurses.h>
 #endif
 
+#include <malloc.h>
+
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
@@ -1852,7 +1854,6 @@ forward_to_readline(char c)
     rl_callback_read_char();
 }
 
-
 static void
 got_string(char *line)
 {
@@ -2132,6 +2133,7 @@ get_event(MEVENT *mevent, bool *alt)
 #ifdef DEBUG_PIPE
 
 	char buffer[20];
+	struct mallinfo mi;
 
 #endif
 
@@ -2197,7 +2199,7 @@ repeat:
 	debug_eventno += 1;
 	if (c == KEY_MOUSE)
 	{
-		sprintf(buffer, ", bstate: %08x", mevent->bstate);
+		sprintf(buffer, ", bstate: %08lx", (unsigned long) mevent->bstate);
 	}
 	else
 		buffer[0] = '\0';
@@ -2208,6 +2210,19 @@ repeat:
 			  keyname(c),
 			  buffer);
 	fflush(debug_pipe);
+
+	mi = mallinfo();
+
+    fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+    fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+    fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+    fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
+    fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+    fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+    fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+    fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+    fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
+    fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
 
 #endif
 
@@ -2269,6 +2284,9 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_x = -1;
 	bool	only_for_tables = false;
 	bool	raw_output_quit = false;
+
+	long	mouse_event = 0;
+	long	vertical_cursor_changed_mouse_event = 0;
 
 	struct winsize size;
 
@@ -4395,6 +4413,7 @@ recheck_end:
 						 */
 						scrdesc.found_row = -1;
 
+						free(sortbuf);
 						free(map);
 					}
 					else
@@ -4849,6 +4868,7 @@ found_next_pattern:
 
 			case cmd_MOUSE_EVENT:
 				{
+					mouse_event += 1;
 
 #if NCURSES_MOUSE_VERSION > 1
 
@@ -4973,14 +4993,24 @@ found_next_pattern:
 							continue;
 						}
 
-						if (is_double_click && event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows)
+						if (event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows)
 						{
-							last_x_focus = event.x;
-							next_command = cmd_ShowVerticalCursor;
-							continue;
+							if (is_double_click)
+							{
+								/*
+								 * protection against unwanted vertical cursor hide,
+								 * when cursor was changed by first click of current double click.
+								 */
+								if (mouse_event - vertical_cursor_changed_mouse_event > 3)
+								{
+									next_command = cmd_ShowVerticalCursor;
+									continue;
+								}
+							}
 						}
+						else
+							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 
-						cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 						if (cursor_row < 0)
 							cursor_row = 0;
 
@@ -5007,11 +5037,14 @@ found_next_pattern:
 						last_x_focus = event.x;
 
 						if (event.bstate & BUTTON_ALT && is_double_click)
+						{
 							next_command = cmd_ToggleBookmark;
+						}
 
-						else if (!(event.bstate & BUTTON_ALT) && (event.bstate & BUTTON1_PRESSED) && opts.vertical_cursor)
+						else if (!(event.bstate & BUTTON_ALT) && opts.vertical_cursor)
 						{
 							int		xpoint = event.x - scrdesc.main_start_x;
+							int		vertical_cursor_column_orig = vertical_cursor_column;
 							int		i;
 
 							if (xpoint > scrdesc.fix_cols_cols - 1)
@@ -5027,6 +5060,12 @@ found_next_pattern:
 										int		xmax = desc.cranges[i].xmax;
 
 										vertical_cursor_column = i + 1;
+
+										if (vertical_cursor_column != vertical_cursor_column_orig &&
+											event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows) 
+										{
+											vertical_cursor_changed_mouse_event = mouse_event;
+										}
 
 										if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
 										{
@@ -5225,10 +5264,15 @@ refresh:
 	if (raw_output_quit)
 	{
 		LineBuffer *lnb = &desc.rows;
-		int			lnb_row = 0;
 
-		while (lnb_row < lnb->nrows)
-			printf("%s\n", lnb->rows[lnb_row++]);
+		while (lnb)
+		{
+			int			lnb_row = 0;
+
+			while (lnb_row < lnb->nrows)
+				printf("%s\n", lnb->rows[lnb_row++]);
+			lnb = lnb->next;
+		}
 	}
 	else if (no_alternate_screen)
 	{
@@ -5243,6 +5287,48 @@ refresh:
 #endif
 
 #ifdef DEBUG_PIPE
+
+	/*
+	 * Try to release all allocated memory in debug mode, for better
+	 * memory leak detection.
+	 */
+	if (0)
+	{
+		LineBuffer *lnb = &desc.rows;
+		LineBuffer *_lnb;
+		int			lnb_row;
+
+		while (lnb)
+		{
+			for (lnb_row = 0; lnb_row < lnb->nrows; lnb_row++)
+			{
+				if (lnb->rows[lnb_row])
+					free(lnb->rows[lnb_row]);
+			}
+
+			if (lnb->lineinfo)
+				free(lnb->lineinfo);
+
+			_lnb = lnb;
+			lnb = lnb->next;
+			if (_lnb != &desc.rows)
+				free(_lnb);
+		}
+
+		if (desc.cranges)
+			free(desc.cranges);
+
+		if (desc.headline_transl)
+			free(desc.headline_transl);
+
+		if (opts.pathname)
+			free(opts.pathname);
+
+		if (cmdbar)
+			st_cmdbar_free(cmdbar);
+		if (menu)
+			st_menu_free(menu);
+	}
 
 	fclose(debug_pipe);
 

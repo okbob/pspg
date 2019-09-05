@@ -2708,6 +2708,7 @@ void st_cmdbar_free(struct ST_CMDBAR *cmdbar)
 		if (cmdbar->labels[i])
 			free(cmdbar->labels[i]);
 
+	free(cmdbar->labels);
 	free(cmdbar->positions);
 	free(cmdbar->ordered_items);
 	free(cmdbar);

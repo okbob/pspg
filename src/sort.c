@@ -26,12 +26,12 @@ compar_asc(const void *a, const void *b)
 		if (sda->info == INFO_DOUBLE)
 			return sda->d - sdb->d;
 		else
-			return -1;
+			return 1;
 	}
 	else
 	{
 		if (sda->info == INFO_DOUBLE)
-			return 1;
+			return -1;
 		else
 			return 0;
 	}
@@ -48,12 +48,12 @@ compar_desc(const void *a, const void *b)
 		if (sda->info == INFO_DOUBLE)
 			return sdb->d - sda->d;
 		else
-			return -1;
+			return 1;
 	}
 	else
 	{
 		if (sda->info == INFO_DOUBLE)
-			return 1;
+			return -1;
 		else
 			return 0;
 	}

@@ -108,7 +108,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
 * <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
 * <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
-* <kbd>Alt</kbd>+<kbd>v</kbd>, double click on column header - switch (on, off) drawing column cursor
+* <kbd>Alt</kbd>+<kbd>v</kbd>, <kbd>double click</kbd> on column header - switch (on, off) drawing column cursor
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd> - scroll horizontal
 * <kbd>F9</kbd> - show menu
