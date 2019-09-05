@@ -25,8 +25,6 @@
 #include <ncurses/ncurses.h>
 #endif
 
-#include <malloc.h>
-
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
@@ -55,6 +53,13 @@
 #include "pspg.h"
 #include "themes.h"
 #include "unicode.h"
+
+#ifdef DEBUG_PIPE
+
+/* used for mallinfo */
+#include <malloc.h>
+
+#endif
 
 #ifdef COMPILE_MENU
 
@@ -2133,7 +2138,6 @@ get_event(MEVENT *mevent, bool *alt)
 #ifdef DEBUG_PIPE
 
 	char buffer[20];
-	struct mallinfo mi;
 
 #endif
 
@@ -2211,18 +2215,23 @@ repeat:
 			  buffer);
 	fflush(debug_pipe);
 
-	mi = mallinfo();
+	if (0)
+	{
+		struct mallinfo mi;
 
-    fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
-    fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
-    fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
-    fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
-    fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
-    fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
-    fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
-    fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
-    fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
-    fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+		mi = mallinfo();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+	}
 
 #endif
 
@@ -4675,10 +4684,24 @@ found_next_pattern:
 
 					scrdesc.found = false;
 
-					while (rowidx > 1000)
+					if (desc.order_map)
 					{
-						rows = rows->next;
-						rowidx -= 1000;
+						if (search_row > -1)
+						{
+							MappedLine *mp = &desc.order_map[rowidx];
+
+							rows = mp->lnb;
+							rowidx = mp->lnb_row;
+						}
+					}
+					else
+					{
+						/* go forward */
+						while (rowidx > 1000)
+						{
+							rows = rows->next;
+							rowidx -= 1000;
+						}
 					}
 
 					while (search_row >= 0)
@@ -4686,13 +4709,6 @@ found_next_pattern:
 						const char *str;
 						char *row;
 						bool	free_row;
-
-						if (rowidx < 0)
-						{
-							rows = rows->prev;
-							rowidx = 999;
-							continue;
-						}
 
 						if (cut_bytes != 0)
 						{
@@ -4740,9 +4756,26 @@ found_next_pattern:
 						if (scrdesc.found)
 							break;
 
-						rowidx -= 1;
 						search_row -= 1;
 						cut_bytes = 0;
+
+						if (desc.order_map)
+						{
+							MappedLine *mp = &desc.order_map[search_row + scrdesc.fix_rows_rows + desc.title_rows];
+
+							rows = mp->lnb;
+							rowidx = mp->lnb_row;
+						}
+						else
+						{
+							rowidx -= 1;
+
+							if (rowidx < 0)
+							{
+								rows = rows->prev;
+								rowidx = 999;
+							}
+						}
 					}
 
 					if (!scrdesc.found)

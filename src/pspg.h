@@ -196,9 +196,9 @@ extern void sort_column(SortData *sortbuf, int rows, int rmin, int rmax, bool de
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 
