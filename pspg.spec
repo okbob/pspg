@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	1.7.2
+Version: 	1.9.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,9 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Thu Sep 5 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- initial possibility to sort by numeric column
+
 * Sun Sep 1 2019 Pavel Stehule <pavel.stehule@gmail.com>
 - column search
 
