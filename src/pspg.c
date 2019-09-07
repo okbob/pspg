@@ -4400,14 +4400,14 @@ recheck_end:
 										{
 											if (desc.border_type == 1)
 											{
-												if ((j + 1 < desc.headline_char_size && desc.headline_transl[j + 1] == 'd') ||
+												if ((j + 1 < desc.headline_char_size && desc.headline_transl[j + 1] == 'I') ||
 														  (j + 1 == desc.headline_char_size))
 													found_continuation_symbol = is_line_continuation_char(str, &desc);
 											}
 											else if (desc.border_type == 2)
 											{
 												if ((j + 1 < desc.headline_char_size) &&
-														(desc.headline_transl[j + 1] == 'd' || desc.headline_transl[j + 1] == 'R'))
+														(desc.headline_transl[j + 1] == 'I' || desc.headline_transl[j + 1] == 'R'))
 													found_continuation_symbol = is_line_continuation_char(str, &desc);
 											}
 
@@ -4456,7 +4456,7 @@ recheck_end:
 							for (i = 0; i < lnb->nrows; i++)
 							{
 								desc.order_map[lineno].lnb = lnb;
-								desc.order_map[lineno].lnb_row = lineno;
+								desc.order_map[lineno].lnb_row = i;
 
 								if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
 								{
@@ -4494,6 +4494,7 @@ recheck_end:
 								    command == cmd_SortDesc);
 
 						lineno = desc.first_data_row;
+
 						for (i = 0; i < sortbuf_pos; i++)
 						{
 							desc.order_map[lineno].lnb = sortbuf[i].lnb;
