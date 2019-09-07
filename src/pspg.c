@@ -1129,7 +1129,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			read -= 1;
 		}
 
-		clen = utf8len(line);
+		clen = utf_dsplen(line);
 
 		if (rows->nrows == 1000)
 		{

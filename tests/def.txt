@@ -1,0 +1,43 @@
+                      Table "pg_catalog.pg_class"
+┌─────────────────────┬──────────────┬───────────┬──────────┬─────────┐
+│       Column        │     Type     │ Collation │ Nullable │ Default │
+╞═════════════════════╪══════════════╪═══════════╪══════════╪═════════╡
+│ oid                 │ oid          │           │ not null │         │
+│ relname             │ name         │           │ not null │         │
+│ relnamespace        │ oid          │           │ not null │         │
+│ reltype             │ oid          │           │ not null │         │
+│ reloftype           │ oid          │           │ not null │         │
+│ relowner            │ oid          │           │ not null │         │
+│ relam               │ oid          │           │ not null │         │
+│ relfilenode         │ oid          │           │ not null │         │
+│ reltablespace       │ oid          │           │ not null │         │
+│ relpages            │ integer      │           │ not null │         │
+│ reltuples           │ real         │           │ not null │         │
+│ relallvisible       │ integer      │           │ not null │         │
+│ reltoastrelid       │ oid          │           │ not null │         │
+│ relhasindex         │ boolean      │           │ not null │         │
+│ relisshared         │ boolean      │           │ not null │         │
+│ relpersistence      │ "char"       │           │ not null │         │
+│ relkind             │ "char"       │           │ not null │         │
+│ relnatts            │ smallint     │           │ not null │         │
+│ relchecks           │ smallint     │           │ not null │         │
+│ relhasrules         │ boolean      │           │ not null │         │
+│ relhastriggers      │ boolean      │           │ not null │         │
+│ relhassubclass      │ boolean      │           │ not null │         │
+│ relrowsecurity      │ boolean      │           │ not null │         │
+│ relforcerowsecurity │ boolean      │           │ not null │         │
+│ relispopulated      │ boolean      │           │ not null │         │
+│ relreplident        │ "char"       │           │ not null │         │
+│ relispartition      │ boolean      │           │ not null │         │
+│ relrewrite          │ oid          │           │ not null │         │
+│ relfrozenxid        │ xid          │           │ not null │         │
+│ relminmxid          │ xid          │           │ not null │         │
+│ relacl              │ aclitem[]    │           │          │         │
+│ reloptions          │ text[]       │ C         │          │         │
+│ relpartbound        │ pg_node_tree │ C         │          │         │
+└─────────────────────┴──────────────┴───────────┴──────────┴─────────┘
+Indexes:
+    "pg_class_oid_index" UNIQUE, btree (oid)
+    "pg_class_relname_nsp_index" UNIQUE, btree (relname, relnamespace)
+    "pg_class_tblspc_relfilenode_index" btree (reltablespace, relfilenode)
+
