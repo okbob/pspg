@@ -136,12 +136,6 @@ some horizontal scrolling) or on first column. After last column searching start
 * `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
 * `d%` - percent of already displayed data
 
-## Limits
-
-Row's reorder doesn't work well on tables with mutiline records. `pspg` cannot to detect
-correctly borders betwwen records, cannot to different between null, empty string and no value
-due multiline field in some othe column.
-
 # Recommended psql configuration
 <pre>
 \pset linestyle unicode

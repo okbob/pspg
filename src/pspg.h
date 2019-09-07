@@ -23,6 +23,7 @@
 #define LINEINFO_FOUNDSTR			2
 #define LINEINFO_FOUNDSTR_MULTI		4
 #define LINEINFO_UNKNOWN			8
+#define LINEINFO_CONTINUATION		16
 
 #define MAX_STYLE					20
 
@@ -50,16 +51,16 @@ typedef struct
 
 typedef enum
 {
-	INFO_LOCKED,
 	INFO_UNKNOWN,
 	INFO_DOUBLE
 } SortDataInfo;
 
 typedef struct
 {
-  SortDataInfo		info;
-  int				lineno;
-  double			d;
+	SortDataInfo		info;
+	double			d;
+	LineBuffer	   *lnb;
+	int				lnb_row;
 } SortData;
 
 
@@ -190,15 +191,15 @@ extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 
 /* from sort.c */
-extern void sort_column(SortData *sortbuf, int rows, int rmin, int rmax, bool desc);
+extern void sort_column(SortData *sortbuf, int rows, bool desc);
 
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

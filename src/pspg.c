@@ -1013,6 +1013,27 @@ is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx)
 }
 
 /*
+ * Returns true when char (multibyte char) correspond with symbols for
+ * line continuation.
+ */
+static bool
+is_line_continuation_char(char *str, DataDesc *desc)
+{
+	const char *u1 = "\342\206\265";	/* ↵ */
+	const char *u2 = "\342\200\246";	/* … */
+
+	if (desc->linestyle == 'a')
+	{
+		return str[0] == '+' || str[0] == '.';
+	}
+	else
+	{
+		/* desc->linestyle == 'u'; */
+		return strncmp(str, u1, 3) == 0 || strncmp(str, u2, 3) == 0;
+	}
+}
+
+/*
  * Copy trimmed string
  */
 static void
@@ -2293,6 +2314,9 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_x = -1;
 	bool	only_for_tables = false;
 	bool	raw_output_quit = false;
+
+	bool	multilines_should_be_tested = true;	/* protect to against multiline tests */
+	bool	has_multilines = false;
 
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
@@ -4342,8 +4366,9 @@ recheck_end:
 						LineBuffer	   *lnb = &desc.rows;
 						int				xmin, xmax;
 						int				lineno = 0;
+						bool			continual_line = false;
 						SortData	   *sortbuf;
-						int			   *map;
+						int				sortbuf_pos = 0;
 						int			i;
 
 						xmin = desc.cranges[vertical_cursor_column - 1].xmin;
@@ -4353,25 +4378,106 @@ recheck_end:
 						if (sortbuf == NULL)
 							leave_ncurses("out of memory");
 
+						/* first time we should to detect multilines */
+						if (multilines_should_be_tested)
+						{
+							multilines_should_be_tested = false;
+
+							lnb = &desc.rows;
+							lineno = 0;
+
+							while (lnb)
+							{
+								for (i = 0; i < lnb->nrows; i++)
+								{
+									if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
+									{
+										char   *str = lnb->rows[i];
+										bool	found_continuation_symbol = false;
+										int		j = 0;
+
+										while (j < desc.headline_char_size)
+										{
+											if (desc.border_type == 1)
+											{
+												if ((j + 1 < desc.headline_char_size && desc.headline_transl[j + 1] == 'd') ||
+														  (j + 1 == desc.headline_char_size))
+													found_continuation_symbol = is_line_continuation_char(str, &desc);
+											}
+											else if (desc.border_type == 2)
+											{
+												if ((j + 1 < desc.headline_char_size) &&
+														(desc.headline_transl[j + 1] == 'd' || desc.headline_transl[j + 1] == 'R'))
+													found_continuation_symbol = is_line_continuation_char(str, &desc);
+											}
+
+											if (found_continuation_symbol)
+												break;
+
+											j += opts.force8bit ? 1 : utf_dsplen(str);
+											str += opts.force8bit ? 1 : utf8charlen(*str);
+										}
+
+										if (found_continuation_symbol)
+										{
+											if (lnb->lineinfo == NULL)
+											{
+												lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
+												if (lnb->lineinfo == NULL)
+													leave_ncurses("out of memory");
+
+												memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
+											}
+
+											lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
+											has_multilines = true;
+										}
+									}
+
+									lineno += 1;
+								}
+								lnb = lnb->next;
+							}
+						}
+
+						lnb = &desc.rows;
+						lineno = 0;
+						sortbuf_pos = 0;
+
+						if (!desc.order_map)
+						{
+							desc.order_map = malloc(desc.total_rows * sizeof(MappedLine));
+							if (desc.order_map == NULL)
+								leave_ncurses("out of memory");
+						}
+
 						while (lnb)
 						{
 							for (i = 0; i < lnb->nrows; i++)
 							{
-								sortbuf[lineno].lineno = lineno;
+								desc.order_map[lineno].lnb = lnb;
+								desc.order_map[lineno].lnb_row = lineno;
 
 								if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
 								{
-									if (cut_numeric_value(lnb->rows[i],
-														   xmin, xmax,
-														   &sortbuf[lineno].d))
-										sortbuf[lineno].info = INFO_DOUBLE;
-									else
-										sortbuf[lineno].info = INFO_UNKNOWN;
-								}
-								else
-								{
-									sortbuf[lineno].info = INFO_LOCKED;
-									sortbuf[lineno].lineno = lineno;
+									if (!continual_line)
+									{
+										sortbuf[sortbuf_pos].lnb = lnb;
+										sortbuf[sortbuf_pos].lnb_row = i;
+
+										if (cut_numeric_value(lnb->rows[i],
+															   xmin, xmax,
+															   &sortbuf[sortbuf_pos].d))
+											sortbuf[sortbuf_pos++].info = INFO_DOUBLE;
+										else
+											sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;
+									}
+
+									if (has_multilines)
+									{
+										continual_line =  (lnb->lineinfo &&
+														   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
+									}
 								}
 
 								lineno += 1;
@@ -4384,36 +4490,45 @@ recheck_end:
 							leave_ncurses("unexpected processed rows after sort prepare");
 
 						sort_column(sortbuf,
-								    desc.total_rows,
-								    desc.first_data_row,
-								    desc.last_data_row,
+								    sortbuf_pos,
 								    command == cmd_SortDesc);
 
-						if (!desc.order_map)
+						lineno = desc.first_data_row;
+						for (i = 0; i < sortbuf_pos; i++)
 						{
-							desc.order_map = malloc(desc.total_rows * sizeof(MappedLine));
-							if (desc.order_map == NULL)
-								leave_ncurses("out of memory");
-						}
+							desc.order_map[lineno].lnb = sortbuf[i].lnb;
+							desc.order_map[lineno].lnb_row = sortbuf[i].lnb_row;
+							lineno += 1;
 
-						map = malloc(desc.total_rows * sizeof(int));
-						if (map == NULL)
-							leave_ncurses("out of memory");
-
-						for (i = 0; i < desc.total_rows; i++)
-							map[sortbuf[i].lineno] = i;
-
-						lineno = 0;
-						lnb = &desc.rows;
-						while (lnb)
-						{
-							for (i = 0; i <lnb->nrows; i++)
+							/* assign other continual lines */
+							if (has_multilines)
 							{
-								desc.order_map[map[lineno]].lnb = lnb;
-								desc.order_map[map[lineno]].lnb_row = i;
-								lineno += 1;
+								int		lnb_row;
+								bool	continual = false;
+
+								lnb = sortbuf[i].lnb;
+								lnb_row = sortbuf[i].lnb_row;
+
+								continual = lnb->lineinfo &&
+														   (lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
+
+								while (lnb && continual)
+								{
+									lnb_row += 1;
+									if (lnb_row > lnb->nrows)
+									{
+										lnb_row = 0;
+										lnb = lnb->next;
+									}
+
+									desc.order_map[lineno].lnb = lnb;
+									desc.order_map[lineno].lnb_row = lnb_row;
+									lineno += 1;
+
+									continual = lnb && lnb->lineinfo &&
+													(lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
+								}
 							}
-							lnb = lnb->next;
 						}
 
 						/*
@@ -4423,7 +4538,6 @@ recheck_end:
 						scrdesc.found_row = -1;
 
 						free(sortbuf);
-						free(map);
 					}
 					else
 							show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true);

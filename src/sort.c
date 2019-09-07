@@ -60,8 +60,8 @@ compar_desc(const void *a, const void *b)
 }
 
 void
-sort_column(SortData *sortbuf, int rows, int rmin, int rmax, bool desc)
+sort_column(SortData *sortbuf, int rows, bool desc)
 {
 
-	qsort(sortbuf + rmin, rmax - rmin + 1, sizeof(SortData), desc ? compar_desc : compar_asc);
+	qsort(sortbuf, rows, sizeof(SortData), desc ? compar_desc : compar_asc);
 }
