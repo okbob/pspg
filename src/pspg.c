@@ -684,7 +684,7 @@ translate_headline(Options *opts, DataDesc *desc)
  * Units (bytes, kB, MB, GB, TB) are supported. Returns true, when returned value is valid.
  */
 static bool
-cut_numeric_value(char *str, int xmin, int xmax, double *d)
+cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 {
 	char		buffer[255];
 	char	   *buffptr;
@@ -706,7 +706,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d)
 		{
 			int		char_width = utf8charlen(*str);
 
-			if (x > xmin)
+			if (x > xmin || (border0 && x >= xmin))
 			{
 				char	c =  *str;
 
@@ -1258,7 +1258,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		if (desc->last_data_row == -1)
 			desc->last_data_row = desc->last_row - 1;
 
-		if (desc->border_head_row > 1)
+		if (desc->border_head_row >= 1)
 			desc->namesline = desc->rows.rows[desc->border_head_row - 1];
 
 	}
@@ -4398,7 +4398,21 @@ recheck_end:
 
 										while (j < desc.headline_char_size)
 										{
-											if (desc.border_type == 1)
+											if (desc.border_type == 0)
+											{
+												/* border 0, last continuation symbol is after headline */
+												if (j + 1 == desc.headline_char_size)
+												{
+													char	*sym;
+
+													sym = str + (opts.force8bit ? 1 : utf8charlen(*str));
+													if (*sym != '\0')
+														found_continuation_symbol = is_line_continuation_char(sym, &desc);
+												}
+												else if (desc.headline_transl[j] == 'I')
+													found_continuation_symbol = is_line_continuation_char(str, &desc);
+											}
+											else if (desc.border_type == 1)
 											{
 												if ((j + 1 < desc.headline_char_size && desc.headline_transl[j + 1] == 'I') ||
 														  (j + 1 == desc.headline_char_size))
@@ -4467,7 +4481,8 @@ recheck_end:
 
 										if (cut_numeric_value(lnb->rows[i],
 															   xmin, xmax,
-															   &sortbuf[sortbuf_pos].d))
+															   &sortbuf[sortbuf_pos].d,
+															   desc.border_type == 0))
 											sortbuf[sortbuf_pos++].info = INFO_DOUBLE;
 										else
 											sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;
@@ -4516,7 +4531,7 @@ recheck_end:
 								while (lnb && continual)
 								{
 									lnb_row += 1;
-									if (lnb_row > lnb->nrows)
+									if (lnb_row >= lnb->nrows)
 									{
 										lnb_row = 0;
 										lnb = lnb->next;
