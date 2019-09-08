@@ -7,7 +7,7 @@ Known bugs
 Possible ToDo
 =============
 * tail mode
-* 256 colours + custom colour schemas
+* custom colour schemas
 * hide outer border
 * hide inner borders
 * draw scrollbars FoxPro style
@@ -17,7 +17,6 @@ Possible ToDo
 * row select, column select, export to file, copy to clipboard
 * mouse support for range select
 * support fetched data - columns width can be different
-* sort over vertical cursor's column
 
 Similar projects
 ================
