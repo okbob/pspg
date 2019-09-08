@@ -403,6 +403,9 @@ window_fill(int window_identifier,
 				int		aux_left_spaces = left_spaces;
 
 				free_row = malloc(left_spaces + strlen(rowstr) + 1);
+				if (!free_row)
+					leave_ncurses("out of memory");
+
 				p = free_row;
 				while (aux_left_spaces-- > 0)
 				{
@@ -951,6 +954,12 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 				char *p;
 
 				free_row = malloc(left_spaces + strlen(rowstr) + 1);
+				if (!free_row)
+				{
+					fprintf(stderr, "out of memory");
+					exit(1);
+				}
+
 				p = free_row;
 				while (left_spaces-- > 0)
 				{

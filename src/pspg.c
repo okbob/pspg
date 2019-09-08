@@ -350,6 +350,12 @@ translate_headline(Options *opts, DataDesc *desc)
 
 	srcptr = desc->headline;
 	destptr = malloc(desc->headline_size + 1);
+	if (!destptr)
+	{
+		fprintf(stderr, "out of memory\n");
+		exit(1);
+	}
+
 	memset(destptr, 0, desc->headline_size + 1);
 	desc->headline_transl = destptr;
 
@@ -605,6 +611,11 @@ translate_headline(Options *opts, DataDesc *desc)
 		}
 
 		desc->cranges = malloc(desc->columns * sizeof(CRange));
+		if (!desc->cranges)
+		{
+			fprintf(stderr, "out of memory\n");
+			exit(1);
+		}
 
 		i = 0; offset = 0;
 		ptr = desc->headline_transl;
@@ -1155,6 +1166,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		if (rows->nrows == 1000)
 		{
 			LineBuffer *newrows = malloc(sizeof(LineBuffer));
+			if (!newrows)
+			{
+				fprintf(stderr, "out of memory\n");
+				exit(1);
+			}
+
 			memset(newrows, 0, sizeof(LineBuffer));
 			rows->next = newrows;
 			newrows->prev = rows;
