@@ -270,6 +270,7 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 				printf("FATAL: out of memory\n");
 				exit(1);
 			}
+		}
 
 #else
 
