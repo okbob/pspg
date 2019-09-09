@@ -1831,12 +1831,20 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (refresh_first && scrdesc->fmt == NULL)
 	{
 		if (fmt != NULL)
+		{
 			scrdesc->fmt = strdup(fmt);
+			if (!scrdesc->fmt)
+				leave_ncurses("out of memory");
+		}
 		else
 			scrdesc->fmt = NULL;
 
 		if (par != NULL)
+		{
 			scrdesc->par = strdup(par);
+			if (!scrdesc->par)
+				leave_ncurses("out of memory");
+		}
 		else
 			scrdesc->par = NULL;
 		scrdesc->beep = beep;
