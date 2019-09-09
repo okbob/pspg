@@ -136,6 +136,26 @@ some horizontal scrolling) or on first column. After last column searching start
 * `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
 * `d%` - percent of already displayed data
 
+# Usage as csv viewer
+
+It works well with miller http://johnkerl.org/miller/doc/index.html
+<pre>
+mlr --icsv --opprint --barred put '' obce.csv | pspg --force-uniborder
+</pre>
+
+It can be integrated into <code>mc</code>
+
+* copy file from `/etc/mc/mc.ext` to your `~/.config/mc directory`
+* insert there
+
+<pre>
+#csv
+regex/\.csv
+    View=mlr --icsv --opprint --barred put '' %f | pspg --force-uniborder
+</pre>
+
+* restart <code>mc</code>
+
 # Recommended psql configuration
 <pre>
 \pset linestyle unicode
