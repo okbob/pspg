@@ -72,6 +72,13 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val)
 	return false;
 }
 
+#define SAFE_SAVE_BOOL_OPTION(name, opt)		\
+do { \
+	result = fprintf(f, "%s = %s\n", (name), (opt) ? "true" : "false"); \
+	if (result < 0) \
+		return false; \
+} while (0)
+
 bool
 save_config(char *path, Options *opts)
 {
@@ -83,71 +90,24 @@ save_config(char *path, Options *opts)
 	if (f == NULL)
 		return false;
 
-	result = fprintf(f, "ascii_menu = %s\n", opts->force_ascii_art ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "bold_labels = %s\n", opts->bold_labels ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "bold_cursor = %s\n", opts->bold_cursor ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "ignore_case = %s\n", opts->ignore_case ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "ignore_lower_case = %s\n", opts->ignore_lower_case ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "no_cursor = %s\n", opts->no_cursor ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "no_sound = %s\n", opts->no_sound ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "no_mouse = %s\n", opts->no_mouse ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "less_status_bar = %s\n", opts->less_status_bar ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "no_highlight_search = %s\n", opts->no_highlight_search ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "no_highlight_lines = %s\n", opts->no_highlight_lines ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "force_uniborder = %s\n", opts->force_uniborder ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "show_rownum = %s\n", opts->show_rownum ? "true" : "false");
-	if (result < 0)
-		return false;
+	SAFE_SAVE_BOOL_OPTION("ascii_menu", opts->force_ascii_art);
+	SAFE_SAVE_BOOL_OPTION("bold_labels", opts->bold_labels);
+	SAFE_SAVE_BOOL_OPTION("bold_cursor", opts->bold_cursor);
+	SAFE_SAVE_BOOL_OPTION("ignore_case", opts->ignore_case);
+	SAFE_SAVE_BOOL_OPTION("ignore_lower_case", opts->ignore_lower_case);
+	SAFE_SAVE_BOOL_OPTION("no_cursor", opts->no_cursor);
+	SAFE_SAVE_BOOL_OPTION("no_sound", opts->no_sound);
+	SAFE_SAVE_BOOL_OPTION("no_mouse", opts->no_mouse);
+	SAFE_SAVE_BOOL_OPTION("less_status_bar", opts->less_status_bar);
+	SAFE_SAVE_BOOL_OPTION("no_highlight_search", opts->no_highlight_search);
+	SAFE_SAVE_BOOL_OPTION("no_highlight_lines", opts->no_highlight_lines);
+	SAFE_SAVE_BOOL_OPTION("force_uniborder", opts->force_uniborder);
+	SAFE_SAVE_BOOL_OPTION("show_rownum", opts->show_rownum);
+	SAFE_SAVE_BOOL_OPTION("without_commandbar", opts->no_commandbar);
+	SAFE_SAVE_BOOL_OPTION("without_topbar", opts->no_topbar);
+	SAFE_SAVE_BOOL_OPTION("vertical_cursor", opts->vertical_cursor);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "without_commandbar = %s\n", opts->no_commandbar ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "without_topbar = %s\n", opts->no_topbar ? "true" : "false");
-	if (result < 0)
-		return false;
-
-	result = fprintf(f, "vertical_cursor = %s\n", opts->vertical_cursor ? "true" : "false");
 	if (result < 0)
 		return false;
 
