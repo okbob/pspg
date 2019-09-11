@@ -52,17 +52,18 @@ typedef struct
 typedef enum
 {
 	INFO_UNKNOWN,
-	INFO_DOUBLE
+	INFO_DOUBLE,
+	INFO_STRXFRM
 } SortDataInfo;
 
 typedef struct
 {
 	SortDataInfo		info;
 	double			d;
+	char		   *strxfrm;
 	LineBuffer	   *lnb;
 	int				lnb_row;
 } SortData;
-
 
 /*
  * Column range
@@ -191,8 +192,8 @@ extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 
 /* from sort.c */
-extern void sort_column(SortData *sortbuf, int rows, bool desc);
-
+extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
+extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
@@ -207,6 +208,5 @@ extern FILE *debug_pipe;
 extern int	debug_eventno;
 
 #endif
-
 
 #endif

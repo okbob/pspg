@@ -251,7 +251,6 @@ nstrstr_with_sizes(const char *haystack,
 	return haystack;
 }
 
-
 /*
  * Special string searching, lower chars are case insensitive,
  * upper chars are case sensitive.
@@ -691,13 +690,133 @@ translate_headline(Options *opts, DataDesc *desc)
 }
 
 /*
+ * Cut text from column and translate it to number.
+ */
+static bool
+cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **result)
+{
+#define TEXT_STACK_BUFFER_SIZE		1024
+
+	if (str)
+	{
+		char	   *_str = NULL;
+		char	   *after_last_nospc = NULL;
+		int			pos = 0;
+		int			charlen;
+		bool		skip_left_spaces = true;
+
+		while (*str)
+		{
+			charlen = utf8charlen(*str);
+
+			if (pos > xmin || (border0 && pos >= xmin))
+			{
+				if (skip_left_spaces)
+				{
+					if (*str == ' ')
+					{
+						pos += 1;
+						str += 1;
+						continue;
+					}
+
+					/* first nspc char */
+					skip_left_spaces = false;
+					_str = str;
+				}
+			}
+
+			if (*str != ' ')
+				after_last_nospc = str + charlen;
+
+			pos += utf_dsplen(str);
+			str += charlen;
+
+			if (pos >= xmax)
+				break;
+		}
+
+		if (_str != NULL)
+		{
+			char		buffer[TEXT_STACK_BUFFER_SIZE];
+			char	   *dynbuf = NULL;
+			char	   *cstr = NULL;
+			int			size;
+			int			dynbuf_size = 0;
+
+			cstr = strndup(_str, after_last_nospc - _str);
+			if (!cstr)
+				leave_ncurses("out of memory");
+
+			if (force8bit)
+			{
+				*result = cstr;
+				return true;
+			}
+
+			errno = 0;
+			size = strxfrm(buffer, (const char *) cstr, 1024);
+			if (errno != 0)
+			{
+				/* cannot to sort this string */
+				free(cstr);
+				return false;
+			}
+
+			if (size > TEXT_STACK_BUFFER_SIZE - 1)
+			{
+				while (size > dynbuf_size)
+				{
+					if (dynbuf)
+						free(dynbuf);
+
+					dynbuf_size = size + 1;
+					dynbuf = malloc(dynbuf_size);
+					if (!dynbuf)
+						leave_ncurses("out of memory");
+
+					errno = 0;
+					size = strxfrm(dynbuf, cstr, dynbuf_size);
+					if (errno != 0)
+					{
+						/* cannot to sort this string */
+						free(cstr);
+						return false;
+					}
+				}
+			}
+
+			free(cstr);
+
+			if (!dynbuf)
+			{
+				dynbuf = strdup(buffer);
+				if (!dynbuf)
+					leave_ncurses("out of memory");
+			}
+
+			*result = dynbuf;
+
+			return true;
+		}
+	}
+
+	*result = NULL;
+
+	return false;
+}
+
+/*
  * Try to cut numeric (double) value from row defined by specified xmin, xmax positions.
  * Units (bytes, kB, MB, GB, TB) are supported. Returns true, when returned value is valid.
  */
 static bool
-cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
+cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *isnull, char **nullstr)
 {
-	char		buffer[255];
+
+#define BUFFER_MAX_SIZE			101
+
+	char		buffer[BUFFER_MAX_SIZE];
 	char	   *buffptr;
 	char	   *after_last_nospace = NULL;
 	char	   *first_nospace_nodigit = NULL;
@@ -708,14 +827,16 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 	int			x = 0;
 	long		mp = 1;
 
+	*isnull = false;
+
 	if (str)
 	{
 		after_last_nospace = buffptr = buffer;
-		memset(buffer, 0, 255);
+		memset(buffer, 0, BUFFER_MAX_SIZE);
 
 		while (*str)
 		{
-			int		char_width = utf8charlen(*str);
+			int		charlen = utf8charlen(*str);
 
 			if (x > xmin || (border0 && x >= xmin))
 			{
@@ -732,13 +853,62 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 
 					/* first char should be a digit */
 					if (!isdigit(c))
+					{
+						char	   *_nullstr = *nullstr;
+						int			len;
+						char	   *saved_str = str;
+
+						after_last_nospace = saved_str;
+
+						/*
+						 * We should to check nullstr if exists, or we should to save
+						 * this string as nullstr.
+						 */
+						while (*str)
+						{
+							if (*str != ' ')
+								after_last_nospace = str + charlen;
+
+							x += utf_dsplen(str);
+							str += charlen;
+
+							if (x >= xmax)
+								break;
+
+							if (*str)
+								charlen = utf8charlen(*str);
+						}
+
+						len = after_last_nospace - saved_str;
+
+						if (_nullstr)
+						{
+							if (strlen(_nullstr) == len)
+								*isnull = strncmp(_nullstr, saved_str, len) == 0;
+							else
+								*isnull = false;
+						}
+						else
+						{
+							_nullstr = malloc(len + 1);
+							if (!_nullstr)
+								leave_ncurses("out of memory");
+
+							memcpy(_nullstr, saved_str, len);
+							_nullstr[len] = '\0';
+
+							*isnull = true;
+							*nullstr = _nullstr;
+						}
+
 						return false;
+					}
 
 					skip_initial_spaces = false;
 					only_digits = true;
 				}
 
-				memcpy(buffptr, str, char_width);
+				memcpy(buffptr, str, charlen);
 
 				/* trim from right */
 				if (c != ' ')
@@ -746,7 +916,12 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 					bool	only_digits_prev = only_digits;
 					bool	only_digits_with_point_prev = only_digits_with_point;
 
-					after_last_nospace = buffptr + char_width;
+					after_last_nospace = buffptr + charlen;
+					if (after_last_nospace - buffer > (BUFFER_MAX_SIZE - 1))
+					{
+						/* too long string - should not be translated to number */
+						return false;
+					}
 
 					if (c == '.' || c == ',')
 					{
@@ -765,7 +940,6 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 						only_digits_with_point = false;
 					}
 
-
 					/* Save point of chage between digits and other */
 					if ((only_digits_prev || only_digits_with_point_prev) &&
 					   !(only_digits || only_digits_with_point))
@@ -773,11 +947,11 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0)
 						first_nospace_nodigit = buffptr;
 					}
 				}
-				buffptr += char_width;
+				buffptr += charlen;
 			}
 
 			x += utf_dsplen(str);
-			str += char_width;
+			str += charlen;
 
 			if (x >= xmax)
 				break;
@@ -4389,9 +4563,13 @@ recheck_end:
 					if (opts.vertical_cursor)
 					{
 						LineBuffer	   *lnb = &desc.rows;
+						char		   *nullstr = NULL;
 						int				xmin, xmax;
 						int				lineno = 0;
 						bool			continual_line = false;
+						bool			isnull;
+						bool			detect_string_column = false;
+						bool			border0 = (desc.border_type == 0);
 						SortData	   *sortbuf;
 						int				sortbuf_pos = 0;
 						int			i;
@@ -4490,6 +4668,15 @@ recheck_end:
 								leave_ncurses("out of memory");
 						}
 
+						/*
+						 * There are two possible sorting methods: numeric or string.
+						 * We can try numeric sort first if all values are numbers or
+						 * just only one type of string value (like NULL string). This
+						 * value can be repeated,
+						 *
+						 * When there are more different strings, then start again and
+						 * use string sort.
+						 */
 						while (lnb)
 						{
 							for (i = 0; i < lnb->nrows; i++)
@@ -4503,14 +4690,24 @@ recheck_end:
 									{
 										sortbuf[sortbuf_pos].lnb = lnb;
 										sortbuf[sortbuf_pos].lnb_row = i;
+										sortbuf[sortbuf_pos].strxfrm = NULL;
 
 										if (cut_numeric_value(lnb->rows[i],
 															   xmin, xmax,
 															   &sortbuf[sortbuf_pos].d,
-															   desc.border_type == 0))
+															   border0,
+															   &isnull,
+															   &nullstr))
 											sortbuf[sortbuf_pos++].info = INFO_DOUBLE;
 										else
+										{
 											sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;
+											if (!isnull)
+											{
+												detect_string_column = true;
+												goto sort_by_string;
+											}
+										}
 									}
 
 									if (has_multilines)
@@ -4526,12 +4723,63 @@ recheck_end:
 							lnb = lnb->next;
 						}
 
+sort_by_string:
+
+						if (nullstr)
+							free(nullstr);
+
+						if (detect_string_column)
+						{
+							/* read data again and use nls_string */
+							lnb = &desc.rows;
+							lineno = 0;
+							sortbuf_pos = 0;
+							while (lnb)
+							{
+								for (i = 0; i < lnb->nrows; i++)
+								{
+									desc.order_map[lineno].lnb = lnb;
+									desc.order_map[lineno].lnb_row = i;
+
+									if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
+									{
+										if (!continual_line)
+										{
+											sortbuf[sortbuf_pos].lnb = lnb;
+											sortbuf[sortbuf_pos].lnb_row = i;
+											sortbuf[sortbuf_pos].d = 0.0;
+
+											if (cut_text(lnb->rows[i], xmin, xmax, border0, opts.force8bit, &sortbuf[sortbuf_pos].strxfrm))
+												sortbuf[sortbuf_pos++].info = INFO_STRXFRM;
+											else
+												sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;		/* empty string */
+										}
+
+										if (has_multilines)
+										{
+											continual_line =  (lnb->lineinfo &&
+															   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
+										}
+									}
+
+									lineno += 1;
+								}
+								lnb = lnb->next;
+							}
+						}
+
 						if (lineno != desc.total_rows)
 							leave_ncurses("unexpected processed rows after sort prepare");
 
-						sort_column(sortbuf,
-								    sortbuf_pos,
-								    command == cmd_SortDesc);
+						if (detect_string_column)
+							sort_column_text(sortbuf,
+									    sortbuf_pos,
+									    command == cmd_SortDesc);
+						else
+							sort_column_num(sortbuf,
+									    sortbuf_pos,
+									    command == cmd_SortDesc);
+
 
 						lineno = desc.first_data_row;
 
@@ -4577,6 +4825,12 @@ recheck_end:
 						 * correct solution is clean it now.
 						 */
 						scrdesc.found_row = -1;
+
+						for (i = 0; i < sortbuf_pos; i++)
+						{
+							if (sortbuf[i].strxfrm)
+								free(sortbuf[i].strxfrm);
+						}
 
 						free(sortbuf);
 					}
