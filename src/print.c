@@ -30,10 +30,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef GWINSZ_IN_SYS_IOCTL
-# include <sys/ioctl.h>
-#else
-# include <termios.h>
+#include <sys/ioctl.h>
+
+#ifndef GWINSZ_IN_SYS_IOCTL
+#include <termios.h>
 #endif
 
 #include <unistd.h>

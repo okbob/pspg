@@ -39,10 +39,10 @@
 #include <locale.h>
 #include <signal.h>
 
-#ifdef GWINSZ_IN_SYS_IOCTL
-# include <sys/ioctl.h>
-#else
-# include <termios.h>
+#include <sys/ioctl.h>
+
+#ifndef GWINSZ_IN_SYS_IOCTL
+#include <termios.h>
 #endif
 
 #include <time.h>
@@ -2738,6 +2738,8 @@ main(int argc, char *argv[])
 				fprintf(stdout, "ncurses widechar num: %d\n", NCURSES_WIDECHAR);
 
 #endif
+
+				fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
 
 				exit(0);
 			case 'X':
