@@ -41,6 +41,97 @@
 #include "pspg.h"
 #include "unicode.h"
 
+
+
+/*
+ * Flush data to window. When row is a decoration, then
+ * replace ascii decoration by special terminal decoration.
+ */
+static void
+flush_bytes(WINDOW *win,
+		    char *rowstr,
+		    int bytes,
+		    int offsetx,
+		    bool is_top_deco,
+		    bool is_head_deco,
+		    bool is_bottom_deco,
+			DataDesc *desc,
+			ScrDesc *scrdesc,
+			Options *opts)
+{
+	if ((is_top_deco || is_head_deco || is_bottom_deco) &&
+		desc->linestyle == 'a' && opts->force_uniborder)
+	{
+		while (bytes > 0)
+		{
+			int		column_format = desc->headline_transl[offsetx];
+
+			if (column_format == 'd' && *rowstr == '-')
+			{
+				waddch(win, ACS_HLINE);
+				rowstr += 1;
+				bytes -= 1;
+				offsetx += 1;
+			}
+			else if (column_format == 'L' && (*rowstr == '+' || *rowstr == '|'))
+			{
+				if (is_head_deco)
+					waddch(win, ACS_LTEE);
+				else if (is_top_deco)
+					waddch(win, ACS_ULCORNER);
+				else /* bottom row */
+					waddch(win, ACS_LLCORNER);
+
+				rowstr += 1;
+				bytes -= 1;
+				offsetx += 1;
+			}
+			else if (column_format == 'I' && *rowstr == '+')
+			{
+				if (is_head_deco)
+					waddch(win, ACS_PLUS);
+				else if (is_top_deco)
+					waddch(win, ACS_TTEE);
+				else /* bottom row */
+					waddch(win, ACS_BTEE);
+
+				rowstr += 1;
+				bytes -= 1;
+				offsetx += 1;
+			}
+			else if (column_format == 'R' && (*rowstr == '+' || *rowstr == '|'))
+			{
+				if (is_head_deco)
+					waddch(win, ACS_RTEE);
+				else if (is_top_deco)
+					waddch(win, ACS_URCORNER);
+				else /* bottom row */
+					waddch(win, ACS_LRCORNER);
+
+				rowstr += 1;
+				bytes -= 1;
+				offsetx += 1;
+			}
+			else
+			{
+				int len = opts->force8bit ? 1 : utf8charlen(*rowstr);
+
+				waddnstr(win, rowstr, len);
+				offsetx += utf_dsplen(rowstr);
+				rowstr +=len;
+				bytes -= len;
+			}
+		}
+	}
+	else
+	{
+		/*
+		 * waddnstr is working with utf8 on ncursesw
+		 */
+		waddnstr(win, rowstr, bytes);
+	}
+}
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -333,6 +424,15 @@ window_fill(int window_identifier,
 			bool	is_expand_head;
 			int		ei_min, ei_max;
 			int		left_spaces;							/* aux left spaces */
+			int		saved_pos;
+
+			bool	is_top_deco = false;
+			bool	is_head_deco = false;
+			bool	is_bottom_deco = false;
+
+			is_top_deco = effective_row == desc->border_top_row;
+			is_head_deco = effective_row == desc->border_head_row;
+			is_bottom_deco = effective_row == desc->border_bottom_row;
 
 			is_found_row = scrdesc->found && scrdesc->found_row == effective_row;
 
@@ -352,9 +452,11 @@ window_fill(int window_identifier,
 			{
 				if (!is_footer)
 				{
-					fix_line_attr_style = effective_row == desc->border_top_row ||
-												effective_row == desc->border_head_row ||
-												effective_row == desc->border_bottom_row;
+					is_top_deco = effective_row == desc->border_top_row;
+					is_head_deco = effective_row == desc->border_head_row;
+					is_bottom_deco = effective_row == desc->border_bottom_row;
+
+					fix_line_attr_style = is_top_deco || is_head_deco || is_bottom_deco;
 				}
 				else
 					fix_line_attr_style = false;
@@ -420,6 +522,7 @@ window_fill(int window_identifier,
 			ptr = rowstr;
 			bytes = 0;
 			i = 0;
+			saved_pos = srcx;
 
 			/* find length of maxx characters */
 			if (*ptr != '\0')
@@ -457,6 +560,7 @@ window_fill(int window_identifier,
 								waddnstr(win, rowstr, bytes);
 								rowstr += bytes;
 								bytes = 0;
+								saved_pos = pos;
 							}
 
 							/* disable current style */
@@ -469,12 +573,11 @@ window_fill(int window_identifier,
 					}
 					else if (!fix_line_attr_style)
 					{
-						int		htrpos = srcx + i;
 						attr_t	new_attr = active_attr;
 						bool	print_acs_vline = false;
 						char	column_format;
 
-						column_format = desc->headline_transl != NULL ? desc->headline_transl[htrpos] : ' ';
+						column_format = desc->headline_transl != NULL ? desc->headline_transl[pos] : ' ';
 
 						if (opts->force_uniborder && desc->linestyle == 'a')
 						{
@@ -500,18 +603,18 @@ window_fill(int window_identifier,
 						{
 							if (is_footer)
 								new_attr = t->pattern_data_attr;
-							else if (htrpos < desc->headline_char_size)
+							else if (pos < desc->headline_char_size)
 								new_attr = column_format == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 
-							if (new_attr == t->pattern_data_attr && htrpos >= lineinfo->start_char)
+							if (new_attr == t->pattern_data_attr && pos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
 								{
-									int		i;
+									int		j;
 
-									for (i = 0; i < npositions; i++)
+									for (j = 0; i < npositions; i++)
 									{
-										if (htrpos >= positions[i][0] && htrpos < positions[i][1])
+										if (pos >= positions[j][0] && pos < positions[j][1])
 										{
 											new_attr = t->found_str_attr;
 											break;
@@ -520,14 +623,14 @@ window_fill(int window_identifier,
 								}
 								else
 								{
-									if (htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
+									if (pos < lineinfo->start_char + scrdesc->searchterm_char_size)
 										new_attr = t->found_str_attr;
 								}
 							}
 						}
 						else if (is_footer)
 							new_attr = is_cursor ? t->cursor_data_attr : t->data_attr;
-						else if (htrpos < desc->headline_char_size)
+						else if (pos < desc->headline_char_size)
 						{
 							if (is_cursor )
 								new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
@@ -537,18 +640,18 @@ window_fill(int window_identifier,
 
 						if (is_cursor || is_cross_cursor)
 						{
-							if (is_found_row && htrpos >= scrdesc->found_start_x &&
-									htrpos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
+							if (is_found_row && pos >= scrdesc->found_start_x &&
+									pos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
 								new_attr = new_attr ^ ( A_REVERSE | pattern_fix );
-							else if (is_pattern_row && htrpos >= lineinfo->start_char)
+							else if (is_pattern_row && pos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
 								{
-									int		i;
+									int		j;
 
-									for (i = 0; i < npositions; i++)
+									for (j = 0; i < npositions; i++)
 									{
-										if (htrpos >= positions[i][0] && htrpos < positions[i][1])
+										if (pos >= positions[j][0] && pos < positions[j][1])
 										{
 											new_attr = t->cursor_pattern_attr;
 											break;
@@ -557,7 +660,7 @@ window_fill(int window_identifier,
 								}
 								else
 								{
-									if (htrpos < lineinfo->start_char + scrdesc->searchterm_char_size)
+									if (pos < lineinfo->start_char + scrdesc->searchterm_char_size)
 										new_attr = t->cursor_pattern_attr;
 								}
 							}
@@ -568,6 +671,7 @@ window_fill(int window_identifier,
 							waddnstr(win, rowstr, bytes);
 							rowstr += bytes;
 							bytes = 0;
+							saved_pos = pos;
 						}
 
 						if (new_attr != active_attr)
@@ -577,6 +681,7 @@ window_fill(int window_identifier,
 								waddnstr(win, rowstr, bytes);
 								rowstr += bytes;
 								bytes = 0;
+								saved_pos = pos;
 							}
 
 							/* disable current style */
@@ -617,9 +722,21 @@ window_fill(int window_identifier,
 							{
 								if (bytes > 0)
 								{
-									waddnstr(win, rowstr, bytes);
+									flush_bytes(win,
+												rowstr,
+												bytes,
+												saved_pos,
+												is_top_deco,
+												is_head_deco,
+												is_bottom_deco,
+												desc,
+												scrdesc,
+					  							opts);
+
+
 									rowstr += bytes;
 									bytes = 0;
+									saved_pos = pos;
 								}
 
 								/* disable current style */
@@ -660,86 +777,16 @@ window_fill(int window_identifier,
 			}
 
 			if (bytes > 0)
-			{
-				if (!fix_line_attr_style || !(desc->linestyle == 'a' && opts->force_uniborder))
-					/*
-					 * I am not sure, if appending utf8 string is correct. Probably better is
-					 * translation to wchar_t type and passing via waddwstr function:
-					 *
-					 *    wchar_t *ptr = malloc(bytes * 4);
-					 *    utf2wchar_with_len((const unsigned char *) rowstr, ptr, bytes);
-					 *    waddwstr(win, ptr);
-					 *    free(ptr);
-					 *
-					 */
-					waddnstr(win, rowstr, bytes);
-				else
-				{
-					int		i = 0;
-
-					while (bytes > 0)
-					{
-						int		htrpos = srcx + i;
-						int		column_format = desc->headline_transl[htrpos];
-						bool	is_top_row = effective_row == desc->border_top_row;
-						bool	is_head_row = effective_row == desc->border_head_row;
-
-						if (column_format == 'd' && *rowstr == '-')
-						{
-							waddch(win, ACS_HLINE);
-							rowstr += 1;
-							bytes -= 1;
-						}
-						else if (column_format == 'L' && (*rowstr == '+' || *rowstr == '|'))
-						{
-							if (is_head_row)
-								waddch(win, ACS_LTEE);
-							else if (is_top_row)
-								waddch(win, ACS_ULCORNER);
-							else /* bottom row */
-								waddch(win, ACS_LLCORNER);
-
-							rowstr += 1;
-							bytes -= 1;
-						}
-						else if (column_format == 'I' && *rowstr == '+')
-						{
-							if (is_head_row)
-								waddch(win, ACS_PLUS);
-							else if (is_top_row)
-								waddch(win, ACS_TTEE);
-							else /* bottom row */
-								waddch(win, ACS_BTEE);
-
-							rowstr += 1;
-							bytes -= 1;
-						}
-						else if (column_format == 'R' && (*rowstr == '+' || *rowstr == '|'))
-						{
-							if (is_head_row)
-								waddch(win, ACS_RTEE);
-							else if (is_top_row)
-								waddch(win, ACS_URCORNER);
-							else /* bottom row */
-								waddch(win, ACS_LRCORNER);
-
-							rowstr += 1;
-							bytes -= 1;
-
-						}
-						else
-						{
-							int len = opts->force8bit ? 1 : utf8charlen(*rowstr);
-
-							waddnstr(win, rowstr, len);
-							rowstr +=len;
-							bytes -= len;
-						}
-
-						i += 1;
-					}
-				}
-			}
+				flush_bytes(win,
+							rowstr,
+							bytes,
+							saved_pos,
+							is_top_deco,
+							is_head_deco,
+							is_bottom_deco,
+							desc,
+							scrdesc,
+							opts);
 
 			/* clean other chars on line */
 			if (i < maxx)
@@ -980,9 +1027,10 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 				i = 0;
 				while (i < maxx)
 				{
+					int		pos = srcx + i;
+
 					if (is_expand_head)
 					{
-						int		pos = srcx + i;
 						attr_t	new_attr;
 
 						new_attr = pos >= ei_min && pos <= ei_max ? expi_attr : line_attr;
@@ -1003,13 +1051,11 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 					}
 					else if (!fix_line_attr_style && desc->headline_transl != NULL)
 					{
-						int htrpos = srcx + i;
-
-						if (htrpos < desc->headline_char_size)
+						if (pos < desc->headline_char_size)
 						{
 							attr_t	new_attr;
 
-							new_attr = desc->headline_transl[htrpos] == 'd' ? data_attr : line_attr;
+							new_attr = desc->headline_transl[pos] == 'd' ? data_attr : line_attr;
 
 							if (new_attr != active_attr)
 							{
