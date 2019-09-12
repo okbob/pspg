@@ -796,13 +796,13 @@ window_fill(int window_identifier,
 			if (i < maxx)
 			{
 				if (is_cursor_row && !is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->cursor_data_attr), 0);
+					mvwchgat(win, row - 1, i, -1, t->cursor_data_attr, PAIR_NUMBER(t->cursor_data_attr), 0);
 				else if (!is_cursor_row && is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->bookmark_data_attr), 0);
+					mvwchgat(win, row - 1, i, -1, t->bookmark_data_attr, PAIR_NUMBER(t->bookmark_data_attr), 0);
 				else if (is_cursor_row && is_bookmark_row)
 					mvwchgat(win, row - 1, i, -1, t->cursor_bookmark_attr, PAIR_NUMBER(t->cursor_bookmark_attr), 0);
 				else if (!is_cursor_row && is_pattern_row)
-					mvwchgat(win, row - 1, i, -1, 0, PAIR_NUMBER(t->pattern_data_attr), 0);
+					mvwchgat(win, row - 1, i, -1, t->pattern_data_attr, PAIR_NUMBER(t->pattern_data_attr), 0);
 			}
 
 			if (free_row != NULL)

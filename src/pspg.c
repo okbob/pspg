@@ -1335,7 +1335,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			read -= 1;
 		}
 
-		clen = utf_dsplen(line);
+		clen = utf_string_dsplen(line, read);
 
 		if (rows->nrows == 1000)
 		{
@@ -2516,6 +2516,7 @@ main(int argc, char *argv[])
 
 	bool	multilines_should_be_tested = true;	/* protect to against multiline tests */
 	bool	has_multilines = false;
+	bool	mouse_was_initialized = false;
 
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
@@ -2913,6 +2914,9 @@ reinit_theme:
 
 	if (!opts.no_mouse)
 	{
+
+		mouse_was_initialized = true;
+
 
 		mouseinterval(0);
 
@@ -3586,8 +3590,28 @@ reset_search:
 					}
 					else
 					{
-						mousemask(prev_mousemask, NULL);
+
+						if (!mouse_was_initialized)
+						{
+							mouseinterval(0);
+
+#if NCURSES_MOUSE_VERSION > 1
+
+							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
+
+#else
+
+							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED, NULL);
+
+#endif
+
+							mouse_was_initialized = true;
+						}
+						else
+							mousemask(prev_mousemask, NULL);
+
 						opts.no_mouse= false;
+
 					}
 
 					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true);
@@ -3603,7 +3627,7 @@ reset_search:
 				{
 					opts.vertical_cursor = !opts.vertical_cursor;
 
-					if (opts.vertical_cursor && !is_footer_cursor(cursor_row, &scrdesc, &desc))
+					if (opts.vertical_cursor)
 					{
 						int		i;
 						int		xpoint;
@@ -5394,6 +5418,7 @@ found_next_pattern:
 						int		max_cursor_row;
 						int		max_first_row;
 						bool	is_double_click = false;
+						bool	_is_footer_cursor;
 						long	ms;
 						time_t	sec;
 						struct timespec spec;
@@ -5474,18 +5499,20 @@ found_next_pattern:
 						if (first_row > max_first_row)
 							first_row = max_first_row;
 
+						_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+
 						/*
 						 * Save last x focused point. It will be used for repeated hide/unhide
-						 * vertical cursor.
+						 * vertical cursor. But only if cursor is not in footer area.
 						 */
-						last_x_focus = event.x;
+						if (!_is_footer_cursor)
+							last_x_focus = event.x;
 
 						if (event.bstate & BUTTON_ALT && is_double_click)
 						{
 							next_command = cmd_ToggleBookmark;
 						}
-
-						else if (!(event.bstate & BUTTON_ALT) && opts.vertical_cursor)
+						else if (!(event.bstate & BUTTON_ALT) && opts.vertical_cursor && !_is_footer_cursor)
 						{
 							int		xpoint = event.x - scrdesc.main_start_x;
 							int		vertical_cursor_column_orig = vertical_cursor_column;
