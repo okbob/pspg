@@ -2816,7 +2816,7 @@ main(int argc, char *argv[])
 		LineBuffer *lnb = &desc.rows;
 		int			lnb_row = 0;
 
-		pagerprog = getenv("PSPG_TEXT_PAGER");
+		pagerprog = getenv("PSPG_PAGER");
 		if (!pagerprog)
 			pagerprog = getenv("PAGER");
 		if (!pagerprog)
