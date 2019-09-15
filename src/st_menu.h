@@ -34,8 +34,9 @@
 #define ST_MENU_STYLE_FREE_DOS_P	14
 #define ST_MENU_STYLE_MC46			15
 #define ST_MENU_STYLE_DBASE			16
+#define ST_MENU_STYLE_TAO			17
 
-#define ST_MENU_LAST_STYLE			ST_MENU_STYLE_DBASE
+#define ST_MENU_LAST_STYLE			ST_MENU_STYLE_TAO
 
 #define	ST_MENU_ESCAPE		27
 
@@ -131,7 +132,7 @@ typedef struct
 
 struct ST_CMDBAR;
 
-extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn);
+extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn, int start_from_rgb);
 
 extern void st_menu_set_desktop_window(WINDOW *win);
 extern struct ST_MENU *st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *items, int begin_y, int begin_x, char *title);
