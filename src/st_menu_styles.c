@@ -61,7 +61,13 @@ slc(short id, short foreground, short background)
  * style it is number of already existing color pair.
  */
 int
-st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb)
+st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
+{
+	return st_menu_load_style_rgb(config, style, start_from_cpn, NULL);
+}
+
+int
+st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb)
 {
 	memset(config, 0, sizeof(ST_MENU_CONFIG));
 

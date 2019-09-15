@@ -120,7 +120,8 @@ typedef struct
 
 struct ST_CMDBAR;
 
-extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb);
+extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn);
+extern int st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb);
 
 extern void st_menu_set_desktop_window(WINDOW *win);
 extern struct ST_MENU *st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *items, int begin_y, int begin_x, char *title);

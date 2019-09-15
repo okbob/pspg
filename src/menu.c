@@ -220,10 +220,10 @@ init_menu_config(Options *opts)
 	{
 		int		fcp;
 
-		fcp = st_menu_load_style(&menu_config, menu_theme, 30, &start_from_rgb);
-		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp, 0);
+		fcp = st_menu_load_style(&menu_config, menu_theme, 30);
+		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp);
 	}
-		st_menu_load_style(&menu_config, menu_theme,
+		st_menu_load_style_rgb(&menu_config, menu_theme,
 								menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 30, &start_from_rgb);
 
 	if (opts->theme == 1)
