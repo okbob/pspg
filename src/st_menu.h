@@ -1,17 +1,4 @@
-#if defined HAVE_NCURSESW_CURSES_H
-#include <ncursesw/curses.h>
-#elif defined HAVE_NCURSESW_H
-#include <ncursesw.h>
-#elif defined HAVE_NCURSES_CURSES_H
-#include <ncurses/curses.h>
-#elif defined HAVE_NCURSES_H
 #include <ncurses.h>
-#elif defined HAVE_CURSES_H
-#include <curses.h>
-#else
-/* fallback */
-#include <ncurses/ncurses.h>
-#endif
 
 #ifndef _ST_MENU_H
 
@@ -34,7 +21,8 @@
 #define ST_MENU_STYLE_FREE_DOS_P	14
 #define ST_MENU_STYLE_MC46			15
 #define ST_MENU_STYLE_DBASE			16
-#define ST_MENU_STYLE_TAO			17
+#define ST_MENU_STYLE_MENUWORKS		17
+#define ST_MENU_STYLE_TAO			18
 
 #define ST_MENU_LAST_STYLE			ST_MENU_STYLE_TAO
 
@@ -132,7 +120,7 @@ typedef struct
 
 struct ST_CMDBAR;
 
-extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn, int start_from_rgb);
+extern int st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb);
 
 extern void st_menu_set_desktop_window(WINDOW *win);
 extern struct ST_MENU *st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *items, int begin_y, int begin_x, char *title);

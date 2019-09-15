@@ -203,6 +203,8 @@ get_menu_style(int main_theme)
 void
 init_menu_config(Options *opts)
 {
+	int start_from_rgb = 220;
+
 	menu_config.force8bit = opts->force8bit;
 	menu_config.force_ascii_art = opts->force_ascii_art;
 	menu_config.language = NULL;
@@ -218,11 +220,11 @@ init_menu_config(Options *opts)
 	{
 		int		fcp;
 
-		fcp = st_menu_load_style(&menu_config, menu_theme, 30, 0);
+		fcp = st_menu_load_style(&menu_config, menu_theme, 30, &start_from_rgb);
 		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp, 0);
 	}
 		st_menu_load_style(&menu_config, menu_theme,
-								menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 30, 220);
+								menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 30, &start_from_rgb);
 
 	if (opts->theme == 1)
 		menu_config.shadow_width = 2;
