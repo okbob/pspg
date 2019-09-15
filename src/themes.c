@@ -716,7 +716,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(10, 213, 205);
 			init_pair(11, 204, 205);
 			init_pair(13, 203, 202);
-			init_pair(14, COLOR_WHITE, 211);
+			init_pair(14, 202, 211);
 			init_pair(15, 216, 214);
 			init_pair(16, 201, 214);
 			init_pair(17, 206, 214);
