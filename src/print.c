@@ -531,9 +531,9 @@ window_fill(int window_identifier,
 				{
 					bool	is_cursor;
 					bool	is_cross_cursor = false;
-					int		pos = srcx + i;
+					int		pos = (i != -1) ? srcx + i : -1;
 
-					if (vcursor_xmin <= i && i <= vcursor_xmax)
+					if (i != -1 && vcursor_xmin <= i && i <= vcursor_xmax)
 					{
 						is_cross_cursor = is_cursor_row;
 						is_cursor = !is_cursor_row && !is_pattern_row;
@@ -577,7 +577,7 @@ window_fill(int window_identifier,
 						bool	print_acs_vline = false;
 						char	column_format;
 
-						column_format = desc->headline_transl != NULL ? desc->headline_transl[pos] : ' ';
+						column_format = desc->headline_transl != NULL && pos > 0 ? desc->headline_transl[pos] : ' ';
 
 						if (opts->force_uniborder && desc->linestyle == 'a')
 						{
@@ -755,18 +755,16 @@ window_fill(int window_identifier,
 						{
 							i += 1;
 							ptr += 1;
-							/* suboptimal logic */
-							if (i <= maxx && rowstr < ptr)
-								bytes += 1;
+							bytes += 1;
 						}
 						else
 						{
+							int dsplen = utf_dsplen(ptr);
 							int len  = utf8charlen(*ptr);
-							i += utf_dsplen(ptr);
+
+							i = dsplen != -1 && i != -1 ? i + dsplen : -1;
 							ptr += len;
-							/* suboptimal logic */
-							if (i <= maxx && rowstr < ptr)
-								bytes += len;
+							bytes += len;
 						}
 					}
 					else
@@ -787,6 +785,9 @@ window_fill(int window_identifier,
 							desc,
 							scrdesc,
 							opts);
+
+			/* When we don't possition of last char, we can (for cursor draw) use 0 */
+			i = i != -1 ? i : 0;
 
 			/* clean other chars on line */
 			if (i < maxx)

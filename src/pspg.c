@@ -363,9 +363,6 @@ translate_headline(Options *opts, DataDesc *desc)
 
 	desc->expanded_info_minx = -1;
 
-	desc->cranges = NULL;
-	desc->columns = 0;
-
 	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
 	{
 		/* only spaces can be after known right border */
@@ -1309,6 +1306,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	desc->last_data_row = -1;
 	desc->is_expanded_mode = false;
 	desc->headline_transl = NULL;
+	desc->cranges = NULL;
+	desc->columns = 0;
 	desc->footer_row = -1;
 	desc->alt_footer_row = -1;
 	desc->is_pgcli_fmt = false;
@@ -1823,7 +1822,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		{
 			if (desc->headline_transl)
 			{
-				if (opts->vertical_cursor)
+				if (opts->vertical_cursor && desc->columns > 0 && vertical_cursor_column > 0)
 				{
 					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
 					int		vmaxx = desc->cranges[vertical_cursor_column - 1].xmax;
@@ -1868,7 +1867,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		{
 			if (desc->headline_transl)
 			{
-				if (opts->vertical_cursor)
+				if (opts->vertical_cursor  && desc->columns > 0 && vertical_cursor_column > 0)
 				{
 					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
 					int		vmaxx = desc->cranges[vertical_cursor_column - 1].xmax;
@@ -3038,7 +3037,7 @@ reinit_theme:
 		opts.no_cursor = desc.headline_transl == NULL;
 
 	/* run this part only once, don't repeat it when theme is reinitialized */
-	if (opts.vertical_cursor && vertical_cursor_column == -1)
+	if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column == -1)
 	{
 		int freezed_cols = opts.freezed_cols != -1 ?  opts.freezed_cols : 1;
 
@@ -3143,7 +3142,7 @@ reinit_theme:
 				int		vcursor_xmin_data = -1;
 				int		vcursor_xmax_data = -1;
 
-				if (opts.vertical_cursor)
+				if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
 				{
 					int		vcursor_xmin = desc.cranges[vertical_cursor_column - 1].xmin;
 					int		vcursor_xmax = desc.cranges[vertical_cursor_column - 1].xmax;
@@ -3625,6 +3624,12 @@ reset_search:
 
 			case cmd_ShowVerticalCursor:
 				{
+					if (desc.columns == 0)
+					{
+						show_info_wait(&opts, &scrdesc, " Vertical cursor is available only for tables.", NULL, true, true, true);
+						break;
+					}
+
 					opts.vertical_cursor = !opts.vertical_cursor;
 
 					if (opts.vertical_cursor)
@@ -4169,7 +4174,7 @@ recheck_left:
 
 						if (desc.headline_transl != NULL)
 						{
-							if (opts.vertical_cursor)
+							if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
 							{
 								move_left = 0;
 
@@ -4442,7 +4447,7 @@ recheck_home:
 					}
 					else
 					{
-						if (opts.vertical_cursor)
+						if (opts.vertical_cursor && desc.columns > 0)
 						{
 							vertical_cursor_column = 1;
 							last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
@@ -4486,7 +4491,7 @@ recheck_end:
 					{
 						int		new_cursor_col;
 
-						if (opts.vertical_cursor)
+						if (opts.vertical_cursor && desc.columns > 0)
 						{
 							vertical_cursor_column = desc.columns;
 							last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
@@ -4586,7 +4591,7 @@ recheck_end:
 						break;
 					}
 
-					if (opts.vertical_cursor)
+					if (opts.vertical_cursor && vertical_cursor_column > 0 && desc.columns > 0)
 					{
 						LineBuffer	   *lnb = &desc.rows;
 						char		   *nullstr = NULL;
@@ -5711,7 +5716,7 @@ refresh:
 			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
 			/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
-			if (recheck_vertical_cursor_visibility)
+			if (recheck_vertical_cursor_visibility && vertical_cursor_column > 0)
 			{
 				int		vminx = desc.cranges[vertical_cursor_column - 1].xmin;
 				int		left_border = scrdesc.fix_cols_cols + cursor_col - 1;
