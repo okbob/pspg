@@ -877,7 +877,7 @@ void
 read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 {
 	LinebufType		linebuf;
-	RowBucketType	rowbuckets;
+	RowBucketType	rowbuckets, *rb;
 	ConfigType		config;
 	PrintbufType	printbuf;
 
@@ -1098,4 +1098,28 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	}
 
 	free(printbuf.buffer);
+
+	/* release row buckets */
+	rb = &rowbuckets;
+
+	while (rb)
+	{
+		RowBucketType	*nextrb;
+		int		i;
+
+		for (i = 0; i < rb->nrows; i++)
+		{
+			RowType	   *r = rb->rows[i];
+
+			/* only first field holds allocated string */
+			if (r->nfields > 0)
+				free(r->fields[0]);
+			free(r);
+		}
+
+		nextrb = rb->next_bucket;
+		if (rb->allocated)
+			free(rb);
+		rb = nextrb;
+	}
 }
