@@ -532,6 +532,7 @@ window_fill(int window_identifier,
 					bool	is_cursor;
 					bool	is_cross_cursor = false;
 					int		pos = (i != -1) ? srcx + i : -1;
+					bool	skip_char = false;
 
 					if (i != -1 && vcursor_xmin <= i && i <= vcursor_xmax)
 					{
@@ -577,7 +578,7 @@ window_fill(int window_identifier,
 						bool	print_acs_vline = false;
 						char	column_format;
 
-						column_format = desc->headline_transl != NULL && pos > 0 ? desc->headline_transl[pos] : ' ';
+						column_format = desc->headline_transl != NULL && pos >= 0 ? desc->headline_transl[pos] : ' ';
 
 						if (opts->force_uniborder && desc->linestyle == 'a')
 						{
@@ -697,6 +698,12 @@ window_fill(int window_identifier,
 							waddch(win, ACS_VLINE);
 							bytes = 0;
 							rowstr += 1;
+
+							/*
+							 * because we printed subst char already and we updated rowstr,
+							 * we don't would to increase bytes variable later.
+							 */
+							skip_char = true;
 						}
 					}
 					else
@@ -755,7 +762,9 @@ window_fill(int window_identifier,
 						{
 							i += 1;
 							ptr += 1;
-							bytes += 1;
+
+							if (!skip_char)
+								bytes += 1;
 						}
 						else
 						{
@@ -764,7 +773,9 @@ window_fill(int window_identifier,
 
 							i = dsplen != -1 && i != -1 ? i + dsplen : -1;
 							ptr += len;
-							bytes += len;
+
+							if (!skip_char)
+								bytes += len;
 						}
 					}
 					else
