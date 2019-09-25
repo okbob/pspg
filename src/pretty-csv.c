@@ -824,14 +824,15 @@ read_csv(RowBucketType *rb,
 						if (*ptr++ == '\n')
 						{
 							_multiline = true;
-							if (cw > width)
-								width = cw;
+							width = cw > width ? cw : width;
 
 							cw = 0;
 						}
 						else
 							cw++;
 					}
+
+					width = cw > width ? cw : width;
 				}
 				else
 				{
