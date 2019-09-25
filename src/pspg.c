@@ -2547,6 +2547,9 @@ main(int argc, char *argv[])
 		{"bold-cursor", no_argument, 0, 13},
 		{"only-for-tables", no_argument, 0, 14},
 		{"about", no_argument, 0, 16},
+		{"csv", no_argument, 0, 17},
+		{"csv-separator", required_argument, 0, 18},
+		{"csv-border", required_argument, 0, 19},
 		{0, 0, 0, 0}
 	};
 
@@ -2578,6 +2581,9 @@ main(int argc, char *argv[])
 	opts.force_ascii_art = false;
 	opts.bold_labels = false;
 	opts.bold_cursor = false;
+	opts.csv_format = false;
+	opts.csv_separator = -1;			/* auto detection */
+	opts.csv_border_type = 2;			/* outer border */
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -2610,6 +2616,10 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -X             don't use alternate screen\n");
 				fprintf(stderr, "  --bold-labels  row, column labels use bold font\n");
 				fprintf(stderr, "  --bold-cursor  cursor use bold font\n");
+				fprintf(stderr, "  --csv          input stream has csv format\n");
+				fprintf(stderr, "  --csv-separator\n");
+				fprintf(stderr, "                 char used as field separator\n");
+				fprintf(stderr, "  --csv-border   type of borders (0..2)\n");
 				fprintf(stderr, "  --help         show this help\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
@@ -2702,6 +2712,21 @@ main(int argc, char *argv[])
 				fprintf(stdout, "Licence:\n");
 				fprintf(stdout, "    Distributed under BSD licence\n\n");
 				exit(0);
+				break;
+			case 17:
+				opts.csv_format = true;
+				break;
+			case 18:
+				opts.csv_separator = *optarg;
+				break;
+			case 19:
+				n = atoi(optarg);
+				if (n < 0 || n > 2)
+				{
+					fprintf(stderr, "csv border type can be between 0 and 2\n");
+					exit(EXIT_FAILURE);
+				}
+				opts.csv_border_type = n;
 				break;
 
 			case 'V':
@@ -2798,7 +2823,13 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
-	readfile(fp, &opts, &desc);
+	if (!opts.csv_format)
+		readfile(fp, &opts, &desc);
+	else
+	{
+		read_and_format_csv(fp, &opts, &desc);
+	}
+
 	if (fp != NULL)
 	{
 		fclose(fp);

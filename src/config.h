@@ -39,6 +39,9 @@ typedef struct
 	int		freezed_cols;
 	bool	bold_labels;
 	bool	bold_cursor;
+	bool	csv_format;
+	char	csv_separator;
+	int		csv_border_type;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

@@ -111,6 +111,10 @@ save_config(char *path, Options *opts)
 	if (result < 0)
 		return false;
 
+	result = fprintf(f, "csv_border_type = %d\n", opts->csv_border_type);
+	if (result < 0)
+		return false;
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
@@ -177,6 +181,8 @@ load_config(char *path, Options *opts)
 				opts->no_topbar = bool_val;
 			else if (strcmp(key, "vertical_cursor") == 0)
 				opts->vertical_cursor = bool_val;
+			else if (strcmp(key, "csv_border_type") == 0)
+				opts->vertical_cursor = int_val;
 
 			free(line);
 			line = NULL;

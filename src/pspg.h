@@ -195,12 +195,15 @@ extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
 extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 
+/* from pretty-csv.c */
+extern void read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc);
+
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

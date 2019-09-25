@@ -41,8 +41,6 @@
 #include "pspg.h"
 #include "unicode.h"
 
-
-
 /*
  * Flush data to window. When row is a decoration, then
  * replace ascii decoration by special terminal decoration.
