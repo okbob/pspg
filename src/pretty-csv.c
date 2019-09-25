@@ -934,6 +934,107 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 			}
 		}
 	}
+	else
+	{
+		char	*ptr;
+		int		i;
+
+		/*
+		 * When we have not headline. We know structure, so we can
+		 * "translate" headline here (generate translated headline).
+		 */
+		desc->columns = linebuf.maxfields;
+		desc->cranges = smalloc(desc->columns * sizeof(CRange), "prepare metadata");
+		memset(desc->cranges, 0, desc->columns * sizeof(CRange));
+		desc->headline_transl = smalloc(desc->maxbytes + 3, "prepare metadata");
+
+		ptr = desc->headline_transl;
+
+		if (config.border == 1)
+			*ptr++ = 'd';
+		else if (config.border == 2)
+		{
+			*ptr++ = 'L';
+			*ptr++ = 'd';
+		}
+
+		for (i = 0; i < linebuf.maxfields; i++)
+		{
+			int		width = linebuf.widths[i];
+
+			desc->cranges[i].name_pos = -1;
+			desc->cranges[i].name_size = -1;
+
+			if (i > 0)
+			{
+				if (config.border > 0)
+				{
+					*ptr++ = 'd';
+					*ptr++ = 'I';
+					*ptr++ = 'd';
+				}
+				else
+					*ptr++ = 'I';
+			}
+
+			while (width--)
+			{
+				*ptr++ = 'd';
+			}
+		}
+
+		if (config.border == 1)
+			*ptr++ = 'd';
+		else if (config.border == 2)
+		{
+			*ptr++ = 'd';
+			*ptr++ = 'R';
+		}
+
+		*ptr = '\0';
+		desc->headline_char_size = strlen(desc->headline_transl);
+
+		desc->cranges[0].xmin = 0;
+		ptr = desc->headline_transl;
+		i = 0;
+
+		while (*ptr)
+		{
+			if (*ptr++ == 'I')
+			{
+				desc->cranges[i].xmax = ptr - desc->headline_transl - 1;
+				desc->cranges[++i].xmin = ptr - desc->headline_transl - 1;
+			}
+		}
+
+		desc->cranges[i].xmax = desc->headline_char_size - 1;
+
+		desc->maxy = printbuf.flushed_rows - 1;
+		desc->total_rows = printbuf.flushed_rows;
+		desc->last_row = desc->total_rows - 1;
+
+		desc->footer_row = desc->last_row;
+		desc->footer_rows = 1;
+
+		if (config.border == 2)
+		{
+			desc->first_data_row = 0;
+			desc->border_top_row = 0;
+			desc->border_head_row = 0;
+			desc->last_data_row = desc->total_rows - 2 - 1;
+			desc->border_bottom_row = desc->last_data_row + 1;
+		}
+		else
+		{
+			desc->first_data_row = 0;
+			desc->border_top_row = -1;
+			desc->border_head_row = -1;
+
+			desc->border_bottom_row = -1;
+			desc->last_data_row = desc->total_rows - 1 - 1;
+		}
+	}
 
 	free(printbuf.buffer);
+
 }

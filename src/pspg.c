@@ -2836,8 +2836,10 @@ main(int argc, char *argv[])
 		fp = NULL;
 	}
 
-	if (desc.headline != NULL)
-		detected_format = translate_headline(&opts, &desc);
+	if (desc.headline)
+		(void) translate_headline(&opts, &desc);
+
+	detected_format = desc.headline_transl;
 
 	if (!detected_format && only_for_tables)
 	{
@@ -2964,7 +2966,10 @@ reinit_theme:
 	}
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
-		desc.first_data_row = desc.border_head_row + 1;
+	{
+		if (desc.border_head_row != -1)
+			desc.first_data_row = desc.border_head_row + 1;
+	}
 	else if (desc.title_rows > 0 && desc.is_expanded_mode)
 		desc.first_data_row = desc.title_rows;
 	else
@@ -4616,9 +4621,9 @@ recheck_end:
 			case cmd_SortAsc:
 			case cmd_SortDesc:
 				{
-					if (!desc.namesline)
+					if (desc.columns == 0)
 					{
-						show_info_wait(&opts, &scrdesc, " Columns are not detected", NULL, true, true, true);
+						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true);
 						break;
 					}
 
