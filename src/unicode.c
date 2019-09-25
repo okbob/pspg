@@ -336,15 +336,13 @@ utf_string_dsplen(const char *s, size_t max_bytes)
 	int result = 0;
 	const char *ptr = s;
 
-	while (*ptr != '\0' && ((int) max_bytes == -1 && max_bytes > 0))
+	while (*ptr != '\0' && max_bytes > 0)
 	{
 		int		clen = utf8charlen(*ptr);
 
 		result += utf_dsplen(ptr);
 		ptr += clen;
-
-		if (((int) max_bytes) > 0)
-			max_bytes -= clen;
+		max_bytes -= clen;
 	}
 
 	return result;

@@ -525,11 +525,11 @@ pb_print_csv(PrintbufType *printbuf,
 						{
 							if (multiline)
 							{
-								width = utf_string_dsplen_multiline(field, -1, &_more_lines, true);
+								width = utf_string_dsplen_multiline(field, SIZE_MAX, &_more_lines, true);
 								more_lines |= _more_lines;
 							}
 							else
-								width = utf_string_dsplen(field, -1);
+								width = utf_string_dsplen(field, SIZE_MAX);
 						}
 
 						spaces = linebuf->widths[j] - width;
@@ -971,7 +971,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 			if (opts->force8bit)
 				desc->headline_char_size = desc->headline_size;
 			else
-				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, -1);
+				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, SIZE_MAX);
 
 			desc->first_data_row = desc->border_head_row + 1;
 
