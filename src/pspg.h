@@ -201,9 +201,9 @@ extern void read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 
