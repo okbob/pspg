@@ -68,6 +68,7 @@ typedef struct
 	int			size;
 	int			free;
 	LineBuffer *linebuf;
+	bool		force8bit;
 	int			flushed_rows;		/* number of flushed rows */
 	int			maxbytes;
 	bool		printed_headline;
@@ -383,7 +384,7 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 				break;
 			}
 
-			chrl = utf8charlen(*ptr);
+			chrl = printbuf->force8bit ? 1 : utf8charlen(*ptr);
 			size += chrl;
 			ptr += chrl;
 		}
@@ -500,13 +501,36 @@ pb_print_csv(PrintbufType *printbuf,
 					{
 						bool	_isdigit = isdigit(field[0]);
 
-						if (multiline)
+						if (printbuf->force8bit)
 						{
-							width = utf_string_dsplen_multiline(field, -1, &_more_lines, true);
-							more_lines |= _more_lines;
+							if (multiline)
+							{
+								char   *ptr = field;
+								width = 0;
+
+								while (*ptr)
+								{
+									if (*ptr++ == '\n')
+									{
+										more_lines |= true;
+										break;
+									}
+									width += 1;
+								}
+							}
+							else
+								width = strlen(field);
 						}
 						else
-							width = utf_string_dsplen(field, -1);
+						{
+							if (multiline)
+							{
+								width = utf_string_dsplen_multiline(field, -1, &_more_lines, true);
+								more_lines |= _more_lines;
+							}
+							else
+								width = utf_string_dsplen(field, -1);
+						}
 
 						spaces = linebuf->widths[j] - width;
 
@@ -601,6 +625,7 @@ static void
 read_csv(RowBucketType *rb,
 		 LinebufType *linebuf,
 		 ConfigType *config,
+		 bool force8bit,
 		 FILE *ifile)
 {
 	bool	skip_initial = true;
@@ -681,6 +706,12 @@ read_csv(RowBucketType *rb,
 
 			if (config->separator != -1 && c == config->separator && !instr)
 			{
+				if (nfields >= 1024)
+				{
+					fprintf(stderr, "too much columns");
+					exit(1);
+				}
+
 				if (!skip_initial)
 				{
 					linebuf->sizes[nfields] = last_nw - first_nw;
@@ -700,7 +731,7 @@ read_csv(RowBucketType *rb,
 				last_nw = pos;
 			}
 
-			l = utf8charlen(c);
+			l = force8bit ? 1 : utf8charlen(c);
 			if (l > 1)
 			{
 				int		i;
@@ -781,7 +812,32 @@ read_csv(RowBucketType *rb,
 				locbuf[linebuf->sizes[i]] = '\0';
 				locbuf += linebuf->sizes[i] + 1;
 
-				width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i], &_multiline, false);
+				if (force8bit)
+				{
+					int		cw = 0;
+					char   *ptr = row->fields[i];
+
+					width = 0;
+
+					while (*ptr)
+					{
+						if (*ptr++ == '\n')
+						{
+							_multiline = true;
+							if (cw > width)
+								width = cw;
+
+							cw = 0;
+						}
+						else
+							cw++;
+					}
+				}
+				else
+				{
+					width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i], &_multiline, false);
+				}
+
 				if (width > linebuf->widths[i])
 					linebuf->widths[i] = width;
 
@@ -875,10 +931,11 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	linebuf.size = 10 * 1024;
 
 	config.separator = opts->csv_separator;
-	config.linestyle = opts->force_ascii_art ? 'a' : 'u';
+
+	config.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
 	config.border = opts->csv_border_type;
 
-	read_csv(&rowbuckets, &linebuf, &config, fp);
+	read_csv(&rowbuckets, &linebuf, &config, opts->force8bit, fp);
 
 	/* reuse allocated memory */
 	printbuf.buffer = linebuf.buffer;
@@ -886,6 +943,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	printbuf.free = linebuf.size;
 	printbuf.used = 0;
 	printbuf.linebuf = &desc->rows;
+	printbuf.force8bit = opts->force8bit;
 
 	linebuf.buffer = NULL;		/* sanitize ptr */
 	linebuf.size = 0;
@@ -909,7 +967,11 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 			desc->border_head_row = headline_rowno;
 			desc->headline = desc->rows.rows[headline_rowno];
 			desc->headline_size = strlen(desc->headline);
-			desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, -1);
+
+			if (opts->force8bit)
+				desc->headline_char_size = desc->headline_size;
+			else
+				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, -1);
 
 			desc->first_data_row = desc->border_head_row + 1;
 
@@ -1036,5 +1098,4 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	}
 
 	free(printbuf.buffer);
-
 }
