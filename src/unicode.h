@@ -30,6 +30,6 @@ extern bool utf8_isupper(const char *s);
 extern unsigned char *unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size);
 extern int utf8_tofold(const char *s);
 extern int utf2wchar_with_len(const unsigned char *from, wchar_t *to, int len);
-extern int utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bool first_only);
+extern int utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bool first_only, long int *digits, long int *others);
 
 #endif

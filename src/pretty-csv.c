@@ -51,7 +51,11 @@ typedef struct
 	int			starts[1024];		/* start of first char of column (in bytes) */
 	int			sizes[1024];		/* lenght of chars of column (in bytes) */
 	int			widths[1024];		/* display width of column */
-	char		multilines[1024];	/* true, when column has some multiline chars */
+	bool		multilines[1024];	/* true, when column has some multiline chars */
+	long int	digits[1024];		/* number of digits, used for format detection */
+	long int	tsizes[1024];		/* size of column in bytes, used for format detection */
+	int			firstdigit[1024];	/* rows where first char is digit */
+	char		types[1024];		/* types of columns */
 } LinebufType;
 
 typedef struct
@@ -414,10 +418,24 @@ pb_print_csv(PrintbufType *printbuf,
 	int		border = config->border;
 	char	buffer[20];
 	RowBucketType   *root_rb = rb;
+	int		i;
 
 	printbuf->printed_headline = false;
 	printbuf->flushed_rows = 0;
 	printbuf->maxbytes = 0;
+
+	/* try to detect types from numbers of digits */
+	for (i = 0; i < linebuf->maxfields; i++)
+	{
+		if ((linebuf->tsizes[i] == 0 && linebuf->digits[i] > 0) ||
+			(linebuf->firstdigit[i] > 0 && linebuf->processed - 1 == 1))
+			linebuf->types[i] = 'd';
+		else if ((((double) linebuf->firstdigit[i] / (double) (linebuf->processed - 1)) > 0.8)
+			&& (((double) linebuf->digits[i] / (double) linebuf->tsizes[i]) > 0.5))
+			linebuf->types[i] = 'd';
+		else
+			linebuf->types[i] = 'a';
+	}
 
 	if (title)
 	{
@@ -499,7 +517,12 @@ pb_print_csv(PrintbufType *printbuf,
 
 					if (field && *field != '\0')
 					{
-						bool	_isdigit = isdigit(field[0]);
+						bool	_isdigit;
+
+						if (isdigit(*field))
+							_isdigit = linebuf->types[j] == 'd';
+						else
+							_isdigit = false;
 
 						if (printbuf->force8bit)
 						{
@@ -525,7 +548,7 @@ pb_print_csv(PrintbufType *printbuf,
 						{
 							if (multiline)
 							{
-								width = utf_string_dsplen_multiline(field, SIZE_MAX, &_more_lines, true);
+								width = utf_string_dsplen_multiline(field, SIZE_MAX, &_more_lines, true, NULL, NULL);
 								more_lines |= _more_lines;
 							}
 							else
@@ -803,6 +826,8 @@ read_csv(RowBucketType *rb,
 			{
 				int		width;
 				bool	_multiline;
+				long int		digits = 0;
+				long int		total = 0;
 
 				row->fields[i] = locbuf;
 
@@ -821,6 +846,11 @@ read_csv(RowBucketType *rb,
 
 					while (*ptr)
 					{
+						if (isdigit(*ptr))
+							digits += 1;
+						else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
+							total += 1;
+
 						if (*ptr++ == '\n')
 						{
 							_multiline = true;
@@ -836,7 +866,17 @@ read_csv(RowBucketType *rb,
 				}
 				else
 				{
-					width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i], &_multiline, false);
+					width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i], &_multiline, false, &digits, &total);
+				}
+
+				/* skip first possible header row */
+				if (linebuf->processed > 0)
+				{
+					linebuf->tsizes[i] += total;
+					linebuf->digits[i] += digits;
+
+					if (isdigit(*row->fields[i]))
+						linebuf->firstdigit[i]++;
 				}
 
 				if (width > linebuf->widths[i])

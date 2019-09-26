@@ -11,6 +11,7 @@
  *-------------------------------------------------------------------------
  */
 
+#include <ctype.h>
 #include <stdbool.h>
 
 #include "unicode.h"
@@ -349,7 +350,7 @@ utf_string_dsplen(const char *s, size_t max_bytes)
 }
 
 int
-utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bool first_only)
+utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bool first_only, long int *digits, long int *others)
 {
 	int result = -1;
 	int		rowlen = 0;
@@ -357,16 +358,24 @@ utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bo
 
 	*multiline = false;
 
-	while (*ptr != '\0' && ((int) max_bytes == -1 || max_bytes > 0))
+	while (*ptr != '\0' && max_bytes > 0)
 	{
 		int		clen;
+
+		if (!first_only)
+		{
+			if (isdigit(*ptr))
+				(*digits)++;
+			else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
+				(*others)++;
+		}
 
 		if (*ptr == '\n')
 		{
 			*multiline = true;
 
 			result = rowlen > result ? rowlen : result;
-			max_bytes -= (int) max_bytes > 0 ? 1 : 0;
+			max_bytes -= 1;
 
 			rowlen = 0;
 			ptr += 1;
@@ -380,8 +389,7 @@ utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bo
 		clen = utf8charlen(*ptr);
 		rowlen += utf_dsplen(ptr);
 		ptr += clen;
-		if ((int) max_bytes > 0)
-			max_bytes -= clen;
+		max_bytes -= clen;
 	}
 
 	return result != -1 ? result : rowlen;
