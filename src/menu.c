@@ -177,7 +177,7 @@ get_menu_style(int main_theme)
 		case 9:
 			return ST_MENU_STYLE_PERFECT;
 		case 10:
-			return ST_MENU_STYLE_VISION;
+			return ST_MENU_STYLE_XGOLD_BLACK;
 		case 11:
 			return ST_MENU_STYLE_OLD_TURBO;
 		case 12:
