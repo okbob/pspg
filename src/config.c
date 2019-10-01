@@ -182,7 +182,7 @@ load_config(char *path, Options *opts)
 			else if (strcmp(key, "vertical_cursor") == 0)
 				opts->vertical_cursor = bool_val;
 			else if (strcmp(key, "csv_border_type") == 0)
-				opts->vertical_cursor = int_val;
+				opts->csv_border_type = int_val;
 
 			free(line);
 			line = NULL;
