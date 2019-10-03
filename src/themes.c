@@ -65,16 +65,30 @@ init_color_rgb_ff(short color, short r, short g, short b)
 			   (b / 255.0) * 1000.0);
 }
 
+static void
+set_default_colors(short foreground, short background, bool no_assume_default_colors, bool *use_bkgd)
+{
+	if (no_assume_default_colors)
+	{
+		init_pair(1, foreground, background);
+		*use_bkgd = true;
+	}
+	else
+		assume_default_colors(foreground, background);
+}
+
 /*
  * Set color pairs based on style
  */
 void
-initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
+initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_assume_default_colors, bool *use_bkgd)
 {
 	attr_t labels_attr = bold_labels ? A_BOLD : 0;
 	attr_t cursor_attr = bold_cursor ? A_BOLD : 0;
 
 	init_pair(21, COLOR_WHITE, COLOR_BLACK);		/* Fx keys */
+
+	*use_bkgd = false;
 
 	memset(theme_attrs, 0, sizeof(theme_attrs));
 
@@ -110,7 +124,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 1:
 			/* mc theme */
-			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+			set_default_colors(COLOR_WHITE, COLOR_BLUE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -138,7 +152,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 2:
 			/* FoxPro theme */
-			assume_default_colors(COLOR_WHITE, COLOR_CYAN);
+			set_default_colors(COLOR_WHITE, COLOR_CYAN, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false,0);
 			set_colour(3, COLOR_WHITE, COLOR_CYAN, true, 0);
@@ -166,7 +180,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 3:
 			/* PD Menu theme */
-			assume_default_colors(COLOR_BLACK, COLOR_CYAN);
+			set_default_colors(COLOR_BLACK, COLOR_CYAN, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
 			set_colour(3, COLOR_BLACK, COLOR_CYAN, false, 0);
@@ -194,7 +208,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 4:
 			/* White theme */
-			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
+			set_default_colors(COLOR_BLACK, COLOR_WHITE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
@@ -248,7 +262,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 6:
 			/* PC Fand theme */
-			assume_default_colors(COLOR_WHITE, COLOR_BLACK);
+			set_default_colors(COLOR_WHITE, COLOR_BLACK, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLACK, false, 0);
@@ -275,7 +289,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 7:
 			/* Green theme */
-			assume_default_colors(COLOR_GREEN, COLOR_BLACK);
+			set_default_colors(COLOR_GREEN, COLOR_BLACK, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_CYAN, COLOR_BLACK, false, 0);
 			set_colour(3, COLOR_GREEN, COLOR_BLACK, false, 0);
@@ -303,7 +317,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 8:
 			/* Blue theme */
-			assume_default_colors(COLOR_CYAN, COLOR_BLUE);
+			set_default_colors(COLOR_CYAN, COLOR_BLUE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -331,7 +345,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 9:
 			/* Word Perfect theme */
-			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+			set_default_colors(COLOR_WHITE, COLOR_BLUE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
@@ -359,7 +373,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 10:
 			/* low contrast theme */
-			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
+			set_default_colors(COLOR_BLUE, COLOR_CYAN, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_BLUE, COLOR_CYAN, false, 0);
@@ -387,7 +401,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 11:
 			/* Dark cyan theme */
-			assume_default_colors(COLOR_CYAN, COLOR_BLACK);
+			set_default_colors(COLOR_CYAN, COLOR_BLACK, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(3, COLOR_CYAN, COLOR_BLACK, false, 0);
@@ -414,7 +428,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 12:
 			/* Paradox like theme */
-			assume_default_colors(COLOR_BLUE, COLOR_CYAN);
+			set_default_colors(COLOR_BLUE, COLOR_CYAN, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_CYAN, true, 0);
@@ -442,7 +456,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 13:
 			/* DBase retro theme */
-			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+			set_default_colors(COLOR_WHITE, COLOR_BLUE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLACK, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
@@ -469,7 +483,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 14:
 			/* DBase retro magenta */
-			assume_default_colors(COLOR_WHITE, COLOR_BLUE);
+			set_default_colors(COLOR_WHITE, COLOR_BLUE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
@@ -497,7 +511,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 15:
 			/* Red theme */
-			assume_default_colors(COLOR_BLACK, COLOR_WHITE);
+			set_default_colors(COLOR_BLACK, COLOR_WHITE, no_assume_default_colors, use_bkgd);
 
 			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
 			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
@@ -563,7 +577,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color(33, 149, 545, 824);
 			init_color(160, 863, 196, 184);
 
-			assume_default_colors(245, 234);
+			set_default_colors(245, 234, no_assume_default_colors, use_bkgd);
 
 			init_pair(2, 245, 235);
 			init_pair(3, 244, 234);
@@ -605,7 +619,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color(160, 863, 196, 184);
 			init_color(137, 780, 607, 0);
 
-			assume_default_colors(234, 245);
+			set_default_colors(234, 245, no_assume_default_colors, use_bkgd);
 
 			init_pair(2, 235, 244);
 			init_pair(3, 234, 245);
@@ -652,7 +666,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
 			init_color_rgb_ff(213, 0xfb, 0xf1, 0xc7); /* cursor bg */
 
-			assume_default_colors(204, 200);
+			set_default_colors(204, 200, no_assume_default_colors, use_bkgd);
 
 			init_pair(2, 203, 202);
 			init_pair(3, 201, 200);
@@ -703,7 +717,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 			init_color(240, 40, 50, 200);
 
-			assume_default_colors(204, 200);
+			set_default_colors(204, 200, no_assume_default_colors, use_bkgd);
 
 			init_pair(2, 203, 202);
 			init_pair(3, 201, 200);

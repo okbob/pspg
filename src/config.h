@@ -42,6 +42,7 @@ typedef struct
 	bool	csv_format;
 	char	csv_separator;
 	int		csv_border_type;
+	bool	no_assume_default_colors;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

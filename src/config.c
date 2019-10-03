@@ -106,6 +106,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("without_commandbar", opts->no_commandbar);
 	SAFE_SAVE_BOOL_OPTION("without_topbar", opts->no_topbar);
 	SAFE_SAVE_BOOL_OPTION("vertical_cursor", opts->vertical_cursor);
+	SAFE_SAVE_BOOL_OPTION("o_assume_default_colors", opts->no_assume_default_colors);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -183,6 +184,8 @@ load_config(char *path, Options *opts)
 				opts->vertical_cursor = bool_val;
 			else if (strcmp(key, "csv_border_type") == 0)
 				opts->csv_border_type = int_val;
+			else if (strcmp(key, "no_assume_default_colors") == 0)
+				opts->no_assume_default_colors = bool_val;
 
 			free(line);
 			line = NULL;

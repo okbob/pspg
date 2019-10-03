@@ -2517,6 +2517,8 @@ main(int argc, char *argv[])
 	bool	has_multilines = false;
 	bool	mouse_was_initialized = false;
 
+	bool	use_bkgd;
+
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
 
@@ -2550,6 +2552,7 @@ main(int argc, char *argv[])
 		{"csv", no_argument, 0, 17},
 		{"csv-separator", required_argument, 0, 18},
 		{"csv-border", required_argument, 0, 19},
+		{"no_assume_default_colors", no_argument, 0, 20},
 		{0, 0, 0, 0}
 	};
 
@@ -2584,6 +2587,8 @@ main(int argc, char *argv[])
 	opts.csv_format = false;
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_border_type = 2;			/* outer border */
+	opts.no_assume_default_colors = false;
+
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -2643,6 +2648,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --no-topbar\n");
 				fprintf(stderr, "  --no-bars\n");
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
+				fprintf(stderr, "  --no_assume_default_colors\n");
+				fprintf(stderr, "                 don't use function assume_default_colors\n");
 				fprintf(stderr, "  --tabular-cursor\n");
 				fprintf(stderr, "                 cursor is visible only when data has table format\n");
 				fprintf(stderr, "  --vertical-cursor\n");
@@ -2727,6 +2734,9 @@ main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				opts.csv_border_type = n;
+				break;
+			case 20:
+				opts.no_assume_default_colors = true;
 				break;
 
 			case 'V':
@@ -2928,12 +2938,15 @@ main(int argc, char *argv[])
 
 reinit_theme:
 
-	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
+	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor, opts.no_assume_default_colors, &use_bkgd);
 
 	cbreak();
 	keypad(stdscr, TRUE);
 	curs_set(0);
 	noecho();
+
+	if (use_bkgd)
+		wbkgdset(stdscr, COLOR_PAIR(1));
 
 #ifdef NCURSES_EXT_FUNCS
 
