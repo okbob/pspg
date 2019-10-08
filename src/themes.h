@@ -53,6 +53,8 @@ typedef struct
 	attr_t cursor_rownum_attr;		/* colors for cursor rownum column */
 	attr_t cross_cursor_attr;		/* colors for cross horizontal and vertical cursor (data) */
 	attr_t cross_cursor_line_attr;	/* colors for cross horizontal and vertical cursor (border) */
+	attr_t pattern_vertical_cursor_attr;
+	attr_t pattern_vertical_cursor_line_attr;
 } Theme;
 
 #define		WINDOW_LUC				0

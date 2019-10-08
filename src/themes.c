@@ -120,6 +120,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, -1, -1, false, 0);							/* rownum colors */
 			set_colour(22, -1, -1, false, A_REVERSE);					/* cross cursor data */
 			set_colour(23, -1, -1, false, A_REVERSE);					/* cross cursor line */
+			set_colour(22, -1, -1, false, A_REVERSE);					/* cross cursor data */
+			set_colour(23, -1, -1, false, A_REVERSE);					/* cross cursor line */
+			set_colour(24, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);/* vertical cursor pattern data */
+			set_colour(25, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);/* vertical cursor pattern line */
 			break;
 
 		case 1:
@@ -148,6 +152,9 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
+
 			break;
 
 		case 2:
@@ -174,8 +181,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true,0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false,0);
 			set_colour(21, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(22, COLOR_BLUE, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_BLUE, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 3:
@@ -204,6 +213,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE | cursor_attr);
 			set_colour(23, COLOR_WHITE, COLOR_CYAN, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE);
 			break;
 
 		case 4:
@@ -223,14 +234,16 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
 			set_colour(17, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE);
 			break;
 
 		case 5:
@@ -250,14 +263,16 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(12, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(13, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
 			set_colour(17, -1, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_GREEN, false, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, false, cursor_attr);
 			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 6:
@@ -277,14 +292,16 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, false, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
 			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_BLACK, false, 0);
+			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(20, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(20, COLOR_CYAN, COLOR_BLUE, true, cursor_attr);
 			set_colour(22, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
 			set_colour(23, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 7:
@@ -304,15 +321,17 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(12, COLOR_WHITE, COLOR_GREEN, true, 0);
 			set_colour(13, COLOR_WHITE, COLOR_GREEN, true, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_WHITE, COLOR_CYAN, false, 0);
+			set_colour(15, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(17, COLOR_GREEN, COLOR_CYAN, false, 0);
 			set_colour(18, COLOR_CYAN, COLOR_BLACK, false, 0);
 			set_colour(19, COLOR_CYAN, COLOR_GREEN, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(21, COLOR_CYAN, COLOR_BLACK, false, 0);
 			set_colour(22, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE |  cursor_attr);
 			set_colour(23, COLOR_GREEN, COLOR_GREEN, true, A_REVERSE);
+			set_colour(24, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_CYAN, COLOR_GREEN, true, A_REVERSE);
 			break;
 
 		case 8:
@@ -328,19 +347,21 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(11, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(11, COLOR_CYAN, COLOR_CYAN, true, 0);
 			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(13, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_CYAN, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_CYAN, COLOR_GREEN, true, 0);
 			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(21, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_BLUE, true, A_REVERSE);
+			set_colour(23, COLOR_CYAN, COLOR_CYAN, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_CYAN, true, A_REVERSE);
 			break;
 
 		case 9:
@@ -369,6 +390,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 10:
@@ -397,6 +420,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, COLOR_BLUE, COLOR_CYAN, false, 0);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_BLUE, true, A_REVERSE);
 			break;
 
 		case 11:
@@ -418,12 +443,14 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
 			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_CYAN, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_CYAN, COLOR_GREEN, true, 0);
 			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
 			set_colour(19, COLOR_CYAN, COLOR_MAGENTA, false, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(22, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_BLUE, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_CYAN, true, A_REVERSE);
 			break;
 
 		case 12:
@@ -448,10 +475,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(17, COLOR_BLUE, COLOR_GREEN, false, 0);
 			set_colour(18, COLOR_YELLOW, COLOR_CYAN, true, 0);
 			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_MAGENTA, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_MAGENTA, true, cursor_attr);
 			set_colour(21, COLOR_CYAN, COLOR_CYAN, true, 0);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_BLUE, true, A_REVERSE);
 			break;
 
 		case 13:
@@ -476,9 +505,12 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
 			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
+
 			break;
 
 		case 14:
@@ -507,6 +539,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
 			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			break;
 
 		case 15:
@@ -527,13 +561,15 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
 			set_colour(14, COLOR_YELLOW, COLOR_RED, true, A_REVERSE | A_BOLD);
 			set_colour(15, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(16, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(16, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(17, COLOR_WHITE, COLOR_BLACK, true, 0);
 			set_colour(18, COLOR_CYAN, COLOR_BLUE, true, 0);
 			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
 			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
 			set_colour(23, COLOR_RED, COLOR_BLACK, false, 0);
+			set_colour(24, COLOR_RED, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_RED, COLOR_BLACK, true, A_REVERSE);
 			break;
 
 		case 16:
@@ -562,6 +598,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			set_colour(21, -1, -1, false, 0);
 			set_colour(22, -1, -1, true, cursor_attr);
 			set_colour(23, -1, -1, false, 0);
+			set_colour(24, -1, -1, true, A_REVERSE | cursor_attr);
+			set_colour(25, -1, -1, true, A_REVERSE);
 			break;
 
 		case 17:
@@ -573,7 +611,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_color(245, 576, 631, 631);
 			init_color(254, 933, 910, 835);
 			init_color(136, 710, 537, 0);
-			init_color(137, 800, 627, 0);
+			init_color(137, 900, 627, 0);
+			init_color(138, 800, 627, 0);
 			init_color(33, 149, 545, 824);
 			init_color(160, 863, 196, 184);
 
@@ -601,6 +640,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_pair(21, 244, 235);
 			init_pair(22, 235, 137);
 			init_pair(23, 235, 137);
+			init_pair(24, 235, 138);
+			init_pair(25, 235, 138);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -617,7 +658,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_color(244, 557, 616, 624);
 			init_color(136, 710, 537, 0);
 			init_color(160, 863, 196, 184);
-			init_color(137, 780, 607, 0);
+			init_color(137, 880, 607, 0);
+			init_color(138, 780, 607, 0);
 
 			set_default_colors(234, 245, no_assume_default_colors, use_bkgd);
 
@@ -643,6 +685,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_pair(21, 235, 244);
 			init_pair(22, 235, 137);
 			init_pair(23, 235, 137);
+			init_pair(24, 235, 138);
+			init_pair(25, 235, 138);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -665,6 +709,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
 			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
 			init_color_rgb_ff(213, 0xfb, 0xf1, 0xc7); /* cursor bg */
+			init_color_rgb_ff(214, 0xd0, 0xcf, 0xa0); /* mark line cursor */
 
 			set_default_colors(204, 200, no_assume_default_colors, use_bkgd);
 
@@ -677,7 +722,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_pair(8, 17, 200);
 			init_pair(9, 206, 200);
 			init_pair(10, 203, 205);
-			init_pair(11, 204, 205);
+			init_pair(11, 206, 205);
 			init_pair(13, 203, 202);
 			init_pair(14, COLOR_WHITE, 211);
 			init_pair(15, 212, 204);
@@ -688,7 +733,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_pair(20, 212, 205);
 			init_pair(21, 206, 207);
 			init_pair(22, 203, 213);
-			init_pair(23, 204, 213);
+			init_pair(23, 206, 213);
+			init_pair(24, 201, 214);
+			init_pair(25, 206, 214);
+
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -715,6 +763,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_color_rgb_ff(214, 0xda, 0xda, 0xda); /* marked line bg */
 			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
 
+			init_color_rgb_ff(217, 0x40, 0x40, 0x40); /* vertical marked cursor bg */
+
 			init_color(240, 40, 50, 200);
 
 			set_default_colors(204, 200, no_assume_default_colors, use_bkgd);
@@ -740,7 +790,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor, bool no_as
 			init_pair(21, 204, 207);
 
 			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, COLOR_WHITE, COLOR_BLACK, false, 0);
+			set_colour(23, 204, COLOR_BLACK, false, 0);
+
+			init_pair(24, 213, 217);
+			init_pair(25, 204, 217);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;
@@ -876,6 +929,10 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 	}
 
 	/* cross cursor - initial setting */
-	t->cross_cursor_attr = theme_attr(22);// | A_BOLD;
+	t->cross_cursor_attr = theme_attr(22);
 	t->cross_cursor_line_attr = theme_attr(23);
+
+	t->pattern_vertical_cursor_attr = theme_attr(24);
+	t->pattern_vertical_cursor_line_attr = theme_attr(25);
+
 }

@@ -155,8 +155,6 @@ window_fill(int window_identifier,
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
-	int			positions[100][2];
-	int			npositions = 0;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -205,6 +203,8 @@ window_fill(int window_identifier,
 		bool		is_found_row = false;
 		bool		is_pattern_row = false;
 		char		buffer[10];
+		int			positions[100][2];
+		int			npositions = 0;
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
@@ -338,8 +338,6 @@ window_fill(int window_identifier,
 			  *scrdesc->searchterm != '\0')
 		{
 			const char *str = rowstr;
-
-			npositions = 0;
 
 			while (str != NULL && npositions < 100)
 			{
@@ -529,6 +527,7 @@ window_fill(int window_identifier,
 				{
 					bool	is_cursor;
 					bool	is_cross_cursor = false;
+					bool	is_vertical_cursor = false;
 					int		pos = (i != -1) ? srcx + i : -1;
 					bool	skip_char = false;
 
@@ -536,10 +535,12 @@ window_fill(int window_identifier,
 					{
 						is_cross_cursor = is_cursor_row;
 						is_cursor = !is_cursor_row && !is_pattern_row;
+						is_vertical_cursor = true;
 					}
 					else
 					{
 						is_cross_cursor = false;
+						is_vertical_cursor = false;
 						is_cursor = is_cursor_row;
 					}
 
@@ -602,16 +603,18 @@ window_fill(int window_identifier,
 						{
 							if (is_footer)
 								new_attr = t->pattern_data_attr;
+							else if (is_vertical_cursor)
+								new_attr = column_format == 'd' ? t->pattern_vertical_cursor_attr : t->pattern_vertical_cursor_line_attr;
 							else if (pos < desc->headline_char_size)
 								new_attr = column_format == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 
-							if (new_attr == t->pattern_data_attr && pos >= lineinfo->start_char)
+							if ((new_attr == t->pattern_data_attr || new_attr == t->pattern_vertical_cursor_attr) && pos >= lineinfo->start_char)
 							{
 								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
 								{
 									int		j;
 
-									for (j = 0; i < npositions; i++)
+									for (j = 0; j < npositions; j++)
 									{
 										if (pos >= positions[j][0] && pos < positions[j][1])
 										{
@@ -648,7 +651,7 @@ window_fill(int window_identifier,
 								{
 									int		j;
 
-									for (j = 0; i < npositions; i++)
+									for (j = 0; j < npositions; j++)
 									{
 										if (pos >= positions[j][0] && pos < positions[j][1])
 										{
