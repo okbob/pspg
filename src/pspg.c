@@ -101,13 +101,21 @@
 
 #ifdef HAVE_LIBREADLINE
 
-char		readline_buffer[1024];
-bool		got_readline_string;
-bool		force8bit;
+static char		readline_buffer[1024];
+static bool		got_readline_string;
+static bool		force8bit;
 static unsigned char	input;
-static bool input_avail = false;
+static bool		input_avail = false;
 
-static WINDOW *g_bottom_bar;
+static WINDOW  *g_bottom_bar;
+
+static char		last_row_search[256];
+static char		last_col_search[256];
+static char		last_line[256];
+static char		last_path[1025];
+static char		last_history[256];
+
+static bool		handle_sigint = false;
 
 #endif
 
@@ -123,10 +131,20 @@ int	debug_eventno = 0;
 #endif
 
 bool	press_alt = false;
+bool	got_sigint = false;
 MEVENT		event;
 
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt);
+static int get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeout);
+static char * tilde(char *path);
+
+static void
+SigintHandler(int sig_num)
+{
+	signal(SIGINT, SigintHandler);
+
+	handle_sigint = true;
+}
 
 int
 min_int(int a, int b)
@@ -2042,10 +2060,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (beep)
 		make_beep(opts);
 
-	if (applytimeout)
-		timeout(2000);
-	c = get_event(&event, &press_alt);
-	timeout(-1);
+	c = get_event(&event, &press_alt, &got_sigint, applytimeout ? 2000 : 0);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -2082,17 +2097,7 @@ static void
 got_string(char *line)
 {
 	if (line)
-	{
-
-#ifdef HAVE_READLINE_HISTORY
-
-		if (*line)
-			add_history(line);
-
-#endif
-
 		strcpy(readline_buffer, line);
-	}
 	else
 		readline_buffer[0] = '\0';
 
@@ -2130,17 +2135,20 @@ readline_redisplay()
 	wrefresh(g_bottom_bar);
 }
 
+
 #endif
 
 static void
-get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize)
+get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize, char *defstr)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 
 #ifdef HAVE_LIBREADLINE
 
 	int		c;
+	int		prev_c = 0;
 	mmask_t		prev_mousemask = 0;
+	bool	input_is_valid = true;
 
 	g_bottom_bar = bottom_bar;
 	got_readline_string = false;
@@ -2165,12 +2173,56 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	mousemask(0, &prev_mousemask);
 
+	/* use default value from buffer */
+	if (defstr && *defstr)
+	{
+		rl_insert_text(defstr);
+		rl_forced_update_display();
+		wrefresh(bottom_bar);
+	}
+
+	wtimeout(bottom_bar, 100);
+
 	while (!got_readline_string)
 	{
-		c = wgetch(bottom_bar);
+		do
+		{
+			errno = 0;
+			c = wgetch(bottom_bar);
+
+			if (errno != 0 && errno != 4)
+				goto finish_read;
+
+			if (handle_sigint || errno == 4)
+				goto finish_read;
+		}
+		while (c == ERR || c == 0);
+
+		/* detect double alts .. escape */
+		if (c == 27 && prev_c == 27)
+		{
+			/*
+			 * Cannot leave here - readline requires complete ALT pair.
+			 * So just update flag here.
+			 */
+			input_is_valid = false;
+		}
+
+		prev_c = c;
 
 		forward_to_readline(c);
 		wrefresh(bottom_bar);
+
+		if (!input_is_valid)
+			break;
+	}
+
+finish_read:
+
+	if (handle_sigint)
+	{
+		handle_sigint = false;
+		input_is_valid = false;
 	}
 
 	mousemask(prev_mousemask, NULL);
@@ -2180,8 +2232,49 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	curs_set(0);
 	noecho();
 
-	buffer[maxsize] = '\0';
-	strncpy(buffer, readline_buffer, maxsize - 1);
+	/* don't allow alt chars (garbage) in input string */
+	if (input_is_valid)
+	{
+		char   *ptr = readline_buffer;
+
+		while (*ptr)
+			if (*ptr++ == 27)
+			{
+				input_is_valid = false;
+				break;
+			}
+	}
+
+	if (input_is_valid)
+	{
+		strncpy(buffer, readline_buffer, maxsize - 1);
+		buffer[maxsize] = '\0';
+
+#ifdef HAVE_READLINE_HISTORY
+
+		if (*buffer)
+		{
+			/*
+			 * Don't write same strings to hist file
+			 */
+			if (*last_history == '\0' || strncmp(last_history, buffer, sizeof(last_history) != 0))
+			{
+				add_history(buffer);
+				strncpy(last_history, buffer, sizeof(last_history) - 1);
+				last_history[sizeof(last_history) - 1] = '\0';
+			}
+		}
+
+#endif
+
+	}
+	else
+	{
+		if (defstr)
+			*defstr = '\0';
+		buffer[0] = '\0';
+	}
+
 
 #else
 
@@ -2349,10 +2442,11 @@ get_x_focus(int vertical_cursor_column,
  * When keycode is related to mouse, then get mouse event details.
  */
 static int
-get_event(MEVENT *mevent, bool *alt)
+get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeoutval)
 {
 	bool	first_event = true;
 	int		c;
+	int		loops = -1;
 
 #ifdef DEBUG_PIPE
 
@@ -2368,21 +2462,56 @@ get_event(MEVENT *mevent, bool *alt)
 #endif
 
 	*alt = false;
+	*sigint = false;
 
 repeat:
 
+	if (timeoutval != -1)
+		loops = timeoutval / 100;
+
+	do
+	{
+		errno = 0;
+
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
-	ret = get_wch(&ch);
-	(void) ret;
+		ret = get_wch(&ch);
+		(void) ret;
 
-	c = ch;
+		c = ch;
 
 #else
 
-	c = getch();
+		c = getch();
 
 #endif
+
+		if (errno != 0 && errno != 4)
+			break;
+
+		errno = 0;
+
+		if (handle_sigint)
+		{
+			*sigint = true;
+			handle_sigint = false;
+			break;
+		}
+
+		if (loops >= 0)
+		{
+			if (--loops == 0)
+				break;
+		}
+	}
+	/*
+	 * On ncurses6 (Linux) get_wch returns zero on delay. But by man pages it
+	 * should to return ERR. So repead reading for both cases.
+	 */
+	while (c == 0 || c == ERR);
+
+	if (handle_sigint)
+		return 0;
 
 	if (c == KEY_MOUSE)
 	{
@@ -2456,6 +2585,7 @@ repeat:
 
 	return c;
 }
+
 
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
 #define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
@@ -2552,7 +2682,9 @@ main(int argc, char *argv[])
 		{"csv", no_argument, 0, 17},
 		{"csv-separator", required_argument, 0, 18},
 		{"csv-border", required_argument, 0, 19},
-		{"no_assume_default_colors", no_argument, 0, 20},
+		{"no-assume-default-colors", no_argument, 0, 20},
+		{"no-sigint-exit", no_argument, 0, 21},
+		{"no-sigint-search-reset", no_argument, 0, 22},
 		{0, 0, 0, 0}
 	};
 
@@ -2588,6 +2720,8 @@ main(int argc, char *argv[])
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_border_type = 2;			/* outer border */
 	opts.no_assume_default_colors = false;
+	opts.on_sigint_exit = false;
+	opts.no_sigint_search_reset = false;
 
 
 	load_config(tilde("~/.pspgconf"), &opts);
@@ -2642,6 +2776,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --line-numbers\n");
 				fprintf(stderr, "                 show line number column\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
+				fprintf(stderr, "  --no-sigint-search-reset\n");
+				fprintf(stderr, "                 without reset searching on sigint (CTRL C)\n");
 				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  --no-cursor    row cursor will be hidden\n");
 				fprintf(stderr, "  --no-commandbar\n");
@@ -2650,6 +2786,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
 				fprintf(stderr, "  --no_assume_default_colors\n");
 				fprintf(stderr, "                 don't use function assume_default_colors\n");
+				fprintf(stderr, "  --on-sigint-exit\n");
+				fprintf(stderr, "                 without exit on sigint(CTRL C or Escape)\n");
 				fprintf(stderr, "  --tabular-cursor\n");
 				fprintf(stderr, "                 cursor is visible only when data has table format\n");
 				fprintf(stderr, "  --vertical-cursor\n");
@@ -2738,7 +2876,12 @@ main(int argc, char *argv[])
 			case 20:
 				opts.no_assume_default_colors = true;
 				break;
-
+			case 21:
+				opts.on_sigint_exit = true;
+				break;
+			case 22:
+				opts.no_sigint_search_reset = true;
+				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
@@ -2925,6 +3068,8 @@ main(int argc, char *argv[])
 	else
 		noatty = false;
 
+	signal(SIGINT, SigintHandler);
+
 	if (noatty)
 		/* use stderr like stdin. This is fallback solution used by less */
 		newterm(termname(), stdout, stderr);
@@ -2939,6 +3084,8 @@ main(int argc, char *argv[])
 reinit_theme:
 
 	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor, opts.no_assume_default_colors, &use_bkgd);
+
+	timeout(100);
 
 	cbreak();
 	keypad(stdscr, TRUE);
@@ -3151,6 +3298,11 @@ reinit_theme:
 	rl_deprep_term_function = NULL;
 	rl_prep_term_function = NULL;
 
+	last_row_search[0] = '\0';
+	last_col_search[0] = '\0';
+	last_line[0] = '\0';
+	last_path[0] = '\0';
+
 #if RL_READLINE_VERSION > 0x0603
 
 	rl_change_environment = 0;
@@ -3163,6 +3315,8 @@ reinit_theme:
 
 	if (!reinit)
 		read_history(tilde("~/.pspg_history"));
+
+	last_history[0] = '\0';
 
 #endif
 
@@ -3380,7 +3534,7 @@ reinit_theme:
 				else
 					prev_event_is_mouse_press = false;
 
-				event_keycode = get_event(&event, &press_alt);
+				event_keycode = get_event(&event, &press_alt, &got_sigint, -1);
 
 				/* the comment for ignore_mouse_release follow */
 				if (ignore_mouse_release)
@@ -3405,9 +3559,29 @@ reinit_theme:
 		}
 
 		/* Exit immediately on F10 or input error */
-		if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
-			break;
+		if (got_sigint)
+		{
+			bool	processed_signal = false;
 
+			if (!opts.no_sigint_search_reset &&
+				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
+			{
+				*scrdesc.searchterm = '\0';
+				*scrdesc.searchcolterm = '\0';
+
+				scrdesc.searchterm_size = 0;
+				scrdesc.searchterm_char_size = 0;
+
+				reset_searching_lineinfo(&desc.rows);
+
+				processed_signal = true;
+			}
+
+			if (!processed_signal && opts.on_sigint_exit)
+				break;
+		}
+		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
+			break;
 
 #ifndef COMPILE_MENU
 
@@ -3506,6 +3680,28 @@ hide_menu:
 		{
 			raw_output_quit = true;
 			break;
+		}
+		else if (command == cmd_Escape)
+		{
+			/* same like sigterm handling */
+			bool	processed_signal = false;
+
+			if (!opts.no_sigint_search_reset &&
+				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
+			{
+				*scrdesc.searchterm = '\0';
+				*scrdesc.searchcolterm = '\0';
+
+				scrdesc.searchterm_size = 0;
+				scrdesc.searchterm_char_size = 0;
+
+				reset_searching_lineinfo(&desc.rows);
+
+				processed_signal = true;
+			}
+
+			if (!processed_signal && opts.on_sigint_exit)
+				break;
 		}
 
 		switch (command)
@@ -4596,7 +4792,7 @@ recheck_end:
 				{
 					char	linenotxt[256];
 
-					get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1);
+					get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line);
 					if (linenotxt[0] != '\0')
 					{
 						char   *endptr;
@@ -4639,6 +4835,8 @@ recheck_end:
 								if (first_row < 0)
 									first_row = 0;
 							}
+
+							snprintf(last_line, sizeof(last_line), "%ld", lineno);
 						}
 					}
 					break;
@@ -4957,10 +5155,13 @@ sort_by_string:
 
 					errno = 0;
 
-					get_string(&opts, &scrdesc, "log file: ", buffer, sizeof(buffer) - 1);
+					get_string(&opts, &scrdesc, "log file: ", buffer, sizeof(buffer) - 1, last_path);
 
 					if (buffer[0] != '\0')
 					{
+						strncpy(last_path, buffer, sizeof(last_path) - 1);
+						last_path[sizeof(last_path) - 1] = '\0';
+
 						path = tilde(buffer);
 						fp = fopen(path, "w");
 						if (fp != NULL)
@@ -5001,7 +5202,7 @@ exit:
 							else
 								strcpy(buffer, path);
 
-							next_command = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
+							next_event_keycode = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
 						}
 					}
 
@@ -5014,9 +5215,11 @@ exit:
 				{
 					char	locsearchterm[256];
 
-					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1);
+					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
 					if (locsearchterm[0] != '\0')
 					{
+						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
@@ -5148,9 +5351,11 @@ found_next_pattern:
 				{
 					char	locsearchterm[256];
 
-					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1);
+					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
 					if (locsearchterm[0] != '\0')
 					{
+						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
@@ -5311,10 +5516,12 @@ found_next_pattern:
 						bool	found = false;
 						bool	search_from_start = false;
 
-						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1);
+						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search);
 
 						if (locsearchterm[0] != '\0')
 						{
+							memcpy(last_col_search, locsearchterm, sizeof(last_col_search));
+
 							strncpy(scrdesc.searchcolterm, locsearchterm, sizeof(scrdesc.searchcolterm));
 							scrdesc.searchcolterm_size = strlen(scrdesc.searchcolterm);
 						}

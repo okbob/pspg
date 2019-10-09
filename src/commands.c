@@ -167,6 +167,8 @@ cmd_string(int cmd)
 		case cmd_SaveSetup:
 			return "SaveSetup";
 
+		case cmd_Escape:
+			return "Escape";
 		case cmd_Quit:
 			return "Quit";
 		case cmd_RawOutputQuit:
@@ -291,6 +293,7 @@ translate_event(int c, bool alt)
 			case '9':
 				return cmd_ShowMenu;
 			case 27:
+				return cmd_Escape;
 			case '0':
 				return cmd_Quit;
 		}

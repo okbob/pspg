@@ -49,11 +49,13 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--no-commandbar`  the bottom bar will be hidden
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
+* `--no-sigint-search-reset`  sigint is not used to reset searching
 * `--tabular-cursor`  cursor is displayed only for table
 * `--only-for-tables`  use std pager when content is not a table
 * `--bold-labels`  bold font for row, column labels
 * `--bold-cursor`  bold font for cursor
 * `--vertical-cursor`  show column cursor
+* `--on-sigint-exit`  double escape or ctrl c ending pager
 
 
 ## Themes
@@ -115,7 +117,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * Mouse button wheel - scroll vertical
 * <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd> - scroll horizontal
 * <kbd>F9</kbd> - show menu
-* <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>Esc</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
+* <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
 * <kbd>Alt</kbd>+<kbd>q</kbd> - quit wit raw (unformatted) output
 * <kbd>Alt</kbd>+<kbd>k</kbd>, <kbd>Alt</kbd>+<kbd>double click</kbd> - switch bookmark
 * <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
@@ -124,6 +126,12 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>a</kbd> - sort ascendent
 * <kbd>d</kbd> - sort descendent
 * <kbd>u</kbd> - unsorted (sorted in origin order)
+
+## Ending
+
+The pager can be ended by pressing keys <kbd>q</kbd> or <kbd>F10</kbd> or <kbd>Esc</kbd> <kbd>0</kbd>.
+With option `--on-sigint-exit` then the pager is closed by pressing keys <kbd>Ctrl</kbd>+<kbd>c</kbd>
+or <kbd>Esc</kbd> <kbd>Esc</kbd>.
 
 ## Column search
 

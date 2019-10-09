@@ -106,7 +106,9 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("without_commandbar", opts->no_commandbar);
 	SAFE_SAVE_BOOL_OPTION("without_topbar", opts->no_topbar);
 	SAFE_SAVE_BOOL_OPTION("vertical_cursor", opts->vertical_cursor);
-	SAFE_SAVE_BOOL_OPTION("o_assume_default_colors", opts->no_assume_default_colors);
+	SAFE_SAVE_BOOL_OPTION("no_assume_default_colors", opts->no_assume_default_colors);
+	SAFE_SAVE_BOOL_OPTION("on_sigint_exit", opts->on_sigint_exit);
+	SAFE_SAVE_BOOL_OPTION("no_sigint_search_reset", opts->no_sigint_search_reset);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -186,6 +188,10 @@ load_config(char *path, Options *opts)
 				opts->csv_border_type = int_val;
 			else if (strcmp(key, "no_assume_default_colors") == 0)
 				opts->no_assume_default_colors = bool_val;
+			else if (strcmp(key, "on_sigint_exit") == 0)
+				opts->on_sigint_exit = bool_val;
+			else if (strcmp(key, "no_sigint_search_reset") == 0)
+				opts->no_sigint_search_reset = bool_val;
 
 			free(line);
 			line = NULL;

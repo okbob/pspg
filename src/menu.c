@@ -21,6 +21,8 @@
 #define MENU_ITEM_OPTIONS			2
 
 ST_CMDBAR_ITEM _bottombar[] = {
+	{"Save", false, 2, cmd_SaveData},
+	{"Search", false, 7, cmd_ForwardSearch},
 	{"Menu", false, 9, cmd_ShowMenu},
 	{"Quit", false, 10, cmd_Quit},
 	{NULL}

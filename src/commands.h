@@ -67,6 +67,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_TaoLight,
 	cmd_SaveSetup,
 
+	cmd_Escape,
 	cmd_Quit,
 	cmd_RawOutputQuit,
 	cmd_ShowMenu,
