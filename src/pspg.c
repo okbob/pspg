@@ -2997,7 +2997,36 @@ reinit_theme:
 
 	trim_footer_rows(&opts, &desc);
 
-	memset(&scrdesc, 0, sizeof(ScrDesc));
+	if (reinit)
+	{
+		ScrDesc		aux;
+		int			i;
+
+		/* we should to save searching related data from scrdesc */
+		memcpy(&aux, &scrdesc, sizeof(ScrDesc));
+
+		for (i = 0; i < 9; i++)
+			if (scrdesc.wins[i])
+				delwin(scrdesc.wins[i]);
+
+		memset(&scrdesc, 0, sizeof(ScrDesc));
+
+		memcpy(scrdesc.searchterm, aux.searchterm, 255);
+
+		scrdesc.searchterm_char_size = aux.searchterm_char_size;
+		scrdesc.searchterm_size = aux.searchterm_size;
+		scrdesc.has_upperchr = aux.has_upperchr;
+		scrdesc.found = aux.found;
+		scrdesc.found_start_x = aux.found_start_x;
+		scrdesc.found_start_bytes = aux.found_start_bytes;
+		scrdesc.found_row = aux.found_row;
+
+		memcpy(scrdesc.searchcolterm, aux.searchcolterm, 255);
+
+		scrdesc.searchcolterm_size = aux.searchcolterm_size;
+	}
+	else
+		memset(&scrdesc, 0, sizeof(ScrDesc));
 
 	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
 	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
@@ -3532,7 +3561,6 @@ hide_menu:
 				opts.ignore_case = false;
 
 reset_search:
-
 				scrdesc.searchterm[0] = '\0';
 				scrdesc.searchterm_size = 0;
 				scrdesc.searchterm_char_size = 0;
