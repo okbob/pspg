@@ -33,21 +33,21 @@ unicode.o: src/unicode.h src/unicode.c
 	$(CC) -O3 -c src/unicode.c -o unicode.o
 
 themes.o: src/themes.h src/themes.o
-	$(CC) -O3 -c src/themes.c -o themes.o
+	$(CC) -O3 -c src/themes.c -o themes.o $(CPPFLAGS) $(CFLAGS)
 
 sort.o: src/pspg.h src/sort.c
 	$(CC) -O3 -c src/sort.c -o sort.o
 
 menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
-	$(CC) -O3 -c src/menu.c -o menu.o
+	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
 
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
-	$(CC) -O3 -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+	$(CC) -O3 -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)
 
 
 pspg:  $(PSPG_OFILES) $(ST_MENU_OFILES) config.make
-	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS)
 
 clean:
 	$(RM) $(ST_MENU_OFILES)
