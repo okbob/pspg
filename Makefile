@@ -18,25 +18,25 @@ st_menu.o: src/st_menu.c config.make
 	$(CC) -O3 src/st_menu.c -c $(CPPFLAGS) $(CFLAGS)
 
 csv.o: src/pspg.h src/unicode.h src/pretty-csv.c
-	$(CC) -O3 -c  src/pretty-csv.c -o csv.o
+	$(CC) -O3 -c  src/pretty-csv.c -o csv.o $(CPPFLAGS) $(CFLAGS)
 
 print.o: src/pspg.h src/unicode.h src/print.c
-	$(CC) -O3 -c  src/print.c -o print.o
+	$(CC) -O3 -c  src/print.c -o print.o $(CPPFLAGS) $(CFLAGS)
 
 commands.o: src/pspg.h src/commands.h src/commands.c
-	$(CC) -O3 -c src/commands.c -o commands.o
+	$(CC) -O3 -c src/commands.c -o commands.o $(CPPFLAGS) $(CFLAGS)
 
 config.o: src/config.h src/config.c
-	$(CC) -O3 -c src/config.c -o config.o
+	$(CC) -O3 -c src/config.c -o config.o $(CPPFLAGS) $(CFLAGS)
 
 unicode.o: src/unicode.h src/unicode.c
-	$(CC) -O3 -c src/unicode.c -o unicode.o
+	$(CC) -O3 -c src/unicode.c -o unicode.o $(CPPFLAGS) $(CFLAGS)
 
 themes.o: src/themes.h src/themes.o
 	$(CC) -O3 -c src/themes.c -o themes.o $(CPPFLAGS) $(CFLAGS)
 
 sort.o: src/pspg.h src/sort.c
-	$(CC) -O3 -c src/sort.c -o sort.o
+	$(CC) -O3 -c src/sort.c -o sort.o $(CPPFLAGS) $(CFLAGS)
 
 menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
 	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
