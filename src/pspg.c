@@ -3579,6 +3579,8 @@ reinit_theme:
 
 			if (!processed_signal && opts.on_sigint_exit)
 				break;
+			else
+				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true);
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 			break;
@@ -3702,6 +3704,9 @@ hide_menu:
 
 			if (!processed_signal && opts.on_sigint_exit)
 				break;
+			else
+				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true);
+
 		}
 
 		switch (command)
