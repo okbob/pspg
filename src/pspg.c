@@ -92,7 +92,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "2.1.5"
+#define PSPG_VERSION "2.1.6"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -2012,10 +2012,11 @@ make_beep(Options *opts)
 static int
 show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first, bool applytimeout, bool is_error)
 {
-	int		c;
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 	attr_t  att;
+	int		c;
+	int		timeout = -1;
 
 	/*
 	 * When refresh is required first, then store params and quit immediately.
@@ -2067,14 +2068,24 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (beep)
 		make_beep(opts);
 
-	c = get_event(&event, &press_alt, &got_sigint, applytimeout ? 2000 : 0);
+	if (applytimeout)
+		timeout = strlen(fmt) < 50 ? 2000 : 6000;
+
+	c = get_event(&event, &press_alt, &got_sigint, timeout);
 
 	/*
 	 * Screen should be refreshed after show any info.
 	 */
 	scrdesc->refresh_scr = true;
 
-	return c == ERR ? 0 : c;
+	/* eat escape if pressed here */
+	if (c == 27 && press_alt)
+	{
+		press_alt = false;
+		return 0;
+	}
+	else
+		return c == ERR ? 0 : c;
 }
 
 #ifdef HAVE_LIBREADLINE

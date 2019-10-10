@@ -32,7 +32,7 @@ config.o: src/config.h src/config.c
 unicode.o: src/unicode.h src/unicode.c
 	$(CC) -O3 -c src/unicode.c -o unicode.o $(CPPFLAGS) $(CFLAGS)
 
-themes.o: src/themes.h src/themes.o
+themes.o: src/themes.h src/themes.c
 	$(CC) -O3 -c src/themes.c -o themes.o $(CPPFLAGS) $(CFLAGS)
 
 sort.o: src/pspg.h src/sort.c
