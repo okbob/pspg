@@ -159,6 +159,7 @@ typedef struct
 	char   *par;					/* parameter for info when refresh first is required */
 	bool	beep;					/* beep for info when refresh is required */
 	bool	applytimeout;			/* true, when saved info should be close after timeout */
+	bool	is_error;				/* true, when saved info should be displayed as error */
 	bool	refresh_scr;			/* force rewrite screen */
 } ScrDesc;
 

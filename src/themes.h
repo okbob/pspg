@@ -55,6 +55,8 @@ typedef struct
 	attr_t cross_cursor_line_attr;	/* colors for cross horizontal and vertical cursor (border) */
 	attr_t pattern_vertical_cursor_attr;
 	attr_t pattern_vertical_cursor_line_attr;
+	attr_t error_attr;				/* colors for display error */
+	attr_t input_attr;				/* colors for input line */
 } Theme;
 
 #define		WINDOW_LUC				0

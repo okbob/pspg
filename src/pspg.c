@@ -108,6 +108,7 @@ static unsigned char	input;
 static bool		input_avail = false;
 
 static WINDOW  *g_bottom_bar;
+static attr_t	input_attr;
 
 static char		last_row_search[256];
 static char		last_col_search[256];
@@ -2009,11 +2010,12 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static int
-show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first, bool applytimeout)
+show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first, bool applytimeout, bool is_error)
 {
 	int		c;
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+	attr_t  att;
 
 	/*
 	 * When refresh is required first, then store params and quit immediately.
@@ -2040,11 +2042,14 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 			scrdesc->par = NULL;
 		scrdesc->beep = beep;
 		scrdesc->applytimeout = applytimeout;
+		scrdesc->is_error = is_error;
 
 		return 0;
 	}
 
-	wattron(bottom_bar, t->bottom_light_attr);
+	att = !is_error ? t->bottom_light_attr : t->error_attr;
+
+	wattron(bottom_bar, att);
 
 	if (par != NULL)
 		mvwprintw(bottom_bar, 0, 0, fmt, par);
@@ -2052,7 +2057,9 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
 	wclrtoeol(bottom_bar);
-	wattroff(bottom_bar,  t->bottom_light_attr);
+	mvwchgat(bottom_bar, 0, 0, -1, att, PAIR_NUMBER(att), 0);
+
+	wattroff(bottom_bar,  att);
 	wnoutrefresh(bottom_bar);
 
 	refresh();
@@ -2121,8 +2128,10 @@ readline_redisplay()
 		cursor_col = strlen(rl_display_prompt) + min_int(strlen(rl_line_buffer), rl_point);
 	}
 
+	wbkgd(g_bottom_bar, 27);
 	werase(g_bottom_bar);
 	mvwprintw(g_bottom_bar, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
+	mvwchgat(g_bottom_bar, 0, 0, -1, input_attr, PAIR_NUMBER(input_attr), 0);
 
 	if (cursor_col >= COLS)
 		curs_set(0);
@@ -2142,6 +2151,7 @@ static void
 get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize, char *defstr)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
+	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
 #ifdef HAVE_LIBREADLINE
 
@@ -2153,9 +2163,12 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	g_bottom_bar = bottom_bar;
 	got_readline_string = false;
 	force8bit = opts->force8bit;
+	input_attr = t->input_attr;
 
+	wattron(bottom_bar, t->input_attr);
 	mvwprintw(bottom_bar, 0, 0, "");
 	wclrtoeol(bottom_bar);
+
 	curs_set(1);
 	echo();
 
@@ -3497,7 +3510,8 @@ reinit_theme:
 			{
 				next_event_keycode = show_info_wait(&opts, &scrdesc,
 									scrdesc.fmt, scrdesc.par, scrdesc.beep,
-									false, scrdesc.applytimeout);
+									false, scrdesc.applytimeout,
+									scrdesc.is_error);
 				if (scrdesc.fmt != NULL)
 				{
 					free(scrdesc.fmt);
@@ -3580,7 +3594,7 @@ reinit_theme:
 			if (!processed_signal && opts.on_sigint_exit)
 				break;
 			else
-				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true);
+				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 			break;
@@ -3705,7 +3719,7 @@ hide_menu:
 			if (!processed_signal && opts.on_sigint_exit)
 				break;
 			else
-				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true);
+				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
 
 		}
 
@@ -3815,12 +3829,12 @@ reset_search:
 				if (!save_config(tilde("~/.pspgconf"), &opts))
 				{
 					if (errno != 0)
-						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (%s)", strerror(errno), true, true, false);
+						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (%s) (press any key)", strerror(errno), true, true, false, true);
 					else
-						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf", NULL, true, true, false);
+						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (press any key)", NULL, true, true, false, true);
 				}
 				else
-					show_info_wait(&opts, &scrdesc, " Setup saved to ~/.pspgconf", NULL, true, true, true);
+					show_info_wait(&opts, &scrdesc, " Setup saved to ~/.pspgconf", NULL, true, true, true, false);
 				break;
 
 			case cmd_SetTheme_MidnightBlack:
@@ -3891,7 +3905,7 @@ reset_search:
 
 					}
 
-					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true);
+					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true, false);
 					break;
 				}
 
@@ -3904,7 +3918,7 @@ reset_search:
 				{
 					if (desc.columns == 0)
 					{
-						show_info_wait(&opts, &scrdesc, " Vertical cursor is available only for tables.", NULL, true, true, true);
+						show_info_wait(&opts, &scrdesc, " Vertical cursor is available only for tables.", NULL, true, true, true, false);
 						break;
 					}
 
@@ -4807,9 +4821,9 @@ recheck_end:
 						lineno = strtol(linenotxt, &endptr, 10);
 
 						if (endptr == linenotxt)
-							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number", NULL, true, true, false);
+							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number", NULL, true, true, false, true);
 						else if (errno != 0)
-							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false);
+							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false, true);
 						else
 						{
 							int max_cursor_row;
@@ -4867,7 +4881,7 @@ recheck_end:
 				{
 					if (desc.columns == 0)
 					{
-						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true);
+						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true, false);
 						break;
 					}
 
@@ -5146,7 +5160,7 @@ sort_by_string:
 						free(sortbuf);
 					}
 					else
-							show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true);
+							show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
 
 					break;
 				}
@@ -5207,7 +5221,7 @@ exit:
 							else
 								strcpy(buffer, path);
 
-							next_event_keycode = show_info_wait(&opts, &scrdesc, " Cannot write to %s", buffer, true, false, false);
+							next_event_keycode = show_info_wait(&opts, &scrdesc, " Cannot write to %s (press any key)", buffer, true, false, false, true);
 						}
 					}
 
@@ -5348,7 +5362,7 @@ found_next_pattern:
 							first_row = max_first_row;
 					}
 					else
-						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
+						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
 					break;
 				}
 
@@ -5506,7 +5520,7 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
+						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
 
 					break;
 				}
@@ -5608,7 +5622,7 @@ found_next_pattern:
 							if (found)
 							{
 								if (search_from_start)
-									show_info_wait(&opts, &scrdesc, " Search from first column (press any key)", NULL, true, true, true);
+									show_info_wait(&opts, &scrdesc, " Search from first column (press any key)", NULL, true, true, true, false);
 
 								opts.vertical_cursor = true;
 								vertical_cursor_column = colnum;
@@ -5617,13 +5631,13 @@ found_next_pattern:
 								last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 							}
 							else
-								show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false);
+								show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
 						}
 						else
-							show_info_wait(&opts, &scrdesc, " Search pattern is a empty string (press any key)", NULL, true, true, true);
+							show_info_wait(&opts, &scrdesc, " Search pattern is a empty string (press any key)", NULL, true, true, true, false);
 					}
 					else
-						show_info_wait(&opts, &scrdesc, " Columns names are not detected (press any key)", NULL, true, true, true);
+						show_info_wait(&opts, &scrdesc, " Columns names are not detected (press any key)", NULL, true, true, true, false);
 
 					break;
 				}
