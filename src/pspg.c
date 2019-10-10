@@ -3586,8 +3586,6 @@ reinit_theme:
 		/* Exit immediately on F10 or input error */
 		if (got_sigint)
 		{
-			bool	processed_signal = false;
-
 			if (!opts.no_sigint_search_reset &&
 				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
 			{
@@ -3598,14 +3596,14 @@ reinit_theme:
 				scrdesc.searchterm_char_size = 0;
 
 				reset_searching_lineinfo(&desc.rows);
-
-				processed_signal = true;
 			}
-
-			if (!processed_signal && opts.on_sigint_exit)
-				break;
 			else
-				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
+			{
+				if (opts.on_sigint_exit)
+					break;
+				else
+					show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
+			}
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 			break;
@@ -3711,8 +3709,6 @@ hide_menu:
 		else if (command == cmd_Escape)
 		{
 			/* same like sigterm handling */
-			bool	processed_signal = false;
-
 			if (!opts.no_sigint_search_reset &&
 				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
 			{
@@ -3723,15 +3719,14 @@ hide_menu:
 				scrdesc.searchterm_char_size = 0;
 
 				reset_searching_lineinfo(&desc.rows);
-
-				processed_signal = true;
 			}
-
-			if (!processed_signal && opts.on_sigint_exit)
-				break;
 			else
-				show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
-
+			{
+				if (opts.on_sigint_exit)
+					break;
+				else
+					show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
+			}
 		}
 
 		switch (command)
