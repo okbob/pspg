@@ -123,6 +123,7 @@ typedef struct
 	int		fixed_columns;			/* number of fixed columns */
 	int		data_rows;				/* number of data rows */
 	int		footer_rows;			/* number of footer rows */
+	bool	oid_name_table;			/* detected system table with first oid column */
 } DataDesc;
 
 /*

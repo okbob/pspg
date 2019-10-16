@@ -696,6 +696,26 @@ translate_headline(Options *opts, DataDesc *desc)
 		if (!namesline)
 			desc->namesline = NULL;
 
+		/*
+		 * New PostgreSQL system tables contains visible oid columns. I would to
+		 * detect this situation and increase by one default freezed columns. So
+		 * second column (with name) will be freezed by default too.
+		 */
+		if (desc->namesline && desc->columns >= 2)
+		{
+			if (desc->cranges[0].name_size == 3 &&
+					nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_pos,
+									   desc->cranges[0].name_size,
+									   "oid",
+									   3))
+			{
+				if (desc->cranges[1].name_size > 4 &&
+						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_pos + desc->cranges[1].name_size - 4,
+										   4, "name", 4))
+					desc->oid_name_table = true;
+			}
+		}
+
 		return true;
 	}
 
@@ -1340,6 +1360,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	memset(&desc->rows, 0, sizeof(LineBuffer));
 	rows = &desc->rows;
 	desc->rows.prev = NULL;
+	desc->oid_name_table = false;
 
 	errno = 0;
 
@@ -1511,9 +1532,6 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	scrdesc->fix_cols_cols = 0;
-
-	if (fixCols == -1)
-		fixCols = 1;
 
 	/* search end of fixCol'th column */
 	if (desc->headline_transl != NULL && fixCols > 0)
@@ -2638,6 +2656,7 @@ main(int argc, char *argv[])
 	int		first_row = 0;
 	int		prev_first_row;
 	int		first_data_row;
+	int		default_freezed_cols = 1;
 	int		i;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
@@ -3018,6 +3037,9 @@ main(int argc, char *argv[])
 
 	detected_format = desc.headline_transl;
 
+	if (detected_format && desc.oid_name_table)
+		default_freezed_cols = 2;
+
 	if (!detected_format && only_for_tables)
 	{
 		const char *pagerprog;
@@ -3288,7 +3310,7 @@ reinit_theme:
 	/* run this part only once, don't repeat it when theme is reinitialized */
 	if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column == -1)
 	{
-		int freezed_cols = opts.freezed_cols != -1 ?  opts.freezed_cols : 1;
+		int freezed_cols = opts.freezed_cols != -1 ?  opts.freezed_cols : default_freezed_cols;
 
 		/* The position of vertical cursor should be set */
 		if (freezed_cols + 1 <= desc.columns)
@@ -3303,7 +3325,7 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
 	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
 
-	create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
+	create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 	create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
 	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
@@ -3429,7 +3451,7 @@ reinit_theme:
 					 * When vertical cursor is not in freezed columns, then it cannot to
 					 * overwrite fixed col cols. Only last char position can be shared.
 					 */
-					if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+					if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
 						if (vcursor_xmin_fix < scrdesc.fix_cols_cols - 1)
 							vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
 				}
@@ -3973,7 +3995,7 @@ reset_search:
 							{
 								vertical_cursor_column = i + 1;
 
-								if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+								if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
 								{
 									if (desc.cranges[i].xmax > scrdesc.main_maxx + cursor_col)
 									{
@@ -4229,7 +4251,7 @@ exit_search_next_bookmark:
 show_first_col:
 
 				if (after_freeze_signal && opts.vertical_cursor &&
-						vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+						vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
 					recheck_vertical_cursor_visibility = true;
 				else
 					cursor_col = 0;
@@ -4476,7 +4498,7 @@ recheck_left:
 							{
 								move_left = 0;
 
-								if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+								if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
 								{
 									int		left_border = scrdesc.fix_cols_cols + cursor_col - 1;
 									int		xmin = desc.cranges[vertical_cursor_column - 1].xmin;
@@ -5852,7 +5874,7 @@ found_next_pattern:
 											vertical_cursor_changed_mouse_event = mouse_event;
 										}
 
-										if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : 1))
+										if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
 										{
 											if (xmax > scrdesc.main_maxx + cursor_col)
 											{
@@ -6021,7 +6043,7 @@ refresh:
 			getmaxyx(stdscr, maxy, maxx);
 
 			refresh_aux_windows(&opts, &scrdesc, &desc);
-			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols, fixedRows, maxy, maxx);
+			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
 			/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
