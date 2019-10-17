@@ -42,7 +42,6 @@ typedef struct
 	bool	csv_format;
 	char	csv_separator;
 	int		csv_border_type;
-	bool	no_assume_default_colors;
 	bool	on_sigint_exit;
 	bool	no_sigint_search_reset;
 } Options;
