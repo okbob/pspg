@@ -110,13 +110,17 @@ static bool		input_avail = false;
 static WINDOW  *g_bottom_bar;
 static attr_t	input_attr;
 
+#endif
+
+static bool		handle_sigint = false;
 static char		last_row_search[256];
 static char		last_col_search[256];
 static char		last_line[256];
 static char		last_path[1025];
-static char		last_history[256];
 
-static bool		handle_sigint = false;
+#ifdef HAVE_READLINE_HISTORY
+
+static char		last_history[256];
 
 #endif
 
@@ -2320,11 +2324,16 @@ finish_read:
 
 #else
 
+	wbkgd(bottom_bar, t->input_attr);
+	werase(bottom_bar);
 	mvwprintw(bottom_bar, 0, 0, "%s", prompt);
-	wclrtoeol(bottom_bar);
 	curs_set(1);
 	echo();
 	wgetnstr(bottom_bar, buffer, maxsize);
+
+	/* reset ctrlc, wgetnstr doesn't handle this signal now */
+	handle_sigint = false;
+
 	curs_set(0);
 	noecho();
 
