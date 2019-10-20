@@ -2161,7 +2161,7 @@ readline_redisplay()
 		cursor_col = strlen(rl_display_prompt) + min_int(strlen(rl_line_buffer), rl_point);
 	}
 
-	wbkgd(g_bottom_bar, 27);
+	wbkgd(g_bottom_bar, input_attr);
 	werase(g_bottom_bar);
 	mvwprintw(g_bottom_bar, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
 	mvwchgat(g_bottom_bar, 0, 0, -1, input_attr, PAIR_NUMBER(input_attr), 0);
