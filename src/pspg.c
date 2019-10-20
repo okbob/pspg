@@ -2693,6 +2693,7 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
 	bool	only_for_tables = false;
+	bool	no_interactive = false;
 	bool	raw_output_quit = false;
 
 	bool	multilines_should_be_tested = true;	/* protect to against multiline tests */
@@ -2736,6 +2737,7 @@ main(int argc, char *argv[])
 		{"csv-border", required_argument, 0, 19},
 		{"no-sigint-exit", no_argument, 0, 21},
 		{"no-sigint-search-reset", no_argument, 0, 22},
+		{"ni", no_argument, 0, 23},
 		{0, 0, 0, 0}
 	};
 
@@ -2825,6 +2827,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 status bar like less pager\n");
 				fprintf(stderr, "  --line-numbers\n");
 				fprintf(stderr, "                 show line number column\n");
+				fprintf(stderr, "  --ni           not interactive mode (only for csv)\n");
 				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sigint-search-reset\n");
 				fprintf(stderr, "                 without reset searching on sigint (CTRL C)\n");
@@ -2926,6 +2929,9 @@ main(int argc, char *argv[])
 				break;
 			case 22:
 				opts.no_sigint_search_reset = true;
+				break;
+			case 23:
+				no_interactive = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3034,6 +3040,24 @@ main(int argc, char *argv[])
 		fp = NULL;
 	}
 
+	if (opts.csv_format && no_interactive)
+	{
+		LineBuffer *lnb = &desc.rows;
+		int			lnb_row = 0;
+
+		/* write formatted data to stdout and quit */
+		while (lnb)
+		{
+			while (lnb_row < lnb->nrows)
+				fprintf(stdout, "%s\n", lnb->rows[lnb_row++]);
+
+			lnb = lnb->next;
+			lnb_row = 0;
+		}
+
+		return 0;
+	}
+
 	if (desc.headline)
 		(void) translate_headline(&opts, &desc);
 
@@ -3077,13 +3101,20 @@ main(int argc, char *argv[])
 			signal(SIGINT, SIG_IGN);
 		}
 
-		while (lnb_row < lnb->nrows)
+		while (lnb)
 		{
-			int r;
-			r = fprintf(fout, "%s\n", lnb->rows[lnb_row++]);
-			if (r < 0)
-				break;
+			while (lnb_row < lnb->nrows)
+			{
+				int r;
+				r = fprintf(fout, "%s\n", lnb->rows[lnb_row++]);
+				if (r < 0)
+					goto exit_while_01;
+			}
+			lnb = lnb->next;
+			lnb_row = 0;
 		}
+
+exit_while_01:
 
 		if (fout != stdout)
 			pclose(fout);
@@ -5219,7 +5250,7 @@ sort_by_string:
 
 							ok = true;
 
-							while (lnb != NULL)
+							while (lnb)
 							{
 								for (i = 0; i < lnb->nrows; i++)
 								{
