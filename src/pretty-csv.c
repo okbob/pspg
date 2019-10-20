@@ -64,6 +64,7 @@ typedef struct
 	int			border;
 	char		linestyle;
 	char		separator;
+	bool		double_header;
 } ConfigType;
 
 typedef struct
@@ -132,7 +133,7 @@ pb_flush_line(PrintbufType *printbuf)
 }
 
 static void
-pb_write(PrintbufType *printbuf, char *str, int size)
+pb_write(PrintbufType *printbuf, const char *str, int size)
 {
 	if (printbuf->free < size)
 	{
@@ -153,7 +154,14 @@ pb_write(PrintbufType *printbuf, char *str, int size)
 }
 
 static void
-pb_write_repeat(PrintbufType *printbuf, int n,  char *str, int size)
+pb_writes(PrintbufType *printbuf, const char *str)
+{
+	pb_write(printbuf, str, strlen(str));
+}
+
+
+static void
+pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 {
 	bool	need_realloc = false;
 
@@ -181,6 +189,12 @@ pb_write_repeat(PrintbufType *printbuf, int n,  char *str, int size)
 		printbuf->used += size;
 		printbuf->free -= size;
 	}
+}
+
+static void
+pb_writes_repeat(PrintbufType *printbuf, int n,  const char *str)
+{
+	pb_write_repeat(printbuf, n, str, strlen(str));
 }
 
 
@@ -242,93 +256,116 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 static void
 pb_print_vertical_header(PrintbufType *printbuf, LinebufType *linebuf, ConfigType *config, char pos)
 {
-	int		i;
 	int		border = config->border;
+	bool	double_header = config->double_header;
+	char	linestyle = config->linestyle;
 
-	if (config->linestyle == 'a')
+	const char *lhchr;				/* left header char */
+	const char *mhchr;				/* middle header char */
+	const char *rhchr;				/* right header char */
+	const char *hhchr;				/* horizont header char */
+
+	int		i;
+
+	/* leave fast when there is nothing to work */
+	if ((border == 0 || border == 1) && (pos != 'm'))
+		return;
+
+	if (linestyle == 'a')
 	{
-		if ((border == 0 || border == 1) && (pos != 'm'))
-			return;
-
-		if (border == 2)
-			pb_write(printbuf, "+-", 2);
-		else if (border == 1)
-			pb_write(printbuf, "-", 2);
-
-		for (i = 0; i < linebuf->maxfields; i++)
+		if (pos == 'm' &&double_header)
 		{
-			if (i > 0)
-			{
-				if (border == 0)
-					pb_write(printbuf, " ", 1);
-				else
-					pb_write(printbuf, "-+-", 3);
-			}
-
-			pb_putc_repeat(printbuf, linebuf->widths[i], '-');
+			lhchr = ":";
+			mhchr = ":";
+			rhchr = ":";
+			hhchr = "=";
 		}
-
-		if (border == 2)
-			pb_write(printbuf, "-+", 2);
-		else if (border == 1)
-			pb_write(printbuf, "-", 1);
-		else if (border == 0 && linebuf->multilines[linebuf->maxfields - 1])
-			pb_write(printbuf, " ", 1);
+		else
+		{
+			lhchr = "+";
+			mhchr = "+";
+			rhchr = "+";
+			hhchr = "-";
+		}
 	}
-	else if (config->linestyle == 'u')
+	else
 	{
-		if ((border == 0 || border == 1) && (pos != 'm'))
-			return;
-
-		if (border == 2)
+		/* linestyle = 'u' */
+		if (pos == 'm')
 		{
-			if (pos == 't')
-				pb_write(printbuf, "\342\224\214", 3);
-			else if (pos == 'm')
-				pb_write(printbuf, "\342\224\234", 3);
-			else
-				pb_write(printbuf, "\342\224\224", 3);
-
-			pb_write(printbuf, "\342\224\200", 3);
-		}
-		else if (border == 1)
-			pb_write(printbuf, "\342\224\200", 3);
-
-		for (i = 0; i < linebuf->maxfields; i++)
-		{
-			if (i > 0)
+			if (double_header)
 			{
-				if (border == 0)
-					pb_write(printbuf, " ", 1);
-				else
-				{
-					pb_write(printbuf, "\342\224\200", 3);
-					if (pos == 't')
-						pb_write(printbuf, "\342\224\254", 3);
-					else if (pos == 'm')
-						pb_write(printbuf, "\342\224\274", 3);
-					else
-						pb_write(printbuf, "\342\224\264", 3);
-
-					pb_write(printbuf, "\342\224\200", 3);
-				}
+				lhchr = "\342\225\236";		/* ╞ */
+				mhchr = "\342\225\252";		/* ╪ */
+				rhchr = "\342\225\241";		/* ╡ */
+				hhchr = "\342\225\220";		/* ═ */
 			}
-
-			pb_write_repeat(printbuf, linebuf->widths[i], "\342\224\200", 3);
-		}
-
-		if (border == 2)
-		{
-			pb_write(printbuf, "\342\224\200", 3);
-			if (pos == 't')
-				pb_write(printbuf, "\342\224\220", 3);
-			else if (pos == 'm')
-				pb_write(printbuf, "\342\224\244", 3);
 			else
-				pb_write(printbuf, "\342\224\230", 3);
+			{
+				lhchr = "\342\224\234";		/* ├ */
+				mhchr = "\342\224\274";		/* ┼ */
+				rhchr = "\342\224\244";		/* ┤ */
+				hhchr = "\342\224\200";		/* ─ */
+			}
 		}
-		else if (border == 1)
-			pb_write(printbuf, "\342\224\200", 3);
+		else if (pos == 't')
+		{
+			lhchr = "\342\224\214";		/* ┌ */
+			mhchr = "\342\224\254";		/* ┬ */
+			rhchr = "\342\224\220";		/* ┐ */
+			hhchr = "\342\224\200";		/* ─ */
+		}
+		else
+		{
+			/* pos == 'b' */
+			lhchr = "\342\224\224";		/* └ */
+			mhchr = "\342\224\264";		/* ┴ */
+			rhchr = "\342\224\230";		/* ┘ */
+			hhchr = "\342\224\200";		/* ─ */
+		}
+	}
+
+	if (border == 2)
+	{
+		pb_writes(printbuf, lhchr);
+		pb_writes(printbuf, hhchr);
+	}
+	else if (border == 1)
+	{
+		pb_writes(printbuf, hhchr);
+	}
+
+	for (i = 0; i < linebuf->maxfields; i++)
+	{
+		if (i > 0)
+		{
+			if (border == 0)
+			{
+				pb_write(printbuf, " ", 1);
+			}
+			else
+			{
+				pb_writes(printbuf, hhchr);
+				pb_writes(printbuf, mhchr);
+				pb_writes(printbuf, hhchr);
+			}
+		}
+
+		pb_writes_repeat(printbuf, linebuf->widths[i], hhchr);
+	}
+
+	if (border == 2)
+	{
+		pb_writes(printbuf, hhchr);
+		pb_writes(printbuf, rhchr);
+	}
+	else if (border == 1)
+	{
+		pb_writes(printbuf, hhchr);
+	}
+	else if (border == 0 && linebuf->multilines[linebuf->maxfields - 1])
+	{
+			pb_write(printbuf, " ", 1);
 	}
 
 	pb_flush_line(printbuf);
@@ -976,6 +1013,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 
 	config.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
 	config.border = opts->csv_border_type;
+	config.double_header = opts->csv_double_header;
 
 	read_csv(&rowbuckets, &linebuf, &config, opts->force8bit, fp);
 

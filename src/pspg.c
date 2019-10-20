@@ -2733,6 +2733,7 @@ main(int argc, char *argv[])
 		{"only-for-tables", no_argument, 0, 14},
 		{"about", no_argument, 0, 16},
 		{"csv", no_argument, 0, 17},
+		{"csv-double-header", no_argument, 0, 24},
 		{"csv-separator", required_argument, 0, 18},
 		{"csv-border", required_argument, 0, 19},
 		{"no-sigint-exit", no_argument, 0, 21},
@@ -2770,6 +2771,7 @@ main(int argc, char *argv[])
 	opts.bold_labels = false;
 	opts.bold_cursor = false;
 	opts.csv_format = false;
+	opts.csv_double_header = false;
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_border_type = 2;			/* outer border */
 	opts.on_sigint_exit = false;
@@ -2811,6 +2813,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --csv-separator\n");
 				fprintf(stderr, "                 char used as field separator\n");
 				fprintf(stderr, "  --csv-border   type of borders (0..2)\n");
+				fprintf(stderr, "  --csv-double-header\n");
+				fprintf(stderr, "                 header separator uses double lines\n");
 				fprintf(stderr, "  --help         show this help\n");
 				fprintf(stderr, "  --force-uniborder\n");
 				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
@@ -2932,6 +2936,9 @@ main(int argc, char *argv[])
 				break;
 			case 23:
 				no_interactive = true;
+				break;
+			case 24:
+				opts.csv_double_header = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
