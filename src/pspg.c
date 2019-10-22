@@ -2700,8 +2700,6 @@ main(int argc, char *argv[])
 	bool	has_multilines = false;
 	bool	mouse_was_initialized = false;
 
-	bool	use_bkgd;
-
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
 
@@ -3169,7 +3167,7 @@ exit_while_01:
 
 reinit_theme:
 
-	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor, &use_bkgd);
+	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
 
 	timeout(100);
 
@@ -3178,8 +3176,7 @@ reinit_theme:
 	curs_set(0);
 	noecho();
 
-	if (use_bkgd)
-		wbkgdset(stdscr, COLOR_PAIR(1));
+	wbkgdset(stdscr, COLOR_PAIR(1));
 
 #ifdef NCURSES_EXT_FUNCS
 
