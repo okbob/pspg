@@ -6,6 +6,7 @@ addons:
       - libncurses-dev
       - libreadline-dev
       - build-essential
+      - libpq-dev
 before_script:
   - ./configure
 script: 
