@@ -41,10 +41,12 @@ typedef struct
 	bool	bold_cursor;
 	bool	csv_format;
 	char	csv_separator;
-	char	csv_double_header;
-	int		csv_border_type;
+	char	double_header;
+	int		border_type;
 	bool	on_sigint_exit;
 	bool	no_sigint_search_reset;
+	char   *query;
+	int		watch_time;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

@@ -7,7 +7,7 @@ ifdef COMPILE_MENU
 ST_MENU_OFILES=st_menu.o st_menu_styles.o
 endif
 
-PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o
+PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o
 
 all: pspg
 
@@ -41,13 +41,15 @@ sort.o: src/pspg.h src/sort.c
 menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
 	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
 
+pgclient.o: src/pspg.h src/pgclient.c
+	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CFLAGS) -DPG_VERSION=$(PG_VERSION)
+
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
 	$(CC) -O3 -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)
 
-
 pspg:  $(PSPG_OFILES) $(ST_MENU_OFILES) config.make
-	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS)
+	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS)
 
 clean:
 	$(RM) $(ST_MENU_OFILES)

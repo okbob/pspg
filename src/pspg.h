@@ -174,6 +174,36 @@ typedef struct
 #define		w_rownum(scrdesc)		((scrdesc)->wins[WINDOW_ROWNUM])
 #define		w_rownum_luc(scrdesc)	((scrdesc)->wins[WINDOW_ROWNUM_LUC])
 
+/*
+ * Used for storing not yet formatted data
+ */
+typedef struct
+{
+	int		nfields;
+	char   *fields[];
+} RowType;
+
+typedef struct _rowBucketType
+{
+	int			nrows;
+	RowType	   *rows[1000];
+	bool		multilines[1000];
+	bool		allocated;
+	struct _rowBucketType *next_bucket;
+} RowBucketType;
+
+/*
+ * Used for formatting
+ */
+typedef struct
+{
+	int		nfields;
+	bool	has_header;
+	char	types[1024];			/* a or d .. content in column */
+	int		widths[1024];			/* column's display width */
+	bool	multilines[1024];		/* true if column has multiline row */
+} PrintDataDesc;
+
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
@@ -198,7 +228,10 @@ extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
 extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 
 /* from pretty-csv.c */
-extern void read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc);
+extern void read_and_format(FILE *fp, Options *opts, DataDesc *desc);
+
+/* from pgclient.c */
+extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

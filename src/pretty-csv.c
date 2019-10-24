@@ -26,22 +26,6 @@
 #define offsetof(type, field)	((long) &((type *)0)->field)
 #endif							/* offsetof */
 
-
-typedef struct
-{
-	int		nfields;
-	char   *fields[];
-} RowType;
-
-typedef struct _rowBucketType
-{
-	int			nrows;
-	RowType	   *rows[1000];
-	bool		multilines[1000];
-	bool		allocated;
-	struct _rowBucketType *next_bucket;
-} RowBucketType;
-
 typedef struct
 {
 	char	   *buffer;
@@ -51,21 +35,12 @@ typedef struct
 	int			maxfields;
 	int			starts[1024];		/* start of first char of column (in bytes) */
 	int			sizes[1024];		/* lenght of chars of column (in bytes) */
-	int			widths[1024];		/* display width of column */
-	bool		multilines[1024];	/* true, when column has some multiline chars */
 	long int	digits[1024];		/* number of digits, used for format detection */
 	long int	tsizes[1024];		/* size of column in bytes, used for format detection */
 	int			firstdigit[1024];	/* rows where first char is digit */
-	char		types[1024];		/* types of columns */
+	int			widths[1024];			/* column's display width */
+	bool		multilines[1024];		/* true if column has multiline row */
 } LinebufType;
-
-typedef struct
-{
-	int			border;
-	char		linestyle;
-	char		separator;
-	bool		double_header;
-} ConfigType;
 
 typedef struct
 {
@@ -80,6 +55,13 @@ typedef struct
 	bool		printed_headline;
 } PrintbufType;
 
+typedef struct
+{
+	int			border;
+	char		linestyle;
+	bool		double_header;
+} PrintConfigType;
+
 static void *
 smalloc(int size, char *debugstr)
 {
@@ -92,7 +74,7 @@ smalloc(int size, char *debugstr)
 			fprintf(stderr, "out of memory while %s\n", debugstr);
 		else
 			fprintf(stderr, "out of memory\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	return result;
@@ -144,7 +126,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 		if (!printbuf->buffer)
 		{
 			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -179,7 +161,7 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 		if (!printbuf->buffer)
 		{
 			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -243,7 +225,7 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 		if (!printbuf->buffer)
 		{
 			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -254,11 +236,11 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 }
 
 static void
-pb_print_vertical_header(PrintbufType *printbuf, LinebufType *linebuf, ConfigType *config, char pos)
+pb_print_vertical_header(PrintbufType *printbuf, PrintDataDesc *pdesc, PrintConfigType *pconfig, char pos)
 {
-	int		border = config->border;
-	bool	double_header = config->double_header;
-	char	linestyle = config->linestyle;
+	int		border = pconfig->border;
+	bool	double_header = pconfig->double_header;
+	char	linestyle = pconfig->linestyle;
 
 	const char *lhchr;				/* left header char */
 	const char *mhchr;				/* middle header char */
@@ -335,7 +317,7 @@ pb_print_vertical_header(PrintbufType *printbuf, LinebufType *linebuf, ConfigTyp
 		pb_writes(printbuf, hhchr);
 	}
 
-	for (i = 0; i < linebuf->maxfields; i++)
+	for (i = 0; i < pdesc->nfields; i++)
 	{
 		if (i > 0)
 		{
@@ -351,7 +333,7 @@ pb_print_vertical_header(PrintbufType *printbuf, LinebufType *linebuf, ConfigTyp
 			}
 		}
 
-		pb_writes_repeat(printbuf, linebuf->widths[i], hhchr);
+		pb_writes_repeat(printbuf, pdesc->widths[i], hhchr);
 	}
 
 	if (border == 2)
@@ -363,7 +345,7 @@ pb_print_vertical_header(PrintbufType *printbuf, LinebufType *linebuf, ConfigTyp
 	{
 		pb_writes(printbuf, hhchr);
 	}
-	else if (border == 0 && linebuf->multilines[linebuf->maxfields - 1])
+	else if (border == 0 && pdesc->multilines[pdesc->nfields - 1])
 	{
 			pb_write(printbuf, " ", 1);
 	}
@@ -443,37 +425,22 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
  * Print formatted data loaded inside RowBuckets
  */
 static void
-pb_print_csv(PrintbufType *printbuf,
-			 RowBucketType *rb,
-			 LinebufType *linebuf,
-			 ConfigType *config,
-			 char *title)
+pb_print_rowbuckets(PrintbufType *printbuf,
+				   RowBucketType *rb,
+				   PrintConfigType *pconfig,
+				   PrintDataDesc *pdesc,
+				   char *title)
 {
-	bool	last_multiline_column = linebuf->multilines[linebuf->maxfields - 1];
-	int		last_column = linebuf->maxfields - 1;
+	bool	is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
+	int		last_column_num = pdesc->nfields - 1;
 	int		printed_rows = 0;
-	char	linestyle = config->linestyle;
-	int		border = config->border;
+	char	linestyle = pconfig->linestyle;
+	int		border = pconfig->border;
 	char	buffer[20];
-	RowBucketType   *root_rb = rb;
-	int		i;
 
 	printbuf->printed_headline = false;
 	printbuf->flushed_rows = 0;
 	printbuf->maxbytes = 0;
-
-	/* try to detect types from numbers of digits */
-	for (i = 0; i < linebuf->maxfields; i++)
-	{
-		if ((linebuf->tsizes[i] == 0 && linebuf->digits[i] > 0) ||
-			(linebuf->firstdigit[i] > 0 && linebuf->processed - 1 == 1))
-			linebuf->types[i] = 'd';
-		else if ((((double) linebuf->firstdigit[i] / (double) (linebuf->processed - 1)) > 0.8)
-			&& (((double) linebuf->digits[i] / (double) linebuf->tsizes[i]) > 0.5))
-			linebuf->types[i] = 'd';
-		else
-			linebuf->types[i] = 'a';
-	}
 
 	if (title)
 	{
@@ -481,7 +448,7 @@ pb_print_csv(PrintbufType *printbuf,
 		pb_flush_line(printbuf);
 	}
 
-	pb_print_vertical_header(printbuf, linebuf, config, 't');
+	pb_print_vertical_header(printbuf, pdesc, pconfig, 't');
 
 	while (rb)
 	{
@@ -531,7 +498,7 @@ pb_print_csv(PrintbufType *printbuf,
 				else if (border == 1)
 					pb_write(printbuf, " ", 1);
 
-				isheader = printed_rows == 0 ? is_header(root_rb) : false;
+				isheader = printed_rows == 0 ? pdesc->has_header : false;
 
 				for (j = 0; j < row->nfields; j++)
 				{
@@ -555,12 +522,7 @@ pb_print_csv(PrintbufType *printbuf,
 
 					if (field && *field != '\0')
 					{
-						bool	_isdigit;
-
-						if (isdigit(*field))
-							_isdigit = linebuf->types[j] == 'd';
-						else
-							_isdigit = false;
+						bool	left_align = pdesc->types[j] != 'd';
 
 						if (printbuf->force8bit)
 						{
@@ -593,12 +555,16 @@ pb_print_csv(PrintbufType *printbuf,
 								width = utf_string_dsplen(field, SIZE_MAX);
 						}
 
-						spaces = linebuf->widths[j] - width;
+						spaces = pdesc->widths[j] - width;
+
+/* ToDo: bug - wrong calculate width */
+						if (spaces < 0)
+							spaces = 0;
 
 						/* left spaces */
 						if (isheader)
 							pb_putc_repeat(printbuf, spaces / 2, ' ');
-						else if (_isdigit)
+						else if (!left_align)
 							pb_putc_repeat(printbuf, spaces, ' ');
 
 						if (multiline)
@@ -609,11 +575,11 @@ pb_print_csv(PrintbufType *printbuf,
 						/* right spaces */
 						if (isheader)
 							pb_putc_repeat(printbuf, spaces - (spaces / 2), ' ');
-						else if (!_isdigit)
+						else if (left_align)
 							pb_putc_repeat(printbuf, spaces, ' ');
 					}
 					else
-						pb_putc_repeat(printbuf, linebuf->widths[j], ' ');
+						pb_putc_repeat(printbuf, pdesc->widths[j], ' ');
 
 					if (_more_lines)
 					{
@@ -624,12 +590,12 @@ pb_print_csv(PrintbufType *printbuf,
 					}
 					else
 					{
-						if (border != 0 || j < last_column || last_multiline_column)
+						if (border != 0 || j < last_column_num || is_last_column_multiline)
 							pb_putc(printbuf, ' ');
 					}
 				}
 
-				for (j = row->nfields; j < linebuf->maxfields; j++)
+				for (j = row->nfields; j < pdesc->nfields; j++)
 				{
 					bool	addspace;
 
@@ -644,9 +610,9 @@ pb_print_csv(PrintbufType *printbuf,
 						}
 					}
 
-					addspace = border != 0 || j < last_column || last_multiline_column;
+					addspace = border != 0 || j < last_column_num || is_last_column_multiline;
 
-					pb_putc_repeat(printbuf, linebuf->widths[j] + (addspace ? 1 : 0), ' ');
+					pb_putc_repeat(printbuf, pdesc->widths[j] + (addspace ? 1 : 0), ' ');
 				}
 
 				if (border == 2)
@@ -661,7 +627,7 @@ pb_print_csv(PrintbufType *printbuf,
 
 				if (isheader)
 				{
-					pb_print_vertical_header(printbuf, linebuf, config, 'm');
+					pb_print_vertical_header(printbuf, pdesc, pconfig, 'm');
 					printbuf->printed_headline = true;
 				}
 
@@ -675,17 +641,50 @@ pb_print_csv(PrintbufType *printbuf,
 		rb = rb->next_bucket;
 	}
 
-	pb_print_vertical_header(printbuf, linebuf, config, 'b');
+	pb_print_vertical_header(printbuf, pdesc, pconfig, 'b');
 
-	snprintf(buffer, 20, "(%d rows)", linebuf->processed - (printbuf->printed_headline ? 1 : 0));
+	snprintf(buffer, 20, "(%d rows)", printed_rows - (printbuf->printed_headline ? 1 : 0));
 	pb_puts(printbuf, buffer);
 	pb_flush_line(printbuf);
+}
+
+/*
+ * Try to detect column type and prepare all data necessary for printing
+ */
+static void
+prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc)
+{
+	int				i;
+
+	/* copy data from linebuf */
+	pdesc->nfields = linebuf->maxfields;
+	pdesc->has_header = is_header(rb);
+
+	for (i = 0; i < pdesc->nfields; i++)
+	{
+		pdesc->widths[i] = linebuf->widths[i];
+		pdesc->multilines[i] = linebuf->multilines[i];
+	}
+
+
+	/* try to detect types from numbers of digits */
+	for (i = 0; i < pdesc->nfields; i++)
+	{
+		if ((linebuf->tsizes[i] == 0 && linebuf->digits[i] > 0) ||
+			(linebuf->firstdigit[i] > 0 && linebuf->processed - 1 == 1))
+			pdesc->types[i] = 'd';
+		else if ((((double) linebuf->firstdigit[i] / (double) (linebuf->processed - 1)) > 0.8)
+			&& (((double) linebuf->digits[i] / (double) linebuf->tsizes[i]) > 0.5))
+			pdesc->types[i] = 'd';
+		else
+			pdesc->types[i] = 'a';
+	}
 }
 
 static void
 read_csv(RowBucketType *rb,
 		 LinebufType *linebuf,
-		 ConfigType *config,
+		 char sep,
 		 bool force8bit,
 		 FILE *ifile)
 {
@@ -751,21 +750,21 @@ read_csv(RowBucketType *rb,
 				pos = pos + 1;
 			}
 
-			if (config->separator == -1 && !instr)
+			if (sep == -1 && !instr)
 			{
 				/*
 				 * Automatic separator detection - now it is very simple, first win.
 				 * Can be enhanced in future by more sofisticated mechanism.
 				 */
 				if (c == ',')
-					config->separator = ',';
+					sep = ',';
 				else if (c == ';')
-					config->separator = ';';
+					sep = ';';
 				else if (c == '|')
-					config->separator = '|';
+					sep = '|';
 			}
 
-			if (config->separator != -1 && c == config->separator && !instr)
+			if (sep != -1 && c == sep && !instr)
 			{
 				if (nfields >= 1024)
 				{
@@ -952,32 +951,37 @@ next_char:
 	while (!closed);
 }
 
+/*
+ * Read external unformatted data (csv or result of some query
+ *
+ */
 void
-read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
+read_and_format(FILE *fp, Options *opts, DataDesc *desc)
 {
 	LinebufType		linebuf;
 	RowBucketType	rowbuckets, *rb;
-	ConfigType		config;
+	PrintConfigType	pconfig;
 	PrintbufType	printbuf;
-
-	/* safe reset */
-	desc->filename[0] = '\0';
+	PrintDataDesc	pdesc;
 
 	memset(desc, 0, sizeof(DataDesc));
 
-	if (fp != NULL)
+	if (!opts->query)
 	{
-		if (opts->pathname != NULL)
+		if (fp != NULL)
 		{
-			char	   *name;
+			if (opts->pathname != NULL)
+			{
+				char	   *name;
 
-			name = basename(opts->pathname);
-			strncpy(desc->filename, name, 64);
-			desc->filename[64] = '\0';
+				name = basename(opts->pathname);
+				strncpy(desc->filename, name, 64);
+				desc->filename[64] = '\0';
+			}
 		}
+		else
+			fp = stdin;
 	}
-	else
-		fp = stdin;
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1009,13 +1013,28 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	linebuf.used = 0;
 	linebuf.size = 10 * 1024;
 
-	config.separator = opts->csv_separator;
+	pconfig.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
+	pconfig.border = opts->border_type;
+	pconfig.double_header = opts->double_header;
 
-	config.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
-	config.border = opts->csv_border_type;
-	config.double_header = opts->csv_double_header;
+	rowbuckets.allocated = false;
 
-	read_csv(&rowbuckets, &linebuf, &config, opts->force8bit, fp);
+	if (opts->query)
+	{
+		const char	*err;
+
+		if (!pg_exec_query(opts, &rowbuckets, &pdesc, &err))
+		{
+			/* ToDo: allow to repeat query, if err is not FATAL */
+			fprintf(stderr, "%s\n", err);
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp);
+		prepare_pdesc(&rowbuckets, &linebuf, &pdesc);
+	}
 
 	/* reuse allocated memory */
 	printbuf.buffer = linebuf.buffer;
@@ -1025,20 +1044,26 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 	printbuf.linebuf = &desc->rows;
 	printbuf.force8bit = opts->force8bit;
 
-	linebuf.buffer = NULL;		/* sanitize ptr */
+	/* init other printbuf fields */
+	printbuf.printed_headline = false;
+	printbuf.flushed_rows = 0;
+	printbuf.maxbytes = 0;
+
+	/* sanitize ptr */
+	linebuf.buffer = NULL;
 	linebuf.size = 0;
 
-	pb_print_csv(&printbuf, &rowbuckets, &linebuf, &config, NULL);
+	pb_print_rowbuckets(&printbuf, &rowbuckets, &pconfig, &pdesc, NULL);
 
-	desc->border_type = config.border;
-	desc->linestyle = config.linestyle;
+	desc->border_type = pconfig.border;
+	desc->linestyle = pconfig.linestyle;
 	desc->maxbytes = printbuf.maxbytes;
 
 	if (printbuf.printed_headline)
 	{
 		int		headline_rowno;
 
-		headline_rowno = config.border == 2 ? 2 : 1;
+		headline_rowno = pconfig.border == 2 ? 2 : 1;
 
 		if (desc->rows.nrows > headline_rowno)
 		{
@@ -1062,7 +1087,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 			desc->footer_row = desc->last_row;
 			desc->footer_rows = 1;
 
-			if (config.border == 2)
+			if (pconfig.border == 2)
 			{
 				desc->border_top_row = 0;
 				desc->last_data_row = desc->total_rows - 2 - 1;
@@ -1092,9 +1117,9 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 
 		ptr = desc->headline_transl;
 
-		if (config.border == 1)
+		if (pconfig.border == 1)
 			*ptr++ = 'd';
-		else if (config.border == 2)
+		else if (pconfig.border == 2)
 		{
 			*ptr++ = 'L';
 			*ptr++ = 'd';
@@ -1109,7 +1134,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 
 			if (i > 0)
 			{
-				if (config.border > 0)
+				if (pconfig.border > 0)
 				{
 					*ptr++ = 'd';
 					*ptr++ = 'I';
@@ -1125,9 +1150,9 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 			}
 		}
 
-		if (config.border == 1)
+		if (pconfig.border == 1)
 			*ptr++ = 'd';
-		else if (config.border == 2)
+		else if (pconfig.border == 2)
 		{
 			*ptr++ = 'd';
 			*ptr++ = 'R';
@@ -1158,7 +1183,7 @@ read_and_format_csv(FILE *fp, Options *opts, DataDesc *desc)
 		desc->footer_row = desc->last_row;
 		desc->footer_rows = 1;
 
-		if (config.border == 2)
+		if (pconfig.border == 2)
 		{
 			desc->first_data_row = 0;
 			desc->border_top_row = 0;

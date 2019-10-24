@@ -108,13 +108,13 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("vertical_cursor", opts->vertical_cursor);
 	SAFE_SAVE_BOOL_OPTION("on_sigint_exit", opts->on_sigint_exit);
 	SAFE_SAVE_BOOL_OPTION("no_sigint_search_reset", opts->no_sigint_search_reset);
-	SAFE_SAVE_BOOL_OPTION("csv_double_header", opts->csv_double_header);
+	SAFE_SAVE_BOOL_OPTION("double_header", opts->double_header);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
 		return false;
 
-	result = fprintf(f, "csv_border_type = %d\n", opts->csv_border_type);
+	result = fprintf(f, "border_type = %d\n", opts->border_type);
 	if (result < 0)
 		return false;
 
@@ -184,10 +184,10 @@ load_config(char *path, Options *opts)
 				opts->no_topbar = bool_val;
 			else if (strcmp(key, "vertical_cursor") == 0)
 				opts->vertical_cursor = bool_val;
-			else if (strcmp(key, "csv_border_type") == 0)
-				opts->csv_border_type = int_val;
-			else if (strcmp(key, "csv_double_header") == 0)
-				opts->csv_double_header = bool_val;
+			else if (strcmp(key, "border_type") == 0)
+				opts->border_type = int_val;
+			else if (strcmp(key, "double_header") == 0)
+				opts->double_header = bool_val;
 			else if (strcmp(key, "on_sigint_exit") == 0)
 				opts->on_sigint_exit = bool_val;
 			else if (strcmp(key, "no_sigint_search_reset") == 0)

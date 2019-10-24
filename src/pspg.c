@@ -139,6 +139,8 @@ bool	press_alt = false;
 bool	got_sigint = false;
 MEVENT		event;
 
+static bool active_ncurses = false;
+
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeout);
 static char * tilde(char *path);
@@ -166,9 +168,11 @@ min_int(int a, int b)
 void
 leave_ncurses(const char *str)
 {
-	endwin();
+	if (active_ncurses)
+		endwin();
+
 	fprintf(stderr, "%s\n", str);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 /*
@@ -2643,6 +2647,13 @@ repeat:
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
+static void
+exit_ncurses(void)
+{
+	if (active_ncurses)
+		endwin();
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2731,12 +2742,14 @@ main(int argc, char *argv[])
 		{"only-for-tables", no_argument, 0, 14},
 		{"about", no_argument, 0, 16},
 		{"csv", no_argument, 0, 17},
-		{"csv-double-header", no_argument, 0, 24},
+		{"double-header", no_argument, 0, 24},
 		{"csv-separator", required_argument, 0, 18},
-		{"csv-border", required_argument, 0, 19},
+		{"border", required_argument, 0, 19},
 		{"no-sigint-exit", no_argument, 0, 21},
 		{"no-sigint-search-reset", no_argument, 0, 22},
 		{"ni", no_argument, 0, 23},
+		{"watch", required_argument, 0, 'w'},
+		{"query", required_argument, 0, 'q'},
 		{0, 0, 0, 0}
 	};
 
@@ -2769,11 +2782,13 @@ main(int argc, char *argv[])
 	opts.bold_labels = false;
 	opts.bold_cursor = false;
 	opts.csv_format = false;
-	opts.csv_double_header = false;
 	opts.csv_separator = -1;			/* auto detection */
-	opts.csv_border_type = 2;			/* outer border */
+	opts.double_header = false;
+	opts.border_type = 2;			/* outer border */
 	opts.on_sigint_exit = false;
 	opts.no_sigint_search_reset = false;
+	opts.query = NULL;
+	opts.watch_time = 0;
 
 
 	load_config(tilde("~/.pspgconf"), &opts);
@@ -2786,7 +2801,7 @@ main(int argc, char *argv[])
 
 #endif
 
-	while ((opt = getopt_long(argc, argv, "abs:c:f:XVFgGiI",
+	while ((opt = getopt_long(argc, argv, "abs:c:f:XVFgGiIq:w:",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -2810,8 +2825,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --csv          input stream has csv format\n");
 				fprintf(stderr, "  --csv-separator\n");
 				fprintf(stderr, "                 char used as field separator\n");
-				fprintf(stderr, "  --csv-border   type of borders (0..2)\n");
-				fprintf(stderr, "  --csv-double-header\n");
+				fprintf(stderr, "  --border       type of borders (0..2)\n");
+				fprintf(stderr, "  --double-header\n");
 				fprintf(stderr, "                 header separator uses double lines\n");
 				fprintf(stderr, "  --help         show this help\n");
 				fprintf(stderr, "  --force-uniborder\n");
@@ -2841,6 +2856,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                 don't show bottom, top bar or both\n");
 				fprintf(stderr, "  --on-sigint-exit\n");
 				fprintf(stderr, "                 without exit on sigint(CTRL C or Escape)\n");
+				fprintf(stderr, "  -q, --query    execute query\n");
 				fprintf(stderr, "  --tabular-cursor\n");
 				fprintf(stderr, "                 cursor is visible only when data has table format\n");
 				fprintf(stderr, "  --vertical-cursor\n");
@@ -2848,6 +2864,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --only-for-tables\n");
 				fprintf(stderr, "                 use std pager when content is not table\n");
 				fprintf(stderr, "  -V, --version  show version\n\n");
+				fprintf(stderr, "  -w, --watch time\n");
+				fprintf(stderr, "                 the query is repeated every time (sec)\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
 
@@ -2859,6 +2877,17 @@ main(int argc, char *argv[])
 				break;
 			case 'i':
 				opts.ignore_lower_case = true;
+				break;
+			case 'q':
+				opts.query = optarg;
+				break;
+			case 'w':
+				opts.watch_time = atoi(optarg);
+				if (opts.watch_time < 0 || opts.watch_time > 3600)
+				{
+					fprintf(stderr, "query watch time can be between 0 and 3600\n");
+					exit(EXIT_FAILURE);
+				}
 				break;
 			case 2:
 				opts.no_mouse = true;
@@ -2924,7 +2953,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "csv border type can be between 0 and 2\n");
 					exit(EXIT_FAILURE);
 				}
-				opts.csv_border_type = n;
+				opts.border_type = n;
 				break;
 			case 21:
 				opts.on_sigint_exit = true;
@@ -2936,7 +2965,7 @@ main(int argc, char *argv[])
 				no_interactive = true;
 				break;
 			case 24:
-				opts.csv_double_header = true;
+				opts.double_header = true;
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3032,12 +3061,10 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
-	if (!opts.csv_format)
-		readfile(fp, &opts, &desc);
+	if (opts.csv_format || opts.query)
+		read_and_format(fp, &opts, &desc);
 	else
-	{
-		read_and_format_csv(fp, &opts, &desc);
-	}
+		readfile(fp, &opts, &desc);
 
 	if (fp != NULL)
 	{
@@ -3045,7 +3072,7 @@ main(int argc, char *argv[])
 		fp = NULL;
 	}
 
-	if (opts.csv_format && no_interactive)
+	if ((opts.csv_format || opts.query) && no_interactive)
 	{
 		LineBuffer *lnb = &desc.rows;
 		int			lnb_row = 0;
@@ -3154,11 +3181,15 @@ exit_while_01:
 
 	signal(SIGINT, SigintHandler);
 
+	atexit(exit_ncurses);
+
 	if (noatty)
 		/* use stderr like stdin. This is fallback solution used by less */
 		newterm(termname(), stdout, stderr);
 	else
 		initscr();
+
+	active_ncurses = true;
 
 	if(!has_colors())
 		leave_ncurses("your terminal does not support color");
@@ -6104,6 +6135,7 @@ refresh:
 	}
 
 	endwin();
+	active_ncurses = false;
 
 	if (raw_output_quit)
 	{

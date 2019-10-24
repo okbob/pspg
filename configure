@@ -628,6 +628,10 @@ COMPILE_MENU
 COVERAGE_LDFLAGS
 COVERAGE_CFLAGS
 enable_debug
+POSTGRESQL_LDFLAGS
+POSTGRESQL_CFLAGS
+POSTGRESQL_VERSION
+PG_CONFIG
 PANEL_LIBS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
@@ -689,6 +693,7 @@ enable_option_checking
 enable_debug
 with_ncurses
 with_ncursesw
+with_postgresql
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1321,6 +1326,9 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-ncurses          force the use of Ncurses or NcursesW
   --without-ncursesw      do not use NcursesW (wide character support)
+  --with-postgresql=@&lt;:@ARG@:&gt;@
+                          use PostgreSQL library @&lt;:@default=yes@:&gt;@,
+                          optionally specify path to pg_config
 
 Some influential environment variables:
   CC          C compiler command
@@ -5664,6 +5672,145 @@ done
     fi
   fi
 
+
+
+# Check whether --with-postgresql was given.
+if test "${with_postgresql+set}" = set; then :
+  withval=$with_postgresql;
+        if test "$withval" = "no"; then
+            want_postgresql="no"
+        elif test "$withval" = "yes"; then
+            want_postgresql="yes"
+        else
+            want_postgresql="yes"
+            PG_CONFIG="$withval"
+        fi
+
+else
+  want_postgresql="yes"
+
+fi
+
+
+    POSTGRESQL_CFLAGS=""
+    POSTGRESQL_LDFLAGS=""
+    POSTGRESQL_POSTGRESQL=""
+
+
+    if test "$want_postgresql" = "yes"; then
+
+        if test -z "$PG_CONFIG" -o test; then
+            # Extract the first word of "pg_config", so it can be a program name with args.
+set dummy pg_config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PG_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PG_CONFIG="$PG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_PG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_PG_CONFIG" && ac_cv_path_PG_CONFIG="no"
+  ;;
+esac
+fi
+PG_CONFIG=$ac_cv_path_PG_CONFIG
+if test -n "$PG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PG_CONFIG" >&5
+$as_echo "$PG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+        fi
+
+        if test "$PG_CONFIG" != "no"; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PostgreSQL libraries" >&5
+$as_echo_n "checking for PostgreSQL libraries... " >&6; }
+
+            POSTGRESQL_CFLAGS="-I`$PG_CONFIG --includedir`"
+            POSTGRESQL_LDFLAGS="-L`$PG_CONFIG --libdir` -lpq"
+
+            POSTGRESQL_VERSION="`$PG_CONFIG --version | sed -e 's#[^0-9]\+\([0-9]\+\).*#\1#'`"
+
+
+$as_echo "#define HAVE_POSTGRESQL 1" >>confdefs.h
+
+
+            found_postgresql="yes"
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+        else
+            found_postgresql="no"
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+        fi
+    fi
+
+
+
+    postgresql_version_req=
+
+    if test "$found_postgresql" = "yes" -a -n "$postgresql_version_req"; then
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking if PostgreSQL version is &gt;= $postgresql_version_req" >&5
+$as_echo_n "checking if PostgreSQL version is &gt;= $postgresql_version_req... " >&6; }
+
+                        postgresql_version_req_major=`expr $postgresql_version_req : '\([0-9]*\)'`
+        postgresql_version_req_minor=`expr $postgresql_version_req : '[0-9]*\.\([0-9]*\)'`
+        postgresql_version_req_micro=`expr $postgresql_version_req : '[0-9]*\.[0-9]*\.\([0-9]*\)'`
+        if test "x$postgresql_version_req_micro" = "x"; then
+            postgresql_version_req_micro="0"
+        fi
+
+        postgresql_version_req_number=`expr $postgresql_version_req_major \* 1000000 \
+                                   \+ $postgresql_version_req_minor \* 1000 \
+                                   \+ $postgresql_version_req_micro`
+
+                        postgresql_version_major=`expr $POSTGRESQL_VERSION : '\([0-9]*\)'`
+        postgresql_version_minor=`expr $POSTGRESQL_VERSION : '[0-9]*\.\([0-9]*\)'`
+        postgresql_version_micro=`expr $POSTGRESQL_VERSION : '[0-9]*\.[0-9]*\.\([0-9]*\)'`
+        if test "x$postgresql_version_micro" = "x"; then
+            postgresql_version_micro="0"
+        fi
+
+        postgresql_version_number=`expr $postgresql_version_major \* 1000000 \
+                                   \+ $postgresql_version_minor \* 1000 \
+                                   \+ $postgresql_version_micro`
+
+        postgresql_version_check=`expr $postgresql_version_number \&gt;\= $postgresql_version_req_number`
+        if test "$postgresql_version_check" = "1"; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+        else
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+        fi
+    fi
+
+
+
+
+
 case "$ax_cv_ncurses" in "no")
 	as_fn_error $? "ncurses not found" "$LINENO" 5
 esac
@@ -5778,6 +5925,9 @@ else
   as_fn_error $? "Function clock_gettime not available." "$LINENO" 5
 
 fi
+
+
+
 
 
 
