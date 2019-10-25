@@ -21,16 +21,6 @@
 
 #include <libpq-fe.h>
 
-#if PG_VERSION >= 11
-
-#include "server/catalog/pg_type_d.h"
-
-#else
-
-#include "server/catalog/pg_types.h"
-
-#endif
-
 char errmsg[1024];
 
 static RowBucketType *
@@ -57,6 +47,22 @@ push_row(RowBucketType *rb, RowType *row, bool is_multiline)
 	return rb;
 }
 
+/*
+ * Correct solution is importing header file catalog/pg_type_d.h,
+ * but this file is not in basic libpq headers, so instead enhancing
+ * dependency just copy these values that should be immutable.
+ */
+#define INT8OID 20
+#define INT2OID 21
+#define INT4OID 23
+#define FLOAT4OID 700
+#define FLOAT8OID 701
+#define XIDOID 28
+#define CIDOID 29
+#define CASHOID 790
+#define NUMERICOID 1700
+#define OIDOID 26
+ 
 static char
 column_type_class(Oid ftype)
 {
