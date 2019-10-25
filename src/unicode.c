@@ -364,7 +364,7 @@ utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bo
 
 		if (!first_only)
 		{
-			if (isdigit(*ptr))
+			if (*ptr >= '0' && *ptr <= '9')
 				(*digits)++;
 			else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
 				(*others)++;

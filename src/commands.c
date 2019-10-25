@@ -255,6 +255,9 @@ cmd_string(int cmd)
 		case cmd_OriginalSort:
 			return "OriginalSort";
 
+		case cmd_TogglePause:
+			return "TogglePause";
+
 		default:
 			return "unknown command";
 	}
@@ -262,7 +265,7 @@ cmd_string(int cmd)
 
 
 int
-translate_event(int c, bool alt)
+translate_event(int c, bool alt, bool watch_mode)
 {
 	if (alt)
 	{
@@ -360,9 +363,10 @@ translate_event(int c, bool alt)
 			case KEY_PPAGE:
 			case 2:		/* CTRL B */
 				return cmd_PageUp;
-			case KEY_NPAGE:
 			case ' ':
+				return watch_mode ? cmd_TogglePause : cmd_PageDown;
 			case 6:		/* CTRL F */
+			case KEY_NPAGE:
 				return cmd_PageDown;
 			case KEY_HOME:
 			case '^':

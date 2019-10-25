@@ -229,8 +229,12 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 		}
 	}
 
-	while (n--)
-		printbuf->buffer[printbuf->used++] = c;
+	memset(printbuf->buffer + printbuf->used, c, n);
+	printbuf->used += n;
+	printbuf->free -= n;
+
+//	while (n--)
+//		printbuf->buffer[printbuf->used++] = c;
 
 	printbuf->free -= n;
 }

@@ -139,6 +139,11 @@ bool	press_alt = false;
 bool	got_sigint = false;
 MEVENT		event;
 
+long	last_watch_ms = 0;
+time_t	last_watch_sec = 0;						/* time when we did last refresh */
+bool	paused = false;							/* true, when watch mode is paused */
+
+
 static bool active_ncurses = false;
 
 static int number_width(int num);
@@ -379,7 +384,7 @@ translate_headline(Options *opts, DataDesc *desc)
 	if (!destptr)
 	{
 		fprintf(stderr, "out of memory\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	memset(destptr, 0, desc->headline_size + 1);
@@ -637,7 +642,7 @@ translate_headline(Options *opts, DataDesc *desc)
 		if (!desc->cranges)
 		{
 			fprintf(stderr, "out of memory\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		i = 0; offset = 0;
@@ -1390,7 +1395,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			if (!newrows)
 			{
 				fprintf(stderr, "out of memory\n");
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			memset(newrows, 0, sizeof(LineBuffer));
@@ -1468,7 +1473,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	if (errno != 0)
 	{
 		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	desc->total_rows = nrows;
@@ -1778,6 +1783,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
 	wnoutrefresh(bottom_bar);
 
 	scrdesc->main_maxy = maxy;
+
 	scrdesc->main_maxx = maxx;
 	scrdesc->main_start_y = 0;
 	scrdesc->main_start_x = 0;
@@ -1856,12 +1862,37 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		werase(top_bar);
 
-		wattron(top_bar, top_bar_theme->title_attr);
-		if (desc->title[0] != '\0' && desc->title_rows > 0)
-			mvwprintw(top_bar, 0, 0, "%s", desc->title);
-		else if (desc->filename[0] != '\0')
-			mvwprintw(top_bar, 0, 0, "%s", desc->filename);
-		wattroff(top_bar, top_bar_theme->title_attr);
+		if (desc->title[0] != '\0' || desc->filename[0] != '\0')
+		{
+			wattron(top_bar, top_bar_theme->title_attr);
+			if (desc->title[0] != '\0' && desc->title_rows > 0)
+				mvwprintw(top_bar, 0, 0, "%s", desc->title);
+			else if (desc->filename[0] != '\0')
+				mvwprintw(top_bar, 0, 0, "%s", desc->filename);
+			wattroff(top_bar, top_bar_theme->title_attr);
+		}
+
+		if (opts->watch_time > 0)
+		{
+			if (last_watch_sec > 0)
+			{
+				long	ms, td;
+				time_t	sec;
+				struct timespec spec;
+				int		w = number_width(opts->watch_time);
+
+				clock_gettime(CLOCK_MONOTONIC, &spec);
+				ms = roundl(spec.tv_nsec / 1.0e6);
+				sec = spec.tv_sec;
+
+				td = (sec - last_watch_sec) * 1000 + ms - last_watch_ms;
+
+				if (paused)
+					mvwprintw(top_bar, 0, 0, "paused %ld sec", td / 1000);
+				else
+					mvwprintw(top_bar, 0, 0, "%*ld/%d", w, td/1000 + 1, opts->watch_time);
+			}
+		}
 
 		if (opts->no_cursor)
 		{
@@ -2618,7 +2649,7 @@ repeat:
 			  buffer);
 	fflush(debug_pipe);
 
-	if (0)
+	if (1)
 	{
 		struct mallinfo mi;
 
@@ -2654,6 +2685,41 @@ exit_ncurses(void)
 		endwin();
 }
 
+static void
+DataDescFree(DataDesc *desc)
+{
+	LineBuffer	   *lb = &desc->rows;
+
+	while (lb)
+	{
+		LineBuffer   *next;
+		int		i;
+
+		for (i = 0; i < lb->nrows; i++)
+			free(lb->rows[i]);
+
+		free(lb->lineinfo);
+		next = lb->next;
+		if (lb != &desc->rows)
+			free(lb);
+
+		lb = next;
+	}
+
+	free(desc->headline_transl);
+	free(desc->cranges);
+}
+
+static void
+current_time(time_t *sec, long *ms)
+{
+	struct timespec spec;
+
+	clock_gettime(CLOCK_MONOTONIC, &spec);
+	*ms = roundl(spec.tv_nsec / 1.0e6);
+	*sec = spec.tv_sec;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2666,6 +2732,7 @@ main(int argc, char *argv[])
 	int		translated_command_history = cmd_Invalid;
 	long	last_ms = 0;							/* time of last mouse release in ms */
 	time_t	last_sec = 0;							/* time of last mouse release in sec */
+	long	next_watch = 0;
 	int		next_command = cmd_Invalid;
 	bool	reuse_event = false;
 	int		cursor_row = 0;
@@ -3034,7 +3101,7 @@ main(int argc, char *argv[])
 				if (fp == NULL)
 				{
 					fprintf(stderr, "cannot to read file: %s\n", optarg);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				opts.pathname = strdup(optarg);
 				break;
@@ -3053,6 +3120,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (opts.watch_time && !opts.query)
+	{
+		fprintf(stderr, "cannot to use watch mode without enter a query\n");
+		exit(EXIT_FAILURE);
+	}
+
 	if (opts.less_status_bar)
 		opts.no_topbar = true;
 
@@ -3062,7 +3135,14 @@ main(int argc, char *argv[])
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
 	if (opts.csv_format || opts.query)
+	{
 		read_and_format(fp, &opts, &desc);
+		if (opts.watch_time > 0)
+		{
+			current_time(&last_watch_sec, &last_watch_ms);
+			next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
+		}
+	}
 	else
 		readfile(fp, &opts, &desc);
 
@@ -3170,7 +3250,7 @@ exit_while_01:
 			if (!isatty(fileno(stderr)))
 			{
 				fprintf(stderr, "missing a access to terminal device\n");
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			noatty = true;
 			fclose(stdin);
@@ -3444,13 +3524,12 @@ reinit_theme:
 
 #endif
 
-
 	while (true)
 	{
-		bool		refresh_scr = false;
-		bool		resize_scr = false;
-		bool		after_freeze_signal = false;
-		bool		recheck_vertical_cursor_visibility = false;
+		bool	refresh_scr = false;
+		bool	resize_scr = false;
+		bool	after_freeze_signal = false;
+		bool	recheck_vertical_cursor_visibility = false;
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
@@ -3649,7 +3728,50 @@ reinit_theme:
 				else
 					prev_event_is_mouse_press = false;
 
-				event_keycode = get_event(&event, &press_alt, &got_sigint, -1);
+				event_keycode = get_event(&event, &press_alt, &got_sigint, opts.watch_time > 0 ? 1000 : -1);
+
+				if (opts.watch_time & !paused)
+				{
+					long	ms;
+					time_t	sec;
+					long	ct;
+
+					current_time(&sec, &ms);
+					ct = sec * 1000 + ms;
+
+					if (ct > next_watch)
+					{
+						DataDesc		desc2;
+
+						read_and_format(fp, &opts, &desc2);
+						DataDescFree(&desc);
+
+						memcpy(&desc, &desc2, sizeof(desc));
+
+						if (desc.headline)
+							(void) translate_headline(&opts, &desc);
+
+						detected_format = desc.headline_transl;
+						if (detected_format && desc.oid_name_table)
+							default_freezed_cols = 2;
+
+						create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
+						create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+
+						last_watch_sec = sec; last_watch_ms = ms;
+
+						if ((ct - next_watch) < (opts.watch_time * 1000))
+							next_watch = next_watch + 1000 * opts.watch_time;
+						else
+							next_watch = ct + 100 * opts.watch_time;
+
+						refresh_scr = true;
+					}
+
+					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
+					if (event_keycode == 0)
+						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
+				}
 
 				/* the comment for ignore_mouse_release follow */
 				if (ignore_mouse_release)
@@ -3703,7 +3825,7 @@ reinit_theme:
 		if (!redirect_mode)
 		{
 			translated_command_history = translated_command;
-			command = translate_event(event_keycode, press_alt);
+			command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
 			translated_command = command;
 		}
 
@@ -3761,7 +3883,7 @@ hide_menu:
 			if (!processed)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt);
+				command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
 				translated_command = command;
 			}
 			else
@@ -3772,7 +3894,7 @@ hide_menu:
 			if (!redirect_mode)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt);
+				command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
 				translated_command = command;
 			}
 		}
@@ -5737,6 +5859,10 @@ found_next_pattern:
 
 					break;
 				}
+
+			case cmd_TogglePause:
+				paused = !paused;
+				break;
 
 			case cmd_MOUSE_EVENT:
 				{

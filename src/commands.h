@@ -108,12 +108,13 @@ typedef enum PspgCommand
 	cmd_BoldCursorToggle,
 	cmd_SortAsc,
 	cmd_SortDesc,
-	cmd_OriginalSort
+	cmd_OriginalSort,
+	cmd_TogglePause
 } PspgCommand;
 
 extern void initialize_special_keycodes();
 extern const char *cmd_string(int cmd);
-extern int translate_event(int c, bool alt);
+extern int translate_event(int c, bool alt, bool watch_mode);
 
 extern int cmd_get_theme(int cmd);
 extern int theme_get_cmd(int theme);
