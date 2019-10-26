@@ -124,6 +124,7 @@ typedef struct
 	int		data_rows;				/* number of data rows */
 	int		footer_rows;			/* number of footer rows */
 	bool	oid_name_table;			/* detected system table with first oid column */
+	bool	multilines_already_tested;	/* true, when we know where are multilines */
 } DataDesc;
 
 /*
@@ -228,7 +229,7 @@ extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
 extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 
 /* from pretty-csv.c */
-extern void read_and_format(FILE *fp, Options *opts, DataDesc *desc);
+extern bool read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err);
 
 /* from pgclient.c */
 extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);

@@ -959,8 +959,8 @@ next_char:
  * Read external unformatted data (csv or result of some query
  *
  */
-void
-read_and_format(FILE *fp, Options *opts, DataDesc *desc)
+bool
+read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 {
 	LinebufType		linebuf;
 	RowBucketType	rowbuckets, *rb;
@@ -1004,6 +1004,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc)
 	desc->namesline = NULL;
 	desc->order_map = NULL;
 	desc->total_rows = 0;
+	desc->multilines_already_tested = false;
 
 	desc->maxbytes = -1;
 	desc->maxx = -1;
@@ -1025,14 +1026,8 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc)
 
 	if (opts->query)
 	{
-		const char	*err;
-
-		if (!pg_exec_query(opts, &rowbuckets, &pdesc, &err))
-		{
-			/* ToDo: allow to repeat query, if err is not FATAL */
-			fprintf(stderr, "%s\n", err);
-			exit(EXIT_FAILURE);
-		}
+		if (!pg_exec_query(opts, &rowbuckets, &pdesc, err))
+			return false;
 	}
 	else
 	{
@@ -1231,4 +1226,8 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc)
 			free(rb);
 		rb = nextrb;
 	}
+
+	*err = NULL;
+
+	return true;
 }

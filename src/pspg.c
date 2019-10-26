@@ -142,7 +142,7 @@ MEVENT		event;
 long	last_watch_ms = 0;
 time_t	last_watch_sec = 0;						/* time when we did last refresh */
 bool	paused = false;							/* true, when watch mode is paused */
-
+const char *err = NULL;
 
 static bool active_ncurses = false;
 
@@ -1374,6 +1374,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	rows = &desc->rows;
 	desc->rows.prev = NULL;
 	desc->oid_name_table = false;
+	desc->multilines_already_tested = false;
 
 	errno = 0;
 
@@ -1523,6 +1524,280 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	}
 
 	return 0;
+}
+
+/*
+ * Prepare order map - it is used for printing data in different than
+ * original order. "sbcn" - sort by column number
+ */
+static void
+update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort)
+{
+	LineBuffer	   *lnb = &desc->rows;
+	char		   *nullstr = NULL;
+	int				xmin, xmax;
+	int				lineno = 0;
+	bool			continual_line = false;
+	bool			has_multilines = false;
+	bool			isnull;
+	bool			detect_string_column = false;
+	bool			border0 = (desc->border_type == 0);
+	bool			border1 = (desc->border_type == 1);
+	bool			border2 = (desc->border_type == 2);
+	SortData	   *sortbuf;
+	int				sortbuf_pos = 0;
+	int			i;
+
+	xmin = desc->cranges[sbcn - 1].xmin;
+	xmax = desc->cranges[sbcn - 1].xmax;
+
+	sortbuf = malloc(desc->total_rows * sizeof(SortData));
+	if (!sortbuf)
+		leave_ncurses("out of memory");
+
+	/* first time we should to detect multilines */
+	if (!desc->multilines_already_tested)
+	{
+		desc->multilines_already_tested = true;
+
+		lnb = &desc->rows;
+		lineno = 0;
+
+		while (lnb)
+		{
+			for (i = 0; i < lnb->nrows; i++)
+			{
+				if (lineno >= desc->first_data_row && lineno <= desc->last_data_row)
+				{
+					char   *str = lnb->rows[i];
+					bool	found_continuation_symbol = false;
+					int		j = 0;
+
+					while (j < desc->headline_char_size)
+					{
+						if (border0)
+						{
+							/* border 0, last continuation symbol is after headline */
+							if (j + 1 == desc->headline_char_size)
+							{
+								char	*sym;
+
+								sym = str + (opts->force8bit ? 1 : utf8charlen(*str));
+								if (*sym != '\0')
+									found_continuation_symbol = is_line_continuation_char(sym, desc);
+							}
+							else if (desc->headline_transl[j] == 'I')
+								found_continuation_symbol = is_line_continuation_char(str, desc);
+						}
+						else if (border1)
+						{
+							if ((j + 1 < desc->headline_char_size && desc->headline_transl[j + 1] == 'I') ||
+									  (j + 1 == desc->headline_char_size))
+								found_continuation_symbol = is_line_continuation_char(str, desc);
+						}
+						else if (border2)
+						{
+							if ((j + 1 < desc->headline_char_size) &&
+									(desc->headline_transl[j + 1] == 'I' || desc->headline_transl[j + 1] == 'R'))
+								found_continuation_symbol = is_line_continuation_char(str, desc);
+						}
+
+						if (found_continuation_symbol)
+							break;
+
+						j += opts->force8bit ? 1 : utf_dsplen(str);
+						str += opts->force8bit ? 1 : utf8charlen(*str);
+					}
+
+					if (found_continuation_symbol)
+					{
+						if (lnb->lineinfo == NULL)
+						{
+							lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
+							if (lnb->lineinfo == NULL)
+								leave_ncurses("out of memory");
+
+							memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
+						}
+
+						lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
+						has_multilines = true;
+					}
+				}
+
+				lineno += 1;
+			}
+			lnb = lnb->next;
+		}
+	}
+
+	lnb = &desc->rows;
+	lineno = 0;
+	sortbuf_pos = 0;
+
+	if (!desc->order_map)
+	{
+		desc->order_map = malloc(desc->total_rows * sizeof(MappedLine));
+		if (!desc->order_map)
+			leave_ncurses("out of memory");
+	}
+
+	/*
+	 * There are two possible sorting methods: numeric or string.
+	 * We can try numeric sort first if all values are numbers or
+	 * just only one type of string value (like NULL string). This
+	 * value can be repeated,
+	 *
+	 * When there are more different strings, then start again and
+	 * use string sort.
+	 */
+	while (lnb)
+	{
+		for (i = 0; i < lnb->nrows; i++)
+		{
+			desc->order_map[lineno].lnb = lnb;
+			desc->order_map[lineno].lnb_row = i;
+
+			if (lineno >= desc->first_data_row && lineno <= desc->last_data_row)
+			{
+				if (!continual_line)
+				{
+					sortbuf[sortbuf_pos].lnb = lnb;
+					sortbuf[sortbuf_pos].lnb_row = i;
+					sortbuf[sortbuf_pos].strxfrm = NULL;
+
+					if (cut_numeric_value(lnb->rows[i],
+										   xmin, xmax,
+										   &sortbuf[sortbuf_pos].d,
+										   border0,
+										   &isnull,
+										   &nullstr))
+						sortbuf[sortbuf_pos++].info = INFO_DOUBLE;
+					else
+					{
+						sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;
+						if (!isnull)
+						{
+							detect_string_column = true;
+							goto sort_by_string;
+						}
+					}
+				}
+
+				if (has_multilines)
+				{
+					continual_line = (lnb->lineinfo &&
+									  (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
+				}
+			}
+
+			lineno += 1;
+		}
+
+		lnb = lnb->next;
+	}
+
+sort_by_string:
+
+	free(nullstr);
+
+	if (detect_string_column)
+	{
+		/* read data again and use nls_string */
+		lnb = &desc->rows;
+		lineno = 0;
+		sortbuf_pos = 0;
+		while (lnb)
+		{
+			for (i = 0; i < lnb->nrows; i++)
+			{
+				desc->order_map[lineno].lnb = lnb;
+				desc->order_map[lineno].lnb_row = i;
+
+				if (lineno >= desc->first_data_row && lineno <= desc->last_data_row)
+				{
+					if (!continual_line)
+					{
+						sortbuf[sortbuf_pos].lnb = lnb;
+						sortbuf[sortbuf_pos].lnb_row = i;
+						sortbuf[sortbuf_pos].d = 0.0;
+
+						if (cut_text(lnb->rows[i], xmin, xmax, border0, opts->force8bit, &sortbuf[sortbuf_pos].strxfrm))
+							sortbuf[sortbuf_pos++].info = INFO_STRXFRM;
+						else
+							sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;		/* empty string */
+					}
+
+					if (has_multilines)
+					{
+						continual_line =  (lnb->lineinfo &&
+										   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
+					}
+				}
+
+				lineno += 1;
+			}
+			lnb = lnb->next;
+		}
+	}
+
+	if (lineno != desc->total_rows)
+		leave_ncurses("unexpected processed rows after sort prepare");
+
+	if (detect_string_column)
+		sort_column_text(sortbuf, sortbuf_pos, desc_sort);
+	else
+		sort_column_num(sortbuf, sortbuf_pos, desc_sort);
+
+	lineno = desc->first_data_row;
+
+	for (i = 0; i < sortbuf_pos; i++)
+	{
+		desc->order_map[lineno].lnb = sortbuf[i].lnb;
+		desc->order_map[lineno].lnb_row = sortbuf[i].lnb_row;
+		lineno += 1;
+
+		/* assign other continual lines */
+		if (has_multilines)
+		{
+			int		lnb_row;
+			bool	continual = false;
+
+			lnb = sortbuf[i].lnb;
+			lnb_row = sortbuf[i].lnb_row;
+
+			continual = lnb->lineinfo &&
+									   (lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
+
+			while (lnb && continual)
+			{
+				lnb_row += 1;
+				if (lnb_row >= lnb->nrows)
+				{
+					lnb_row = 0;
+					lnb = lnb->next;
+				}
+
+				desc->order_map[lineno].lnb = lnb;
+				desc->order_map[lineno].lnb_row = lnb_row;
+				lineno += 1;
+
+				continual = lnb && lnb->lineinfo &&
+								(lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
+			}
+		}
+	}
+
+	/*
+	 * We cannot to say nothing about found_row, so most
+	 * correct solution is clean it now.
+	 */
+	scrdesc->found_row = -1;
+
+	for (i = 0; i < sortbuf_pos; i++)
+		free(sortbuf[i].strxfrm);
+
+	free(sortbuf);
 }
 
 /*
@@ -1860,6 +2135,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		(void) maxy;
 
+		wbkgd(top_bar, err ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
 		werase(top_bar);
 
 		if (desc->title[0] != '\0' || desc->filename[0] != '\0')
@@ -1891,6 +2167,24 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 					mvwprintw(top_bar, 0, 0, "paused %ld sec", td / 1000);
 				else
 					mvwprintw(top_bar, 0, 0, "%*ld/%d", w, td/1000 + 1, opts->watch_time);
+			}
+
+			if (err)
+			{
+				int		i;
+				char   *ptr = buffer;
+
+				/* copy first row to buffer */
+				for (i = 0; i < 200; i++)
+					if (err[i] == '\0' || err[i] == '\n')
+					{
+						ptr = '\0';
+						break;
+					}
+					else
+						*ptr++ = err[i];
+
+				wprintw(top_bar, "   %s", buffer);
 			}
 		}
 
@@ -1991,7 +2285,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			}
 		}
 
-		mvwprintw(top_bar, 0, maxx - strlen(buffer), "%s", buffer);
+		mvwprintw(top_bar, 0, maxx - strlen(buffer) - 2, "  %s", buffer);
 		wnoutrefresh(top_bar);
 	}
 
@@ -2706,6 +3000,7 @@ DataDescFree(DataDesc *desc)
 		lb = next;
 	}
 
+	free(desc->order_map);
 	free(desc->headline_transl);
 	free(desc->cranges);
 }
@@ -2774,9 +3069,10 @@ main(int argc, char *argv[])
 	bool	no_interactive = false;
 	bool	raw_output_quit = false;
 
-	bool	multilines_should_be_tested = true;	/* protect to against multiline tests */
-	bool	has_multilines = false;
 	bool	mouse_was_initialized = false;
+
+	int		last_ordered_column = -1;			/* order by when watch mode is active */
+	bool	last_order_desc = false;			/* true, when sort of data is descend */
 
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
@@ -3136,7 +3432,15 @@ main(int argc, char *argv[])
 
 	if (opts.csv_format || opts.query)
 	{
-		read_and_format(fp, &opts, &desc);
+		/*
+		 * ToDo: first query can be broken too in watch mode.
+		 */
+		if (!read_and_format(fp, &opts, &desc, &err))
+		{
+			fprintf(stderr, "%s\n", err);
+			exit(EXIT_FAILURE);
+		}
+
 		if (opts.watch_time > 0)
 		{
 			current_time(&last_watch_sec, &last_watch_ms);
@@ -3730,7 +4034,7 @@ reinit_theme:
 
 				event_keycode = get_event(&event, &press_alt, &got_sigint, opts.watch_time > 0 ? 1000 : -1);
 
-				if (opts.watch_time & !paused)
+				if (opts.watch_time)
 				{
 					long	ms;
 					time_t	sec;
@@ -3739,32 +4043,71 @@ reinit_theme:
 					current_time(&sec, &ms);
 					ct = sec * 1000 + ms;
 
-					if (ct > next_watch)
+					if (ct > next_watch && !paused)
 					{
 						DataDesc		desc2;
 
-						read_and_format(fp, &opts, &desc2);
-						DataDescFree(&desc);
+						if (read_and_format(fp, &opts, &desc2, &err))
+						{
+							int		max_cursor_row;
+							int		max_first_row;
+							ScrDesc		aux;
 
-						memcpy(&desc, &desc2, sizeof(desc));
+							DataDescFree(&desc);
+							memcpy(&desc, &desc2, sizeof(desc));
 
-						if (desc.headline)
-							(void) translate_headline(&opts, &desc);
+							if (desc.headline)
+								(void) translate_headline(&opts, &desc);
 
-						detected_format = desc.headline_transl;
-						if (detected_format && desc.oid_name_table)
-							default_freezed_cols = 2;
+							detected_format = desc.headline_transl;
+							if (detected_format && desc.oid_name_table)
+								default_freezed_cols = 2;
 
-						create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
-						create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+							/* we should to save searching related data from scrdesc */
+							memcpy(&aux, &scrdesc, sizeof(ScrDesc));
 
-						last_watch_sec = sec; last_watch_ms = ms;
+							create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
+							create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+
+							memcpy(scrdesc.searchcolterm, aux.searchcolterm, 255);
+							scrdesc.searchcolterm_size = aux.searchcolterm_size;
+
+							scrdesc.searchterm_char_size = aux.searchterm_char_size;
+							scrdesc.searchterm_size = aux.searchterm_size;
+							scrdesc.has_upperchr = aux.has_upperchr;
+							scrdesc.found = aux.found;
+					  		scrdesc.found_start_x = aux.found_start_x;
+							scrdesc.found_start_bytes = aux.found_start_bytes;
+							scrdesc.found_row = aux.found_row;
+
+							scrdesc.fmt = aux.fmt;
+							scrdesc.par = par;
+
+							/* new result can have different number of row, check cursor */
+							max_cursor_row = MAX_CURSOR_ROW;
+							cursor_row = cursor_row > max_cursor_row ? max_cursor_row : cursor_row;
+
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
+
+							max_first_row = MAX_FIRST_ROW;
+							max_first_row = max_first_row < 0 ? 0 : max_first_row;
+							first_row = first_row > max_first_row ? max_first_row : first_row;
+
+							last_watch_sec = sec; last_watch_ms = ms;
+						}
+						else
+							DataDescFree(&desc2);
 
 						if ((ct - next_watch) < (opts.watch_time * 1000))
 							next_watch = next_watch + 1000 * opts.watch_time;
 						else
 							next_watch = ct + 100 * opts.watch_time;
 
+						if (last_ordered_column != -1)
+							update_order_map(&opts, &scrdesc, &desc, last_ordered_column, last_order_desc);
+
+						clear();
 						refresh_scr = true;
 					}
 
@@ -5084,6 +5427,8 @@ recheck_end:
 				{
 					free(desc.order_map);
 					desc.order_map = NULL;
+
+					last_ordered_column = -1;
 				}
 
 				/*
@@ -5097,288 +5442,21 @@ recheck_end:
 			case cmd_SortAsc:
 			case cmd_SortDesc:
 				{
-					if (desc.columns == 0)
-					{
-						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true, false);
-						break;
-					}
-
 					if (opts.vertical_cursor && vertical_cursor_column > 0 && desc.columns > 0)
 					{
-						LineBuffer	   *lnb = &desc.rows;
-						char		   *nullstr = NULL;
-						int				xmin, xmax;
-						int				lineno = 0;
-						bool			continual_line = false;
-						bool			isnull;
-						bool			detect_string_column = false;
-						bool			border0 = (desc.border_type == 0);
-						SortData	   *sortbuf;
-						int				sortbuf_pos = 0;
-						int			i;
+						update_order_map(&opts,
+										 &scrdesc,
+										 &desc,
+										 vertical_cursor_column,
+										 command == cmd_SortDesc);
 
-						xmin = desc.cranges[vertical_cursor_column - 1].xmin;
-						xmax = desc.cranges[vertical_cursor_column - 1].xmax;
-
-						sortbuf = malloc(desc.total_rows * sizeof(SortData));
-						if (sortbuf == NULL)
-							leave_ncurses("out of memory");
-
-						/* first time we should to detect multilines */
-						if (multilines_should_be_tested)
-						{
-							multilines_should_be_tested = false;
-
-							lnb = &desc.rows;
-							lineno = 0;
-
-							while (lnb)
-							{
-								for (i = 0; i < lnb->nrows; i++)
-								{
-									if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
-									{
-										char   *str = lnb->rows[i];
-										bool	found_continuation_symbol = false;
-										int		j = 0;
-
-										while (j < desc.headline_char_size)
-										{
-											if (desc.border_type == 0)
-											{
-												/* border 0, last continuation symbol is after headline */
-												if (j + 1 == desc.headline_char_size)
-												{
-													char	*sym;
-
-													sym = str + (opts.force8bit ? 1 : utf8charlen(*str));
-													if (*sym != '\0')
-														found_continuation_symbol = is_line_continuation_char(sym, &desc);
-												}
-												else if (desc.headline_transl[j] == 'I')
-													found_continuation_symbol = is_line_continuation_char(str, &desc);
-											}
-											else if (desc.border_type == 1)
-											{
-												if ((j + 1 < desc.headline_char_size && desc.headline_transl[j + 1] == 'I') ||
-														  (j + 1 == desc.headline_char_size))
-													found_continuation_symbol = is_line_continuation_char(str, &desc);
-											}
-											else if (desc.border_type == 2)
-											{
-												if ((j + 1 < desc.headline_char_size) &&
-														(desc.headline_transl[j + 1] == 'I' || desc.headline_transl[j + 1] == 'R'))
-													found_continuation_symbol = is_line_continuation_char(str, &desc);
-											}
-
-											if (found_continuation_symbol)
-												break;
-
-											j += opts.force8bit ? 1 : utf_dsplen(str);
-											str += opts.force8bit ? 1 : utf8charlen(*str);
-										}
-
-										if (found_continuation_symbol)
-										{
-											if (lnb->lineinfo == NULL)
-											{
-												lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
-												if (lnb->lineinfo == NULL)
-													leave_ncurses("out of memory");
-
-												memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
-											}
-
-											lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
-											has_multilines = true;
-										}
-									}
-
-									lineno += 1;
-								}
-								lnb = lnb->next;
-							}
-						}
-
-						lnb = &desc.rows;
-						lineno = 0;
-						sortbuf_pos = 0;
-
-						if (!desc.order_map)
-						{
-							desc.order_map = malloc(desc.total_rows * sizeof(MappedLine));
-							if (desc.order_map == NULL)
-								leave_ncurses("out of memory");
-						}
-
-						/*
-						 * There are two possible sorting methods: numeric or string.
-						 * We can try numeric sort first if all values are numbers or
-						 * just only one type of string value (like NULL string). This
-						 * value can be repeated,
-						 *
-						 * When there are more different strings, then start again and
-						 * use string sort.
-						 */
-						while (lnb)
-						{
-							for (i = 0; i < lnb->nrows; i++)
-							{
-								desc.order_map[lineno].lnb = lnb;
-								desc.order_map[lineno].lnb_row = i;
-
-								if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
-								{
-									if (!continual_line)
-									{
-										sortbuf[sortbuf_pos].lnb = lnb;
-										sortbuf[sortbuf_pos].lnb_row = i;
-										sortbuf[sortbuf_pos].strxfrm = NULL;
-
-										if (cut_numeric_value(lnb->rows[i],
-															   xmin, xmax,
-															   &sortbuf[sortbuf_pos].d,
-															   border0,
-															   &isnull,
-															   &nullstr))
-											sortbuf[sortbuf_pos++].info = INFO_DOUBLE;
-										else
-										{
-											sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;
-											if (!isnull)
-											{
-												detect_string_column = true;
-												goto sort_by_string;
-											}
-										}
-									}
-
-									if (has_multilines)
-									{
-										continual_line =  (lnb->lineinfo &&
-														   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
-									}
-								}
-
-								lineno += 1;
-							}
-
-							lnb = lnb->next;
-						}
-
-sort_by_string:
-
-						if (nullstr)
-							free(nullstr);
-
-						if (detect_string_column)
-						{
-							/* read data again and use nls_string */
-							lnb = &desc.rows;
-							lineno = 0;
-							sortbuf_pos = 0;
-							while (lnb)
-							{
-								for (i = 0; i < lnb->nrows; i++)
-								{
-									desc.order_map[lineno].lnb = lnb;
-									desc.order_map[lineno].lnb_row = i;
-
-									if (lineno >= desc.first_data_row && lineno <= desc.last_data_row)
-									{
-										if (!continual_line)
-										{
-											sortbuf[sortbuf_pos].lnb = lnb;
-											sortbuf[sortbuf_pos].lnb_row = i;
-											sortbuf[sortbuf_pos].d = 0.0;
-
-											if (cut_text(lnb->rows[i], xmin, xmax, border0, opts.force8bit, &sortbuf[sortbuf_pos].strxfrm))
-												sortbuf[sortbuf_pos++].info = INFO_STRXFRM;
-											else
-												sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;		/* empty string */
-										}
-
-										if (has_multilines)
-										{
-											continual_line =  (lnb->lineinfo &&
-															   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
-										}
-									}
-
-									lineno += 1;
-								}
-								lnb = lnb->next;
-							}
-						}
-
-						if (lineno != desc.total_rows)
-							leave_ncurses("unexpected processed rows after sort prepare");
-
-						if (detect_string_column)
-							sort_column_text(sortbuf,
-									    sortbuf_pos,
-									    command == cmd_SortDesc);
-						else
-							sort_column_num(sortbuf,
-									    sortbuf_pos,
-									    command == cmd_SortDesc);
-
-
-						lineno = desc.first_data_row;
-
-						for (i = 0; i < sortbuf_pos; i++)
-						{
-							desc.order_map[lineno].lnb = sortbuf[i].lnb;
-							desc.order_map[lineno].lnb_row = sortbuf[i].lnb_row;
-							lineno += 1;
-
-							/* assign other continual lines */
-							if (has_multilines)
-							{
-								int		lnb_row;
-								bool	continual = false;
-
-								lnb = sortbuf[i].lnb;
-								lnb_row = sortbuf[i].lnb_row;
-
-								continual = lnb->lineinfo &&
-														   (lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
-
-								while (lnb && continual)
-								{
-									lnb_row += 1;
-									if (lnb_row >= lnb->nrows)
-									{
-										lnb_row = 0;
-										lnb = lnb->next;
-									}
-
-									desc.order_map[lineno].lnb = lnb;
-									desc.order_map[lineno].lnb_row = lnb_row;
-									lineno += 1;
-
-									continual = lnb && lnb->lineinfo &&
-													(lnb->lineinfo[lnb_row].mask & LINEINFO_CONTINUATION);
-								}
-							}
-						}
-
-						/*
-						 * We cannot to say nothing about found_row, so most
-						 * correct solution is clean it now.
-						 */
-						scrdesc.found_row = -1;
-
-						for (i = 0; i < sortbuf_pos; i++)
-						{
-							if (sortbuf[i].strxfrm)
-								free(sortbuf[i].strxfrm);
-						}
-
-						free(sortbuf);
+						last_ordered_column = vertical_cursor_column;
+						last_order_desc = command == cmd_SortDesc;
 					}
-					else
-							show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
+					else if (desc.columns == 0)
+						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true, false);
+					else 
+						show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
 
 					break;
 				}
