@@ -4081,7 +4081,7 @@ reinit_theme:
 							scrdesc.found_row = aux.found_row;
 
 							scrdesc.fmt = aux.fmt;
-							scrdesc.par = par;
+							scrdesc.par = aux.par;
 
 							/* new result can have different number of row, check cursor */
 							max_cursor_row = MAX_CURSOR_ROW;
