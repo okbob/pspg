@@ -47,6 +47,12 @@ typedef struct
 	bool	no_sigint_search_reset;
 	char   *query;
 	int		watch_time;
+	char   *host;
+	char   *username;
+	char   *port;
+	bool	force_password_prompt;
+	char   *password;
+	char   *dbname;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

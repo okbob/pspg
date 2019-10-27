@@ -2190,8 +2190,14 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		if (opts->no_cursor)
 		{
+			double	percent;
+
 			if (desc->headline_transl)
 			{
+				percent = (first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) /
+								((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0;
+				percent = percent > 100.0 ? 100.0 : percent;
+
 				if (opts->vertical_cursor && desc->columns > 0 && vertical_cursor_column > 0)
 				{
 					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
@@ -2208,7 +2214,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 									number_width(desc->headline_char_size), desc->headline_char_size,
 									number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
 									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
-									(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+									percent);
 				}
 				else
 				{
@@ -2219,18 +2225,21 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 									number_width(desc->headline_char_size), desc->headline_char_size,
 									number_width(desc->maxy - desc->fixed_rows), first_row + scrdesc->main_maxy - fix_rows_offset - desc->fixed_rows - desc->title_rows,
 									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
-									(first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
+									percent);
 				}
 			}
 			else
 			{
+				percent = ((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0;
+				percent = percent > 100.0 ? 100.0 : percent;
+
 				snprintf(buffer, 199, "C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
 								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
 								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
 								number_width(desc->maxx), desc->maxx,
 								number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + scrdesc->main_maxy,
 								number_width(desc->last_row), desc->last_row + 1,
-								((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0);
+								percent);
 			}
 		}
 		else
@@ -2943,7 +2952,7 @@ repeat:
 			  buffer);
 	fflush(debug_pipe);
 
-	if (1)
+	if (0)
 	{
 		struct mallinfo mi;
 
@@ -3113,6 +3122,11 @@ main(int argc, char *argv[])
 		{"ni", no_argument, 0, 23},
 		{"watch", required_argument, 0, 'w'},
 		{"query", required_argument, 0, 'q'},
+		{"host", required_argument, 0, 'h'},
+		{"port", required_argument, 0, 'p'},
+		{"password", no_argument, 0, 'W'},
+		{"username", required_argument, 0, 'U'},
+		{"dbname", required_argument, 0, 'd'},
 		{0, 0, 0, 0}
 	};
 
@@ -3152,7 +3166,12 @@ main(int argc, char *argv[])
 	opts.no_sigint_search_reset = false;
 	opts.query = NULL;
 	opts.watch_time = 0;
-
+	opts.host = NULL;
+	opts.username = NULL;
+	opts.port = NULL;
+	opts.force_password_prompt = false;
+	opts.password = NULL;
+	opts.dbname = NULL;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -3164,7 +3183,7 @@ main(int argc, char *argv[])
 
 #endif
 
-	while ((opt = getopt_long(argc, argv, "abs:c:f:XVFgGiIq:w:",
+	while ((opt = getopt_long(argc, argv, "abs:c:d:f:h:p:XVFgGiIq:U:w:W",
 							  long_options, &option_index)) != -1)
 	{
 		int		n;
@@ -3172,63 +3191,61 @@ main(int argc, char *argv[])
 		switch (opt)
 		{
 			case 1:
-				fprintf(stderr, "pspg is a Unix pager optimized for table browsing.\n\n");
+				fprintf(stderr, "pspg is a Unix pager designed for table browsing.\n\n");
 				fprintf(stderr, "Usage:\n");
-				fprintf(stderr, "  %s [OPTION]\n\n", argv[0]);
-				fprintf(stderr, "Options:\n");
-				fprintf(stderr, "  --about        about authors\n");
-				fprintf(stderr, "  -a             force ascii menu border\n");
-				fprintf(stderr, "  -b             black-white style\n");
-				fprintf(stderr, "  -s N           set color style number (0..%d)\n", MAX_STYLE);
-				fprintf(stderr, "  -c N           fix N columns (0..9)\n");
-				fprintf(stderr, "  -f file        open file\n");
-				fprintf(stderr, "  -X             don't use alternate screen\n");
-				fprintf(stderr, "  --bold-labels  row, column labels use bold font\n");
-				fprintf(stderr, "  --bold-cursor  cursor use bold font\n");
-				fprintf(stderr, "  --csv          input stream has csv format\n");
-				fprintf(stderr, "  --csv-separator\n");
-				fprintf(stderr, "                 char used as field separator\n");
-				fprintf(stderr, "  --border       type of borders (0..2)\n");
-				fprintf(stderr, "  --double-header\n");
-				fprintf(stderr, "                 header separator uses double lines\n");
-				fprintf(stderr, "  --help         show this help\n");
-				fprintf(stderr, "  --force-uniborder\n");
-				fprintf(stderr, "                 replace ascii borders by unicode borders\n");
+				fprintf(stderr, "  %s [OPTION]\n", argv[0]);
+				fprintf(stderr, "\nGeneral options:\n");
+				fprintf(stderr, "  --about                  about authors\n");
+				fprintf(stderr, "  --help                   show this help\n");
+				fprintf(stderr, "  -V, --version            show version\n\n");
+				fprintf(stderr, "\n");
+				fprintf(stderr, "  -f FILE                  open file\n");
 				fprintf(stderr, "  -F, --quit-if-one-screen\n");
-				fprintf(stderr, "                 quit if content is one screen\n");
-				fprintf(stderr, "  -g --hlite-search\n");
-				fprintf(stderr, "  -G --HILITE-SEARCH\n");
-				fprintf(stderr, "                 don't highlight lines for searches\n");
-				fprintf(stderr, "  -i --ignore-case\n");
-				fprintf(stderr, "                 ignore case in searches that do not contain uppercase\n");
-				fprintf(stderr, "  -I --IGNORE-CASE\n");
-				fprintf(stderr, "                 ignore case in all searches\n");
-				fprintf(stderr, "  --less-status-bar\n");
-				fprintf(stderr, "                 status bar like less pager\n");
-				fprintf(stderr, "  --line-numbers\n");
-				fprintf(stderr, "                 show line number column\n");
-				fprintf(stderr, "  --ni           not interactive mode (only for csv)\n");
-				fprintf(stderr, "  --no-mouse     don't use own mouse handling\n");
+				fprintf(stderr, "                           quit if content is one screen\n");
+				fprintf(stderr, "  -X                       don't use alternate screen\n");
+				fprintf(stderr, "  --ni                     not interactive mode (only for csv)\n");
+				fprintf(stderr, "  --no-mouse               don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sigint-search-reset\n");
-				fprintf(stderr, "                 without reset searching on sigint (CTRL C)\n");
-				fprintf(stderr, "  --no-sound     don't use beep when scroll is not possible\n");
-				fprintf(stderr, "  --no-cursor    row cursor will be hidden\n");
-				fprintf(stderr, "  --no-commandbar\n");
-				fprintf(stderr, "  --no-topbar\n");
-				fprintf(stderr, "  --no-bars\n");
-				fprintf(stderr, "                 don't show bottom, top bar or both\n");
-				fprintf(stderr, "  --on-sigint-exit\n");
-				fprintf(stderr, "                 without exit on sigint(CTRL C or Escape)\n");
-				fprintf(stderr, "  -q, --query    execute query\n");
-				fprintf(stderr, "  --tabular-cursor\n");
-				fprintf(stderr, "                 cursor is visible only when data has table format\n");
-				fprintf(stderr, "  --vertical-cursor\n");
-				fprintf(stderr, "                 show vertical column cursor\n");
-				fprintf(stderr, "  --only-for-tables\n");
-				fprintf(stderr, "                 use std pager when content is not table\n");
-				fprintf(stderr, "  -V, --version  show version\n\n");
-				fprintf(stderr, "  -w, --watch time\n");
-				fprintf(stderr, "                 the query is repeated every time (sec)\n");
+				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
+				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
+				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+				fprintf(stderr, "\nOutput options:\n");
+				fprintf(stderr, "  -a                       force ascii\n");
+				fprintf(stderr, "  -b                       black-white style\n");
+				fprintf(stderr, "  -s N                     set color style number (0..%d)\n", MAX_STYLE);
+				fprintf(stderr, "  --bold-labels            row, column labels use bold font\n");
+				fprintf(stderr, "  --bold-cursor            cursor use bold font\n");
+				fprintf(stderr, "  --border                 type of borders (0..2)\n");
+				fprintf(stderr, "  --double-header          header separator uses double lines\n");
+				fprintf(stderr, "  --force-uniborder        replace ascii borders by unicode borders\n");
+				fprintf(stderr, "\nSearching options\n");
+				fprintf(stderr, "  -g --hlite-search, -G --HILITE-SEARCH\n");
+				fprintf(stderr, "                           don't highlight lines for searches\n");
+				fprintf(stderr, "  -i --ignore-case         ignore case in searches that do not contain uppercase\n");
+				fprintf(stderr, "  -I --IGNORE-CASE         ignore case in all searches\n");
+				fprintf(stderr, "\nInterface options:\n");
+				fprintf(stderr, "  -c N                     fix N columns (0..9)\n");
+				fprintf(stderr, "  --less-status-bar        status bar like less pager\n");
+				fprintf(stderr, "  --line-numbers           show line number column\n");
+				fprintf(stderr, "  --no-bars, --no-commandbar, --no-topbar\n");
+				fprintf(stderr, "                           don't show bottom, top bar or both\n");
+				fprintf(stderr, "  --no-cursor              row cursor will be hidden\n");
+				fprintf(stderr, "  --no-sound               don't use beep when scroll is not possible\n");
+				fprintf(stderr, "  --tabular-cursor         cursor is visible only when data has table format\n");
+				fprintf(stderr, "  --vertical-cursor        show vertical column cursor\n");
+				fprintf(stderr, "\nCsv options:\n");
+				fprintf(stderr, "  --csv                    input stream has csv format\n");
+				fprintf(stderr, "  --csv-separator          char used as field separator\n");
+				fprintf(stderr, "\nWatch mode options:\n");
+				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
+				fprintf(stderr, "  -w, --watch time         the query is repeated every time (sec)\n");
+				fprintf(stderr, "\nConnection options\n");
+				fprintf(stderr, "  -d, --dbname=DBNAME      database name\n");
+				fprintf(stderr, "  -h, --host=HOSTNAME      database server host (default: \"local socket\")\n");
+				fprintf(stderr, "  -p, --port=PORT          database server port (default: \"5432\")\n");
+				fprintf(stderr, "  -U, --username=USERNAME  database user name\n");
+				fprintf(stderr, "  -W, --password           force password prompt\n");
+				fprintf(stderr, "\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
 
@@ -3410,6 +3427,33 @@ main(int argc, char *argv[])
 			case 'G':
 				opts.no_highlight_search = true;
 				break;
+
+			case 'h':
+				opts.host = strdup(optarg);
+				break;
+			case 'p':
+				{
+					long port;
+
+					port = strtol(optarg, NULL, 10);
+					if ((port < 1) || (port > 65535))
+					{
+						fprintf(stderr, "invalid port number: %s\n", optarg);
+						exit(EXIT_FAILURE);
+					}
+					opts.port = strdup(optarg);
+				}
+				break;
+			case 'U':
+				opts.username = strdup(optarg);
+				break;
+			case 'W':
+				opts.force_password_prompt = true;
+				break;
+			case 'd':
+				opts.dbname = strdup(optarg);
+				break;
+
 			default:
 				fprintf(stderr, "Try %s --help\n", argv[0]);
 				exit(EXIT_FAILURE);

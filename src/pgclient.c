@@ -13,6 +13,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "pspg.h"
 #include "unicode.h"
@@ -150,19 +151,46 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 	RowType	   *row;
 	bool		multiline_row;
 	bool		multiline_col;
+	char	   *password;
 
-
-	const char *keywords[3];
-	const char *values[3];
-
-	keywords[0] = "dbname"; values[0] = "postgres";
-	keywords[1] = "host"; values[1] = "localhost";
-	keywords[2] = NULL; values[2] = NULL;
+	const char *keywords[8];
+	const char *values[8];
 
 	rb->nrows = 0;
 	rb->next_bucket = NULL;
 
+	if (opts->force_password_prompt && !opts->password)
+	{
+		password = getpass("Password: ");
+		opts->password = strdup(password);
+		if (!opts->password)
+			EXIT_OUT_OF_MEMORY();
+	}
+
+	keywords[0] = "host"; values[0] = opts->host;
+	keywords[1] = "port"; values[1] = opts->port;
+	keywords[2] = "user"; values[2] = opts->username;
+	keywords[3] = "password"; values[3] = opts->password;
+	keywords[4] = "dbname"; values[4] = opts->dbname;
+	keywords[5] = "fallback_application_name"; values[5] = "pspg";
+	keywords[6] = "client_encoding"; values[6] = getenv("PGCLIENTENCODING") ? NULL : "auto";
+	keywords[7] = NULL; values[7] = NULL;
+
 	conn = PQconnectdbParams(keywords, values, true);
+
+	if (PQstatus(conn) == CONNECTION_BAD &&
+		PQconnectionNeedsPassword(conn) &&
+		!opts->password)
+	{
+		password = getpass("Password: ");
+		opts->password = strdup(password);
+		if (!opts->password)
+				EXIT_OUT_OF_MEMORY();
+
+		keywords[3] = "password"; values[3] = opts->password;
+
+		conn = PQconnectdbParams(keywords, values, true);
+	}
 
 	/* Check to see that the backend connection was successfully made */
 	if (PQstatus(conn) != CONNECTION_OK)

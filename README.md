@@ -60,6 +60,11 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--on-sigint-exit`  double escape or ctrl c ending pager
 * `-q`, `--query`  execute query
 * `-w`, `--watch n`  repeat query execution every time sec
+* `-d`, `--dbname`  database name
+* `-h`, `--host`  database host name
+* `-p`, `--port`  databae port
+* `-U`, `--username`  database user name
+* `-W`, `--password`  force password prompt
 
 
 ## Themes
@@ -173,6 +178,12 @@ regex/\.csv
 </pre>
 
 * restart <code>mc</code>
+
+# Usage in watch mode
+
+The result of query can be refreshed every n seconds. `pspg` remembers cursor row,
+possible vertical cursor, possible ordering. The refreshing should be paused by pressing
+<kbd>space</kbd> key. Repeated pressing of this key enables refreshing again.
 
 # Recommended psql configuration
 <pre>
