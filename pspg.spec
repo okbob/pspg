@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	2.1.8
+Version: 	2.5.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Sun Oct 27 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- non interactive mode for csv
+- possibility to take data from query
+- watch mode
+
 * Wed Oct 9  2019 Pavel Stehule <pavel.stehule@gmail.com>
 - better handling Escape and sigint signal
 - more comfortable usage of readline input

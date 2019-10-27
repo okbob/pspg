@@ -237,9 +237,9 @@ extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 
