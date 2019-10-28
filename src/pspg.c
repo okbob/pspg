@@ -3462,7 +3462,7 @@ main(int argc, char *argv[])
 
 	if (opts.watch_time && !opts.query)
 	{
-		fprintf(stderr, "cannot to use watch mode without enter a query\n");
+		fprintf(stderr, "cannot use watch mode when query is missing\n");
 		exit(EXIT_FAILURE);
 	}
 
