@@ -42,7 +42,7 @@ menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
 	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
 
 pgclient.o: src/pspg.h src/pgclient.c
-	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CFLAGS) -DPG_VERSION=$(PG_VERSION)
+	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CFLAGS) -DPG_VERSION="$(PG_VERSION)"
 
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
