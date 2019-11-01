@@ -1128,11 +1128,18 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
 	{
-		for (i = 0; i < min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1); i++)
+		int		expected_rows = min_int(size.ws_row - 1 - scrdesc->top_bar_rows,
+										desc->last_row + 1);
+
+		for (i = 0; i < expected_rows; i++)
 			printf("\eD");
 
 		/* Go wit cursor to up */
-		printf("\e[%dA", min_int(size.ws_row - 1 - scrdesc->top_bar_rows, desc->last_row + 1));
+		printf("\e[%dA", expected_rows);
+
+		/* now, the screen can be different, due prompt */
+		scrdesc->rows_rows = min_int(scrdesc->rows_rows,
+									 expected_rows - scrdesc->fix_rows_rows);
 
 		/*
 		 * Save cursor - Attention, there are a Fedora29 bug, and it doesn't work
