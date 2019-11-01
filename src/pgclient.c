@@ -98,6 +98,8 @@ column_type_class(Oid ftype)
 #define RELEASE_AND_LEAVE(s)		do { PQclear(result); PQfinish(conn); *err = s; return false; } while (0)
 #define RELEASE_AND_EXIT(s)			do { PQclear(result); PQfinish(conn); leave_ncurses(s); } while (0)
 
+#ifdef HAVE_POSTGRESQL
+
 static int
 field_info(Options *opts, char *str, bool *multiline)
 {
@@ -132,6 +134,8 @@ max_int(int a, int b)
 {
 	return a > b ? a : b;
 }
+
+#endif
 
 /*
  * exit on fatal error, or return error
@@ -301,7 +305,7 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 
 #else
 
-	err = "Query cannot be executed. The Postgres library was not available at compile time.";
+	*err = "Query cannot be executed. The Postgres library was not available at compile time.";
 
 	return false;
 

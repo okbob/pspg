@@ -2178,7 +2178,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 				for (i = 0; i < 200; i++)
 					if (err[i] == '\0' || err[i] == '\n')
 					{
-						ptr = '\0';
+						*ptr = '\0';
 						break;
 					}
 					else
@@ -2641,7 +2641,7 @@ finish_read:
 			/*
 			 * Don't write same strings to hist file
 			 */
-			if (*last_history == '\0' || strncmp(last_history, buffer, sizeof(last_history) != 0))
+			if (*last_history == '\0' || strncmp(last_history, buffer, sizeof(last_history)) != 0)
 			{
 				add_history(buffer);
 				strncpy(last_history, buffer, sizeof(last_history) - 1);
