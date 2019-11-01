@@ -301,7 +301,7 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 
 #else
 
-	err = "Query cannot be executed. The Postgres library was not available at compile time."
+	err = "Query cannot be executed. The Postgres library was not available at compile time.";
 
 	return false;
 
