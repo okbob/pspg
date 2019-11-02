@@ -242,6 +242,10 @@ You can check wide chars support by `pspg --version`. Row `ncurses with wide cha
 is expected. Re-run `configure` with `--with-ncursesw` option. When this command fails check
 if development package for ncuresesw library is installed.
 
+## Homebrew (for Linux & MacOS)
+
+    # brew install pspg
+
 ## Debian
 
     # apt-cache search pspg
@@ -274,20 +278,12 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 ## FreeBSD
 
     # pkg install pspg
-    
-## Linuxbrew
 
-    # brew install pspg
 
-## macOS
-
-### Using Homebrew
-
-    # brew install pspg
-
-### Using MacPorts
+## Using MacPorts (MacOS only)
 
     # port install pspg
+
 
 ## Solaris
 
