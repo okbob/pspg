@@ -48,7 +48,7 @@ utf8len_start_stop(const char *start, const char *stop)
 /*
  * Returns length of utf8 char in bytes
  */
-int
+inline int
 utf8charlen(char ch)
 {
 	if ((ch & 0x80) == 0)
@@ -321,8 +321,17 @@ utf8_to_unicode(const unsigned char *c)
 
 }
 
-int
+inline int
 utf_dsplen(const char *s)
+{
+	if (*s == ' ')
+		return 1;
+
+	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
+}
+
+inline static int
+_utf_dsplen(const char *s)
 {
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
@@ -339,11 +348,21 @@ utf_string_dsplen(const char *s, size_t max_bytes)
 
 	while (*ptr != '\0' && max_bytes > 0)
 	{
-		int		clen = utf8charlen(*ptr);
+		if (*ptr == ' ')
+		{
+			ptr += 1;
+			result += 1;
+			max_bytes -= 1;
+		}
+		else 
+		{
+			int		clen;
 
-		result += utf_dsplen(ptr);
-		ptr += clen;
-		max_bytes -= clen;
+			clen  = utf8charlen(*ptr);
+			result += _utf_dsplen(ptr);
+			ptr += clen;
+			max_bytes -= clen;
+		}
 	}
 
 	return result;
