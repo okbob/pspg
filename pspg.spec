@@ -3,16 +3,16 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	2.5.2
+Version: 	2.5.3
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
 Vendor: 	Pavel Stehule <pavel.stehule@gmail.com>
 URL: 		https://github.com/okbob/pspg
 Source: 	https://github.com/okbob/pspg/archive/%{version}.tar.gz
-BuildRequires: 	ncurses-devel readline-devel
+BuildRequires: 	ncurses-devel readline-devel libpq-devel
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Requires: 	ncurses readline
+Requires: 	ncurses readline libpq
 
 %description
 psps is a unix pager optimized for psql. It can freeze rows, freeze
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Mon Nov  4 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- materialize dependency on libpq
+- add internal performance diagnostics
+- few micro optimizations
+
 * Sun Oct 27 2019 Pavel Stehule <pavel.stehule@gmail.com>
 - non interactive mode for csv
 - possibility to take data from query

@@ -353,8 +353,8 @@ utf_string_dsplen(const char *s, size_t max_bytes)
 			ptr += 1;
 			result += 1;
 			max_bytes -= 1;
-		}
-		else 
+		} 
+		else
 		{
 			int		clen;
 

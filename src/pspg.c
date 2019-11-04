@@ -92,7 +92,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "2.5.2"
+#define PSPG_VERSION "2.5.3"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -180,6 +180,35 @@ leave_ncurses(const char *str)
 	exit(EXIT_FAILURE);
 }
 
+static void
+current_time(time_t *sec, long *ms)
+{
+	struct timespec spec;
+
+	clock_gettime(CLOCK_MONOTONIC, &spec);
+	*ms = roundl(spec.tv_nsec / 1.0e6);
+	*sec = spec.tv_sec;
+}
+
+#define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
+
+#ifdef DEBUG_PIPE
+
+static void
+print_duration(time_t start_sec, long start_ms, const char *label)
+{
+	time_t		end_sec;
+	long		end_ms;
+
+	current_time(&end_sec, &end_ms);
+
+	fprintf(debug_pipe, "duration of \"%s\" is %ld ms\n",
+			label,
+			time_diff(end_sec, end_ms, start_sec, start_ms));
+}
+
+#endif
+
 /*
  * Case insensitive string comparation.
  */
@@ -237,7 +266,6 @@ nstrstr(const char *haystack, const char *needle)
 
 	return haystack;
 }
-
 
 static const char *
 nstrstr_with_sizes(const char *haystack,
@@ -1332,6 +1360,15 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	int			nrows = 0;
 	LineBuffer *rows;
 
+#ifdef DEBUG_PIPE
+
+	time_t		start_sec;
+	long		start_ms;
+
+	current_time(&start_sec, &start_ms);
+
+#endif
+
 	/* safe reset */
 	desc->filename[0] = '\0';
 
@@ -1522,6 +1559,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
+
+#ifdef DEBUG_PIPE
+
+	print_duration(start_sec, start_ms, "read file");
+
+#endif
 
 	return 0;
 }
@@ -3014,15 +3057,6 @@ DataDescFree(DataDesc *desc)
 	free(desc->cranges);
 }
 
-static void
-current_time(time_t *sec, long *ms)
-{
-	struct timespec spec;
-
-	clock_gettime(CLOCK_MONOTONIC, &spec);
-	*ms = roundl(spec.tv_nsec / 1.0e6);
-	*sec = spec.tv_sec;
-}
 
 int
 main(int argc, char *argv[])
@@ -3085,6 +3119,14 @@ main(int argc, char *argv[])
 
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
+
+#ifdef DEBUG_PIPE
+
+	time_t		start_app_sec;
+	long		start_app_ms;
+	bool		first_doupdate = true;
+
+#endif
 
 	struct winsize size;
 
@@ -3180,6 +3222,8 @@ main(int argc, char *argv[])
 	debug_pipe = fopen(DEBUG_PIPE, "w");
 	setlinebuf(debug_pipe);
 	fprintf(debug_pipe, "demo application start\n");
+
+	current_time(&start_app_sec, &start_app_ms);
 
 #endif
 
@@ -3383,6 +3427,12 @@ main(int argc, char *argv[])
 #endif
 
 				fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
+
+#ifdef HAVE_POSTGRESQL
+
+				fprintf(stdout, "with postgres client integration\n");
+
+#endif
 
 				exit(0);
 			case 'X':
@@ -3645,13 +3695,9 @@ reinit_theme:
 
 	initialize_special_keycodes();
 
-
 	if (!opts.no_mouse)
 	{
-
 		mouse_was_initialized = true;
-
-
 		mouseinterval(0);
 
 
@@ -3879,6 +3925,13 @@ reinit_theme:
 		bool	after_freeze_signal = false;
 		bool	recheck_vertical_cursor_visibility = false;
 
+#ifdef DEBUG_PIPE
+
+		time_t	start_draw_sec;
+		long	start_draw_ms;
+
+#endif
+
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
 		/*
@@ -3951,6 +4004,12 @@ reinit_theme:
 							vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
 				}
 
+#ifdef DEBUG_PIPE
+
+				current_time(&start_draw_sec, &start_draw_ms);
+
+#endif
+
 				window_fill(WINDOW_LUC,
 							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
 							0,
@@ -4014,6 +4073,13 @@ reinit_theme:
 					wnoutrefresh(w_rownum(&scrdesc));
 				if (w_rownum_luc(&scrdesc))
 					wnoutrefresh(w_rownum_luc(&scrdesc));
+
+#ifdef DEBUG_PIPE
+
+			print_duration(start_draw_sec, start_draw_ms, "draw time");
+
+#endif
+
 			} /* !no_doupdate */
 
 #ifdef COMPILE_MENU
@@ -4032,7 +4098,20 @@ reinit_theme:
 			if (no_doupdate)
 				no_doupdate = false;
 			else if (next_command == 0 || scrdesc.fmt != NULL)
+			{
 				doupdate();
+
+#ifdef DEBUG_PIPE
+
+				if (first_doupdate)
+				{
+					first_doupdate = false;
+					print_duration(start_app_sec, start_app_ms, "first view");
+				}
+
+#endif
+
+			}
 
 			if (scrdesc.fmt != NULL)
 			{
@@ -6073,7 +6152,6 @@ found_next_pattern:
 						bool	_is_footer_cursor;
 						long	ms;
 						time_t	sec;
-						struct timespec spec;
 
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
@@ -6085,15 +6163,13 @@ found_next_pattern:
 
 						if (event.bstate & BUTTON1_RELEASED)
 						{
-							clock_gettime(CLOCK_MONOTONIC, &spec);
-							ms = roundl(spec.tv_nsec / 1.0e6);
-							sec = spec.tv_sec;
+							current_time(&sec, &ms);
 
 							if (last_sec > 0)
 							{
 								long	td;
 
-								td = (sec - last_sec) * 1000 + ms - last_ms;
+								td = time_diff(sec, ms, last_sec, last_ms);
 								if (td < 250)
 									is_double_click = true;
 							}
