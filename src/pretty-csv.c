@@ -233,9 +233,6 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	printbuf->used += n;
 	printbuf->free -= n;
 
-//	while (n--)
-//		printbuf->buffer[printbuf->used++] = c;
-
 	printbuf->free -= n;
 }
 
@@ -561,7 +558,11 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 						spaces = pdesc->widths[j] - width;
 
-/* ToDo: bug - wrong calculate width */
+						/*
+						 * The display width can be canculated badly when labels or
+						 * displayed string has some special or invisible chars. Here
+						 * is simple ugly fix - the number of spaces cannot be negative.
+						 */
 						if (spaces < 0)
 							spaces = 0;
 

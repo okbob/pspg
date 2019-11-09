@@ -23,7 +23,7 @@ case "$ax_cv_ncurses" in "no")
 esac
 case "$ax_cv_ncursesw" in "no")
 	AC_MSG_WARN([The found ncurses library does not support wide-char.])
-	AC_MSG_WARN([This means that tig will not correctly render UTF-8.])
+	AC_MSG_WARN([This means that pspg will not correctly render UTF-8.])
 esac
 
 AC_CHECK_LIB([m],[roundl])
