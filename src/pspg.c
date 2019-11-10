@@ -3057,6 +3057,23 @@ DataDescFree(DataDesc *desc)
 	free(desc->cranges);
 }
 
+static void
+print_log_prefix(FILE *logfile)
+{
+	time_t		rawtime;
+	struct tm  *timeinfo;
+	const char *asct;
+	int		len;
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+
+	asct = asctime(timeinfo);
+	len = strlen(asct);
+
+	fprintf(logfile, "%.*s ", len - 1, asct);
+	fprintf(logfile, "[%ld] ", (long) getpid());
+}
 
 int
 main(int argc, char *argv[])
@@ -3088,6 +3105,7 @@ main(int argc, char *argv[])
 	Options			opts;
 	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	FILE   *fp = NULL;
+	FILE   *logfile = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
 	int		fix_rows_offset = 0;
@@ -3162,6 +3180,7 @@ main(int argc, char *argv[])
 		{"no-sigint-exit", no_argument, 0, 21},
 		{"no-sigint-search-reset", no_argument, 0, 22},
 		{"ni", no_argument, 0, 23},
+		{"log", required_argument, 0, 25},
 		{"watch", required_argument, 0, 'w'},
 		{"query", required_argument, 0, 'q'},
 		{"host", required_argument, 0, 'h'},
@@ -3169,6 +3188,7 @@ main(int argc, char *argv[])
 		{"password", no_argument, 0, 'W'},
 		{"username", required_argument, 0, 'U'},
 		{"dbname", required_argument, 0, 'd'},
+		{"file", required_argument, 0, 'f'},
 		{0, 0, 0, 0}
 	};
 
@@ -3243,7 +3263,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --help                   show this help\n");
 				fprintf(stderr, "  -V, --version            show version\n\n");
 				fprintf(stderr, "\n");
-				fprintf(stderr, "  -f FILE                  open file\n");
+				fprintf(stderr, "  -f, --file=FILE          open file\n");
 				fprintf(stderr, "  -F, --quit-if-one-screen\n");
 				fprintf(stderr, "                           quit if content is one screen\n");
 				fprintf(stderr, "  -X                       don't use alternate screen\n");
@@ -3289,6 +3309,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -p, --port=PORT          database server port (default: \"5432\")\n");
 				fprintf(stderr, "  -U, --username=USERNAME  database user name\n");
 				fprintf(stderr, "  -W, --password           force password prompt\n");
+				fprintf(stderr, "\nDebug options:\n");
+				fprintf(stderr, "  --log=FILE               log debug info to file\n");
 				fprintf(stderr, "\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -3391,6 +3413,20 @@ main(int argc, char *argv[])
 			case 24:
 				opts.double_header = true;
 				break;
+			case 25:
+				{
+					const char *path;
+
+					path = tilde(optarg);
+					logfile = fopen(path, "a");
+					if (logfile == NULL)
+					{
+						fprintf(stderr, "cannot to open log file file: %s\n", path);
+						exit(EXIT_FAILURE);
+					}
+					setlinebuf(logfile);
+				}
+				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
@@ -3460,13 +3496,17 @@ main(int argc, char *argv[])
 				opts.freezed_cols = n;
 				break;
 			case 'f':
-				fp = fopen(optarg, "r");
-				if (fp == NULL)
 				{
-					fprintf(stderr, "cannot to read file: %s\n", optarg);
-					exit(EXIT_FAILURE);
+					char *path = tilde(optarg);
+
+					fp = fopen(path, "r");
+					if (fp == NULL)
+					{
+						fprintf(stderr, "cannot to read file: %s\n", path);
+						exit(EXIT_FAILURE);
+					}
+					opts.pathname = strdup(optarg);
 				}
-				opts.pathname = strdup(optarg);
 				break;
 			case 'F':
 				quit_if_one_screen = true;
@@ -3524,6 +3564,12 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "started\n");
+	}
+
 	if (opts.csv_format || opts.query)
 	{
 		/*
@@ -3548,6 +3594,12 @@ main(int argc, char *argv[])
 	{
 		fclose(fp);
 		fp = NULL;
+	}
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "read input %d rows\n", desc.total_rows);
 	}
 
 	if ((opts.csv_format || opts.query) && no_interactive)
@@ -3629,6 +3681,13 @@ exit_while_01:
 		if (fout != stdout)
 			pclose(fout);
 
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "exit without start ncurses\n");
+			fclose(logfile);
+		}
+
 		return 0;
 	}
 
@@ -3666,6 +3725,12 @@ exit_while_01:
 		newterm(termname(), stdout, stderr);
 	else
 		initscr();
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "ncurses started\n");
+	}
 
 	active_ncurses = true;
 
@@ -3779,6 +3844,12 @@ reinit_theme:
 
 	getmaxyx(stdscr, maxy, maxx);
 
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "screen size - maxy: %d, maxx: %d\n", maxy, maxx);
+	}
+
 	if (quit_if_one_screen)
 	{
 		/* the content can be displayed in one screen */
@@ -3791,6 +3862,12 @@ reinit_theme:
 
 			while (lnb_row < lnb->nrows)
 				printf("%s\n", lnb->rows[lnb_row++]);
+
+			if (logfile)
+			{
+				print_log_prefix(logfile);
+				fprintf(logfile, "ncurses ended and quit due quit_if_one_screen option\n");
+			}
 
 			return 0;
 		}
@@ -4374,6 +4451,12 @@ hide_menu:
 		fprintf(debug_pipe, "main switch: %s\n", cmd_string(command));
 
 #endif
+
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "process command: %s\n", cmd_string(command));
+		}
 
 		if (command == cmd_Quit)
 			break;
@@ -6459,6 +6542,13 @@ refresh:
 	}
 
 	endwin();
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "ncurses ended\n");
+	}
+
 	active_ncurses = false;
 
 	if (raw_output_quit)
@@ -6533,6 +6623,13 @@ refresh:
 	fclose(debug_pipe);
 
 #endif
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "correct quit\n");
+		fclose(logfile);
+	}
 
 	return 0;
 }
