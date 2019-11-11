@@ -3100,6 +3100,7 @@ main(int argc, char *argv[])
 	int		first_data_row;
 	int		default_freezed_cols = 1;
 	int		i;
+	int		reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	Options			opts;
@@ -3189,6 +3190,7 @@ main(int argc, char *argv[])
 		{"username", required_argument, 0, 'U'},
 		{"dbname", required_argument, 0, 'd'},
 		{"file", required_argument, 0, 'f'},
+		{"rr", required_argument, 0, 26},
 		{0, 0, 0, 0}
 	};
 
@@ -3273,6 +3275,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
 				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
 				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+				fprintf(stderr, "  --rr ROWNUM              rows reserved for specific purposes\n");
 				fprintf(stderr, "\nOutput options:\n");
 				fprintf(stderr, "  -a                       force ascii\n");
 				fprintf(stderr, "  -b                       black-white style\n");
@@ -3425,6 +3428,14 @@ main(int argc, char *argv[])
 						exit(EXIT_FAILURE);
 					}
 					setlinebuf(logfile);
+				}
+				break;
+			case 26:
+				reserved_rows = atoi(optarg);
+				if (reserved_rows < 1 || reserved_rows > 100)
+				{
+					fprintf(stderr, "reserved rows should be between 1 and 100\n");
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'V':
@@ -3852,8 +3863,13 @@ reinit_theme:
 
 	if (quit_if_one_screen)
 	{
+		int		available_rows = maxy;
+
+		if (reserved_rows != -1)
+			available_rows -= reserved_rows;
+
 		/* the content can be displayed in one screen */
-		if (maxy >= desc.last_row && maxx >= desc.maxx)
+		if (available_rows >= desc.last_row && maxx >= desc.maxx)
 		{
 			LineBuffer *lnb = &desc.rows;
 			int			lnb_row = 0;
