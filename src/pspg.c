@@ -3641,6 +3641,57 @@ main(int argc, char *argv[])
 	if (detected_format && desc.oid_name_table)
 		default_freezed_cols = 2;
 
+	/*
+	 * The issue #75 - COLUMNS, LINES are not correctly initialized.
+	 * Get real terminal size, and refresh ncurses data.
+	 */
+	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
+	{
+		size_is_valid = true;
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
+		}
+	}
+	else
+	{
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
+		}
+	}
+
+	/* When we know terminal dimensions */
+	if (size_is_valid && quit_if_one_screen)
+	{
+		int		available_rows = size.ws_row;
+
+		if (reserved_rows != -1)
+			available_rows -= reserved_rows;
+
+		/* the content can be displayed in one screen */
+		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
+		{
+			LineBuffer *lnb = &desc.rows;
+			int			lnb_row = 0;
+
+			endwin();
+
+			while (lnb_row < lnb->nrows)
+				printf("%s\n", lnb->rows[lnb_row++]);
+
+			if (logfile)
+			{
+				print_log_prefix(logfile);
+				fprintf(logfile, "quit due quit_if_one_screen option without ncurses init\n");
+			}
+
+			return 0;
+		}
+	}
+
 	if (!detected_format && only_for_tables)
 	{
 		const char *pagerprog;
@@ -3729,56 +3780,6 @@ exit_while_01:
 	else
 		noatty = false;
 
-	/*
-	 * The issue #75 - COLUMNS, LINES are not correctly initialized.
-	 * Get real terminal size, and refresh ncurses data.
-	 */
-	if ((ioctl_result = ioctl(noatty ? STDERR_FILENO : STDIN_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
-	{
-		size_is_valid = true;
-		if (logfile)
-		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
-		}
-	}
-	else
-	{
-		if (logfile)
-		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
-		}
-	}
-
-	/* When we know terminal dimensions */
-	if (size_is_valid && quit_if_one_screen)
-	{
-		int		available_rows = size.ws_row;
-
-		if (reserved_rows != -1)
-			available_rows -= reserved_rows;
-
-		/* the content can be displayed in one screen */
-		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
-		{
-			LineBuffer *lnb = &desc.rows;
-			int			lnb_row = 0;
-
-			endwin();
-
-			while (lnb_row < lnb->nrows)
-				printf("%s\n", lnb->rows[lnb_row++]);
-
-			if (logfile)
-			{
-				print_log_prefix(logfile);
-				fprintf(logfile, "quit due quit_if_one_screen option without ncurses init\n");
-			}
-
-			return 0;
-		}
-	}
 
 	signal(SIGINT, SigintHandler);
 	atexit(exit_ncurses);
