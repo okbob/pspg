@@ -60,6 +60,7 @@ typedef struct
 	int			border;
 	char		linestyle;
 	bool		double_header;
+	char		header_mode;
 } PrintConfigType;
 
 static void *
@@ -657,13 +658,12 @@ pb_print_rowbuckets(PrintbufType *printbuf,
  * Try to detect column type and prepare all data necessary for printing
  */
 static void
-prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc)
+prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, PrintConfigType *pconfig)
 {
 	int				i;
 
 	/* copy data from linebuf */
 	pdesc->nfields = linebuf->maxfields;
-	pdesc->has_header = is_header(rb);
 
 	for (i = 0; i < pdesc->nfields; i++)
 	{
@@ -671,6 +671,10 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc)
 		pdesc->multilines[i] = linebuf->multilines[i];
 	}
 
+	if (pconfig->header_mode == 'a')
+		pdesc->has_header = is_header(rb);
+	else
+		pdesc->has_header = pconfig->header_mode == '+';
 
 	/* try to detect types from numbers of digits */
 	for (i = 0; i < pdesc->nfields; i++)
@@ -1022,6 +1026,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 	pconfig.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
 	pconfig.border = opts->border_type;
 	pconfig.double_header = opts->double_header;
+	pconfig.header_mode = opts->csv_header;
 
 	rowbuckets.allocated = false;
 
@@ -1033,7 +1038,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 	else
 	{
 		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp);
-		prepare_pdesc(&rowbuckets, &linebuf, &pdesc);
+		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
 
 	/* reuse allocated memory */

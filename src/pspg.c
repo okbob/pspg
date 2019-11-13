@@ -3195,6 +3195,7 @@ main(int argc, char *argv[])
 		{"file", required_argument, 0, 'f'},
 		{"rr", required_argument, 0, 26},
 		{"interactive", no_argument, 0, 27},
+		{"csv-header", required_argument, 0, 28},
 		{0, 0, 0, 0}
 	};
 
@@ -3228,6 +3229,7 @@ main(int argc, char *argv[])
 	opts.bold_cursor = false;
 	opts.csv_format = false;
 	opts.csv_separator = -1;			/* auto detection */
+	opts.csv_header = 'a';				/* auto detection */
 	opts.double_header = false;
 	opts.border_type = 2;			/* outer border */
 	opts.on_sigint_exit = false;
@@ -3308,6 +3310,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "\nCsv options:\n");
 				fprintf(stderr, "  --csv                    input stream has csv format\n");
 				fprintf(stderr, "  --csv-separator          char used as field separator\n");
+				fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
 				fprintf(stderr, "\nWatch mode options:\n");
 				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
 				fprintf(stderr, "  -w, --watch time         the query is repeated every time (sec)\n");
@@ -3445,6 +3448,19 @@ main(int argc, char *argv[])
 				break;
 			case 27:
 				interactive = true;
+				break;
+			case 28:
+				{
+					if (nstreq(optarg, "off"))
+						opts.csv_header = '-';
+					else if (nstreq(optarg, "on"))
+						opts.csv_header = '+';
+					else
+					{
+						fprintf(stderr, "csv_header option can be on \"or\" \"off\"\n");
+						exit(EXIT_FAILURE);
+					}
+				}
 				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
