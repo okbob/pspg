@@ -3129,6 +3129,7 @@ main(int argc, char *argv[])
 	int		prev_mouse_event_x = -1;
 	bool	only_for_tables = false;
 	bool	no_interactive = false;
+	bool	interactive = false;
 	bool	raw_output_quit = false;
 
 	bool	mouse_was_initialized = false;
@@ -3193,6 +3194,7 @@ main(int argc, char *argv[])
 		{"dbname", required_argument, 0, 'd'},
 		{"file", required_argument, 0, 'f'},
 		{"rr", required_argument, 0, 26},
+		{"interactive", no_argument, 0, 27},
 		{0, 0, 0, 0}
 	};
 
@@ -3271,7 +3273,8 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -F, --quit-if-one-screen\n");
 				fprintf(stderr, "                           quit if content is one screen\n");
 				fprintf(stderr, "  -X                       don't use alternate screen\n");
-				fprintf(stderr, "  --ni                     not interactive mode (only for csv)\n");
+				fprintf(stderr, "  --interactive            force interactive mode\n");
+				fprintf(stderr, "  --ni                     not interactive mode (only for csv and query)\n");
 				fprintf(stderr, "  --no-mouse               don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sigint-search-reset\n");
 				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
@@ -3440,6 +3443,9 @@ main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				break;
+			case 27:
+				interactive = true;
+				break;
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
@@ -3569,6 +3575,12 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (no_interactive && interactive)
+	{
+		fprintf(stderr, "option --ni and --interactive cannot be used together\n");
+		exit(EXIT_FAILURE);
+	}
+
 	if (opts.less_status_bar)
 		opts.no_topbar = true;
 
@@ -3615,7 +3627,8 @@ main(int argc, char *argv[])
 		fprintf(logfile, "read input %d rows\n", desc.total_rows);
 	}
 
-	if ((opts.csv_format || opts.query) && no_interactive)
+	if ((opts.csv_format || opts.query) &&
+		(no_interactive || (!interactive && !isatty(STDOUT_FILENO))))
 	{
 		LineBuffer *lnb = &desc.rows;
 		int			lnb_row = 0;
