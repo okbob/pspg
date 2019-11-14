@@ -149,6 +149,10 @@ static bool active_ncurses = false;
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeout);
 static char * tilde(char *path);
+static void print_log_prefix(FILE *logfile);
+
+
+FILE   *logfile = NULL;
 
 static void
 SigintHandler(int sig_num)
@@ -178,6 +182,12 @@ leave_ncurses(const char *str)
 
 	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "leave ncurses: %s\n", str);
+	}
 }
 
 static void
@@ -2460,6 +2470,20 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	else
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
+	if (logfile)
+	{
+		char buffer[1024];
+
+		print_log_prefix(logfile);
+
+		if (par)
+			snprintf(buffer, 1024, fmt, par);
+		else
+			snprintf(buffer, 1024, "%s", fmt);
+
+		fprintf(logfile, "info: %s\n", buffer);
+	}
+
 	wclrtoeol(bottom_bar);
 	mvwchgat(bottom_bar, 0, 0, -1, att, PAIR_NUMBER(att), 0);
 
@@ -2566,6 +2590,12 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "input string prompt- \"%s\"\n", prompt);
+	}
 
 #ifdef HAVE_LIBREADLINE
 
@@ -2724,6 +2754,12 @@ finish_read:
 	 * Screen should be refreshed after show any info.
 	 */
 	scrdesc->refresh_scr = true;
+
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "input string - \"%s\"\n", buffer);
+	}
 }
 
 #define SEARCH_FORWARD			1
@@ -3106,7 +3142,6 @@ main(int argc, char *argv[])
 	Options			opts;
 	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	FILE   *fp = NULL;
-	FILE   *logfile = NULL;
 	bool	detected_format = false;
 	bool	no_alternate_screen = false;
 	int		fix_rows_offset = 0;
