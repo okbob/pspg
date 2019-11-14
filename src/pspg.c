@@ -2517,11 +2517,15 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 
 #ifdef HAVE_LIBREADLINE
 
+#if RL_READLINE_VERSION >= 0x0603
+
 static int
 readline_input_avail(void)
 {
     return input_avail;
 }
+
+#endif
 
 static int
 readline_getc(FILE *dummy)
