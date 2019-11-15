@@ -2648,13 +2648,11 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	{
 		do
 		{
-			errno = 0;
 			c = wgetch(bottom_bar);
-
-			if (errno != 0 && errno != 4)
+			if (c == ERR && errno == EINTR)
 				goto finish_read;
 
-			if (handle_sigint || errno == 4)
+			if (handle_sigint)
 				goto finish_read;
 		}
 		while (c == ERR || c == 0);
@@ -2919,6 +2917,7 @@ get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeoutval)
 	bool	first_event = true;
 	int		c;
 	int		loops = -1;
+	int		retry_count = 0;
 
 #ifdef DEBUG_PIPE
 
@@ -2932,6 +2931,8 @@ get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeoutval)
 	int		ret;
 
 #endif
+
+retry:
 
 	*alt = false;
 	*sigint = false;
@@ -3055,9 +3056,38 @@ repeat:
 
 #endif
 
+	if (c == ERR)
+	{
+#ifdef DEBUG_PIPE
+
+		fprintf(debug_pipe, "ERR input - retry no: %d\n", retry_count);
+
+#endif
+
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "ERR input - retry no: %d\n", retry_count);
+		}
+
+		if (++retry_count < 10)
+			goto retry;
+
+#ifdef DEBUG_PIPE
+
+		fprintf(debug_pipe, "ERR input - touch retry limit, stop\n");
+
+#endif
+
+		if (logfile)
+		{
+			print_log_prefix(logfile);
+			fprintf(logfile, "ERR input - touch retry limit, stop\n");
+		}
+	}
+
 	return c;
 }
-
 
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
 #define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
@@ -4494,7 +4524,21 @@ reinit_theme:
 			}
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
+		{
+#ifdef DEBUG_PIPE
+
+			fprintf(debug_pipe, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
+
+#endif
+
+			if (logfile)
+			{
+				print_log_prefix(logfile);
+				fprintf(logfile, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
+			}
+
 			break;
+		}
 
 #ifndef COMPILE_MENU
 
