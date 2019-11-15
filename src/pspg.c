@@ -2959,17 +2959,19 @@ repeat:
 
 #endif
 
-		if (errno != 0 && errno != 4)
-			break;
-
-		errno = 0;
-
-		if (handle_sigint)
+		if ((c == ERR && errno == EINTR) || handle_sigint)
 		{
 			*sigint = true;
 			handle_sigint = false;
-			break;
+			return 0;
 		}
+
+		/*
+		 * Leave this cycle if there is some unexpected error.
+		 * Outer cycle is limited by 10 iteration.
+		 */
+		if (err != 0)
+			break;
 
 		if (loops >= 0)
 		{
@@ -2982,9 +2984,6 @@ repeat:
 	 * should to return ERR. So repead reading for both cases.
 	 */
 	while (c == 0 || c == ERR);
-
-	if (handle_sigint)
-		return 0;
 
 	if (c == KEY_MOUSE)
 	{
