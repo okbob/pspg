@@ -2940,7 +2940,7 @@ retry:
 repeat:
 
 	if (timeoutval != -1)
-		loops = timeoutval / 100;
+		loops = timeoutval / 1000;
 
 	do
 	{
@@ -3904,7 +3904,7 @@ reinit_theme:
 
 	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
 
-	timeout(100);
+	timeout(1000);
 
 	cbreak();
 	keypad(stdscr, TRUE);
