@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	2.5.3
+Version: 	2.5.4
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Fri Nov 15 2019 Pavel Stehule <pavel.stehule@gmail.com>
+- fix entering string on CentOS 7.7
+- try to process -F without ncurses start
+- infrastructure cleaning
+
 * Mon Nov  4 2019 Pavel Stehule <pavel.stehule@gmail.com>
 - materialize dependency on libpq
 - add internal performance diagnostics
