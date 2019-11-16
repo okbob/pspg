@@ -2975,7 +2975,7 @@ repeat:
 
 		/*
 		 * On ncurses6 (Linux) get_wch returns zero on delay. But by man pages it
-		 * should to return ERR. So repead reading for both cases.
+		 * should to return ERR (CentOS 7 does it). So repead reading for both cases.
 		 */
 		if (c != 0 && c != ERR)
 			break;
