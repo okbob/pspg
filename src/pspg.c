@@ -2942,7 +2942,7 @@ repeat:
 	if (timeoutval != -1)
 		loops = timeoutval / 1000;
 
-	do
+	for (;;)
 	{
 		errno = 0;
 
@@ -2973,17 +2973,19 @@ repeat:
 		if (err != 0)
 			break;
 
+		/*
+		 * On ncurses6 (Linux) get_wch returns zero on delay. But by man pages it
+		 * should to return ERR. So repead reading for both cases.
+		 */
+		if (c != 0 && c != ERR)
+			break;
+
 		if (loops >= 0)
 		{
 			if (--loops == 0)
-				break;
+				return 0;
 		}
 	}
-	/*
-	 * On ncurses6 (Linux) get_wch returns zero on delay. But by man pages it
-	 * should to return ERR. So repead reading for both cases.
-	 */
-	while (c == 0 || c == ERR);
 
 	if (c == KEY_MOUSE)
 	{
