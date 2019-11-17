@@ -4532,7 +4532,7 @@ reinit_theme:
 					}
 
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-					if (event_keycode == 0)
+					if (scrdesc.wins[WINDOW_TOP_BAR])
 						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
 				}
 
