@@ -135,19 +135,19 @@ int	debug_eventno = 0;
 
 #endif
 
-bool	press_alt = false;
-bool	got_sigint = false;
-MEVENT		event;
+static bool	press_alt = false;
+static bool	got_sigint = false;
+static MEVENT		event;
 
-long	last_watch_ms = 0;
-time_t	last_watch_sec = 0;						/* time when we did last refresh */
-bool	paused = false;							/* true, when watch mode is paused */
-const char *err = NULL;
+static long	last_watch_ms = 0;
+static time_t	last_watch_sec = 0;						/* time when we did last refresh */
+static bool	paused = false;							/* true, when watch mode is paused */
+static const char *err = NULL;
 
 static bool active_ncurses = false;
 
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeout);
+static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, int timeoutval);
 static char * tilde(char *path);
 static void print_log_prefix(FILE *logfile);
 
@@ -2502,7 +2502,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&event, &press_alt, &got_sigint, timeout);
+	c = get_event(&event, &press_alt, &got_sigint, NULL, timeout);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -2916,7 +2916,7 @@ get_x_focus(int vertical_cursor_column,
  * When keycode is related to mouse, then get mouse event details.
  */
 static int
-get_event(MEVENT *mevent, bool *alt, bool *sigint, int timeoutval)
+get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, int timeoutval)
 {
 	bool	first_event = true;
 	int		c;
@@ -2940,6 +2940,9 @@ retry:
 
 	*alt = false;
 	*sigint = false;
+
+	if (timeout)
+		*timeout = false;
 
 repeat:
 
@@ -2987,7 +2990,12 @@ repeat:
 		if (loops >= 0)
 		{
 			if (--loops == 0)
+			{
+				if (timeout)
+					*timeout = true;
+
 				return 0;
+			}
 		}
 	}
 
@@ -3249,6 +3257,7 @@ main(int argc, char *argv[])
 	struct winsize size;
 	bool		size_is_valid = false;
 	int			ioctl_result;
+	bool		handle_timeout = false;
 
 	static struct option long_options[] =
 	{
@@ -3914,7 +3923,6 @@ exit_while_01:
 	else
 		noatty = false;
 
-
 	signal(SIGINT, SigintHandler);
 	atexit(exit_ncurses);
 
@@ -4224,7 +4232,7 @@ reinit_theme:
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			if (!no_doupdate)
+			if (!no_doupdate && !handle_timeout)
 			{
 				int		vcursor_xmin_fix = -1;
 				int		vcursor_xmax_fix = -1;
@@ -4418,7 +4426,7 @@ reinit_theme:
 				else
 					prev_event_is_mouse_press = false;
 
-				event_keycode = get_event(&event, &press_alt, &got_sigint, opts.watch_time > 0 ? 1000 : -1);
+				event_keycode = get_event(&event, &press_alt, &got_sigint, &handle_timeout, opts.watch_time > 0 ? 1000 : -1);
 
 				if (opts.watch_time)
 				{
@@ -4467,6 +4475,21 @@ reinit_theme:
 							if (desc.headline)
 								(void) translate_headline(&opts, &desc);
 
+							if (desc.headline_transl != NULL && !desc.is_expanded_mode)
+							{
+								if (desc.border_head_row != -1)
+									desc.first_data_row = desc.border_head_row + 1;
+							}
+							else if (desc.title_rows > 0 && desc.is_expanded_mode)
+								desc.first_data_row = desc.title_rows;
+							else
+							{
+								desc.first_data_row = 0;
+								desc.last_data_row = desc.last_row;
+								desc.title_rows = 0;
+								desc.title[0] = '\0';
+							}
+
 							detected_format = desc.headline_transl;
 							if (detected_format && desc.oid_name_table)
 								default_freezed_cols = 2;
@@ -4505,6 +4528,7 @@ reinit_theme:
 
 						clear();
 						refresh_scr = true;
+						handle_timeout = false;
 					}
 
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
