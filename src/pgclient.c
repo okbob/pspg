@@ -296,8 +296,8 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 			EXIT_OUT_OF_MEMORY();
 	}
 
-    PQclear(result);
-    PQfinish(conn);
+	PQclear(result);
+	PQfinish(conn);
 
 	*err = NULL;
 

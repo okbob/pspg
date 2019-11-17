@@ -2209,6 +2209,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 				time_t	sec;
 				struct timespec spec;
 				int		w = number_width(opts->watch_time);
+				int		x = 0;
 
 				clock_gettime(CLOCK_MONOTONIC, &spec);
 				ms = roundl(spec.tv_nsec / 1.0e6);
@@ -2216,10 +2217,13 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 				td = (sec - last_watch_sec) * 1000 + ms - last_watch_ms;
 
+				if (desc->title[0] != '\0' || desc->filename[0] != '\0')
+					x = maxx / 4;
+
 				if (paused)
-					mvwprintw(top_bar, 0, 0, "paused %ld sec", td / 1000);
+					mvwprintw(top_bar, 0, x, "paused %ld sec", td / 1000);
 				else
-					mvwprintw(top_bar, 0, 0, "%*ld/%d", w, td/1000 + 1, opts->watch_time);
+					mvwprintw(top_bar, 0, x, "%*ld/%d", w, td/1000 + 1, opts->watch_time);
 			}
 
 			if (err)
@@ -3146,6 +3150,30 @@ print_log_prefix(FILE *logfile)
 	fprintf(logfile, "[%ld] ", (long) getpid());
 }
 
+/*
+ * Copy persistent data (search related and info box related)
+ * to new instance.
+ */
+static void
+MergeScrDesc(ScrDesc *new, ScrDesc *old)
+{
+	memcpy(new->searchterm, old->searchterm, 255);
+	new->searchterm_char_size = old->searchterm_char_size;
+	new->searchterm_size = old->searchterm_size;
+
+	memcpy(new->searchcolterm, old->searchcolterm, 255);
+	new->searchcolterm_size = old->searchcolterm_size;
+
+	new->has_upperchr = old->has_upperchr;
+	new->found = old->found;
+	new->found_start_x = old->found_start_x;
+	new->found_start_bytes = old->found_start_bytes;
+	new->found_row = old->found_row;
+
+	new->fmt = old->fmt;
+	new->par = old->par;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -3655,9 +3683,9 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (opts.watch_time && !opts.query)
+	if (opts.watch_time && !(opts.query || opts.pathname))
 	{
-		fprintf(stderr, "cannot use watch mode when query is missing\n");
+		fprintf(stderr, "cannot use watch mode when query or file is missing\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -3666,6 +3694,13 @@ main(int argc, char *argv[])
 		fprintf(stderr, "option --ni and --interactive cannot be used together\n");
 		exit(EXIT_FAILURE);
 	}
+
+	if (opts.query && opts.pathname)
+	{
+		fprintf(stderr, "option --query and --file cannot be used together\n");
+		exit(EXIT_FAILURE);
+	}
+
 
 	if (opts.less_status_bar)
 		opts.no_topbar = true;
@@ -3691,15 +3726,15 @@ main(int argc, char *argv[])
 			fprintf(stderr, "%s\n", err);
 			exit(EXIT_FAILURE);
 		}
-
-		if (opts.watch_time > 0)
-		{
-			current_time(&last_watch_sec, &last_watch_ms);
-			next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
-		}
 	}
 	else
 		readfile(fp, &opts, &desc);
+
+	if (opts.watch_time > 0)
+	{
+		current_time(&last_watch_sec, &last_watch_ms);
+		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
+	}
 
 	if (fp != NULL)
 	{
@@ -3973,20 +4008,7 @@ reinit_theme:
 				delwin(scrdesc.wins[i]);
 
 		memset(&scrdesc, 0, sizeof(ScrDesc));
-
-		memcpy(scrdesc.searchterm, aux.searchterm, 255);
-
-		scrdesc.searchterm_char_size = aux.searchterm_char_size;
-		scrdesc.searchterm_size = aux.searchterm_size;
-		scrdesc.has_upperchr = aux.has_upperchr;
-		scrdesc.found = aux.found;
-		scrdesc.found_start_x = aux.found_start_x;
-		scrdesc.found_start_bytes = aux.found_start_bytes;
-		scrdesc.found_row = aux.found_row;
-
-		memcpy(scrdesc.searchcolterm, aux.searchcolterm, 255);
-
-		scrdesc.searchcolterm_size = aux.searchcolterm_size;
+		MergeScrDesc(&scrdesc, &aux);
 	}
 	else
 		memset(&scrdesc, 0, sizeof(ScrDesc));
@@ -4409,9 +4431,31 @@ reinit_theme:
 
 					if (ct > next_watch && !paused)
 					{
-						DataDesc		desc2;
+						FILE	   *fp2 = NULL;
+						DataDesc	desc2;
+						bool		fresh_data = false;
 
-						if (read_and_format(fp, &opts, &desc2, &err))
+						if (opts.pathname)
+						{
+							char *path = tilde(opts.pathname);
+
+							errno = 0;
+							fp2 = fopen(path, "r");
+							if (fp2 == NULL)
+							{
+								err = strerror(errno);
+								fresh_data = false;
+							}
+							else
+								fresh_data = true;
+						}
+
+						if (opts.csv_format || opts.query)
+							fresh_data = read_and_format(fp2, &opts, &desc2, &err);
+						else
+							readfile(fp2, &opts, &desc2);
+
+						if (fresh_data)
 						{
 							int		max_cursor_row;
 							int		max_first_row;
@@ -4433,19 +4477,7 @@ reinit_theme:
 							create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 							create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
-							memcpy(scrdesc.searchcolterm, aux.searchcolterm, 255);
-							scrdesc.searchcolterm_size = aux.searchcolterm_size;
-
-							scrdesc.searchterm_char_size = aux.searchterm_char_size;
-							scrdesc.searchterm_size = aux.searchterm_size;
-							scrdesc.has_upperchr = aux.has_upperchr;
-							scrdesc.found = aux.found;
-					  		scrdesc.found_start_x = aux.found_start_x;
-							scrdesc.found_start_bytes = aux.found_start_bytes;
-							scrdesc.found_row = aux.found_row;
-
-							scrdesc.fmt = aux.fmt;
-							scrdesc.par = aux.par;
+							MergeScrDesc(&scrdesc, &aux);
 
 							/* new result can have different number of row, check cursor */
 							max_cursor_row = MAX_CURSOR_ROW;
@@ -4459,6 +4491,9 @@ reinit_theme:
 							first_row = first_row > max_first_row ? max_first_row : first_row;
 
 							last_watch_sec = sec; last_watch_ms = ms;
+
+							if (last_ordered_column != -1)
+								update_order_map(&opts, &scrdesc, &desc, last_ordered_column, last_order_desc);
 						}
 						else
 							DataDescFree(&desc2);
@@ -4467,9 +4502,6 @@ reinit_theme:
 							next_watch = next_watch + 1000 * opts.watch_time;
 						else
 							next_watch = ct + 100 * opts.watch_time;
-
-						if (last_ordered_column != -1)
-							update_order_map(&opts, &scrdesc, &desc, last_ordered_column, last_order_desc);
 
 						clear();
 						refresh_scr = true;
