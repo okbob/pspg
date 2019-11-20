@@ -216,6 +216,13 @@ MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 
 `LC_CTYPE` should be correct.
 
+# SQLite
+
+SQLite native client doesn't produce well formatted output, but can be forced
+to generate CSV format - and this format is well readable for `pspg`
+
+    sqlite3 -csv -header testdb.db 'select * from foo2' | pspg --csv --csv-header=on --double-header
+
 # Note - compilation issue
 Some linker issues can be fixed by:
 <pre>
