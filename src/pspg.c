@@ -181,13 +181,13 @@ leave_ncurses(const char *str)
 		endwin();
 
 	fprintf(stderr, "%s\n", str);
-	exit(EXIT_FAILURE);
-
 	if (logfile)
 	{
 		print_log_prefix(logfile);
 		fprintf(logfile, "leave ncurses: %s\n", str);
 	}
+
+	exit(EXIT_FAILURE);
 }
 
 static void
