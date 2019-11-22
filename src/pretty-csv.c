@@ -709,6 +709,10 @@ read_csv(RowBucketType *rb,
 	c = fgetc(ifile);
 	do
 	{
+		/* ignore ^M */
+		if (c == '\r')
+			goto next_char;
+
 		if (c != EOF && (c != '\n' || instr))
 		{
 			int		l;
