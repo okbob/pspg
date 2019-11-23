@@ -42,6 +42,7 @@ typedef struct
 	bool	csv_format;
 	char	csv_separator;
 	char	csv_header;			/* a - auto, - off, + on */
+	bool	ignore_short_rows;
 	char	double_header;
 	int		border_type;
 	bool	on_sigint_exit;

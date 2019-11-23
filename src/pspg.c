@@ -3303,6 +3303,7 @@ main(int argc, char *argv[])
 		{"rr", required_argument, 0, 26},
 		{"interactive", no_argument, 0, 27},
 		{"csv-header", required_argument, 0, 28},
+		{"ignore-short-rows", no_argument, 0, 29},
 		{0, 0, 0, 0}
 	};
 
@@ -3337,6 +3338,7 @@ main(int argc, char *argv[])
 	opts.csv_format = false;
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_header = 'a';				/* auto detection */
+	opts.ignore_short_rows = false;
 	opts.double_header = false;
 	opts.border_type = 2;			/* outer border */
 	opts.on_sigint_exit = false;
@@ -3399,6 +3401,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --border                 type of borders (0..2)\n");
 				fprintf(stderr, "  --double-header          header separator uses double lines\n");
 				fprintf(stderr, "  --force-uniborder        replace ascii borders by unicode borders\n");
+				fprintf(stderr, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
 				fprintf(stderr, "\nSearching options\n");
 				fprintf(stderr, "  -g --hlite-search, -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                           don't highlight lines for searches\n");
@@ -3569,6 +3572,10 @@ main(int argc, char *argv[])
 					}
 				}
 				break;
+			case 29:
+				opts.ignore_short_rows = true;
+				break;
+
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 

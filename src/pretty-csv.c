@@ -61,6 +61,7 @@ typedef struct
 	char		linestyle;
 	bool		double_header;
 	char		header_mode;
+	bool		ignore_short_rows;
 } PrintConfigType;
 
 static void *
@@ -465,6 +466,10 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 			bool	more_lines = true;
 			bool	multiline = rb->multilines[i];
 
+			/* skip broken rows */
+			if (pconfig->ignore_short_rows && rb->rows[i]->nfields != pdesc->nfields)
+				continue;
+
 			/*
 			 * For multilines we can modify pointers so do copy now
 			 */
@@ -695,7 +700,8 @@ read_csv(RowBucketType *rb,
 		 LinebufType *linebuf,
 		 char sep,
 		 bool force8bit,
-		 FILE *ifile)
+		 FILE *ifile,
+		 bool ignore_short_rows)
 {
 	bool	skip_initial = true;
 	bool	closed = false;
@@ -832,6 +838,7 @@ read_csv(RowBucketType *rb,
 			int			i;
 			int			data_size;
 			bool		multiline;
+			bool		malformed = false;
 
 			if (!skip_initial)
 			{
@@ -871,6 +878,11 @@ read_csv(RowBucketType *rb,
 			row->nfields = nfields;
 
 			multiline = false;
+
+			if (ignore_short_rows)
+				malformed = linebuf->maxfields > 0 && nfields != linebuf->maxfields;
+			else
+				malformed = false;
 
 			for (i = 0; i < nfields; i++)
 			{
@@ -929,7 +941,7 @@ read_csv(RowBucketType *rb,
 						linebuf->firstdigit[i]++;
 				}
 
-				if (width > linebuf->widths[i])
+				if (width > linebuf->widths[i] && !malformed)
 					linebuf->widths[i] = width;
 
 				multiline |= _multiline;
@@ -1031,6 +1043,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 	pconfig.border = opts->border_type;
 	pconfig.double_header = opts->double_header;
 	pconfig.header_mode = opts->csv_header;
+	pconfig.ignore_short_rows = opts->ignore_short_rows;
 
 	rowbuckets.allocated = false;
 
@@ -1041,7 +1054,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 	}
 	else
 	{
-		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp);
+		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp, opts->ignore_short_rows);
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
 
