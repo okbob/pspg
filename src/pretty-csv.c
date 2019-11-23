@@ -772,7 +772,10 @@ read_tsv(RowBucketType *rb,
 				else
 				{
 					if (backslash && !translated)
+					{
 						append_char(linebuf, '\\');
+						size +=1;
+					}
 
 					append_char(linebuf, c);
 					size += 1;
@@ -788,9 +791,15 @@ read_tsv(RowBucketType *rb,
 				char   *locbuf;
 				RowType	   *row;
 				bool	multiline = false;
+				bool	malformed;
 
 				append_char(linebuf, '\0');
 				linebuf->sizes[nfields++] = size + 1;
+
+				if (ignore_short_rows)
+					malformed = linebuf->maxfields > 0 && nfields != linebuf->maxfields;
+				else
+					malformed = false;
 
 				/* move row from linebuf to rowbucket */
 				if (rb->nrows >= 1000)
@@ -863,7 +872,7 @@ read_tsv(RowBucketType *rb,
 							linebuf->firstdigit[i]++;
 					}
 
-					if (width > linebuf->widths[i])
+					if (width > linebuf->widths[i] && !malformed)
 						linebuf->widths[i] = width;
 
 					multiline |= _multiline;
@@ -873,12 +882,14 @@ read_tsv(RowBucketType *rb,
 				if (nfields > linebuf->maxfields)
 					linebuf->maxfields = nfields;
 
+				rb->multilines[rb->nrows] = multiline;
 				rb->rows[rb->nrows++] = row;
 				linebuf->processed += 1;
 			}
 
 			nfields = 0;
 			linebuf->used = 0;
+			size = 0;
 
 			closed = c == EOF;
 		}
