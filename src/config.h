@@ -39,6 +39,7 @@ typedef struct
 	int		freezed_cols;
 	bool	bold_labels;
 	bool	bold_cursor;
+	bool	tsv_format;
 	bool	csv_format;
 	char	csv_separator;
 	char	csv_header;			/* a - auto, - off, + on */

@@ -3304,6 +3304,7 @@ main(int argc, char *argv[])
 		{"interactive", no_argument, 0, 27},
 		{"csv-header", required_argument, 0, 28},
 		{"ignore-short-rows", no_argument, 0, 29},
+		{"tsv", no_argument, 0, 30},
 		{0, 0, 0, 0}
 	};
 
@@ -3335,6 +3336,7 @@ main(int argc, char *argv[])
 	opts.force_ascii_art = false;
 	opts.bold_labels = false;
 	opts.bold_cursor = false;
+	opts.tsv_format = false;
 	opts.csv_format = false;
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_header = 'a';				/* auto detection */
@@ -3392,7 +3394,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
 				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 				fprintf(stderr, "  --rr ROWNUM              rows reserved for specific purposes\n");
-				fprintf(stderr, "\nOutput options:\n");
+				fprintf(stderr, "\nOutput format options:\n");
 				fprintf(stderr, "  -a                       force ascii\n");
 				fprintf(stderr, "  -b                       black-white style\n");
 				fprintf(stderr, "  -s N                     set color style number (0..%d)\n", MAX_STYLE);
@@ -3417,10 +3419,11 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --no-sound               don't use beep when scroll is not possible\n");
 				fprintf(stderr, "  --tabular-cursor         cursor is visible only when data has table format\n");
 				fprintf(stderr, "  --vertical-cursor        show vertical column cursor\n");
-				fprintf(stderr, "\nCsv options:\n");
+				fprintf(stderr, "\nInput format options:\n");
 				fprintf(stderr, "  --csv                    input stream has csv format\n");
 				fprintf(stderr, "  --csv-separator          char used as field separator\n");
 				fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
+				fprintf(stderr, "  --tsv                    input stream has tsv format\n");
 				fprintf(stderr, "\nWatch mode options:\n");
 				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
 				fprintf(stderr, "  -w, --watch time         the query is repeated every time (sec)\n");
@@ -3575,6 +3578,9 @@ main(int argc, char *argv[])
 			case 29:
 				opts.ignore_short_rows = true;
 				break;
+			case 30:
+				opts.tsv_format = true;
+				break;
 
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3717,6 +3723,11 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (opts.csv_format && opts.tsv_format)
+	{
+		fprintf(stderr, "option --csv and --tsv cannot be used together\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (opts.less_status_bar)
 		opts.no_topbar = true;
@@ -3732,7 +3743,7 @@ main(int argc, char *argv[])
 		fprintf(logfile, "started\n");
 	}
 
-	if (opts.csv_format || opts.query)
+	if (opts.csv_format || opts.tsv_format || opts.query)
 	{
 		/*
 		 * ToDo: first query can be broken too in watch mode.
@@ -3764,7 +3775,7 @@ main(int argc, char *argv[])
 		fprintf(logfile, "read input %d rows\n", desc.total_rows);
 	}
 
-	if ((opts.csv_format || opts.query) &&
+	if ((opts.csv_format || opts.tsv_format || opts.query) &&
 		(no_interactive || (!interactive && !isatty(STDOUT_FILENO))))
 	{
 		LineBuffer *lnb = &desc.rows;
@@ -4465,7 +4476,8 @@ reinit_theme:
 								fresh_data = true;
 						}
 
-						if (opts.csv_format || opts.query)
+						if (opts.csv_format || opts.tsv_format 
+						|| opts.query)
 							fresh_data = read_and_format(fp2, &opts, &desc2, &err);
 						else
 							readfile(fp2, &opts, &desc2);

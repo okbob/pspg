@@ -696,6 +696,200 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, Pri
 }
 
 static void
+append_char(LinebufType *linebuf, char c)
+{
+	if (linebuf->used >= linebuf->size)
+	{
+		linebuf->size += linebuf->size < (10 * 1024) ? linebuf->size  : (10 * 1024);
+		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
+
+		/* for debug purposes */
+		memset(linebuf->buffer + linebuf->used, 0, linebuf->size - linebuf->used);
+	}
+
+	linebuf->buffer[linebuf->used++] = c;
+}
+
+
+static void
+read_tsv(RowBucketType *rb,
+		 LinebufType *linebuf,
+		 bool force8bit,
+		 FILE *ifile,
+		 bool ignore_short_rows)
+{
+	bool	closed = false;
+	int		size = 0;
+	int		nfields = 0;
+	int		c;
+
+	c = fgetc(ifile);
+	do
+	{
+		if (c == '\r')
+			goto next_char;
+
+		if (c != EOF && c != '\n')
+		{
+			bool	backslash = false;
+			bool	translated = false;
+
+			if (c == '\\')
+			{
+				backslash = true;
+
+				c = fgetc(ifile);
+				if (c != EOF)
+				{
+					/* missing fields, ignored */
+					if (c == 'N')
+						goto next_char;
+					else if (c ==  't')
+					{
+						c = '\t';
+						translated = true;
+					}
+					else if (c == 'n')
+					{
+						c = '\n';
+						translated = true;
+					}
+					else if (c == '\\')
+					{
+						translated = true;
+					}
+				}
+			}
+
+			if (c != EOF)
+			{
+				if (c == '\t' && !translated)
+				{
+					append_char(linebuf, '\0');
+					linebuf->sizes[nfields++] = size + 1;
+					size = 0;
+				}
+				else
+				{
+					if (backslash && !translated)
+						append_char(linebuf, '\\');
+
+					append_char(linebuf, c);
+					size += 1;
+				}
+			}
+		}
+		else
+		{
+			int		i;
+
+			if (linebuf->used > 0)
+			{
+				char   *locbuf;
+				RowType	   *row;
+				bool	multiline = false;
+
+				append_char(linebuf, '\0');
+				linebuf->sizes[nfields++] = size + 1;
+
+				/* move row from linebuf to rowbucket */
+				if (rb->nrows >= 1000)
+				{
+					RowBucketType *new = smalloc(sizeof(RowBucketType), "import csv data");
+
+					new->nrows = 0;
+					new->allocated = true;
+					new->next_bucket = NULL;
+
+					rb->next_bucket = new;
+					rb = new;
+				}
+
+				locbuf = smalloc(linebuf->used, "import csv data");
+				memcpy(locbuf, linebuf->buffer, linebuf->used);
+
+				row = smalloc(offsetof(RowType, fields) + (nfields * sizeof(char*)), "import csv data");
+				row->nfields = nfields;
+
+				for (i = 0; i < nfields; i++)
+				{
+					int			width;
+					bool		_multiline;
+					long int	digits = 0;
+					long int	total = 0;
+
+					row->fields[i] = locbuf;
+					locbuf += linebuf->sizes[i];
+
+					if (force8bit)
+					{
+						int		cw = 0;
+						char   *ptr = row->fields[i];
+
+						width = 0;
+
+						while (*ptr)
+						{
+							if (isdigit(*ptr))
+								digits += 1;
+							else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
+								total += 1;
+
+							if (*ptr++ == '\n')
+							{
+								_multiline = true;
+								width = cw > width ? cw : width;
+
+								cw = 0;
+							}
+							else
+								cw++;
+						}
+
+						width = cw > width ? cw : width;
+					}
+					else
+					{
+						width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i] - 1, &_multiline, false, &digits, &total);
+					}
+
+					/* skip first possible header row */
+					if (linebuf->processed > 0)
+					{
+						linebuf->tsizes[i] += total;
+						linebuf->digits[i] += digits;
+
+						if (isdigit(*row->fields[i]))
+							linebuf->firstdigit[i]++;
+					}
+
+					if (width > linebuf->widths[i])
+						linebuf->widths[i] = width;
+
+					multiline |= _multiline;
+					linebuf->multilines[i] |= _multiline;
+				}
+
+				if (nfields > linebuf->maxfields)
+					linebuf->maxfields = nfields;
+
+				rb->rows[rb->nrows++] = row;
+				linebuf->processed += 1;
+			}
+
+			nfields = 0;
+			linebuf->used = 0;
+
+			closed = c == EOF;
+		}
+
+next_char:
+		c = fgetc(ifile);
+
+	} while (!closed);
+}
+
+static void
 read_csv(RowBucketType *rb,
 		 LinebufType *linebuf,
 		 char sep,
@@ -1052,9 +1246,14 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 		if (!pg_exec_query(opts, &rowbuckets, &pdesc, err))
 			return false;
 	}
-	else
+	else if (opts->csv_format)
 	{
 		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp, opts->ignore_short_rows);
+		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
+	}
+	else if (opts->tsv_format)
+	{
+		read_tsv(&rowbuckets, &linebuf, opts->force8bit, fp, opts->ignore_short_rows);
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
 
