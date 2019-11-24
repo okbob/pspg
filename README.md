@@ -43,6 +43,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-V`, `--version`  show version
 * `--about`  show info about authors
 * `--csv`  input format is csv
+* `--tsv`  input format is tsv
 * `--double-header`  header line is doubled
 * `--border`  border used for formatted csv
 * `--csv-separator`  special char used as separator inside csv documents

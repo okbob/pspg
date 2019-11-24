@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
  * pretty-csv.c
- *	  import and formatting csv documents
+ *	  import and formatting csv and tsv documents
  *
  * Portions Copyright (c) 2017-2019 Pavel Stehule
  *
@@ -126,10 +126,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-		{
-			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(EXIT_FAILURE);
-		}
+			leave_ncurses("out of memory while serialize csv output\n");
 	}
 
 	memcpy(printbuf->buffer + printbuf->used, str, size);
@@ -161,10 +158,7 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-		{
-			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(EXIT_FAILURE);
-		}
+			leave_ncurses("out of memory while serialize csv output\n");
 	}
 
 	while (n--)
@@ -192,10 +186,7 @@ pb_putc(PrintbufType *printbuf, char c)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-		{
-			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(1);
-		}
+			leave_ncurses("out of memory while serialize csv output\n");
 	}
 
 	printbuf->free -= 1;
@@ -225,10 +216,7 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-		{
-			fprintf(stderr, "out of memory while serialize csv output\n");
-			exit(EXIT_FAILURE);
-		}
+			leave_ncurses("out of memory while serialize csv output\n");
 	}
 
 	memset(printbuf->buffer + printbuf->used, c, n);
@@ -695,7 +683,10 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, Pri
 	}
 }
 
-static void
+/*
+ * Save append one char to linebuffer
+ */
+inline static void
 append_char(LinebufType *linebuf, char c)
 {
 	if (linebuf->used >= linebuf->size)
@@ -703,14 +694,128 @@ append_char(LinebufType *linebuf, char c)
 		linebuf->size += linebuf->size < (10 * 1024) ? linebuf->size  : (10 * 1024);
 		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
 
-		/* for debug purposes */
-		memset(linebuf->buffer + linebuf->used, 0, linebuf->size - linebuf->used);
+		if (!linebuf->buffer)
+			leave_ncurses("out of memory while read csv or tsv data\n");
 	}
 
 	linebuf->buffer[linebuf->used++] = c;
 }
 
+/*
+ * Ensure dynamicaly allocated structure is valid every time.
+ */
+static inline RowBucketType *
+prepare_RowBucket(RowBucketType *rb)
+{
+	/* move row from linebuf to rowbucket */
+	if (rb->nrows >= 1000)
+	{
+		RowBucketType *new = smalloc(sizeof(RowBucketType), "import csv data");
 
+		new->nrows = 0;
+		new->allocated = true;
+		new->next_bucket = NULL;
+
+		rb->next_bucket = new;
+		rb = new;
+	}
+
+	return rb;
+}
+
+/*
+ * Calculate width of columns
+ */
+static void
+postprocess_fields(int nfields,
+				   RowType *row,
+				   LinebufType *linebuf,
+				   bool force8bit,
+				   bool ignore_short_rows,
+				   bool reduced_sizes,			/* the doesn't calculate ending zero */
+				   bool *is_multiline_row)
+{
+	bool		malformed;
+	int			width;
+	int		i;
+
+	if (ignore_short_rows)
+		malformed = linebuf->maxfields > 0 && nfields != linebuf->maxfields;
+	else
+		malformed = false;
+
+	*is_multiline_row = false;
+
+	for (i = 0; i < nfields; i++)
+	{
+		long int	digits = 0;
+		long int	total = 0;
+		bool		multiline;
+
+		if (force8bit)
+		{
+			int		cw = 0;
+			char   *ptr = row->fields[i];
+
+			width = 0;
+
+			while (*ptr)
+			{
+				if (isdigit(*ptr))
+					digits += 1;
+				else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
+					total += 1;
+
+				if (*ptr++ == '\n')
+				{
+					multiline = true;
+					width = cw > width ? cw : width;
+					cw = 0;
+				}
+				else
+					cw++;
+			}
+
+			width = cw > width ? cw : width;
+		}
+		else
+			width = utf_string_dsplen_multiline(row->fields[i],
+												linebuf->sizes[i] - (reduced_sizes ? 0 : 1),
+												&multiline,
+												false,
+												&digits,
+												&total);
+
+		/* skip first possible header row */
+		if (linebuf->processed > 0)
+		{
+			linebuf->tsizes[i] += total;
+			linebuf->digits[i] += digits;
+
+			if (isdigit(*row->fields[i]))
+				linebuf->firstdigit[i]++;
+		}
+
+		if (!malformed)
+		{
+			if (width > linebuf->widths[i])
+				linebuf->widths[i] = width;
+
+			*is_multiline_row |= multiline;
+			linebuf->multilines[i] |= multiline;
+		}
+	}
+
+	if (nfields > linebuf->maxfields)
+		linebuf->maxfields = nfields;
+
+	if (!malformed)
+		linebuf->processed += 1;
+}
+
+/*
+ * Read tsv format from ifile
+ */
 static void
 read_tsv(RowBucketType *rb,
 		 LinebufType *linebuf,
@@ -791,28 +896,11 @@ read_tsv(RowBucketType *rb,
 				char   *locbuf;
 				RowType	   *row;
 				bool	multiline = false;
-				bool	malformed;
 
 				append_char(linebuf, '\0');
 				linebuf->sizes[nfields++] = size + 1;
 
-				if (ignore_short_rows)
-					malformed = linebuf->maxfields > 0 && nfields != linebuf->maxfields;
-				else
-					malformed = false;
-
-				/* move row from linebuf to rowbucket */
-				if (rb->nrows >= 1000)
-				{
-					RowBucketType *new = smalloc(sizeof(RowBucketType), "import csv data");
-
-					new->nrows = 0;
-					new->allocated = true;
-					new->next_bucket = NULL;
-
-					rb->next_bucket = new;
-					rb = new;
-				}
+				rb = prepare_RowBucket(rb);
 
 				locbuf = smalloc(linebuf->used, "import csv data");
 				memcpy(locbuf, linebuf->buffer, linebuf->used);
@@ -822,69 +910,20 @@ read_tsv(RowBucketType *rb,
 
 				for (i = 0; i < nfields; i++)
 				{
-					int			width;
-					bool		_multiline;
-					long int	digits = 0;
-					long int	total = 0;
-
 					row->fields[i] = locbuf;
 					locbuf += linebuf->sizes[i];
-
-					if (force8bit)
-					{
-						int		cw = 0;
-						char   *ptr = row->fields[i];
-
-						width = 0;
-
-						while (*ptr)
-						{
-							if (isdigit(*ptr))
-								digits += 1;
-							else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
-								total += 1;
-
-							if (*ptr++ == '\n')
-							{
-								_multiline = true;
-								width = cw > width ? cw : width;
-
-								cw = 0;
-							}
-							else
-								cw++;
-						}
-
-						width = cw > width ? cw : width;
-					}
-					else
-					{
-						width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i] - 1, &_multiline, false, &digits, &total);
-					}
-
-					/* skip first possible header row */
-					if (linebuf->processed > 0)
-					{
-						linebuf->tsizes[i] += total;
-						linebuf->digits[i] += digits;
-
-						if (isdigit(*row->fields[i]))
-							linebuf->firstdigit[i]++;
-					}
-
-					if (width > linebuf->widths[i] && !malformed)
-						linebuf->widths[i] = width;
-
-					multiline |= _multiline;
-					linebuf->multilines[i] |= _multiline;
 				}
 
-				if (nfields > linebuf->maxfields)
-					linebuf->maxfields = nfields;
+				postprocess_fields(nfields,
+								   row,
+								   linebuf,
+								   force8bit,
+								   ignore_short_rows,
+								   false,
+								   &multiline);
 
 				rb->multilines[rb->nrows] = multiline;
 				rb->rows[rb->nrows++] = row;
-				linebuf->processed += 1;
 			}
 
 			nfields = 0;
@@ -937,15 +976,6 @@ read_csv(RowBucketType *rb,
 				last_nw = first_nw;
 			}
 
-			if (linebuf->used >= linebuf->size)
-			{
-				linebuf->size += linebuf->size < (10 * 1024) ? linebuf->size  : (10 * 1024);
-				linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
-
-				/* for debug purposes */
-				memset(linebuf->buffer + linebuf->used, 0, linebuf->size - linebuf->used);
-			}
-
 			if (c == '"')
 			{
 				if (instr)
@@ -955,7 +985,7 @@ read_csv(RowBucketType *rb,
 					if (c2 == '"')
 					{
 						/* double double quotes */
-						linebuf->buffer[linebuf->used++] = c;
+						append_char(linebuf, c);
 						pos = pos + 1;
 					}
 					else
@@ -970,7 +1000,7 @@ read_csv(RowBucketType *rb,
 			}
 			else
 			{
-				linebuf->buffer[linebuf->used++] = c;
+				append_char(linebuf, c);
 				pos = pos + 1;
 			}
 
@@ -1025,12 +1055,9 @@ read_csv(RowBucketType *rb,
 				{
 					c = fgetc(ifile);
 					if (c == EOF)
-					{
-						fprintf(stderr, "unexpected quit, broken unicode char\n");
-						break;
-					}
+						log_writeln("unexpected quit, broken unicode char\n");
 
-					linebuf->buffer[linebuf->used++] = c;
+					append_char(linebuf, c);
 					pos = pos + 1;
 				}
 				last_nw = pos;
@@ -1043,7 +1070,6 @@ read_csv(RowBucketType *rb,
 			int			i;
 			int			data_size;
 			bool		multiline;
-			bool		malformed = false;
 
 			if (!skip_initial)
 			{
@@ -1056,21 +1082,10 @@ read_csv(RowBucketType *rb,
 				linebuf->starts[nfields++] = -1;
 			}
 
-			/* move row from linebuf to rowbucket */
-			if (rb->nrows >= 1000)
-			{
-				RowBucketType *new = smalloc(sizeof(RowBucketType), "import csv data");
-
-				new->nrows = 0;
-				new->allocated = true;
-				new->next_bucket = NULL;
-
-				rb->next_bucket = new;
-				rb = new;
-			}
-
 			if (!linebuf->used)
 				goto next_row;
+
+			rb = prepare_RowBucket(rb);
 
 			data_size = 0;
 			for (i = 0; i < nfields; i++)
@@ -1084,18 +1099,8 @@ read_csv(RowBucketType *rb,
 
 			multiline = false;
 
-			if (ignore_short_rows)
-				malformed = linebuf->maxfields > 0 && nfields != linebuf->maxfields;
-			else
-				malformed = false;
-
 			for (i = 0; i < nfields; i++)
 			{
-				int		width;
-				bool	_multiline;
-				long int		digits = 0;
-				long int		total = 0;
-
 				row->fields[i] = locbuf;
 
 				if (linebuf->sizes[i] > 0)
@@ -1103,58 +1108,15 @@ read_csv(RowBucketType *rb,
 
 				locbuf[linebuf->sizes[i]] = '\0';
 				locbuf += linebuf->sizes[i] + 1;
-
-				if (force8bit)
-				{
-					int		cw = 0;
-					char   *ptr = row->fields[i];
-
-					width = 0;
-
-					while (*ptr)
-					{
-						if (isdigit(*ptr))
-							digits += 1;
-						else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
-							total += 1;
-
-						if (*ptr++ == '\n')
-						{
-							_multiline = true;
-							width = cw > width ? cw : width;
-
-							cw = 0;
-						}
-						else
-							cw++;
-					}
-
-					width = cw > width ? cw : width;
-				}
-				else
-				{
-					width = utf_string_dsplen_multiline(row->fields[i], linebuf->sizes[i], &_multiline, false, &digits, &total);
-				}
-
-				/* skip first possible header row */
-				if (linebuf->processed > 0)
-				{
-					linebuf->tsizes[i] += total;
-					linebuf->digits[i] += digits;
-
-					if (isdigit(*row->fields[i]))
-						linebuf->firstdigit[i]++;
-				}
-
-				if (width > linebuf->widths[i] && !malformed)
-					linebuf->widths[i] = width;
-
-				multiline |= _multiline;
-				linebuf->multilines[i] |= _multiline;
 			}
 
-			if (nfields > linebuf->maxfields)
-				linebuf->maxfields = nfields;
+			postprocess_fields(nfields,
+							   row,
+							   linebuf,
+							   force8bit,
+							   ignore_short_rows,
+							   true,
+							   &multiline);
 
 			rb->multilines[rb->nrows] = multiline;
 			rb->rows[rb->nrows++] = row;

@@ -211,6 +211,9 @@ extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first
 
 /* from pspg.c */
 extern void leave_ncurses(const char *str);
+extern void leave_ncurses2(const char *fmt, const char *str);
+extern void log_writeln(const char *str);
+
 extern bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
 extern int min_int(int a, int b);
 extern const char *nstrstr(const char *haystack, const char *needle);

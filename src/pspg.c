@@ -190,6 +190,32 @@ leave_ncurses(const char *str)
 	exit(EXIT_FAILURE);
 }
 
+void
+leave_ncurses2(const char *fmt, const char *str)
+{
+	if (active_ncurses)
+		endwin();
+
+	fprintf(stderr, fmt, str);
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, fmt, str);
+	}
+
+	exit(EXIT_FAILURE);
+}
+
+inline void
+log_writeln(const char *str)
+{
+	if (logfile)
+	{
+		print_log_prefix(logfile);
+		fprintf(logfile, "%s\n", str);
+	}
+}
+
 static void
 current_time(time_t *sec, long *ms)
 {
