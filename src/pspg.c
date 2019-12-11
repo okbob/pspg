@@ -3331,6 +3331,7 @@ main(int argc, char *argv[])
 		{"csv-header", required_argument, 0, 28},
 		{"ignore-short-rows", no_argument, 0, 29},
 		{"tsv", no_argument, 0, 30},
+		{"null", required_argument, 0, 31},
 		{0, 0, 0, 0}
 	};
 
@@ -3366,6 +3367,7 @@ main(int argc, char *argv[])
 	opts.csv_format = false;
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_header = 'a';				/* auto detection */
+	opts.nullstr = "";
 	opts.ignore_short_rows = false;
 	opts.double_header = false;
 	opts.border_type = 2;			/* outer border */
@@ -3430,6 +3432,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --double-header          header separator uses double lines\n");
 				fprintf(stderr, "  --force-uniborder        replace ascii borders by unicode borders\n");
 				fprintf(stderr, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
+				fprintf(stderr, "  --null string            string used instead NULL\n");
 				fprintf(stderr, "\nSearching options\n");
 				fprintf(stderr, "  -g --hlite-search, -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                           don't highlight lines for searches\n");
@@ -3606,6 +3609,9 @@ main(int argc, char *argv[])
 				break;
 			case 30:
 				opts.tsv_format = true;
+				break;
+			case 31:
+				opts.nullstr = strdup(optarg);
 				break;
 
 			case 'V':

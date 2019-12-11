@@ -47,6 +47,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--double-header`  header line is doubled
 * `--border`  border used for formatted csv
 * `--csv-separator`  special char used as separator inside csv documents
+* `--null striing`  null string (default "")
 * `--ni`  not interactive mode (format csv to table and quit)
 * `--no-cursor`  the line cursor will be hidden
 * `--no-commandbar`  the bottom bar will be hidden

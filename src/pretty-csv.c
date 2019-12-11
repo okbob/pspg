@@ -702,6 +702,28 @@ append_char(LinebufType *linebuf, char c)
 }
 
 /*
+ * Save string to linebuffer
+ */
+inline static void
+append_str(LinebufType *linebuf, char *str)
+{
+	int		l = strlen(str);
+
+	if (linebuf->used + l >= linebuf->size)
+	{
+		linebuf->size += linebuf->size < (10 * 1024) ? linebuf->size  : (10 * 1024);
+		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
+
+		if (!linebuf->buffer)
+			leave_ncurses("out of memory while read csv or tsv data\n");
+	}
+
+	while (*str)
+		linebuf->buffer[linebuf->used++] = *str++;
+}
+
+
+/*
  * Ensure dynamicaly allocated structure is valid every time.
  */
 static inline RowBucketType *
@@ -821,12 +843,14 @@ read_tsv(RowBucketType *rb,
 		 LinebufType *linebuf,
 		 bool force8bit,
 		 FILE *ifile,
-		 bool ignore_short_rows)
+		 bool ignore_short_rows,
+		 char *nullstr)
 {
 	bool	closed = false;
 	int		size = 0;
 	int		nfields = 0;
 	int		c;
+	int		nullstr_size = strlen(nullstr);
 
 	c = fgetc(ifile);
 	do
@@ -846,9 +870,13 @@ read_tsv(RowBucketType *rb,
 				c = fgetc(ifile);
 				if (c != EOF)
 				{
-					/* missing fields, ignored */
+					/* NULL */
 					if (c == 'N')
+					{
+						append_str(linebuf, nullstr);
+						size += nullstr_size;
 						goto next_char;
+					}
 					else if (c ==  't')
 					{
 						c = '\t';
@@ -945,16 +973,19 @@ read_csv(RowBucketType *rb,
 		 char sep,
 		 bool force8bit,
 		 FILE *ifile,
-		 bool ignore_short_rows)
+		 bool ignore_short_rows,
+		 char *nullstr)
 {
 	bool	skip_initial = true;
 	bool	closed = false;
+	bool	found_string = false;
 	int		first_nw = 0;
 	int		last_nw = 0;
 	int		pos = 0;
 	int		nfields = 0;
 	int		instr = false;			/* true when csv string is processed */
 	int		c;
+	int		nullstr_size = strlen(nullstr);
 
 	c = fgetc(ifile);
 	do
@@ -996,7 +1027,10 @@ read_csv(RowBucketType *rb,
 					}
 				}
 				else
+				{
 					instr = true;
+					found_string = true;
+				}
 			}
 			else
 			{
@@ -1023,21 +1057,32 @@ read_csv(RowBucketType *rb,
 				if (nfields >= 1024)
 				{
 					fprintf(stderr, "too much columns");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 
-				if (!skip_initial)
+				if (skip_initial)
+				{
+					fprintf(stderr, "internal error - unexpected value of variable: \"skip_initial\"\n");
+					exit(EXIT_FAILURE);
+				}
+
+				if (last_nw - first_nw > 0 || found_string || nullstr_size == 0)
 				{
 					linebuf->sizes[nfields] = last_nw - first_nw;
 					linebuf->starts[nfields++] = first_nw;
 				}
 				else
 				{
-					linebuf->sizes[nfields] = 0;
-					linebuf->starts[nfields++] = -1;
+					/* append null string */
+					linebuf->sizes[nfields] = nullstr_size;
+					linebuf->starts[nfields++] = pos;
+
+					append_str(linebuf, nullstr);
+					pos += nullstr_size;
 				}
 
 				skip_initial = true;
+				found_string = false;
 				first_nw = pos;
 			}
 			else if (instr || c != ' ')
@@ -1050,12 +1095,15 @@ read_csv(RowBucketType *rb,
 			{
 				int		i;
 
-				/* read othe chars */
+				/* read other chars */
 				for (i = 1; i < l; i++)
 				{
 					c = fgetc(ifile);
 					if (c == EOF)
+					{
 						log_writeln("unexpected quit, broken unicode char\n");
+						break;
+					}
 
 					append_char(linebuf, c);
 					pos = pos + 1;
@@ -1071,10 +1119,29 @@ read_csv(RowBucketType *rb,
 			int			data_size;
 			bool		multiline;
 
-			if (!skip_initial)
+			if (c == '\n')
+			{
+				/* try to process \nEOF as one symbol */
+				c = fgetc(ifile);
+				if (c != EOF)
+					ungetc(c, ifile);
+			}
+
+			if (!skip_initial && (last_nw - first_nw > 0 || found_string || nullstr_size == 0))
 			{
 				linebuf->sizes[nfields] = last_nw - first_nw;
 				linebuf->starts[nfields++] = first_nw;
+			}
+			else if (nullstr_size > 0 &&
+					  (nfields > 1 || (nfields == 0 && linebuf->maxfields == 1)
+								   || (nfields == 0 && linebuf->processed == 0)))
+			{
+				/* append null string */
+				linebuf->sizes[nfields] = nullstr_size;
+				linebuf->starts[nfields++] = pos;
+
+				append_str(linebuf, nullstr);
+				pos += nullstr_size;
 			}
 			else
 			{
@@ -1138,7 +1205,9 @@ next_row:
 
 next_char:
 
-		c = fgetc(ifile);
+		if (!closed)
+			c = fgetc(ifile);
+
 	}
 	while (!closed);
 }
@@ -1221,12 +1290,24 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 	}
 	else if (opts->csv_format)
 	{
-		read_csv(&rowbuckets, &linebuf, opts->csv_separator, opts->force8bit, fp, opts->ignore_short_rows);
+		read_csv(&rowbuckets,
+				 &linebuf,
+				 opts->csv_separator,
+				 opts->force8bit,
+				 fp, opts->ignore_short_rows,
+				 opts->nullstr);
+
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
 	else if (opts->tsv_format)
 	{
-		read_tsv(&rowbuckets, &linebuf, opts->force8bit, fp, opts->ignore_short_rows);
+		read_tsv(&rowbuckets,
+				 &linebuf,
+				 opts->force8bit,
+				 fp,
+				 opts->ignore_short_rows,
+				 opts->nullstr);
+
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
 
