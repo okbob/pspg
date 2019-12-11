@@ -836,6 +836,90 @@ postprocess_fields(int nfields,
 }
 
 /*
+ * Appends fields to rows without complete set of fields.
+ * New fields holds null str.
+ */
+static void
+postprocess_rows(RowBucketType *rb,
+				 LinebufType *linebuf,
+				 bool force8bit,
+				 char *nullstr)
+{
+	int		nullstr_size = strlen(nullstr);
+	int		nullstr_width = force8bit ? strlen(nullstr) : utf_string_dsplen(nullstr, strlen(nullstr));
+
+	while (rb)
+	{
+		int		i;
+
+		for (i = 0; i < rb->nrows; i++)
+		{
+			RowType *oldrow = rb->rows[i];
+
+			if (linebuf->maxfields > 0 && linebuf->maxfields > oldrow->nfields)
+			{
+				int		j;
+				int		newsize = 0;
+				char   *locbuf;
+				RowType *newrow;
+
+				/* calculate rows size and check width for new columns */
+				for (j = 0; j < linebuf->maxfields; j++)
+				{
+					if (j < oldrow->nfields)
+					{
+						char   *str = oldrow->fields[j];
+
+						newsize += str ? strlen(str) + 1 : 0;
+					}
+					else
+					{
+						newsize += nullstr_size + 1;
+						if (linebuf->widths[j] < nullstr_width)
+							linebuf->widths[j] = nullstr_width;
+					}
+				}
+
+				locbuf = smalloc(newsize, "postprocess csv or tsv data");
+				newrow = smalloc(offsetof(RowType, fields) + (linebuf->maxfields * sizeof(char*)),
+								 "postprocess csv or tsv data");
+				newrow->nfields = linebuf->maxfields;
+
+				for (j = 0; j < newrow->nfields; j++)
+				{
+					if (j < oldrow->nfields)
+					{
+						if (oldrow->fields[j])
+						{
+							strcpy(locbuf, oldrow->fields[j]);
+							newrow->fields[j] = locbuf;
+							locbuf += strlen(newrow->fields[j]) + 1;
+						}
+						else
+							newrow->fields[j] = NULL;
+					}
+					else
+					{
+						strcpy(locbuf, nullstr);
+						newrow->fields[j] = locbuf;
+						locbuf += nullstr_size + 1;
+					}
+				}
+
+				if (oldrow->nfields > 0)
+					free(oldrow->fields[0]);
+
+				free(oldrow);
+
+				rb->rows[i] = newrow;
+			}
+		}
+
+		rb = rb->next_bucket;
+	}
+}
+
+/*
  * Read tsv format from ifile
  */
 static void
@@ -965,6 +1049,10 @@ next_char:
 		c = fgetc(ifile);
 
 	} while (!closed);
+
+	/* append nullstr to missing columns */
+	if (nullstr_size > 0 && !ignore_short_rows)
+		postprocess_rows(rb, linebuf, force8bit, nullstr);
 }
 
 static void
@@ -1210,6 +1298,10 @@ next_char:
 
 	}
 	while (!closed);
+
+	/* append nullstr to missing columns */
+	if (nullstr_size > 0 && !ignore_short_rows)
+		postprocess_rows(rb, linebuf, force8bit, nullstr);
 }
 
 /*
