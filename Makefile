@@ -42,14 +42,14 @@ menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
 	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
 
 pgclient.o: src/pspg.h src/pgclient.c
-	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CFLAGS)
+	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CPPFLAGS)
 
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
 	$(CC) -O3 -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)
 
 pspg:  $(PSPG_OFILES) $(ST_MENU_OFILES) config.make
-	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS)
+	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS) $(PG_LDFLAGS) $(PG_LIBS)
 
 clean:
 	$(RM) $(ST_MENU_OFILES)
