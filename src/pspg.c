@@ -5687,6 +5687,18 @@ recheck_right:
 							goto recheck_right;
 						}
 						cursor_col = new_cursor_col;
+
+						/*
+						 * When we go leave fixed columns, then first unfixed column should
+						 * be visible.
+						 */
+						if (desc.headline_transl && opts.vertical_cursor)
+						{
+							int fixed_columns = opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols;
+
+							if (vertical_cursor_column - 1 == fixed_columns)
+								cursor_col = 0;
+						}
 					}
 				}
 				break;
