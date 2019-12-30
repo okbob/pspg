@@ -10,7 +10,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 ## Main target
 * possibility to freeze first few rows, first few columns
 * possibility to sort data by specified numeric column
-* possibility to use fancy colors - like `mcview` or `FoxPro`
+* possibility to use fancy colors - like `mcview` or `FoxPro` - http://okbob.blogspot.com/2019/12/pspg-themes-what-you-use-it.html
 
 
 ## Screenshots
