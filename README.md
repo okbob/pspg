@@ -176,7 +176,7 @@ It can be integrated into <code>mc</code>
 <pre>
 #csv
 regex/\.csv
-    View=mlr --icsv --opprint --barred put '' %f | pspg --force-uniborder
+    View=pspg -f %f --csv
 </pre>
 
 * restart <code>mc</code>
