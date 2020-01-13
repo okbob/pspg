@@ -92,7 +92,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "2.6.5"
+#define PSPG_VERSION "2.6.6"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -444,14 +444,14 @@ translate_headline(Options *opts, DataDesc *desc)
 	bool	force8bit = opts->force8bit;
 
 	srcptr = desc->headline;
-	destptr = malloc(desc->headline_size + 1);
+	destptr = malloc(desc->headline_size + 2);
 	if (!destptr)
 	{
 		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	memset(destptr, 0, desc->headline_size + 1);
+	memset(destptr, 0, desc->headline_size + 2);
 	desc->headline_transl = destptr;
 
 	desc->linestyle = 'a';
@@ -686,12 +686,21 @@ translate_headline(Options *opts, DataDesc *desc)
 		char	   *ptr;
 		int			i;
 
+		/* Move right corner more right */
+		if (desc->border_type == 0)
+		{
+			last_black_char[0] = 'd';
+			last_black_char[1] = 'R';
+			last_black_char[3] = '\0';
+		}
+
 		/* trim ending spaces */
-		if (last_black_char != 0)
+		else if (last_black_char != 0)
 		{
 			last_black_char[1] = '\0';
-			desc->headline_char_size = strlen(desc->headline_transl);
 		}
+
+		desc->headline_char_size = strlen(desc->headline_transl);
 
 		desc->columns = 1;
 
