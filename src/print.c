@@ -425,6 +425,7 @@ window_fill(int window_identifier,
 			bool	is_top_deco = false;
 			bool	is_head_deco = false;
 			bool	is_bottom_deco = false;
+			int		trailing_spaces = 0;
 
 			is_top_deco = effective_row == desc->border_top_row;
 			is_head_deco = effective_row == desc->border_head_row;
@@ -781,6 +782,19 @@ window_fill(int window_identifier,
 					}
 					else
 					{
+
+						/*
+						 * psql reduces trailing spaces when border is 0 or 1. These spaces
+						 * should be printed after content.
+						 */
+						if (is_vertical_cursor && i != -1)
+						{
+							int ts1 = maxx - i + 1;
+							int ts2 = vcursor_xmax - i + 1;
+
+							trailing_spaces = ts1 < ts2 ? ts1 : ts2;
+						}
+
 						break;
 					}
 				} /* end while */
@@ -797,6 +811,13 @@ window_fill(int window_identifier,
 							desc,
 							scrdesc,
 							opts);
+
+			/* print trailing spaces necessary for correct vertical cursor */
+			if (trailing_spaces > 0)
+			{
+				wprintw(win, "%*s", trailing_spaces, "");
+				i += trailing_spaces;
+			}
 
 			/* When we don't possition of last char, we can (for cursor draw) use 0 */
 			i = i != -1 ? i : 0;
