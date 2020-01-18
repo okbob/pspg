@@ -154,6 +154,42 @@ static void print_log_prefix(FILE *logfile);
 
 FILE   *logfile = NULL;
 
+#define			FILE_NOT_SET		0
+#define			FILE_CSV			1
+#define			FILE_TSV			2
+#define			FILE_MATRIX			3
+
+static int
+get_format_type(char *path)
+{
+	char		buffer[4];
+	char	   *r_ptr, *w_ptr;
+	int			i;
+	int			l;
+
+	l = strlen(path);
+	if (l < 5)
+		return FILE_MATRIX;
+
+	r_ptr = path + l - 4;
+	w_ptr = buffer;
+
+	if (*r_ptr++ != '.')
+		return FILE_MATRIX;
+
+	for (i = 0; i < 3; i++)
+		*w_ptr++ = tolower(*r_ptr++);
+
+	*w_ptr = '\0';
+
+	if (strcmp(buffer, "csv") == 0)
+		return FILE_CSV;
+	else if (strcmp(buffer, "tsv") == 0)
+		return FILE_TSV;
+	else
+		return FILE_MATRIX;
+}
+
 static void
 SigintHandler(int sig_num)
 {
@@ -3281,6 +3317,9 @@ main(int argc, char *argv[])
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
 
+	int		file_format_from_suffix = FILE_NOT_SET;
+	bool	ignore_file_suffix = false;
+
 #ifdef DEBUG_PIPE
 
 	time_t		start_app_sec;
@@ -3341,6 +3380,7 @@ main(int argc, char *argv[])
 		{"ignore-short-rows", no_argument, 0, 29},
 		{"tsv", no_argument, 0, 30},
 		{"null", required_argument, 0, 31},
+		{"ignore_file_suffix", no_argument, 0, 32},
 		{0, 0, 0, 0}
 	};
 
@@ -3424,6 +3464,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                           quit if content is one screen\n");
 				fprintf(stderr, "  -X                       don't use alternate screen\n");
 				fprintf(stderr, "  --interactive            force interactive mode\n");
+				fprintf(stderr, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 				fprintf(stderr, "  --ni                     not interactive mode (only for csv and query)\n");
 				fprintf(stderr, "  --no-mouse               don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sigint-search-reset\n");
@@ -3622,6 +3663,9 @@ main(int argc, char *argv[])
 			case 31:
 				opts.nullstr = strdup(optarg);
 				break;
+			case 32:
+				ignore_file_suffix = true;
+				break;
 
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3702,6 +3746,8 @@ main(int argc, char *argv[])
 						exit(EXIT_FAILURE);
 					}
 					opts.pathname = strdup(optarg);
+
+					file_format_from_suffix = get_format_type(optarg);
 				}
 				break;
 			case 'F':
@@ -3744,6 +3790,14 @@ main(int argc, char *argv[])
 				fprintf(stderr, "Try %s --help\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
+	}
+
+	if (!opts.csv_format && !opts.tsv_format && file_format_from_suffix != FILE_NOT_SET && !ignore_file_suffix)
+	{
+		if (file_format_from_suffix == FILE_CSV)
+			opts.csv_format = true;
+		else if (file_format_from_suffix == FILE_TSV)
+			opts.tsv_format = true;
 	}
 
 	if (opts.watch_time && !(opts.query || opts.pathname))
