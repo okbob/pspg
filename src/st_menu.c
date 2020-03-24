@@ -147,6 +147,7 @@ safe_malloc(size_t size)
 }
 
 #ifdef PDCURSES
+
 /*
  Created a new version of newwin() because PDCurses (unlike ncurses)
  will not allocate a Window if:
@@ -154,7 +155,8 @@ safe_malloc(size_t size)
  Therefore we will make an attempt to reduce the rows/cols if needed
  to get the allocation to pass for *most* cases.
 */
-static WINDOW* newwin2(int* rows, int* cols, int begin_y, int begin_x)
+static WINDOW*
+newwin2(int* rows, int* cols, int begin_y, int begin_x)
 {
 	int SPlines, SPcols;
 
@@ -170,10 +172,12 @@ static WINDOW* newwin2(int* rows, int* cols, int begin_y, int begin_x)
 
 	return newwin(*rows, *cols, begin_y, begin_x);
 }
-#else
-#define newwin2(rows, cols, begin_y, begin_x)  newwin(*rows, *cols, begin_y, begin_x)
-#endif
 
+#else
+
+#define newwin2(rows, cols, begin_y, begin_x)  newwin(*rows, *cols, begin_y, begin_x)
+
+#endif
 
 /*
  * Returns bytes of multibyte char
