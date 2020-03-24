@@ -2,21 +2,6 @@
 
 #include "st_menu.h"
 
-#if defined HAVE_NCURSESW_CURSES_H
-#include <ncursesw/curses.h>
-#elif defined HAVE_NCURSESW_H
-#include <ncursesw.h>
-#elif defined HAVE_NCURSES_CURSES_H
-#include <ncurses/curses.h>
-#elif defined HAVE_NCURSES_H
-#include <ncurses.h>
-#elif defined HAVE_CURSES_H
-#include <curses.h>
-#else
-/* fallback */
-#include <ncurses/ncurses.h>
-#endif
-
 #include <string.h>
 
 /* 0..255 rgb based colors */
@@ -28,7 +13,6 @@ init_color_rgb_ff(short color, short r, short g, short b)
 			   (g / 255.0) * 1000.0,
 			   (b / 255.0) * 1000.0);
 }
-
 
 /*
  * Set ligh colour
@@ -73,6 +57,11 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 
 	config->submenu_tag = '>';
 	config->mark_tag = '*';
+	config->switch_tag_n1 = '?';
+	config->switch_tag_0 = '-';
+	config->switch_tag_1 = 'x';
+	config->scroll_up_tag = '^';
+	config->scroll_down_tag = 'v';
 	config->draw_box = true;
 	config->extern_accel_text_space = 2;
 	config->force_ascii_art = false;
@@ -83,7 +72,22 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 #if defined  HAVE_NCURSESW
 
 	if (!config->force8bit)
+	{
 		config->mark_tag = L'\x2714';
+/*
+		config->switch_tag_n1 = L'\x2680';
+		config->switch_tag_0 = L'\x2610';
+		config->switch_tag_1 = L'\x2611';
+*/
+
+		config->switch_tag_n1 = '.';
+		config->switch_tag_0 = ' ';
+		config->switch_tag_1 = L'\x2714';
+
+		config->scroll_up_tag = L'\x25b2';
+		config->scroll_down_tag = L'\x25bc';
+
+	}
 
 #endif
 

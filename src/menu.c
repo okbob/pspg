@@ -254,9 +254,10 @@ init_menu(struct ST_MENU *current_menu)
 	if (current_menu)
 	{
 		int		positions[1024];
+		int		*refvals[1024];
 
-		st_menu_save(current_menu, positions, 1023);
-		st_menu_load(menu, positions);
+		st_menu_save(current_menu, positions, refvals, 1023);
+		st_menu_load(menu, positions, refvals);
 		st_menu_free(current_menu);
 	}
 

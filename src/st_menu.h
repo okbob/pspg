@@ -1,4 +1,4 @@
-#include <ncurses.h>
+#include "st_curses.h"
 
 #ifndef _ST_MENU_H
 
@@ -33,11 +33,16 @@
 #define ST_MENU_OPTION_DEFAULT		1
 #define ST_MENU_OPTION_DISABLED		2
 #define ST_MENU_OPTION_MARKED		4
+#define ST_MENU_OPTION_MARKED_REF	8		/* mark one from group */
+#define ST_MENU_OPTION_SWITCH2_REF	16		/* two state switch: 0, 1*/
+#define ST_MENU_OPTION_SWITCH3_REF	32		/* three state switch: -1, 0, 1 */
 
 #define ST_MENU_FOCUS_FULL			0		/* all possible events can be processed */
 #define ST_MENU_FOCUS_ALT_MOUSE		1		/* only mouse, ALT key events */
 #define ST_MENU_FOCUS_MOUSE_ONLY	2		/* only mouse events are processed */
 #define ST_MENU_FOCUS_NONE			3		/* menu has not any focus */
+
+#define IS_REF_OPTION(o)			(((o) & ST_MENU_OPTION_MARKED_REF) || ((o) & ST_MENU_OPTION_SWITCH2_REF) || ((o) & ST_MENU_OPTION_SWITCH3_REF))
 
 /*
  * Uncomment it and set for your environment when you would to
@@ -61,13 +66,13 @@ extern int		debug_eventno;
 
 typedef struct st_ST_MENU_ITEM
 {
-	char	*text;						/* text of menu item, possible specify accelerator by ~ */
+	char   *text;						/* text of menu item, possible specify accelerator by ~ */
 	int		code;						/* code of menu item (optional) */
-	char	*shortcut;					/* shortcut text, only printed (optional) */
+	char   *shortcut;					/* shortcut text, only printed (optional) */
 	int		data;						/* allow to assign some value to menu item (optional) */
 	char	group;						/* specify semantics of data value (optional) */
 	int		options;					/* locked, marked, ... (optional) */
-	struct st_ST_MENU_ITEM *submenu;		/* reference to nested menu (optional) */
+	struct st_ST_MENU_ITEM *submenu;	/* reference to nested menu (optional) */
 } ST_MENU_ITEM;
 
 typedef struct
@@ -107,6 +112,11 @@ typedef struct
 	int		submenu_offset_y;		/* offset for submenu related to right border of parent menu window */
 	int		submenu_offset_x;		/* offset for submenu related to cursor in parent menu window */
 	int		mark_tag;				/* symbol used for mark tag */
+	int		switch_tag_n1;			/* symbol used for switch negative 1 */
+	int		switch_tag_0;			/* symbol used for switch 0 */
+	int		switch_tag_1;			/* symbol used for switch 1 */
+	int		scroll_up_tag;			/* symbol used for possibility to scroll up */
+	int		scroll_down_tag;		/* symbol used for possibility to scroll down */
 } ST_MENU_CONFIG;
 
 struct ST_MENU;
@@ -134,8 +144,8 @@ extern void st_menu_post(struct ST_MENU *menu);
 extern void st_menu_unpost(struct ST_MENU *menu, bool close_active_submenu);
 extern bool st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent);
 extern void st_menu_free(struct ST_MENU *menu);
-extern void st_menu_save(struct ST_MENU *menu, int *cursor_rows, int max_rows);
-extern void st_menu_load(struct ST_MENU *menu, int *cursor_rows);
+extern void st_menu_save(struct ST_MENU *menu, int *cursor_rows, int **refvals, int max_items);
+extern void st_menu_load(struct ST_MENU *menu, int *cursor_rows, int **refvals);
 
 extern ST_MENU_ITEM *st_menu_selected_item(bool *activated);
 extern ST_CMDBAR_ITEM *st_menu_selected_command(bool *activated);
@@ -146,6 +156,8 @@ extern bool st_menu_set_option(struct ST_MENU *menu, int code, int option, bool 
 extern bool st_menu_reset_all_submenu_options(struct ST_MENU *menu, int menu_code, int option);
 extern bool st_menu_reset_all_options(struct ST_MENU *menu, int option);
 extern void st_menu_set_focus(struct ST_MENU *menu, int focus);
+
+extern bool st_menu_set_ref_option(struct ST_MENU *menu, int code, int option, int *refvalue);
 
 extern struct ST_CMDBAR *st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items);
 extern void st_cmdbar_post(struct ST_CMDBAR *cmdbar);

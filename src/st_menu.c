@@ -1,31 +1,6 @@
 #include <ctype.h>
-
-#if defined HAVE_NCURSESW_CURSES_H
-#include <ncursesw/curses.h>
-#elif defined HAVE_NCURSESW_H
-#include <ncursesw.h>
-#elif defined HAVE_NCURSES_CURSES_H
-#include <ncurses/curses.h>
-#elif defined HAVE_NCURSES_H
-#include <ncurses.h>
-#elif defined HAVE_CURSES_H
-#include <curses.h>
-#else
-/* fallback */
-#include <ncurses/ncurses.h>
-#endif
-
-#if defined HAVE_NCURSESW_PANEL_H
-#include <ncursesw/panel.h>
-#elif defined HAVE_NCURSES_PANEL_H
-#include <ncurses/panel.h>
-#elif defined HAVE_PANEL_H
-#include <panel.h>
-#else
-/* fallback */
-#include <ncurses/panel.h>
-#endif
-
+#include "st_curses.h"
+#include "st_panel.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -69,9 +44,11 @@ struct ST_MENU
 	PANEL	   *panel;
 	WINDOW	   *shadow_window;
 	PANEL	   *shadow_panel;
+	int			first_row;						/* first visible row */
 	int			cursor_row;
 	int			mouse_row;						/* mouse row where button1 was pressed */
 	int		   *options;						/* state options, initially copyied from menu */
+	int		  **refvals;						/* referenced values */
 	ST_MENU_ACCELERATOR		*accelerators;
 	int			naccelerators;
 	ST_MENU_CONFIG *config;
@@ -106,6 +83,8 @@ static struct ST_CMDBAR   *active_cmdbar = NULL;
 
 static ST_MENU_ITEM		   *selected_item = NULL;
 static ST_CMDBAR_ITEM	   *selected_command = NULL;
+static int					selected_options = 0;
+static int				   *selected_refval = NULL;
 
 static bool			press_accelerator = false;
 static bool			button1_clicked = false;
@@ -132,6 +111,8 @@ static void menubar_draw(struct ST_MENU *menu);
 static void pulldownmenu_draw(struct ST_MENU *menu, bool is_top);
 static void cmdbar_draw(struct ST_CMDBAR *cmdbar);
 static bool cmdbar_driver(struct ST_CMDBAR *cmdbar, int c, bool alt, MEVENT *mevent);
+
+static void subtract_correction(WINDOW *s, int *y, int *x);
 
 /*
  * Generic functions
@@ -164,6 +145,35 @@ safe_malloc(size_t size)
 
 	return ptr;
 }
+
+#ifdef PDCURSES
+/*
+ Created a new version of newwin() because PDCurses (unlike ncurses)
+ will not allocate a Window if:
+ (begin_y + rows > SP->lines || begin_x + cols > SP->cols)
+ Therefore we will make an attempt to reduce the rows/cols if needed
+ to get the allocation to pass for *most* cases.
+*/
+static WINDOW* newwin2(int* rows, int* cols, int begin_y, int begin_x)
+{
+	int SPlines, SPcols;
+
+	getmaxyx(stdscr, SPlines, SPcols);
+	if (begin_y + *rows > SPlines)
+	{
+		*rows = SPlines - begin_y;
+	}
+	if (begin_x + *cols > SPcols)
+	{
+		*cols = SPcols - begin_x;
+	}
+
+	return newwin(*rows, *cols, begin_y, begin_x);
+}
+#else
+#define newwin2(rows, cols, begin_y, begin_x)  newwin(*rows, *cols, begin_y, begin_x)
+#endif
+
 
 /*
  * Returns bytes of multibyte char
@@ -351,7 +361,7 @@ _save_menustate(struct ST_MENU *menu, int *cursor_rows, int max_rows, int write_
 	int		active_row = -1;
 	int		i;
 
-	if (write_pos >= max_rows)
+	if (write_pos + 1 + menu->nitems >= max_rows)
 	{
 		endwin();
 		printf("FATAL: Cannot save menu positions, too complex menu.\n");
@@ -359,6 +369,7 @@ _save_menustate(struct ST_MENU *menu, int *cursor_rows, int max_rows, int write_
 	}
 
 	cursor_rows[write_pos++] = menu->cursor_row;
+	cursor_rows[write_pos++] = menu->first_row;
 
 	if (menu->submenus)
 	{
@@ -382,6 +393,33 @@ _save_menustate(struct ST_MENU *menu, int *cursor_rows, int max_rows, int write_
 	return write_pos;
 }
 
+static int
+_save_refvals(struct ST_MENU *menu, int **refvals, int max_refvals, int write_pos)
+{
+	int		i;
+
+	if (write_pos + menu->nitems >= max_refvals)
+	{
+		endwin();
+		printf("FATAL: Cannot save menu refvals, too complex menu.\n");
+		exit(1);
+	}
+
+	if (menu->submenus)
+	{
+		for (i = 0; i < menu->nitems; i++)
+		{
+			if (menu->submenus[i])
+				write_pos = _save_refvals(menu->submenus[i], refvals, max_refvals, write_pos);
+		}
+	}
+
+	for (i = 0; i < menu->nitems; i++)
+		refvals[write_pos++] = menu->refvals[i];
+
+	return write_pos;
+}
+
 /*
  * Workhorse for st_menu_load
  */
@@ -392,6 +430,7 @@ _load_menustate(struct ST_MENU *menu, int *cursor_rows, int read_pos)
 	int		i;
 
 	menu->cursor_row = cursor_rows[read_pos++];
+	menu->first_row = cursor_rows[read_pos++];
 
 	if (menu->submenus)
 	{
@@ -414,22 +453,47 @@ _load_menustate(struct ST_MENU *menu, int *cursor_rows, int read_pos)
 	return read_pos;
 }
 
+static int
+_load_refvals(struct ST_MENU *menu, int **refvals, int read_pos)
+{
+	int		i;
+
+	if (menu->submenus)
+	{
+		for (i = 0; i < menu->nitems; i++)
+		{
+			if (menu->submenus[i])
+			{
+				read_pos = _load_refvals(menu->submenus[i], refvals, read_pos);
+			}
+		}
+	}
+
+	for (i = 0; i < menu->nitems; i++)
+		menu->refvals[i] = refvals[read_pos++];
+
+	return read_pos;
+}
+
+
 /*
  * Serialize important fields of menustate to cursor_rows array.
  */
 void
-st_menu_save(struct ST_MENU *menu, int *cursor_rows, int max_rows)
+st_menu_save(struct ST_MENU *menu, int *cursor_rows, int **refvals, int max_items)
 {
-	_save_menustate(menu, cursor_rows, max_rows, 0);
+	_save_menustate(menu, cursor_rows, max_items, 0);
+	_save_refvals(menu, refvals, max_items, 0);
 }
 
 /*
  * Load cursor positions and active submenu from safe
  */
 void
-st_menu_load(struct ST_MENU *menu, int *cursor_rows)
+st_menu_load(struct ST_MENU *menu, int *cursor_rows, int **refvals)
 {
 	_load_menustate(menu, cursor_rows, 0);
+	_load_refvals(menu, refvals, 0);
 }
 
 
@@ -609,6 +673,8 @@ menubar_draw(struct ST_MENU *menu)
 	int		i;
 
 	selected_item = NULL;
+	selected_options = 0;
+	selected_refval = NULL;
 
 	/* do nothing when content is invisible */
 	if (menu->focus == ST_MENU_FOCUS_NONE)
@@ -636,7 +702,7 @@ menubar_draw(struct ST_MENU *menu)
 		char	*text = menu_item->text;
 		bool	highlight = false;
 		bool	is_cursor_row = menu->cursor_row == i + 1 && has_focus;
-		bool	is_disabled = menu_item->options & ST_MENU_OPTION_DISABLED;
+		bool	is_disabled = menu->options[i] & ST_MENU_OPTION_DISABLED;
 		int		current_pos;
 
 		/* bar_fields_x_pos holds x positions of menubar items */
@@ -749,6 +815,7 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 
 	getbegyx(menu->window, y, x);
 	getmaxyx(menu->window, rows, cols);
+	subtract_correction(menu->window, &y, &x);
 
 	/*
 	 * Hypothesis: when panel is moved, then assigned windows is moved
@@ -828,6 +895,21 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 		result = move_panel(menu->panel, new_y, new_x);
 
 		/*
+		 * This is maybe ugly hack. move_panel fails when
+		 * attached window cannot be displayed. So we can try
+		 * resize attached window first.
+		 */
+		if (result != OK)
+		{
+			WINDOW *pw = panel_window(menu->panel);
+
+			wresize(pw, maxy - new_y, menu->cols);
+			replace_panel(menu->panel, pw);
+		}
+
+		result = move_panel(menu->panel, new_y, new_x);
+
+		/*
 		 * move_panel fails when it cannot be displayed completly.
 		 * This is problem for shadow window because is n char right,
 		 * over left border. So we have to create new window with
@@ -849,7 +931,7 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 			{
 				WINDOW   *new_shadow_window;
 
-				new_shadow_window = newwin(new_rows, new_cols, new_y + 1, new_x + config->shadow_width);
+				new_shadow_window = newwin2(&new_rows, &new_cols, new_y + 1, new_x + config->shadow_width);
 
 				/* There are no other possibility to resize panel */
 				replace_panel(menu->shadow_panel, new_shadow_window);
@@ -905,37 +987,6 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 		wmaxy = smaxy - 1;
 		wmaxx = smaxx - config->shadow_width;
 
-#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
-
-		for (i = 0; i <= smaxy; i++)
-			for (j = 0; j <= smaxx; j++)
-			{
-				cchar_t		cch;
-				wchar_t		wch[CCHARW_MAX];
-				attr_t		attr;
-				short int	cp;
-
-				/* skip overwritten content */
-				if (i < wmaxy && j < wmaxx)
-					continue;
-
-				mvwin_wch(menu->shadow_window, i, j, &cch);
-				getcchar(&cch, wch, &attr, &cp, NULL);
-
-				/*
-				 * When original attributte holds A_ALTCHARSET bit, then
-				 * then updated attributte have to hold this bit too, elsewhere
-				 * ACS chars will be broken.
-				 */
-				setcchar(&cch, wch,
-									shadow_attr | (attr & A_ALTCHARSET),
-									config->menu_shadow_cpn,
-									NULL);
-				mvwadd_wch(menu->shadow_window, i, j, &cch);
-			}
-
-#else
-
 		for (i = 0; i <= smaxy; i++)
 			for (j = 0; j <= smaxx; j++)
 			{
@@ -955,13 +1006,43 @@ pulldownmenu_draw_shadow(struct ST_MENU *menu)
 								NULL);
 			}
 
-#endif
-
 		wnoutrefresh(menu->shadow_window);
 	}
 
 	if (menu->active_submenu)
 		pulldownmenu_draw_shadow(menu->active_submenu);
+}
+
+/*
+ * Early search of selected refval items. Is necessary to
+ * change state before next drawing.
+ */
+static void
+searching_selected_refval_items(struct ST_MENU *menu)
+{
+	ST_MENU_ITEM	   *menu_items = menu->menu_items;
+	int		row = 1;
+
+	while (menu_items->text != NULL)
+	{
+		int		offset = menu_items - menu->menu_items;
+
+		if (IS_REF_OPTION(menu->options[offset]))
+		{
+			if (menu->cursor_row == row)
+			{
+				selected_item = menu_items;
+				selected_options = menu->options[offset];
+				selected_refval= menu->refvals[offset];
+			}
+		}
+
+		menu_items += 1;
+		row += 1;
+	}
+
+	if (menu->active_submenu)
+		searching_selected_refval_items(menu->active_submenu);
 }
 
 /*
@@ -974,11 +1055,15 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	ST_MENU_ITEM	   *menu_items = menu->menu_items;
 	ST_MENU_CONFIG	*config = menu->config;
 	WINDOW	   *draw_area = menu->draw_area;
+	WINDOW	   *loc_draw_area = NULL;
 	int		row = 1;
 	int		maxy, maxx;
+	int		dmaxy, dmaxx, dy, dx;
 	int		text_min_x, text_max_x;
 	int		*options = menu->options;
 	bool	force_ascii_art = config->force_ascii_art;
+	int		max_draw_rows = menu->rows;
+	int		i;
 
 	selected_item = NULL;
 
@@ -999,7 +1084,35 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 
 	update_panels();
 
+	/* clean menu background */
 	werase(menu->window);
+
+	/*
+	 * Now, we would to check if is possible to draw complete draw area on
+	 * screen, and if draw area is good enough for all menu's items.
+	 */
+	getmaxyx(stdscr, maxy, maxx);
+	getmaxyx(draw_area, dmaxy, dmaxx);
+	getbegyx(draw_area, dy, dx);
+
+	subtract_correction(draw_area, &dy, &dx);
+
+	if (dy + dmaxy > maxy || dmaxy < menu->rows )
+	{
+		dmaxy = min_int(maxy - dy, dmaxy);
+		max_draw_rows = draw_box ? (dmaxy - 2) : dmaxy;
+
+		loc_draw_area = subwin(menu->window, dmaxy, dmaxx, dy, dx);
+		draw_area = loc_draw_area;
+
+		if (menu->cursor_row < menu->first_row)
+			menu->first_row = menu->cursor_row;
+
+		if (menu->cursor_row > menu->first_row + max_draw_rows - 1)
+			menu->first_row = menu->cursor_row - max_draw_rows + 1;
+	}
+	else
+		menu->first_row = 1;
 
 	getmaxyx(draw_area, maxy, maxx);
 
@@ -1017,19 +1130,65 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 	text_min_x = (draw_box ? 1 : 0) + (config->extra_inner_space ? 1 : 0);
 	text_max_x = maxx - (draw_box ? 1 : 0) - (config->extra_inner_space ? 1 : 0);
 
+	/* skip first firt_row rows from menu */
+	for (i = 1; i < menu->first_row; i++)
+		if (menu_items->text != NULL)
+			menu_items += 1;
+
 	while (menu_items->text != NULL)
 	{
+		int		offset = menu_items - menu->menu_items;
 		bool	has_submenu = menu_items->submenu ? true : false;
 		bool	is_disabled = false;
 		bool	is_marked = false;
+		int		mark_tag;
 
 		if (options)
 		{
-			int		offset = menu_items - menu->menu_items;
 			int		option = options[offset];
 
 			is_disabled = option & ST_MENU_OPTION_DISABLED;
-			is_marked = option & ST_MENU_OPTION_MARKED;
+
+			if (option & ST_MENU_OPTION_MARKED)
+			{
+				mark_tag = config->mark_tag;
+				is_marked = true;
+			}
+			else if (option & ST_MENU_OPTION_MARKED_REF)
+			{
+				int   *refval = menu->refvals[offset];
+
+				if (*refval == menu_items->data)
+				{
+					is_marked = true;
+					mark_tag = config->mark_tag;
+				}
+			}
+			else if (option & ST_MENU_OPTION_SWITCH2_REF)
+			{
+				int   *refval = menu->refvals[offset];
+
+				is_marked = true;
+				mark_tag = (*refval == 1) ? config->switch_tag_1 : config->switch_tag_0;
+			}
+			else if (option & ST_MENU_OPTION_SWITCH3_REF)
+			{
+				int   *refval = menu->refvals[offset];
+
+				is_marked = true;
+				switch (*refval)
+				{
+					case 1:
+						mark_tag = config->switch_tag_1;
+						break;
+					case 0:
+						mark_tag = config->switch_tag_0;
+						break;
+					default:
+						mark_tag = config->switch_tag_n1;
+						break;
+				}
+			}
 		}
 
 		if (*menu_items->text == '\0' || strncmp(menu_items->text, "--", 2) == 0)
@@ -1067,7 +1226,7 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 		{
 			char	*text = menu_items->text;
 			bool	highlight = false;
-			bool	is_cursor_row = menu->cursor_row == row;
+			bool	is_cursor_row = menu->cursor_row == offset + 1;
 			bool	first_char = true;
 			bool	is_extern_accel;
 			int		text_y = -1;
@@ -1083,7 +1242,7 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 			}
 
 			if (is_disabled)
-				wattron(menu->window, COLOR_PAIR(config->disabled_cpn) | config->disabled_attr);
+				wattron(draw_area, COLOR_PAIR(config->disabled_cpn) | config->disabled_attr);
 
 			is_extern_accel = (*text == '_' && text[1] != '_');
 
@@ -1187,18 +1346,36 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 				mvwprintw(draw_area,
 								row - (draw_box ? 0 : 1),
 								text_x - 1,
-									"%lc", config->mark_tag);
+									"%lc", mark_tag);
 			}
 
 			if (is_cursor_row)
 				wattroff(draw_area, COLOR_PAIR(config->cursor_cpn) | config->cursor_attr);
 
 			if (is_disabled)
-				wattroff(menu->window, COLOR_PAIR(config->disabled_cpn) | config->disabled_attr);
+				wattroff(draw_area, COLOR_PAIR(config->disabled_cpn) | config->disabled_attr);
 		}
 
 		menu_items += 1;
 		row += 1;
+
+		if (row > max_draw_rows)
+			break;
+	}
+
+	if (draw_box)
+	{
+		if (menu->first_row > 1)
+			mvwprintw(draw_area, 1, maxx - 1, "%lc", config->scroll_up_tag);
+
+		if (menu->first_row + max_draw_rows - 1 < menu->nitems)
+			mvwprintw(draw_area, maxy - 2, maxx - 1, "%lc", config->scroll_down_tag);
+	}
+
+	if (loc_draw_area)
+	{
+		wnoutrefresh(loc_draw_area);
+		delwin(loc_draw_area);
 	}
 
 	wnoutrefresh(menu->window);
@@ -1302,6 +1479,34 @@ add_correction(WINDOW *s, int *y, int *x)
 	}
 }
 
+/*
+ * It is correction for window begxy, begx when panel contained
+ * this window was moved.
+ */
+static void
+subtract_correction(WINDOW *s, int *y, int *x)
+{
+	WINDOW *p = wgetparent(s);
+	/*
+	 * Note: function is_subwin is unknown on some
+	 * older ncurses implementations. Don't use it.
+	 */
+	if (p)
+	{
+		int	py, px, sy, sx, oy, ox;
+		int fix_y, fix_x;
+
+		getbegyx(p, py, px);
+		getbegyx(s, sy, sx);
+		getparyx(s, oy, ox);
+
+		fix_y = sy - (py + oy);
+		fix_x = sx - (px + ox);
+
+		*y -= fix_y;
+		*x -= fix_x;
+	}
+}
 
 /*
  * Handle any outer event - pressed key, or mouse event. This driver
@@ -1514,7 +1719,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 
 				/* calculate row from transformed mouse event */
 				if (wmouse_trafo(menu->draw_area, &row, &col, false))
-						mouse_row = row + 1 - (config->draw_box ? 1:0);
+						mouse_row = row + 1 - (config->draw_box ? 1:0) + (menu->first_row - 1);
 			}
 		}
 	}
@@ -1718,6 +1923,8 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		}
 	}
 
+
+
 	/* when menubar is changed, unpost active pulldown submenu */
 	if (menu->active_submenu && cursor_row != menu->cursor_row)
 	{
@@ -1790,6 +1997,37 @@ post_process:
 			{
 				if (!menu || menu->focus != ST_MENU_FOCUS_FULL)
 					processed = cmdbar_driver(active_cmdbar, c, alt, mevent);
+			}
+		}
+
+		if (processed)
+		{
+			/* try to search selected item */
+			if (menu)
+				searching_selected_refval_items(menu);
+		}
+
+		/* postprocess for referenced values */
+		if (selected_item && (press_accelerator || press_enter || button1_clicked))
+		{
+			if (IS_REF_OPTION(selected_options))
+			{
+				if (selected_refval == NULL)
+				{
+					endwin();
+					fprintf(stderr, "detected referenced option without referenced value");
+					exit(1);
+				}
+
+				if (selected_options & ST_MENU_OPTION_MARKED_REF)
+				{
+					*selected_refval = selected_item->data;
+				}
+				else if ((selected_options & ST_MENU_OPTION_SWITCH2_REF) ||
+						 (selected_options & ST_MENU_OPTION_SWITCH3_REF))
+				{
+					*selected_refval = (*selected_refval == 1) ? 0 : 1;
+				}
 			}
 		}
 
@@ -1867,6 +2105,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 	menu->naccelerators = 0;
 	menu->is_menubar = false;
 	menu->mouse_row = -1;
+	menu->first_row = 1;
 
 	/* how much items are in template */
 	menu_item = menu_items;
@@ -1880,6 +2119,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 	menu->accelerators = safe_malloc(sizeof(ST_MENU_ACCELERATOR) * menu_fields);
 	menu->submenus = safe_malloc(sizeof(struct ST_MENU) * menu_fields);
 	menu->options = safe_malloc(sizeof(int) * menu_fields);
+	menu->refvals = safe_malloc(sizeof(int*) * menu_fields);
 
 	menu->nitems = menu_fields;
 
@@ -1903,7 +2143,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 	/* Prepare property for menu shadow */
 	if (config->shadow_width > 0)
 	{
-		menu->shadow_window = newwin(rows, cols, begin_y + 1, begin_x + config->shadow_width);
+		menu->shadow_window = newwin2(&rows, &cols, begin_y + 1, begin_x + config->shadow_width);
 		menu->shadow_panel = new_panel(menu->shadow_window);
 
 		hide_panel(menu->shadow_panel);
@@ -1917,7 +2157,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 		menu->shadow_panel = NULL;
 	}
 
-	menu->window = newwin(rows, cols, begin_y, begin_x);
+	menu->window = newwin2(&rows, &cols, begin_y, begin_x);
 
 	menu->ideal_y_pos = begin_y;
 	menu->ideal_x_pos = begin_x;
@@ -1948,6 +2188,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 			menu->submenus[i] = NULL;
 
 		menu->options[i] = menu_item->options;
+		menu->refvals[i] = NULL;
 
 		menu_item += 1;
 		i += 1;
@@ -1978,8 +2219,8 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 /*
  * Create state variable for menubar based on template (array) of ST_MENU_ITEM
  */
-struct
-ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_MENU_ITEM *menu_items)
+struct ST_MENU *
+st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_MENU_ITEM *menu_items)
 {
 	struct ST_MENU *menu;
 	int		maxy, maxx;
@@ -1996,12 +2237,10 @@ ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	/* by compiler quiet */
-	(void) maxy;
-
 	menu = safe_malloc(sizeof(struct ST_MENU));
 
-	menu->window = newwin(1, maxx, 0, 0);
+	maxy = 1;
+	menu->window = newwin2(&maxy, &maxx, 0, 0);
 	menu->panel = new_panel(menu->window);
 
 	/* there are not shadows */
@@ -2011,6 +2250,7 @@ ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_
 	menu->config = barcfg;
 	menu->menu_items = menu_items;
 	menu->cursor_row = 1;
+	menu->first_row = 1;
 	menu->active_submenu = NULL;
 
 	menu->is_menubar = true;
@@ -2037,6 +2277,7 @@ ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_
 	menu->submenus = safe_malloc(sizeof(struct ST_MENU) * menu_fields);
 	menu->accelerators = safe_malloc(sizeof(ST_MENU_ACCELERATOR) * menu_fields);
 	menu->options = safe_malloc(sizeof(int) * menu_fields);
+	menu->refvals = safe_malloc(sizeof(int*) * menu_fields);
 
 	menu->nitems = menu_fields; 
 
@@ -2090,6 +2331,7 @@ ST_MENU *st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_
 		menu->naccelerators = naccel;
 
 		menu->options[i] = menu_item->options;
+		menu->refvals[i] = NULL;
 
 		menu_item += 1;
 		i += 1;
@@ -2556,7 +2798,7 @@ st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items)
 {
 	struct ST_CMDBAR *cmdbar;
 	ST_CMDBAR_ITEM *cmdbar_item;
-	int		maxy, maxx;
+	int		maxy, maxx, tmpy;
 	int		i;
 	int		last_position;
 
@@ -2567,7 +2809,8 @@ st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items)
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	cmdbar->window = newwin(1, maxx, maxy - 1, 0);
+	tmpy = 1;
+	cmdbar->window = newwin2(&tmpy, &maxx, maxy - 1, 0);
 	cmdbar->panel = new_panel(cmdbar->window);
 
 	wbkgd(cmdbar->window,
@@ -2715,7 +2958,8 @@ st_cmdbar_unpost(struct ST_CMDBAR *cmdbar)
 	update_panels();
 }
 
-void st_cmdbar_free(struct ST_CMDBAR *cmdbar)
+void
+st_cmdbar_free(struct ST_CMDBAR *cmdbar)
 {
 	int		i;
 
@@ -2734,4 +2978,44 @@ void st_cmdbar_free(struct ST_CMDBAR *cmdbar)
 	free(cmdbar);
 
 	update_panels();
+}
+
+/*
+ * Set reference to some variable for menu's option
+ */
+bool
+st_menu_set_ref_option(struct ST_MENU *menu,
+					   int code,
+					   int option,
+					   int *refvalue)
+{
+	ST_MENU_ITEM *menu_items = menu->menu_items;
+	int		i = 0;
+
+	if (!IS_REF_OPTION(option))
+	{
+		endwin();
+		fprintf(stderr, "cannot assign reference value with not reference option");
+		exit(1);
+	}
+
+	while (menu_items->text)
+	{
+		if (menu_items->code == code)
+		{
+			menu->options[i] |= option;
+			menu->refvals[i] = refvalue;
+
+			return true;
+		}
+
+		if (menu->submenus[i])
+			if (st_menu_set_ref_option(menu->submenus[i], code, option, refvalue))
+				return true;
+
+		menu_items += 1;
+		i += 1;
+	}
+
+	return false;
 }
