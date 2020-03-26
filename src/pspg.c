@@ -4571,11 +4571,15 @@ reinit_theme:
 								fresh_data = true;
 						}
 
-						if (opts.csv_format || opts.tsv_format 
-						|| opts.query)
-							fresh_data = read_and_format(fp2, &opts, &desc2, &err);
-						else
-							readfile(fp2, &opts, &desc2);
+						if (fresh_data)
+						{
+								if (opts.csv_format || opts.tsv_format || opts.query)
+								fresh_data = read_and_format(fp2, &opts, &desc2, &err);
+							else
+								readfile(fp2, &opts, &desc2);
+
+							fclose(fp2);
+						}
 
 						if (fresh_data)
 						{
