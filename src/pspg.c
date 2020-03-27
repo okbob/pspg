@@ -54,6 +54,16 @@
 #include "themes.h"
 #include "unicode.h"
 
+#define HAVE_INOTIFY		1
+
+#ifdef HAVE_INOTIFY
+
+#include <sys/inotify.h>
+#include <poll.h>
+
+#endif
+
+
 #ifdef DEBUG_PIPE
 
 /* used for mallinfo */
@@ -140,17 +150,25 @@ static bool	got_sigint = false;
 static MEVENT		event;
 
 static long	last_watch_ms = 0;
-static time_t	last_watch_sec = 0;						/* time when we did last refresh */
+static time_t	last_watch_sec = 0;					/* time when we did last refresh */
 static bool	paused = false;							/* true, when watch mode is paused */
 static const char *err = NULL;
 
 static bool active_ncurses = false;
 
+#ifdef HAVE_INOTIFY
+
+static int inotify_fd;								/* inotify file descriptor for accessing API */
+static int inotify_wd;								/* file descriptor of monitored file */
+static struct pollfd fds[2];
+static bool use_event_poll = false;
+
+#endif
+
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, int timeoutval);
+static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, int timeoutval);
 static char * tilde(char *path);
 static void print_log_prefix(FILE *logfile);
-
 
 FILE   *logfile = NULL;
 
@@ -2573,7 +2591,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&event, &press_alt, &got_sigint, NULL, timeout);
+	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, timeout);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -2809,7 +2827,6 @@ finish_read:
 		buffer[0] = '\0';
 	}
 
-
 #else
 
 	wbkgd(bottom_bar, t->input_attr);
@@ -2987,7 +3004,7 @@ get_x_focus(int vertical_cursor_column,
  * When keycode is related to mouse, then get mouse event details.
  */
 static int
-get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, int timeoutval)
+get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, int timeoutval)
 {
 	bool	first_event = true;
 	int		c;
@@ -3014,6 +3031,77 @@ retry:
 
 	if (timeout)
 		*timeout = false;
+
+	if (notify)
+		*notify = false;
+
+#ifdef HAVE_INOTIFY
+
+	if (use_event_poll)
+	{
+		int		poll_num;
+
+		poll_num = poll(fds, 2, timeoutval);
+		if (poll_num == -1)
+		{
+			if (logfile)
+			{
+				print_log_prefix(logfile);
+				fprintf(logfile, "poll error %d\n", poll_num);
+			}
+		}
+		else if (poll_num > 0)
+		{
+			/* process inotify event, but only when we can process it */
+			if (fds[1].revents & POLLIN && notify)
+			{
+				char		buff[64];
+				ssize_t		len;
+
+				/* there are a events on monitored file */
+				len = read(inotify_fd, buff, sizeof(buff));
+
+				/* read to end, it is notblocking IO */
+				while (len > 0)
+				{
+
+#ifdef DEBUG_PIPE
+
+					const struct inotify_event *event = (struct inotify_event *) buff;
+
+					while (len > 0)
+					{
+						fprintf(debug_pipe, "inotify event bstate: %08lx %08lx\n",
+								(unsigned long) event->mask,
+								(unsigned long) IN_CLOSE_WRITE);
+						len -= sizeof (struct inotify_event) + event->len;
+						event += sizeof (struct inotify_event) + event->len;
+					}
+
+#endif
+
+					len = read(inotify_fd, buff, sizeof(buff));
+				}
+
+				/* wait 10ms */
+				usleep(1000 * 10);
+
+				*notify = true;
+				return 0;
+			}
+		}
+		else
+		{
+			/* timeout */
+			if (timeout)
+				*timeout = true;
+
+			return 0;
+		}
+	}
+
+#endif
+
 
 repeat:
 
@@ -3381,6 +3469,7 @@ main(int argc, char *argv[])
 		{"tsv", no_argument, 0, 30},
 		{"null", required_argument, 0, 31},
 		{"ignore_file_suffix", no_argument, 0, 32},
+		{"inotify", no_argument, 0, 33},
 		{0, 0, 0, 0}
 	};
 
@@ -3430,6 +3519,7 @@ main(int argc, char *argv[])
 	opts.force_password_prompt = false;
 	opts.password = NULL;
 	opts.dbname = NULL;
+	opts.inotify_handler = false;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -3504,8 +3594,9 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
 				fprintf(stderr, "  --tsv                    input stream has tsv format\n");
 				fprintf(stderr, "\nWatch mode options:\n");
+				fprintf(stderr, "  --inotify                check inotify event\n");
 				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
-				fprintf(stderr, "  -w, --watch time         the query is repeated every time (sec)\n");
+				fprintf(stderr, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");
 				fprintf(stderr, "\nConnection options\n");
 				fprintf(stderr, "  -d, --dbname=DBNAME      database name\n");
 				fprintf(stderr, "  -h, --host=HOSTNAME      database server host (default: \"local socket\")\n");
@@ -3666,6 +3757,17 @@ main(int argc, char *argv[])
 			case 32:
 				ignore_file_suffix = true;
 				break;
+			case 33:
+				opts.inotify_handler = true;
+
+#ifndef HAVE_INOTIFY
+
+				fprintf(stderr, "inotify is not available\n");
+				exit(EXIT_FAILURE);
+
+#endif
+
+				break;
 
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3805,6 +3907,40 @@ main(int argc, char *argv[])
 		fprintf(stderr, "cannot use watch mode when query or file is missing\n");
 		exit(EXIT_FAILURE);
 	}
+
+
+#ifdef HAVE_INOTIFY
+
+	if (opts.inotify_handler)
+	{
+		if (!opts.pathname)
+		{
+			fprintf(stderr, "cannot to use inotify without file specification\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (opts.watch_time > 0)
+		{
+			fprintf(stderr, "using watch time and inotification together is not supported\n");
+			exit(EXIT_FAILURE);
+		}
+
+		inotify_fd = inotify_init1(IN_NONBLOCK);
+		if (inotify_fd == -1)
+		{
+			fprintf(stderr, "cannot to initialize inotify API\n");
+			exit(EXIT_FAILURE);
+		}
+
+		inotify_wd = inotify_add_watch(inotify_fd, opts.pathname, IN_CLOSE_WRITE);
+		if (inotify_wd == -1)
+		{
+			fprintf(stderr, "cannot watch %s\n", opts.pathname);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+#endif
 
 	if (no_interactive && interactive)
 	{
@@ -4044,6 +4180,21 @@ exit_while_01:
 		newterm(termname(), stdout, stderr);
 	else
 		initscr();
+
+#ifdef HAVE_INOTIFY
+
+	if (opts.inotify_handler)
+	{
+		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
+		fds[0].events = POLLIN;
+
+		fds[1].fd = inotify_fd;
+		fds[1].events = POLLIN;
+
+		use_event_poll = true;
+	}
+
+#endif
 
 	if (logfile)
 	{
@@ -4316,6 +4467,8 @@ reinit_theme:
 
 #endif
 
+fprintf(debug_pipe, ">>>> %d %d\n", first_row, first_data_row);
+
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
 		/*
@@ -4483,7 +4636,21 @@ reinit_theme:
 				no_doupdate = false;
 			else if (next_command == 0 || scrdesc.fmt != NULL)
 			{
+#ifdef DEBUG_PIPE
+
+				current_time(&start_draw_sec, &start_draw_ms);
+
+#endif
+
+
 				doupdate();
+
+#ifdef DEBUG_PIPE
+
+			print_duration(start_draw_sec, start_draw_ms, "doupdate");
+
+#endif
+
 
 #ifdef DEBUG_PIPE
 
@@ -4525,6 +4692,8 @@ reinit_theme:
 			}
 			else
 			{
+				bool		handle_notify;
+
 				/*
 				 * Store previous event, if this event is mouse press. With it we
 				 * can join following mouse release together, and reduce useles
@@ -4539,9 +4708,14 @@ reinit_theme:
 				else
 					prev_event_is_mouse_press = false;
 
-				event_keycode = get_event(&event, &press_alt, &got_sigint, &handle_timeout, opts.watch_time > 0 ? 1000 : -1);
+				event_keycode = get_event(&event,
+										  &press_alt,
+										  &got_sigint,
+										  &handle_timeout,
+										  &handle_notify,
+										  opts.watch_time > 0 ? 1000 : -1);
 
-				if (opts.watch_time)
+				if (opts.watch_time || (opts.inotify_handler && handle_notify))
 				{
 					long	ms;
 					time_t	sec;
@@ -4550,7 +4724,7 @@ reinit_theme:
 					current_time(&sec, &ms);
 					ct = sec * 1000 + ms;
 
-					if (ct > next_watch && !paused)
+					if ((ct > next_watch && !paused) || (opts.inotify_handler && handle_notify))
 					{
 						FILE	   *fp2 = NULL;
 						DataDesc	desc2;
@@ -4607,6 +4781,8 @@ reinit_theme:
 								desc.title_rows = 0;
 								desc.title[0] = '\0';
 							}
+
+							first_data_row = desc.first_data_row;
 
 							detected_format = desc.headline_transl;
 							if (detected_format && desc.oid_name_table)
@@ -6937,6 +7113,15 @@ refresh:
 #ifdef HAVE_READLINE_HISTORY
 
 	write_history(tilde("~/.pspg_history"));
+
+#endif
+
+#ifdef HAVE_INOTIFY
+
+	if (opts.inotify_handler)
+	{
+		close(inotify_fd);
+	}
 
 #endif
 
