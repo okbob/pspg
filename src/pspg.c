@@ -54,15 +54,12 @@
 #include "themes.h"
 #include "unicode.h"
 
-#define HAVE_INOTIFY		1
-
 #ifdef HAVE_INOTIFY
 
 #include <sys/inotify.h>
 #include <poll.h>
 
 #endif
-
 
 #ifdef DEBUG_PIPE
 
@@ -3675,7 +3672,7 @@ main(int argc, char *argv[])
 			case 16:
 				fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
 				fprintf(stdout, "Authors:\n");
-				fprintf(stdout, "    2017-2019 Pavel Stehule, Benesov district, Czech Republic\n\n");
+				fprintf(stdout, "    2017-2020 Pavel Stehule, Benesov district, Czech Republic\n\n");
 				fprintf(stdout, "Licence:\n");
 				fprintf(stdout, "    Distributed under BSD licence\n\n");
 				exit(0);
@@ -3809,6 +3806,12 @@ main(int argc, char *argv[])
 #ifdef HAVE_POSTGRESQL
 
 				fprintf(stdout, "with postgres client integration\n");
+
+#endif
+
+#ifdef HAVE_INOTIFY
+
+				fprintf(stdout, "with inotify support\n");
 
 #endif
 
@@ -4466,8 +4469,6 @@ reinit_theme:
 		long	start_draw_ms;
 
 #endif
-
-fprintf(debug_pipe, ">>>> %d %d\n", first_row, first_data_row);
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 

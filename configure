@@ -697,6 +697,7 @@ enable_debug
 with_ncurses
 with_ncursesw
 with_postgresql
+with_inotify
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1334,6 +1335,8 @@ Optional Packages:
   --without-ncursesw      do not use NcursesW (wide character support)
   --with-postgresql=[ARG] use PostgreSQL library [default=yes], optionally
                           specify path to pg_config
+  --without-inotify       (Linux only) do not build with inotify support
+                          (default is yes)
 
 Some influential environment variables:
   CC          C compiler command
@@ -6380,6 +6383,41 @@ fi
 # supply -g if --enable-debug
 if test "$enable_debug" = yes && test "$ac_cv_prog_cc_g" = yes; then
   CFLAGS="$CFLAGS -g"
+fi
+
+for ac_header in sys/inotify.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sys/inotify.h" "ac_cv_header_sys_inotify_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_inotify_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SYS_INOTIFY_H 1
+_ACEOF
+ have_inotify=yes
+else
+  have_inotify=no
+fi
+
+done
+
+
+
+# Check whether --with-inotify was given.
+if test "${with_inotify+set}" = set; then :
+  withval=$with_inotify; with_inotify=no
+else
+  with_inotify=yes
+fi
+
+
+if test "x$have_inotify" = "xyes"; then
+  if test "x$with_inotify" != "xyes"; then
+    have_inotify=no
+    echo "*** Note: inotify support has been disabled ***"
+  else
+
+$as_echo "#define HAVE_INOTIFY 1" >>confdefs.h
+
+  fi
 fi
 
 cat >confcache <<\_ACEOF

@@ -59,4 +59,21 @@ if test "$enable_debug" = yes && test "$ac_cv_prog_cc_g" = yes; then
   CFLAGS="$CFLAGS -g"
 fi
 
+AC_CHECK_HEADERS([sys/inotify.h], have_inotify=yes, have_inotify=no)
+
+AC_ARG_WITH([inotify],
+            [AS_HELP_STRING([--without-inotify],
+            [(Linux only) do not build with inotify support (default is yes)])],
+            [with_inotify=no],
+            [with_inotify=yes])
+
+if test "x$have_inotify" = "xyes"; then
+  if test "x$with_inotify" != "xyes"; then
+    have_inotify=no
+    echo "*** Note: inotify support has been disabled ***"
+  else
+    AC_DEFINE(HAVE_INOTIFY, 1, [Define if you have inotify support (linux only)])
+  fi
+fi
+
 AC_OUTPUT
