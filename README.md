@@ -29,6 +29,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-s N`     use theme (default theme is mc theme)
 * `-c N`     freeze first N columns
 * `-f file`  open file (default stdin)
+* `--inotify`  check this file and refresh immediately after change
 * `--force-uniborder`  replace ascii border by unicode borders
 * `-g --hilite-search`  don't highlight lines for searches
 * `-G --HILITE-SEARCH`  don't highlight lines for searches ever
@@ -186,6 +187,9 @@ regex/\.csv
 The result of query can be refreshed every n seconds. `pspg` remembers cursor row,
 possible vertical cursor, possible ordering. The refreshing should be paused by pressing
 <kbd>space</kbd> key. Repeated pressing of this key enables refreshing again.
+
+With option `--inotify` the `pspg` can wait on close after modification of input file,
+and reread this file immediately.
 
 # Recommended psql configuration
 <pre>
