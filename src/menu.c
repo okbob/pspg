@@ -81,7 +81,7 @@ ST_MENU_ITEM _command[] = {
 	{"~D~escending order", cmd_SortDesc, "d"},
 	{"~O~riginal order", cmd_OriginalSort, "u"},
 	{"--"},
-	{"Refres~h~", cmd_Refresh, "R"},
+	{"Refres~h~ screen", cmd_Refresh, "R, C-l"},
 	{NULL}
 };
 

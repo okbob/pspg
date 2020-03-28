@@ -400,6 +400,7 @@ translate_event(int c, bool alt, bool watch_mode)
 			case 'u':
 				return cmd_OriginalSort;
 			case 'R':
+			case 12:	/* CTRL L */
 				return cmd_Refresh;
 		}
 	}
