@@ -29,7 +29,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-s N`     use theme (default theme is mc theme)
 * `-c N`     freeze first N columns
 * `-f file`  open file (default stdin)
-* `--inotify`  check this file and refresh immediately after change
+* `--no-watch-file`  don't watch changes of file
 * `--force-uniborder`  replace ascii border by unicode borders
 * `-g --hilite-search`  don't highlight lines for searches
 * `-G --HILITE-SEARCH`  don't highlight lines for searches ever
@@ -188,8 +188,9 @@ The result of query can be refreshed every n seconds. `pspg` remembers cursor ro
 possible vertical cursor, possible ordering. The refreshing should be paused by pressing
 <kbd>space</kbd> key. Repeated pressing of this key enables refreshing again.
 
-With option `--inotify` the `pspg` can wait on close after modification of input file,
-and reread this file immediately.
+`pspg` uses inotify API when it is available, and when input file is changed, then
+`pspg` reread file immediately. This behave can be disabled by option `--no-watch-file`
+or by specification watch time by option `--watch`.
 
 # Recommended psql configuration
 <pre>

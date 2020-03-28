@@ -155,10 +155,9 @@ static bool active_ncurses = false;
 
 #ifdef HAVE_INOTIFY
 
-static int inotify_fd;								/* inotify file descriptor for accessing API */
-static int inotify_wd;								/* file descriptor of monitored file */
+static int inotify_fd = -1;							/* inotify file descriptor for accessing API */
+static int inotify_wd = -1;							/* file descriptor of monitored file */
 static struct pollfd fds[2];
-static bool use_event_poll = false;
 
 #endif
 
@@ -3001,7 +3000,7 @@ get_x_focus(int vertical_cursor_column,
  * When keycode is related to mouse, then get mouse event details.
  */
 static int
-get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, int timeoutval)
+get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *file_event, int timeoutval)
 {
 	bool	first_event = true;
 	int		c;
@@ -3029,12 +3028,12 @@ retry:
 	if (timeout)
 		*timeout = false;
 
-	if (notify)
-		*notify = false;
+	if (file_event)
+		*file_event = false;
 
 #ifdef HAVE_INOTIFY
 
-	if (use_event_poll)
+	if (inotify_fd >= 0)
 	{
 		int		poll_num;
 
@@ -3044,13 +3043,13 @@ retry:
 			if (logfile)
 			{
 				print_log_prefix(logfile);
-				fprintf(logfile, "poll error %d\n", poll_num);
+				fprintf(logfile, "poll error %s\n", strerror(errno));
 			}
 		}
 		else if (poll_num > 0)
 		{
 			/* process inotify event, but only when we can process it */
-			if (fds[1].revents & POLLIN && notify)
+			if (fds[1].revents & POLLIN && file_event)
 			{
 				char		buff[64];
 				ssize_t		len;
@@ -3058,7 +3057,10 @@ retry:
 				/* there are a events on monitored file */
 				len = read(inotify_fd, buff, sizeof(buff));
 
-				/* read to end, it is notblocking IO */
+				/*
+				 * read to end, it is notblocking IO, only one event and
+				 * one file is monitored
+				 */
 				while (len > 0)
 				{
 
@@ -3068,7 +3070,7 @@ retry:
 
 					while (len > 0)
 					{
-						fprintf(debug_pipe, "inotify event bstate: %08lx %08lx\n",
+						fprintf(debug_pipe, "inotify event bstate: %08lx (IN_CLOSE_WRITE value: %08lx)\n",
 								(unsigned long) event->mask,
 								(unsigned long) IN_CLOSE_WRITE);
 						len -= sizeof (struct inotify_event) + event->len;
@@ -3083,7 +3085,7 @@ retry:
 				/* wait 10ms */
 				usleep(1000 * 10);
 
-				*notify = true;
+				*file_event = true;
 				return 0;
 			}
 		}
@@ -3098,7 +3100,6 @@ retry:
 	}
 
 #endif
-
 
 repeat:
 
@@ -3466,7 +3467,7 @@ main(int argc, char *argv[])
 		{"tsv", no_argument, 0, 30},
 		{"null", required_argument, 0, 31},
 		{"ignore_file_suffix", no_argument, 0, 32},
-		{"inotify", no_argument, 0, 33},
+		{"no-watch-file", no_argument, 0, 33},
 		{0, 0, 0, 0}
 	};
 
@@ -3516,7 +3517,7 @@ main(int argc, char *argv[])
 	opts.force_password_prompt = false;
 	opts.password = NULL;
 	opts.dbname = NULL;
-	opts.inotify_handler = false;
+	opts.watch_file = true;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -3553,6 +3554,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --interactive            force interactive mode\n");
 				fprintf(stderr, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 				fprintf(stderr, "  --ni                     not interactive mode (only for csv and query)\n");
+				fprintf(stderr, "  --no-watch-file          don't watch inotify event of file\n");
 				fprintf(stderr, "  --no-mouse               don't use own mouse handling\n");
 				fprintf(stderr, "  --no-sigint-search-reset\n");
 				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
@@ -3591,7 +3593,6 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
 				fprintf(stderr, "  --tsv                    input stream has tsv format\n");
 				fprintf(stderr, "\nWatch mode options:\n");
-				fprintf(stderr, "  --inotify                check inotify event\n");
 				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
 				fprintf(stderr, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");
 				fprintf(stderr, "\nConnection options\n");
@@ -3755,15 +3756,7 @@ main(int argc, char *argv[])
 				ignore_file_suffix = true;
 				break;
 			case 33:
-				opts.inotify_handler = true;
-
-#ifndef HAVE_INOTIFY
-
-				fprintf(stderr, "inotify is not available\n");
-				exit(EXIT_FAILURE);
-
-#endif
-
+				opts.watch_file = false;
 				break;
 
 			case 'V':
@@ -3911,39 +3904,35 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 * don't use inotify, when user prefer periodic watch time, or when we
+	 * have not file for watching
+	 */
+	if (opts.watch_time || !opts.pathname)
+		opts.watch_file = false;
+
+	if (opts.watch_file)
+	{
 
 #ifdef HAVE_INOTIFY
-
-	if (opts.inotify_handler)
-	{
-		if (!opts.pathname)
-		{
-			fprintf(stderr, "cannot to use inotify without file specification\n");
-			exit(EXIT_FAILURE);
-		}
-
-		if (opts.watch_time > 0)
-		{
-			fprintf(stderr, "using watch time and inotification together is not supported\n");
-			exit(EXIT_FAILURE);
-		}
 
 		inotify_fd = inotify_init1(IN_NONBLOCK);
 		if (inotify_fd == -1)
 		{
-			fprintf(stderr, "cannot to initialize inotify API\n");
+			fprintf(stderr, "inotify_init1: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		inotify_wd = inotify_add_watch(inotify_fd, opts.pathname, IN_CLOSE_WRITE);
 		if (inotify_wd == -1)
 		{
-			fprintf(stderr, "cannot watch %s\n", opts.pathname);
+			fprintf(stderr, "inotify_add_watch(%s): %s\n", opts.pathname, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-	}
 
 #endif
+
+	}
 
 	if (no_interactive && interactive)
 	{
@@ -4184,20 +4173,20 @@ exit_while_01:
 	else
 		initscr();
 
+	if (opts.watch_file)
+	{
+
 #ifdef HAVE_INOTIFY
 
-	if (opts.inotify_handler)
-	{
-		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-		fds[0].events = POLLIN;
+	fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
+	fds[0].events = POLLIN;
 
-		fds[1].fd = inotify_fd;
-		fds[1].events = POLLIN;
-
-		use_event_poll = true;
-	}
+	fds[1].fd = inotify_fd;
+	fds[1].events = POLLIN;
 
 #endif
+
+	}
 
 	if (logfile)
 	{
@@ -4693,7 +4682,7 @@ reinit_theme:
 			}
 			else
 			{
-				bool		handle_notify;
+				bool		handle_file_event;
 
 				/*
 				 * Store previous event, if this event is mouse press. With it we
@@ -4713,10 +4702,10 @@ reinit_theme:
 										  &press_alt,
 										  &got_sigint,
 										  &handle_timeout,
-										  &handle_notify,
+										  &handle_file_event,
 										  opts.watch_time > 0 ? 1000 : -1);
 
-				if (opts.watch_time || (opts.inotify_handler && handle_notify))
+				if (opts.watch_time || (opts.watch_file && handle_file_event))
 				{
 					long	ms;
 					time_t	sec;
@@ -4725,7 +4714,7 @@ reinit_theme:
 					current_time(&sec, &ms);
 					ct = sec * 1000 + ms;
 
-					if ((ct > next_watch && !paused) || (opts.inotify_handler && handle_notify))
+					if ((ct > next_watch && !paused) || (opts.watch_file && handle_file_event))
 					{
 						FILE	   *fp2 = NULL;
 						DataDesc	desc2;
@@ -4746,9 +4735,11 @@ reinit_theme:
 								fresh_data = true;
 						}
 
+						/* when we wanted fresh data */
 						if (fresh_data)
 						{
-								if (opts.csv_format || opts.tsv_format || opts.query)
+							if (opts.csv_format || opts.tsv_format || opts.query)
+								/* returns false when format is broken */
 								fresh_data = read_and_format(fp2, &opts, &desc2, &err);
 							else
 								readfile(fp2, &opts, &desc2);
@@ -4756,6 +4747,7 @@ reinit_theme:
 							fclose(fp2);
 						}
 
+						/* when we have fresh data */
 						if (fresh_data)
 						{
 							int		max_cursor_row;
@@ -7119,10 +7111,8 @@ refresh:
 
 #ifdef HAVE_INOTIFY
 
-	if (opts.inotify_handler)
-	{
+	if (inotify_fd >= 0)
 		close(inotify_fd);
-	}
 
 #endif
 

@@ -57,7 +57,7 @@ typedef struct
 	bool	force_password_prompt;
 	char   *password;
 	char   *dbname;
-	bool	inotify_handler;
+	bool	watch_file;
 } Options;
 
 extern bool save_config(char *path, Options *opts);
