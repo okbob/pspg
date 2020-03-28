@@ -258,6 +258,9 @@ cmd_string(int cmd)
 		case cmd_TogglePause:
 			return "TogglePause";
 
+		case cmd_Refresh:
+			return "Refresh";
+
 		default:
 			return "unknown command";
 	}
@@ -396,6 +399,8 @@ translate_event(int c, bool alt, bool watch_mode)
 				return cmd_SortDesc;
 			case 'u':
 				return cmd_OriginalSort;
+			case 'R':
+				return cmd_Refresh;
 		}
 	}
 

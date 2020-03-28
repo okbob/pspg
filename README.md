@@ -139,6 +139,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>d</kbd> - sort descendent
 * <kbd>u</kbd> - unsorted (sorted in origin order)
 * <kbd>space</kbd> - stop/continue in watch mode
+* <kbd>R</kbd> - Repaint screen and refresh input file
 
 ## Ending
 

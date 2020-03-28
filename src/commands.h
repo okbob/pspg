@@ -109,7 +109,8 @@ typedef enum PspgCommand
 	cmd_SortAsc,
 	cmd_SortDesc,
 	cmd_OriginalSort,
-	cmd_TogglePause
+	cmd_TogglePause,
+	cmd_Refresh
 } PspgCommand;
 
 extern void initialize_special_keycodes();

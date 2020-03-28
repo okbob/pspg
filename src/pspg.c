@@ -3082,8 +3082,11 @@ retry:
 					len = read(inotify_fd, buff, sizeof(buff));
 				}
 
-				/* wait 10ms */
-				usleep(1000 * 10);
+				/*
+				 * wait 100ms - sometimes inotify is too fast, and file content
+				 * is buffered, and readfile reads only first line
+				 */
+				usleep(1000 * 100);
 
 				*file_event = true;
 				return 0;
@@ -4451,6 +4454,7 @@ reinit_theme:
 		bool	resize_scr = false;
 		bool	after_freeze_signal = false;
 		bool	recheck_vertical_cursor_visibility = false;
+		bool	force_refresh = false;
 
 #ifdef DEBUG_PIPE
 
@@ -4705,7 +4709,11 @@ reinit_theme:
 										  &handle_file_event,
 										  opts.watch_time > 0 ? 1000 : -1);
 
-				if (opts.watch_time || (opts.watch_file && handle_file_event))
+force_refresh_data:
+
+				if (force_refresh ||
+					opts.watch_time ||
+					(opts.watch_file && handle_file_event))
 				{
 					long	ms;
 					time_t	sec;
@@ -4714,11 +4722,15 @@ reinit_theme:
 					current_time(&sec, &ms);
 					ct = sec * 1000 + ms;
 
-					if ((ct > next_watch && !paused) || (opts.watch_file && handle_file_event))
+					if (force_refresh ||
+						(ct > next_watch && !paused) ||
+						(opts.watch_file && handle_file_event))
 					{
 						FILE	   *fp2 = NULL;
 						DataDesc	desc2;
 						bool		fresh_data = false;
+
+						memset(&desc2, 0, sizeof(desc2));
 
 						if (opts.pathname)
 						{
@@ -4734,6 +4746,11 @@ reinit_theme:
 							else
 								fresh_data = true;
 						}
+						else if (opts.query)
+							fresh_data = true;
+						else
+							/* We cannot to repeat read from stdin */
+							fresh_data = false;
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -4821,6 +4838,15 @@ reinit_theme:
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 					if (scrdesc.wins[WINDOW_TOP_BAR])
 						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
+
+					if (force_refresh)
+					{
+						force_refresh = false;
+						event_keycode = 0;
+						next_event_keycode = 0;
+						next_command = 0;
+						command = 0;
+					}
 				}
 
 				/* the comment for ignore_mouse_release follow */
@@ -6679,6 +6705,11 @@ found_next_pattern:
 
 			case cmd_TogglePause:
 				paused = !paused;
+				break;
+
+			case cmd_Refresh:
+				force_refresh = true;
+				goto force_refresh_data;
 				break;
 
 			case cmd_MOUSE_EVENT:

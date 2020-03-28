@@ -80,6 +80,8 @@ ST_MENU_ITEM _command[] = {
 	{"As~c~ending order", cmd_SortAsc, "a"},
 	{"~D~escending order", cmd_SortDesc, "d"},
 	{"~O~riginal order", cmd_OriginalSort, "u"},
+	{"--"},
+	{"Refres~h~", cmd_Refresh, "R"},
 	{NULL}
 };
 
