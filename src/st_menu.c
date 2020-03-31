@@ -93,7 +93,7 @@ static bool			press_enter = false;
 static bool			command_was_activated = false;
 
 static inline int char_length(ST_MENU_CONFIG *config, const char *c);
-static inline int char_width(ST_MENU_CONFIG *config, char *c, int bytes);
+static inline int char_width(ST_MENU_CONFIG *config, char *c);
 static inline int str_width(ST_MENU_CONFIG *config, char *str);
 static inline char *chr_casexfrm(ST_MENU_CONFIG *config, char *str);
 static inline int wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch);
@@ -219,7 +219,7 @@ char_length(ST_MENU_CONFIG *config, const char *c)
  * Retuns display width of char
  */
 static inline int
-char_width(ST_MENU_CONFIG *config, char *c, int bytes)
+char_width(ST_MENU_CONFIG *config, char *c)
 {
 	if (!config->force8bit)
 #ifdef HAVE_LIBUNISTRING
@@ -342,6 +342,9 @@ wchar_to_utf8(ST_MENU_CONFIG *config, char *str, int n, wchar_t wch)
 		result = u8_uctomb((uint8_t *) str, (ucs4_t) wch, n);
 
 #else
+
+		/* be compiler quite */
+		(void) n;
 
 		unicode_to_utf8(wch, (unsigned char *) str, &result);
 
@@ -548,7 +551,7 @@ menutext_displaywidth(ST_MENU_CONFIG *config, char *text, char **accelerator, bo
 		}
 
 		bytes = char_length(config, text);
-		result += char_width(config, text, bytes);
+		result += char_width(config, text);
 		text += bytes;
 
 		first_char = false;
@@ -2556,7 +2559,6 @@ st_menu_set_option(struct ST_MENU *menu, int code, int option, bool value)
 	return false;
 }
 
-
 /*
  * Reduce string to expected display width. The buffer should be
  * preallocated on good enough length - size of src.
@@ -2577,7 +2579,7 @@ reduce_string(ST_MENU_CONFIG *config, int display_width, char *dest, char *src)
 		else
 		{
 			int		chrlen = char_length(config, src);
-			int		dw = char_width(config, src, chrlen);
+			int		dw = char_width(config, src);
 
 			if (char_count < 2)
 			{

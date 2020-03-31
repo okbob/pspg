@@ -3,6 +3,7 @@ all:
 # Include setting from the configure script
 -include config.make
 
+#override CFLAGS +=  -pedantic -Wextra -Wimplicit-fallthrough=0
 
 DEPS=$(wildcard *.d)
 PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o

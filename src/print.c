@@ -54,7 +54,6 @@ flush_bytes(WINDOW *win,
 		    bool is_head_deco,
 		    bool is_bottom_deco,
 			DataDesc *desc,
-			ScrDesc *scrdesc,
 			Options *opts)
 {
 	if ((is_top_deco || is_head_deco || is_bottom_deco) &&
@@ -345,7 +344,7 @@ window_fill(int window_identifier,
 
 				if (str != NULL)
 				{
-					positions[npositions][0] = opts->force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
+					positions[npositions][0] = opts->force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
 					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;
 
 					/* don't search more if we are over visible part */
@@ -712,7 +711,7 @@ window_fill(int window_identifier,
 					{
 						if (!is_footer)
 						{
-							int		new_attr;
+							attr_t		new_attr;
 
 							if (is_cross_cursor)
 							{
@@ -739,7 +738,6 @@ window_fill(int window_identifier,
 												is_head_deco,
 												is_bottom_deco,
 												desc,
-												scrdesc,
 					  							opts);
 
 
@@ -809,7 +807,6 @@ window_fill(int window_identifier,
 							is_head_deco,
 							is_bottom_deco,
 							desc,
-							scrdesc,
 							opts);
 
 			/* print trailing spaces necessary for correct vertical cursor */
@@ -873,6 +870,8 @@ ansi_attr(attr_t attr)
 
 #ifndef COLORIZED_NO_ALTERNATE_SCREEN
 
+	(void) attr;
+
 	return "";
 
 #else
@@ -886,10 +885,10 @@ ansi_attr(attr_t attr)
 
 	if ((attr & A_BOLD) != 0)
 	{
-		snprintf(result, 20, "\e[1;%d;%dm", fc, bc);
+		snprintf(result, 20, "\033[1;%d;%dm", fc, bc);
 	}
 	else
-		snprintf(result, 20, "\e[0;%d;%dm", fc, bc);
+		snprintf(result, 20, "\033[0;%d;%dm", fc, bc);
 
 	return result;
 
@@ -928,7 +927,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	row = 0;
 
 	if (offsety)
-		printf("\e[%dB", offsety);
+		/* \033 is \e */
+		printf("\033[%dB", offsety);
 
 	while (row < maxy)
 	{
@@ -993,7 +993,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			}
 
 			if (offsetx != 0)
-				printf("\e[%dC", offsetx);
+				printf("\033[%dC", offsetx);
 
 			/* skip first srcx chars */
 			i = srcx;
@@ -1124,7 +1124,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			{
 				printf("%.*s", bytes, rowstr);
 				if (clreoln)
-					printf("\e[K");
+					printf("\033[K");
 				printf("\n");
 			}
 
@@ -1153,10 +1153,10 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 										desc->last_row + 1);
 
 		for (i = 0; i < expected_rows; i++)
-			printf("\eD");
+			printf("\033D");
 
 		/* Go wit cursor to up */
-		printf("\e[%dA", expected_rows);
+		printf("\033[%dA", expected_rows);
 
 		/* now, the screen can be different, due prompt */
 		scrdesc->rows_rows = min_int(scrdesc->rows_rows,
@@ -1165,7 +1165,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		/*
 		 * Save cursor - Attention, there are a Fedora29 bug, and it doesn't work
 		 */
-		printf("\e7");
+		printf("\0337");
 
 		if (scrdesc->fix_cols_cols > 0)
 		{
@@ -1180,7 +1180,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		if (scrdesc->fix_rows_rows > 0 )
 		{
 			/* Go to saved position */
-			printf("\e8\e7");
+			printf("\0338\0337");
 
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
@@ -1193,7 +1193,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		if (scrdesc->fix_rows_rows > 0 && scrdesc->fix_cols_cols > 0)
 		{
 			/* Go to saved position */
-			printf("\e8\e7");
+			printf("\0338\0337");
 
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
@@ -1206,7 +1206,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		if (scrdesc->rows_rows > 0)
 		{
 			/* Go to saved position */
-			printf("\e8\e7");
+			printf("\0338\0337");
 
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
@@ -1221,7 +1221,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		if (w_footer(scrdesc) != NULL)
 		{
 			/* Go to saved position */
-			printf("\e8\e7");
+			printf("\0338\0337");
 
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
 						  scrdesc->footer_rows, scrdesc->maxx,
@@ -1231,6 +1231,6 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		}
 
 		/* reset */
-		printf("\e[0m\r");
+		printf("\033[0m\r");
 	}
 }

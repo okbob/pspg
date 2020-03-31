@@ -43,8 +43,8 @@ set_colour(short id, short foreground, short background, bool light, attr_t attr
 	}
 }
 
-static int
-if_in_int(int v, const int *s, int v1, int v2)
+static attr_t
+if_in_int(int v, const int *s, attr_t v1, attr_t v2)
 {
 	while(*s != -1)
 	{

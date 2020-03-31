@@ -38,7 +38,7 @@ typedef struct
 	long int	digits[1024];		/* number of digits, used for format detection */
 	long int	tsizes[1024];		/* size of column in bytes, used for format detection */
 	int			firstdigit[1024];	/* rows where first char is digit */
-	int			widths[1024];			/* column's display width */
+	size_t		widths[1024];			/* column's display width */
 	bool		multilines[1024];		/* true if column has multiline row */
 } LinebufType;
 
@@ -758,7 +758,7 @@ postprocess_fields(int nfields,
 				   bool *is_multiline_row)
 {
 	bool		malformed;
-	int			width;
+	size_t		width;
 	int		i;
 
 	if (ignore_short_rows)
@@ -776,8 +776,8 @@ postprocess_fields(int nfields,
 
 		if (force8bit)
 		{
-			int		cw = 0;
-			char   *ptr = row->fields[i];
+			size_t		cw = 0;
+			char	    *ptr = row->fields[i];
 
 			width = 0;
 
@@ -845,8 +845,8 @@ postprocess_rows(RowBucketType *rb,
 				 bool force8bit,
 				 char *nullstr)
 {
-	int		nullstr_size = strlen(nullstr);
-	int		nullstr_width = force8bit ? strlen(nullstr) : utf_string_dsplen(nullstr, strlen(nullstr));
+	size_t		nullstr_size = strlen(nullstr);
+	size_t		nullstr_width = force8bit ? strlen(nullstr) : (size_t) utf_string_dsplen(nullstr, strlen(nullstr));
 
 	while (rb)
 	{

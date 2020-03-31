@@ -207,6 +207,8 @@ get_format_type(char *path)
 static void
 SigintHandler(int sig_num)
 {
+	(void) sig_num;
+
 	signal(SIGINT, SigintHandler);
 
 	handle_sigint = true;
@@ -1027,7 +1029,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					if (!isdigit(c))
 					{
 						char	   *_nullstr = *nullstr;
-						int			len;
+						size_t		len;
 						char	   *saved_str = str;
 
 						after_last_nospace = saved_str;
@@ -1427,7 +1429,7 @@ strncpytrim(Options *opts, char *dest, const char *src,
 		clen = (size_t) opts->force8bit ? 1 : utf8charlen(*src);
 		if (clen <= ndest && clen <= nsrc)
 		{
-			int		i;
+			size_t		i;
 
 			for (i = 0; i < clen; i++)
 			{
@@ -2153,7 +2155,7 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
  * Refresh aux windows like top bar or bottom bar.
  */
 static void
-refresh_aux_windows(Options *opts, ScrDesc *scrdesc, DataDesc *desc)
+refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 {
 	int		maxy, maxx;
 	WINDOW	   *top_bar = w_top_bar(scrdesc);
@@ -2619,6 +2621,8 @@ readline_input_avail(void)
 static int
 readline_getc(FILE *dummy)
 {
+	(void) dummy;
+
     input_avail = false;
     return input;
 }
@@ -2664,7 +2668,7 @@ readline_redisplay()
 	mvwprintw(g_bottom_bar, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
 	mvwchgat(g_bottom_bar, 0, 0, -1, input_attr, PAIR_NUMBER(input_attr), 0);
 
-	if (cursor_col >= COLS)
+	if (cursor_col >= (size_t) COLS)
 		curs_set(0);
 	else
 	{
@@ -4288,7 +4292,7 @@ reinit_theme:
 
 	clear();
 
-	refresh_aux_windows(&opts, &scrdesc, &desc);
+	refresh_aux_windows(&opts, &scrdesc);
 
 	getmaxyx(stdscr, maxy, maxx);
 
@@ -4675,7 +4679,7 @@ reinit_theme:
 					scrdesc.par = NULL;
 				}
 
-				refresh_aux_windows(&opts, &scrdesc, &desc);
+				refresh_aux_windows(&opts, &scrdesc);
 				continue;
 			}
 
@@ -6353,7 +6357,7 @@ exit:
 							str = pspg_search(&opts, &scrdesc, rowstr + skip_bytes);
 							if (str != NULL)
 							{
-								scrdesc.found_start_x = opts.force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
+								scrdesc.found_start_x = opts.force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
 								scrdesc.found_start_bytes = str - rowstr;
 								scrdesc.found = true;
 								goto found_next_pattern;
@@ -6386,7 +6390,7 @@ exit:
 
 								if (str != NULL)
 								{
-									scrdesc.found_start_x = opts.force8bit ? str - rowstr : utf8len_start_stop(rowstr, str);
+									scrdesc.found_start_x = opts.force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
 									scrdesc.found_start_bytes = str - rowstr;
 									scrdesc.found = true;
 									goto found_next_pattern;
@@ -6541,7 +6545,7 @@ found_next_pattern:
 								if (first_row > cursor_row)
 									first_row = cursor_row;
 
-								scrdesc.found_start_x = opts.force8bit ? str - row : utf8len_start_stop(row, str);
+								scrdesc.found_start_x = opts.force8bit ? (size_t) (str - row) : utf8len_start_stop(row, str);
 								scrdesc.found_start_bytes = str - row;
 								scrdesc.found_row = cursor_row + CURSOR_ROW_OFFSET;
 								scrdesc.found = true;
@@ -7081,7 +7085,7 @@ refresh:
 
 			getmaxyx(stdscr, maxy, maxx);
 
-			refresh_aux_windows(&opts, &scrdesc, &desc);
+			refresh_aux_windows(&opts, &scrdesc);
 			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
