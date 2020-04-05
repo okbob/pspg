@@ -61,6 +61,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `--bold-cursor`  bold font for cursor
 * `--vertical-cursor`  show column cursor
 * `--on-sigint-exit`  double escape or ctrl c ending pager
+* `--quit-on-f3`  exit on press F3 (like mc viewer)
 * `-q`, `--query`  execute query
 * `-w`, `--watch n`  repeat query execution every time sec
 * `-d`, `--dbname`  database name

@@ -268,7 +268,7 @@ cmd_string(int cmd)
 
 
 int
-translate_event(int c, bool alt, bool watch_mode)
+translate_event(int c, bool alt, Options *opts)
 {
 	if (alt)
 	{
@@ -317,6 +317,10 @@ translate_event(int c, bool alt, bool watch_mode)
 			case KEY_F(10):
 			case 'q':
 				return cmd_Quit;
+			case KEY_F(3):
+				if (opts->quit_on_f3)
+					return cmd_Quit;
+				break;
 			case KEY_UP:
 			case 'k':
 				return cmd_CursorUp;
@@ -367,7 +371,7 @@ translate_event(int c, bool alt, bool watch_mode)
 			case 2:		/* CTRL B */
 				return cmd_PageUp;
 			case ' ':
-				return watch_mode ? cmd_TogglePause : cmd_PageDown;
+				return opts->watch_time > 0 ? cmd_TogglePause : cmd_PageDown;
 			case 6:		/* CTRL F */
 			case KEY_NPAGE:
 				return cmd_PageDown;

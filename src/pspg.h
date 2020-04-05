@@ -224,7 +224,7 @@ extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 /* from menu.c */
 extern void init_menu_config(Options *opts);
 extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
-extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar);
+extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 
 /* from sort.c */

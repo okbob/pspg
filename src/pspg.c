@@ -3646,6 +3646,7 @@ main(int argc, char *argv[])
 		{"ignore_file_suffix", no_argument, 0, 32},
 		{"no-watch-file", no_argument, 0, 33},
 		{"stream", no_argument, 0, 34},
+		{"quit-on-f3", no_argument, 0, 35},
 		{0, 0, 0, 0}
 	};
 
@@ -3696,6 +3697,7 @@ main(int argc, char *argv[])
 	opts.password = NULL;
 	opts.dbname = NULL;
 	opts.watch_file = true;
+	opts.quit_on_f3 = false;
 
 	load_config(tilde("~/.pspgconf"), &opts);
 
@@ -3738,6 +3740,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
 				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
 				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+				fprintf(stderr, "  --quit-on-f3             exit on F3 like mc viewers\n");
 				fprintf(stderr, "  --rr ROWNUM              rows reserved for specific purposes\n");
 				fprintf(stderr, "  --stream                 input file is read continually\n");
 				fprintf(stderr, "\nOutput format options:\n");
@@ -3939,6 +3942,9 @@ main(int argc, char *argv[])
 				break;
 			case 34:
 				stream_mode = true;
+				break;
+			case 35:
+				opts.quit_on_f3 = true;
 				break;
 
 			case 'V':
@@ -4674,7 +4680,7 @@ reinit_theme:
 
 	init_menu_config(&opts);
 	if (!opts.less_status_bar && !opts.no_commandbar)
-		cmdbar = init_cmdbar(cmdbar);
+		cmdbar = init_cmdbar(cmdbar, &opts);
 
 #endif
 
@@ -5182,7 +5188,7 @@ force_refresh_data:
 		if (!redirect_mode)
 		{
 			translated_command_history = translated_command;
-			command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
+			command = translate_event(event_keycode, press_alt, &opts);
 			translated_command = command;
 		}
 
@@ -5240,7 +5246,7 @@ hide_menu:
 			if (!processed)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
+				command = translate_event(event_keycode, press_alt, &opts);
 				translated_command = command;
 			}
 			else
@@ -5251,7 +5257,7 @@ hide_menu:
 			if (!redirect_mode)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, opts.watch_time > 0 ? true : false);
+				command = translate_event(event_keycode, press_alt, &opts);
 				translated_command = command;
 			}
 		}
@@ -5382,7 +5388,7 @@ reset_search:
 				}
 				else
 					if (!opts.less_status_bar)
-					cmdbar = init_cmdbar(cmdbar);
+					cmdbar = init_cmdbar(cmdbar, &opts);
 
 				refresh_scr = true;
 				break;
@@ -7365,7 +7371,7 @@ refresh:
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 
 			if (cmdbar)
-				cmdbar = init_cmdbar(cmdbar);
+				cmdbar = init_cmdbar(cmdbar, &opts);
 
 			refresh_scr = false;
 			scrdesc.refresh_scr = false;

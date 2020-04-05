@@ -58,6 +58,7 @@ typedef struct
 	char   *password;
 	char   *dbname;
 	bool	watch_file;
+	bool	quit_on_f3;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

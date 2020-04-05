@@ -28,6 +28,15 @@ ST_CMDBAR_ITEM _bottombar[] = {
 	{NULL, false, 0, 0, 0}
 };
 
+ST_CMDBAR_ITEM _bottombar_alt1[] = {
+	{"Save", false, 2, cmd_SaveData, 0},
+	{"Quit", false, 3, cmd_Quit, 0},
+	{"Search", false, 7, cmd_ForwardSearch, 0},
+	{"Menu", false, 9, cmd_ShowMenu, 0},
+	{"Quit", false, 10, cmd_Quit, 0},
+	{NULL, false, 0, 0, 0}
+};
+
 ST_MENU_ITEM _file[] = {
 	{"~S~ave", cmd_SaveData, "s", 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
@@ -267,11 +276,14 @@ init_menu(struct ST_MENU *current_menu)
 }
 
 struct ST_CMDBAR *
-init_cmdbar(struct ST_CMDBAR *current_cmdbar)
+init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts)
 {
 	struct ST_CMDBAR	   *cmdbar = NULL;
 
-	cmdbar = st_cmdbar_new(&menu_config, _bottombar);
+	if (opts->quit_on_f3)
+		cmdbar = st_cmdbar_new(&menu_config, _bottombar_alt1);
+	else
+		cmdbar = st_cmdbar_new(&menu_config, _bottombar);
 
 	if (current_cmdbar)
 	{

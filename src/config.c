@@ -109,6 +109,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("on_sigint_exit", opts->on_sigint_exit);
 	SAFE_SAVE_BOOL_OPTION("no_sigint_search_reset", opts->no_sigint_search_reset);
 	SAFE_SAVE_BOOL_OPTION("double_header", opts->double_header);
+	SAFE_SAVE_BOOL_OPTION("quit_on_f3", opts->quit_on_f3);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -192,6 +193,8 @@ load_config(char *path, Options *opts)
 				opts->on_sigint_exit = bool_val;
 			else if (strcmp(key, "no_sigint_search_reset") == 0)
 				opts->no_sigint_search_reset = bool_val;
+			else if (strcmp(key, "quit_on_f3") == 0)
+				opts->quit_on_f3 = bool_val;
 
 			free(line);
 			line = NULL;

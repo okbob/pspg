@@ -14,6 +14,8 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
+#include "config.h"
+
 /*
  * List of supported commands. Some these commands can be mapped to keys
  */
@@ -115,7 +117,7 @@ typedef enum PspgCommand
 
 extern void initialize_special_keycodes();
 extern const char *cmd_string(int cmd);
-extern int translate_event(int c, bool alt, bool watch_mode);
+extern int translate_event(int c, bool alt, Options *opts);
 
 extern int cmd_get_theme(int cmd);
 extern int theme_get_cmd(int theme);
