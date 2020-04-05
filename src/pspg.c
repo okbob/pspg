@@ -1449,7 +1449,7 @@ strncpytrim(Options *opts, char *dest, const char *src,
 #define STATBUF_SIZE		(10 * 1024)
 
 static size_t
-_getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, Options *opts, bool wait_on_data)
+_getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_data)
 {
 	if (!is_blocking)
 	{
@@ -1648,7 +1648,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	desc->multilines_already_tested = false;
 
 	errno = 0;
-	read = _getline(&line, &len, fp, is_blocking, opts, false);
+	read = _getline(&line, &len, fp, is_blocking, false);
 	if (read == -1)
 		return false;
 
@@ -1750,7 +1750,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 		line = NULL;
 
-		read = _getline(&line, &len, fp, is_blocking, opts, true);
+		read = _getline(&line, &len, fp, is_blocking, true);
 	} while (read != -1);
 
 	if (errno && errno != EAGAIN)
@@ -3515,6 +3515,20 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 	new->par = old->par;
 }
 
+/*
+ * Ensure so first_row is in correct range
+ */
+static int
+adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
+{
+	int		max_first_row;
+
+	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
+	max_first_row = max_first_row < 0 ? 0 : max_first_row;
+
+	return first_row > max_first_row ? max_first_row : first_row;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -5040,7 +5054,6 @@ force_refresh_data:
 						if (fresh_data)
 						{
 							int		max_cursor_row;
-							int		max_first_row;
 							ScrDesc		aux;
 
 							DataDescFree(&desc);
@@ -5074,6 +5087,9 @@ force_refresh_data:
 							memcpy(&aux, &scrdesc, sizeof(ScrDesc));
 
 							create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
+
+							/* create_layout requires correct first_row */
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
 							create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
 							MergeScrDesc(&scrdesc, &aux);
@@ -5085,9 +5101,7 @@ force_refresh_data:
 							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-							max_first_row = MAX_FIRST_ROW;
-							max_first_row = max_first_row < 0 ? 0 : max_first_row;
-							first_row = first_row > max_first_row ? max_first_row : first_row;
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
 
 							last_watch_sec = sec; last_watch_ms = ms;
 
@@ -5786,18 +5800,12 @@ exit_search_next_bookmark:
 
 					if (found)
 					{
-						int		max_first_row;
-
 						cursor_row = rownum - CURSOR_ROW_OFFSET;
 
 						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-						max_first_row = MAX_FIRST_ROW;
-						if (max_first_row < 0)
-							max_first_row = 0;
-						if (first_row > max_first_row)
-							first_row = max_first_row;
+						first_row = adjust_first_row(first_row, &desc, &scrdesc);
 					}
 					else
 						make_beep(&opts);
@@ -5912,7 +5920,6 @@ show_first_col:
 			case cmd_CursorDown:
 				{
 					int		max_cursor_row;
-					int		max_first_row;
 
 					if (opts.no_cursor)
 					{
@@ -5931,12 +5938,7 @@ show_first_col:
 					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 						first_row += 1;
 
-					max_first_row = MAX_FIRST_ROW;
-
-					if (max_first_row < 0)
-						max_first_row = 0;
-					if (first_row > max_first_row)
-						first_row = max_first_row;
+					first_row = adjust_first_row(first_row, &desc, &scrdesc);
 				}
 				break;
 
@@ -6280,7 +6282,6 @@ recheck_right:
 			case cmd_PageDown:
 				{
 					int		max_cursor_row;
-					int		max_first_row;
 					int		offset;
 
 					if (desc.is_expanded_mode &&
@@ -6302,11 +6303,7 @@ recheck_right:
 					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 						first_row += 1;
 
-					max_first_row = MAX_FIRST_ROW;
-					if (max_first_row < 0)
-						max_first_row = 0;
-					if (first_row > max_first_row)
-						first_row = max_first_row;
+					first_row = adjust_first_row(first_row, &desc, &scrdesc);
 				}
 				break;
 
@@ -6426,7 +6423,6 @@ recheck_end:
 						else
 						{
 							int max_cursor_row;
-							int max_first_row;
 
 							cursor_row = lineno - 1;
 							if (cursor_row < 0)
@@ -6441,17 +6437,8 @@ recheck_end:
 
 							if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
 							{
-								max_first_row = MAX_FIRST_ROW;
-
-								if (max_first_row < 0)
-									max_first_row = 0;
-
 								first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
-
-								if (first_row > max_first_row)
-									first_row = max_first_row;
-								if (first_row < 0)
-									first_row = 0;
+								first_row = adjust_first_row(first_row, &desc, &scrdesc);
 							}
 
 							snprintf(last_line, sizeof(last_line), "%ld", lineno);
@@ -6679,8 +6666,6 @@ found_next_pattern:
 
 					if (scrdesc.found)
 					{
-						int		max_first_row;
-
 						cursor_row = rownum - CURSOR_ROW_OFFSET;
 						scrdesc.found_row = rownum;
 						fresh_found = true;
@@ -6689,11 +6674,7 @@ found_next_pattern:
 						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-						max_first_row = MAX_FIRST_ROW;
-						if (max_first_row < 0)
-							max_first_row = 0;
-						if (first_row > max_first_row)
-							first_row = max_first_row;
+						first_row = adjust_first_row(first_row, &desc, &scrdesc);
 					}
 					else
 						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
@@ -7006,10 +6987,9 @@ found_next_pattern:
 					if (event.bstate & BUTTON5_PRESSED)
 					{
 						int		max_cursor_row;
-						int		max_first_row;
 						int		offset = 1;
+						int		max_first_row = MAX_FIRST_ROW;
 
-						max_first_row = MAX_FIRST_ROW;
 						if (max_first_row < 0)
 							max_first_row = 0;
 
@@ -7032,8 +7012,7 @@ found_next_pattern:
 						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 							first_row += 1;
 
-						if (first_row > max_first_row)
-							first_row = max_first_row;
+						first_row = first_row > max_first_row ? max_first_row : first_row;
 					}
 					else if (event.bstate & BUTTON4_PRESSED)
 					{
@@ -7067,7 +7046,6 @@ found_next_pattern:
 					if (event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_RELEASED)
 					{
 						int		max_cursor_row;
-						int		max_first_row;
 						bool	is_double_click = false;
 						bool	_is_footer_cursor;
 						long	ms;
@@ -7141,11 +7119,7 @@ found_next_pattern:
 						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
 							first_row += 1;
 
-						max_first_row = MAX_FIRST_ROW;
-						if (max_first_row < 0)
-							max_first_row = 0;
-						if (first_row > max_first_row)
-							first_row = max_first_row;
+						first_row = adjust_first_row(first_row, &desc, &scrdesc);
 
 						_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
 
