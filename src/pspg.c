@@ -27,6 +27,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <math.h>
 #include <stdbool.h>
@@ -38,8 +39,8 @@
 #include <libgen.h>
 #include <locale.h>
 #include <signal.h>
-
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
 #include <termios.h>
@@ -153,20 +154,20 @@ static const char *err = NULL;
 
 static bool active_ncurses = false;
 
-#ifdef HAVE_INOTIFY
-
 static int inotify_fd = -1;							/* inotify file descriptor for accessing API */
 static int inotify_wd = -1;							/* file descriptor of monitored file */
 static struct pollfd fds[2];
-
-#endif
+static bool stream_mode = false;
+static bool is_fifo = false;
 
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, int timeoutval);
+static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval);
 static char * tilde(char *path);
 static void print_log_prefix(FILE *logfile);
 
 FILE   *logfile = NULL;
+
+int		named_pipe_fd = 0;
 
 #define			FILE_NOT_SET		0
 #define			FILE_CSV			1
@@ -1445,10 +1446,142 @@ strncpytrim(Options *opts, char *dest, const char *src,
 	*dest = '\0';
 }
 
+#define STATBUF_SIZE		(10 * 1024)
+
+static size_t
+_getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, Options *opts, bool wait_on_data)
+{
+	if (!is_blocking)
+	{
+		if (!feof(fp) && !ferror(fp))
+		{
+			char   *dynbuf = NULL;
+			char	statbuf[STATBUF_SIZE];
+			int		fetched_chars = 0;
+			int		bufsize = STATBUF_SIZE;
+			char   *writeptr;
+			int		rc;
+
+			writeptr = statbuf;
+
+			for (;;)
+			{
+				char	locbuf[2048];
+				char   *result;
+				int		_errno;
+				struct pollfd fds[1];
+
+				fds[0].fd = fileno(fp);
+				fds[0].events = POLLIN;
+
+				errno = 0;
+
+				result = fgets(locbuf, 2048, fp);
+				_errno = errno;
+
+				if (result)
+				{
+					int	len = strlen(result);
+
+					if (dynbuf)
+					{
+						if (fetched_chars + len + 1 >= bufsize)
+						{
+							bufsize += 4096;
+							dynbuf = realloc(dynbuf, bufsize);
+							if (dynbuf == NULL)
+								return -1;
+
+							writeptr = dynbuf + fetched_chars;
+						}
+					}
+					else
+					{
+						if (fetched_chars + len + 1 >= bufsize)
+						{
+							bufsize += 4096;
+							dynbuf = malloc(bufsize);
+							if (dynbuf == NULL)
+								return -1;
+
+							memcpy(dynbuf, statbuf, fetched_chars);
+							writeptr = dynbuf + fetched_chars;
+						}
+					}
+
+					memcpy(writeptr, result, len + 1);
+					writeptr += len;
+					fetched_chars += len;
+
+					if (result[len - 1] == '\n')
+						break;
+
+					errno = _errno;
+				}
+
+				if (errno)
+				{
+					if (feof(fp))
+					{
+						break;
+					}
+					else if (errno == EAGAIN)
+					{
+						if (fetched_chars == 0 && !wait_on_data)
+						{
+							return -1;
+						}
+
+						rc = poll(fds, 1, -1);
+						if (rc == -1)
+						{
+							fprintf(debug_pipe, "POLL error\n");
+							usleep(100 );
+						}
+
+						clearerr(fp);
+						continue;
+					}
+					else
+					{
+						free(dynbuf);
+						return -1;
+					}
+				}
+			}
+
+			if (fetched_chars > 0)
+			{
+				char	   *result;
+
+				result = malloc(fetched_chars + 1);
+				if (result == NULL)
+					return -1;
+
+				if (dynbuf)
+					memcpy(result, dynbuf, fetched_chars + 1);
+				else
+					memcpy(result, statbuf, fetched_chars + 1);
+
+				*lineptr = result;
+				*n = fetched_chars + 1;
+
+				free(dynbuf);
+
+				return fetched_chars;
+			}
+		}
+
+		return -1;
+	}
+	else
+		return getline(lineptr, n, fp);
+}
+
 /*
  * Read data from file and fill DataDesc.
  */
-static int
+static bool
 readfile(FILE *fp, Options *opts, DataDesc *desc)
 {
 	char	   *line = NULL;
@@ -1456,12 +1589,14 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	ssize_t		read;
 	int			nrows = 0;
 	LineBuffer *rows;
+	bool		is_blocking;
 
 #ifdef DEBUG_PIPE
 
 	time_t		start_sec;
 	long		start_ms;
 
+	fprintf(debug_pipe, "readfile start\n");
 	current_time(&start_sec, &start_ms);
 
 #endif
@@ -1482,6 +1617,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	}
 	else
 		fp = stdin;
+
+	is_blocking = !(fcntl(fileno(fp), F_GETFL) & O_NONBLOCK);
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1511,8 +1648,11 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	desc->multilines_already_tested = false;
 
 	errno = 0;
+	read = _getline(&line, &len, fp, is_blocking, opts, false);
+	if (read == -1)
+		return false;
 
-	while ((read = getline(&line, &len, fp)) != -1)
+	do
 	{
 		int		clen;
 
@@ -1520,6 +1660,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		{
 			line[read - 1] = '\0';
 			read -= 1;
+		}
+
+		/* In streaming mode exit when you find empty row */
+		if (stream_mode && read == 0)
+		{
+			break;
 		}
 
 		clen = utf_string_dsplen(line, read);
@@ -1603,12 +1749,21 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		nrows += 1;
 
 		line = NULL;
-	}
 
-	if (errno != 0)
+		read = _getline(&line, &len, fp, is_blocking, opts, true);
+	} while (read != -1);
+
+	if (errno && errno != EAGAIN)
 	{
+
+#ifdef DEBUG_PIPE
+
 		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
+
+#endif
+
+		return false;
+
 	}
 
 	desc->total_rows = nrows;
@@ -1663,7 +1818,11 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 #endif
 
-	return 0;
+	/* clean event buffer */
+	if (inotify_fd >= 0)
+		lseek(inotify_fd, 0, SEEK_END);
+
+	return true;
 }
 
 /*
@@ -2589,7 +2748,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, timeout);
+	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, NULL, timeout);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -3004,7 +3163,13 @@ get_x_focus(int vertical_cursor_column,
  * When keycode is related to mouse, then get mouse event details.
  */
 static int
-get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *file_event, int timeoutval)
+get_event(MEVENT *mevent,
+		  bool *alt,
+		  bool *sigint,
+		  bool *timeout,
+		  bool *file_event,
+		  bool *reopen_file,
+		  int timeoutval)
 {
 	bool	first_event = true;
 	int		c;
@@ -3033,13 +3198,13 @@ retry:
 		*timeout = false;
 
 	if (file_event)
-		*file_event = false;
-
-#ifdef HAVE_INOTIFY
-
-	if (inotify_fd >= 0)
 	{
 		int		poll_num;
+
+		*file_event = false;
+
+		if (reopen_file)
+			*reopen_file = false;
 
 		poll_num = poll(fds, 2, timeoutval);
 		if (poll_num == -1)
@@ -3058,6 +3223,11 @@ retry:
 				char		buff[64];
 				ssize_t		len;
 
+				*file_event = true;
+
+				if (inotify_fd == -1)
+					return 0;
+
 				/* there are a events on monitored file */
 				len = read(inotify_fd, buff, sizeof(buff));
 
@@ -3067,16 +3237,18 @@ retry:
 				 */
 				while (len > 0)
 				{
-
-#ifdef DEBUG_PIPE
+#ifdef HAVE_INOTIFY
 
 					const struct inotify_event *event = (struct inotify_event *) buff;
 
-					while (len > 0)
+					while (len > 0 && 0)
 					{
-						fprintf(debug_pipe, "inotify event bstate: %08lx (IN_CLOSE_WRITE value: %08lx)\n",
-								(unsigned long) event->mask,
-								(unsigned long) IN_CLOSE_WRITE);
+						if ((event->mask & IN_CLOSE_WRITE))
+						{
+							if (reopen_file)
+								*reopen_file = true;
+						}
+
 						len -= sizeof (struct inotify_event) + event->len;
 						event += sizeof (struct inotify_event) + event->len;
 					}
@@ -3092,7 +3264,6 @@ retry:
 				 */
 				usleep(1000 * 100);
 
-				*file_event = true;
 				return 0;
 			}
 		}
@@ -3105,8 +3276,6 @@ retry:
 			return 0;
 		}
 	}
-
-#endif
 
 repeat:
 
@@ -3425,6 +3594,7 @@ main(int argc, char *argv[])
 	bool		size_is_valid = false;
 	int			ioctl_result;
 	bool		handle_timeout = false;
+	struct stat statbuf;
 
 	static struct option long_options[] =
 	{
@@ -3475,6 +3645,7 @@ main(int argc, char *argv[])
 		{"null", required_argument, 0, 31},
 		{"ignore_file_suffix", no_argument, 0, 32},
 		{"no-watch-file", no_argument, 0, 33},
+		{"stream", no_argument, 0, 34},
 		{0, 0, 0, 0}
 	};
 
@@ -3568,6 +3739,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
 				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 				fprintf(stderr, "  --rr ROWNUM              rows reserved for specific purposes\n");
+				fprintf(stderr, "  --stream                 input file is read continually\n");
 				fprintf(stderr, "\nOutput format options:\n");
 				fprintf(stderr, "  -a                       force ascii\n");
 				fprintf(stderr, "  -b                       black-white style\n");
@@ -3765,6 +3937,9 @@ main(int argc, char *argv[])
 			case 33:
 				opts.watch_file = false;
 				break;
+			case 34:
+				stream_mode = true;
+				break;
 
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -3918,27 +4093,76 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
+	if (fstat(fileno(fp), &statbuf ) != 0 )
+	{
+		fprintf(stderr, "cannot to get fstat file: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	is_fifo = S_ISFIFO(statbuf.st_mode);
+
+	if (is_fifo)
+	{
+		stream_mode = true;
+		opts.watch_file = true;
+	}
+
 	if (opts.watch_file)
 	{
 
+		if (!is_fifo)
+		{
+
 #ifdef HAVE_INOTIFY
 
-		inotify_fd = inotify_init1(IN_NONBLOCK);
-		if (inotify_fd == -1)
-		{
-			fprintf(stderr, "inotify_init1: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
+			inotify_fd = inotify_init1(IN_NONBLOCK);
+			if (inotify_fd == -1)
+			{
+				fprintf(stderr, "inotify_init1: %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 
-		inotify_wd = inotify_add_watch(inotify_fd, opts.pathname, IN_CLOSE_WRITE);
-		if (inotify_wd == -1)
-		{
-			fprintf(stderr, "inotify_add_watch(%s): %s\n", opts.pathname, strerror(errno));
+			inotify_wd = inotify_add_watch(inotify_fd,
+										   opts.pathname,
+										   IN_CLOSE_WRITE |
+										   (stream_mode ? IN_MODIFY : 0));
+
+			if (inotify_wd == -1)
+			{
+				fprintf(stderr, "inotify_add_watch(%s): %s\n", opts.pathname, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+#else
+
+			fprintf(stderr, "missing inotify support\n");
 			exit(EXIT_FAILURE);
-		}
 
 #endif
 
+		}
+	}
+
+	if (stream_mode)
+	{
+		if (is_fifo)
+		{
+			/* use nonblock mode */
+			fcntl(fileno(fp), F_SETFL, O_NONBLOCK);
+		}
+		else
+		{
+
+#ifndef HAVE_INOTIFY
+
+			fprintf(stderr, "streaming is not available without inotify support\n");
+			exit(EXIT_FAILURE);
+
+#endif
+
+		}
+
+		fseek(fp, 0, SEEK_END);
 	}
 
 	if (no_interactive && interactive)
@@ -3993,7 +4217,7 @@ main(int argc, char *argv[])
 		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
 	}
 
-	if (fp != NULL)
+	if (fp != NULL && !stream_mode)
 	{
 		fclose(fp);
 		fp = NULL;
@@ -4182,17 +4406,19 @@ exit_while_01:
 
 	if (opts.watch_file)
 	{
+		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
+		fds[0].events = POLLIN;
 
-#ifdef HAVE_INOTIFY
-
-	fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-	fds[0].events = POLLIN;
-
-	fds[1].fd = inotify_fd;
-	fds[1].events = POLLIN;
-
-#endif
-
+		if (is_fifo)
+		{
+			fds[1].fd = fileno(fp);
+			fds[1].events = POLLIN;
+		}
+		else
+		{
+			fds[1].fd = inotify_fd;
+			fds[1].events = POLLIN;
+		}
 	}
 
 	if (logfile)
@@ -4691,6 +4917,7 @@ reinit_theme:
 			else
 			{
 				bool		handle_file_event;
+				bool		reopen_file;
 
 				/*
 				 * Store previous event, if this event is mouse press. With it we
@@ -4711,6 +4938,7 @@ reinit_theme:
 										  &got_sigint,
 										  &handle_timeout,
 										  &handle_file_event,
+										  &reopen_file,
 										  opts.watch_time > 0 ? 1000 : -1);
 
 force_refresh_data:
@@ -4740,15 +4968,48 @@ force_refresh_data:
 						{
 							char *path = tilde(opts.pathname);
 
-							errno = 0;
-							fp2 = fopen(path, "r");
-							if (fp2 == NULL)
+							if (fp)
 							{
-								err = strerror(errno);
-								fresh_data = false;
+								/* should be strem mode */
+								if (reopen_file)
+								{
+									fclose(fp);
+
+									errno = 0;
+									fp = fopen(path, "r");
+									if (fp == NULL)
+									{
+										err = strerror(errno);
+										fresh_data = false;
+									}
+									else
+									{
+										fresh_data = true;
+
+										if (stream_mode)
+											fseek(fp, 0, SEEK_END);
+									}
+								}
+								else
+								{
+									clearerr(fp);
+									fresh_data = true;
+								}
+
+								fp2 = fp;
 							}
 							else
-								fresh_data = true;
+							{
+								errno = 0;
+								fp2 = fopen(path, "r");
+								if (fp2 == NULL)
+								{
+									err = strerror(errno);
+									fresh_data = false;
+								}
+								else
+									fresh_data = true;
+							}
 						}
 						else if (opts.query)
 							fresh_data = true;
@@ -4763,9 +5024,10 @@ force_refresh_data:
 								/* returns false when format is broken */
 								fresh_data = read_and_format(fp2, &opts, &desc2, &err);
 							else
-								readfile(fp2, &opts, &desc2);
+								fresh_data = readfile(fp2, &opts, &desc2);
 
-							fclose(fp2);
+							if (!stream_mode)
+								fclose(fp2);
 						}
 
 						/* when we have fresh data */
@@ -4899,6 +5161,7 @@ force_refresh_data:
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
+
 #ifdef DEBUG_PIPE
 
 			fprintf(debug_pipe, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
@@ -7144,12 +7407,8 @@ refresh:
 
 #endif
 
-#ifdef HAVE_INOTIFY
-
 	if (inotify_fd >= 0)
 		close(inotify_fd);
-
-#endif
 
 #ifdef DEBUG_PIPE
 
@@ -7198,6 +7457,10 @@ refresh:
 	fclose(debug_pipe);
 
 #endif
+
+	/* close file in streaming mode */
+	if (fp)
+		fclose(fp);
 
 	if (logfile)
 	{
