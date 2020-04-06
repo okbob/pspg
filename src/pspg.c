@@ -100,7 +100,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "3.0.1"
+#define PSPG_VERSION "3.0.0"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -1577,18 +1577,7 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 		return -1;
 	}
 	else
-	{
-		ssize_t result;
-
-		result = getline(lineptr, n, fp);
-		if (result < 0)
-		{
-			free(*lineptr);
-			*lineptr = NULL;
-		}
-
-		return result;
-	}
+		return getline(lineptr, n, fp);
 }
 
 /*
@@ -1669,22 +1658,16 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	{
 		int		clen;
 
-		/* In streaming mode exit when you find empty row */
-		if (stream_mode && read == 0)
-		{
-			free(line);
-
-			/* ignore this line if we are on second line - probably watch mode */
-			if (nrows == 1)
-				goto next_row;
-
-			break;
-		}
-
 		if (line[read - 1] == '\n')
 		{
 			line[read - 1] = '\0';
 			read -= 1;
+		}
+
+		/* In streaming mode exit when you find empty row */
+		if (stream_mode && read == 0)
+		{
+			break;
 		}
 
 		clen = utf_string_dsplen(line, read);
@@ -1766,8 +1749,6 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			desc->last_row = nrows;
 
 		nrows += 1;
-
-next_row:
 
 		line = NULL;
 
@@ -3236,10 +3217,7 @@ retry:
 	if (timeout)
 		*timeout = false;
 
-	/*
-	 * Read event when file or pipe event is expected, and
-	 * when second polled fd is ready. First is a STDIN_FILENO.
-	 */
+	/* check file event when it is wanted, and when event is available */
 	if (file_event && fds[1].fd != -1)
 	{
 		int		poll_num;
@@ -4483,6 +4461,11 @@ exit_while_01:
 	(void) term;
 	(void) win;
 
+	fds[0].fd = -1;
+	fds[0].events = 0;
+	fds[1].fd = -1;
+	fds[1].events = -1;
+
 	if (opts.watch_file)
 	{
 		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
@@ -4498,11 +4481,6 @@ exit_while_01:
 			fds[1].fd = inotify_fd;
 			fds[1].events = POLLIN;
 		}
-	}
-	else
-	{
-		fds[0].fd = -1;
-		fds[1].fd = -1;
 	}
 
 	if (logfile)
