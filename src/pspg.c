@@ -100,7 +100,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "3.0.0"
+#define PSPG_VERSION "3.0.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
@@ -3236,7 +3236,11 @@ retry:
 	if (timeout)
 		*timeout = false;
 
-	if (file_event)
+	/*
+	 * Read event when file or pipe event is expected, and
+	 * when second polled fd is ready. First is a STDIN_FILENO.
+	 */
+	if (file_event && fds[1].fd != -1)
 	{
 		int		poll_num;
 
@@ -3620,6 +3624,8 @@ main(int argc, char *argv[])
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
 
+	int		boot_wait = 0;
+
 #ifdef DEBUG_PIPE
 
 	time_t		start_app_sec;
@@ -3685,6 +3691,7 @@ main(int argc, char *argv[])
 		{"no-watch-file", no_argument, 0, 33},
 		{"stream", no_argument, 0, 34},
 		{"quit-on-f3", no_argument, 0, 35},
+		{"wait", required_argument, 0, 36},
 		{0, 0, 0, 0}
 	};
 
@@ -3695,6 +3702,7 @@ main(int argc, char *argv[])
 	struct ST_CMDBAR	*cmdbar = NULL;
 
 #endif
+
 
 	memset(&opts, 0, sizeof(opts));
 
@@ -3829,6 +3837,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -W, --password           force password prompt\n");
 				fprintf(stderr, "\nDebug options:\n");
 				fprintf(stderr, "  --log=FILE               log debug info to file\n");
+				fprintf(stderr, "  --wait=NUM               wait NUM seconds to allow attach from a debugger\n");
 				fprintf(stderr, "\n");
 				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
 				exit(0);
@@ -3990,6 +3999,15 @@ main(int argc, char *argv[])
 			case 35:
 				opts.quit_on_f3 = true;
 				break;
+			case 36:
+				boot_wait = atoi(optarg);
+				if (boot_wait < 0 || boot_wait > 120)
+				{
+					fprintf(stderr, "wait should be between 1 and 120 (sec)\n");
+					exit(EXIT_FAILURE);
+				}
+				break;
+
 
 			case 'V':
 				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
@@ -4122,6 +4140,9 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (boot_wait > 0)
+		usleep(1000 * 1000 * boot_wait);
+
 	if (!opts.csv_format && !opts.tsv_format && file_format_from_suffix != FILE_NOT_SET && !ignore_file_suffix)
 	{
 		if (file_format_from_suffix == FILE_CSV)
@@ -4143,13 +4164,18 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
-	if (fstat(fileno(fp), &statbuf ) != 0 )
+	if (fp)
 	{
-		fprintf(stderr, "cannot to get fstat file: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+		if (fstat(fileno(fp), &statbuf ) != 0 )
+		{
+			fprintf(stderr, "cannot to get fstat file: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 
-	is_fifo = S_ISFIFO(statbuf.st_mode);
+		is_fifo = S_ISFIFO(statbuf.st_mode);
+	}
+	else
+		is_fifo = false;
 
 	if (is_fifo)
 	{
@@ -4457,7 +4483,6 @@ exit_while_01:
 	(void) term;
 	(void) win;
 
-
 	if (opts.watch_file)
 	{
 		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
@@ -4473,6 +4498,11 @@ exit_while_01:
 			fds[1].fd = inotify_fd;
 			fds[1].events = POLLIN;
 		}
+	}
+	else
+	{
+		fds[0].fd = -1;
+		fds[1].fd = -1;
 	}
 
 	if (logfile)
