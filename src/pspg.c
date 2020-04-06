@@ -159,6 +159,7 @@ static int inotify_wd = -1;							/* file descriptor of monitored file */
 static struct pollfd fds[2];
 static bool stream_mode = false;
 static bool is_fifo = false;
+long int last_cur_position = -1;
 
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval);
@@ -1582,6 +1583,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	int			nrows = 0;
 	LineBuffer *rows;
 	bool		is_blocking;
+	bool		save_position = false;
 
 #ifdef DEBUG_PIPE
 
@@ -1611,6 +1613,52 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		fp = stdin;
 
 	is_blocking = !(fcntl(fileno(fp), F_GETFL) & O_NONBLOCK);
+
+	/* detection truncating */
+	if (stream_mode && opts->watch_file && !is_fifo)
+	{
+		if (last_cur_position != -1)
+		{
+			struct stat stats;
+
+			if (fstat(fileno(fp), &stats) != 0)
+			{
+				if (logfile)
+				{
+					print_log_prefix(logfile);
+					fprintf(logfile, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
+
+#ifdef DEBUG_PIPE
+
+					fprintf(debug_pipe, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
+
+#endif
+
+				}
+			}
+			else
+			{
+				if (stats.st_size < last_cur_position)
+				{
+					if (logfile)
+					{
+						print_log_prefix(logfile);
+						fprintf(logfile, "file truncated: %s\n", opts->pathname);
+					}
+
+#ifdef DEBUG_PIPE
+
+					fprintf(debug_pipe, "file truncated\n");
+
+#endif
+
+					fseek(fp, 0L, SEEK_SET);
+				}
+			}
+		}
+
+		save_position = true;
+	}
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1752,6 +1800,9 @@ next_row:
 
 		read = _getline(&line, &len, fp, is_blocking, true);
 	} while (read != -1);
+
+	if (save_position)
+		last_cur_position = ftell(fp);
 
 	if (errno && errno != EAGAIN)
 	{
