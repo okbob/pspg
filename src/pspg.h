@@ -246,6 +246,9 @@ extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc
 #define DEBUG_PIPE				"/home/pavel/debug"
  */
 
+#define DEBUG_PIPE				"/home/pavel/debug"
+
+
 #ifdef DEBUG_PIPE
 
 extern FILE *debug_pipe;

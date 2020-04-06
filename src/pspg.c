@@ -1451,133 +1451,123 @@ strncpytrim(Options *opts, char *dest, const char *src,
 static size_t
 _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_data)
 {
-	if (!is_blocking)
+	int			_errno;
+	ssize_t		result;
+
+	if (is_blocking)
 	{
-		if (!feof(fp) && !ferror(fp))
+		result = getline(lineptr, n, fp);
+		_errno = errno;
+
+		if (result < 0)
 		{
-			char   *dynbuf = NULL;
-			char	statbuf[STATBUF_SIZE];
-			int		fetched_chars = 0;
-			int		bufsize = STATBUF_SIZE;
-			char   *writeptr;
-			int		rc;
+			free(*lineptr);
+			*lineptr = NULL;
 
-			writeptr = statbuf;
-
-			for (;;)
-			{
-				char	locbuf[2048];
-				char   *result;
-				int		_errno;
-				struct pollfd fds[1];
-
-				fds[0].fd = fileno(fp);
-				fds[0].events = POLLIN;
-
-				errno = 0;
-
-				result = fgets(locbuf, 2048, fp);
-				_errno = errno;
-
-				if (result)
-				{
-					int	len = strlen(result);
-
-					if (dynbuf)
-					{
-						if (fetched_chars + len + 1 >= bufsize)
-						{
-							bufsize += 4096;
-							dynbuf = realloc(dynbuf, bufsize);
-							if (dynbuf == NULL)
-								return -1;
-
-							writeptr = dynbuf + fetched_chars;
-						}
-					}
-					else
-					{
-						if (fetched_chars + len + 1 >= bufsize)
-						{
-							bufsize += 4096;
-							dynbuf = malloc(bufsize);
-							if (dynbuf == NULL)
-								return -1;
-
-							memcpy(dynbuf, statbuf, fetched_chars);
-							writeptr = dynbuf + fetched_chars;
-						}
-					}
-
-					memcpy(writeptr, result, len + 1);
-					writeptr += len;
-					fetched_chars += len;
-
-					if (result[len - 1] == '\n')
-						break;
-
-					errno = _errno;
-				}
-
-				if (errno)
-				{
-					if (feof(fp))
-					{
-						break;
-					}
-					else if (errno == EAGAIN)
-					{
-						if (fetched_chars == 0 && !wait_on_data)
-						{
-							return -1;
-						}
-
-						rc = poll(fds, 1, -1);
-						if (rc == -1)
-						{
-							if (logfile)
-								fprintf(logfile, "POLL error\n");
-
-							usleep(100);
-						}
-
-						clearerr(fp);
-						continue;
-					}
-					else
-					{
-						free(dynbuf);
-						return -1;
-					}
-				}
-			}
-
-			if (fetched_chars > 0)
-			{
-				char	   *result;
-
-				result = malloc(fetched_chars + 1);
-				if (result == NULL)
-					return -1;
-
-				if (dynbuf)
-					memcpy(result, dynbuf, fetched_chars + 1);
-				else
-					memcpy(result, statbuf, fetched_chars + 1);
-
-				*lineptr = result;
-				*n = fetched_chars + 1;
-
-				free(dynbuf);
-
-				return fetched_chars;
-			}
+			errno = _errno;
 		}
 
-		return -1;
+		return result;
 	}
-	else
-		return getline(lineptr, n, fp);
+
+	if (!feof(fp) && !ferror(fp))
+	{
+		char   *dynbuf = NULL;
+		char	statbuf[STATBUF_SIZE];
+		int		fetched_chars = 0;
+		int		rc;
+
+		for (;;)
+		{
+			char   *str;
+
+			errno = 0;
+
+			str = fgets(statbuf, STATBUF_SIZE, fp);
+			_errno = errno;
+
+			if (str)
+			{
+				volatile int	len = strlen(str);
+				bool	endline = str[len - 1] == '\n';
+
+				if (dynbuf)
+				{
+					dynbuf = realloc(dynbuf, fetched_chars + len + 1);
+					if (!dynbuf)
+						return -1;
+					memcpy(dynbuf + fetched_chars, statbuf, len + 1);
+					fetched_chars += len;
+				}
+
+				if (endline)
+				{
+endline_exit:
+					if (dynbuf)
+					{
+						*lineptr = dynbuf;
+						*n = fetched_chars + 1;
+
+						return fetched_chars;
+					}
+					else
+					{
+						*lineptr = strdup(statbuf);
+						*n = *lineptr ? len + 1 : 0;
+
+						return *lineptr ? len : -1;
+					}
+				}
+
+				if (!dynbuf)
+				{
+					dynbuf = strdup(statbuf);
+					if (!dynbuf)
+						return -1;
+					fetched_chars += len;
+				}
+
+				errno = _errno;
+			}
+
+			if (errno)
+			{
+				if (feof(fp))
+				{
+					goto endline_exit;
+				}
+				else if (errno == EAGAIN)
+				{
+					struct pollfd fds[1];
+
+					if (fetched_chars == 0 && !wait_on_data)
+						return -1;
+
+					fds[0].fd = fileno(fp);
+					fds[0].events = POLLIN;
+
+					rc = poll(fds, 1, -1);
+					if (rc == -1)
+					{
+						if (logfile)
+							fprintf(logfile, "POLL error\n");
+
+						usleep(1000);
+					}
+
+					clearerr(fp);
+					continue;
+				}
+				else
+				{
+					free(dynbuf);
+					return -1;
+				}
+			}
+		}
+	}
+
+	return -1;
 }
 
 /*
@@ -1658,7 +1648,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	{
 		int		clen;
 
-		if (line[read - 1] == '\n')
+		if (line && line[read - 1] == '\n')
 		{
 			line[read - 1] = '\0';
 			read -= 1;
@@ -1667,6 +1657,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		/* In streaming mode exit when you find empty row */
 		if (stream_mode && read == 0)
 		{
+			free(line);
+
+			/* ignore this line if we are on second line - probably watch mode */
+			if (nrows == 1)
+				goto next_row;
+
 			break;
 		}
 
@@ -1749,6 +1745,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			desc->last_row = nrows;
 
 		nrows += 1;
+
+next_row:
 
 		line = NULL;
 
