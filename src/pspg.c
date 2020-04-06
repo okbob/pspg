@@ -1535,8 +1535,10 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 						rc = poll(fds, 1, -1);
 						if (rc == -1)
 						{
-							fprintf(debug_pipe, "POLL error\n");
-							usleep(100 );
+							if (logfile)
+								fprintf(logfile, "POLL error\n");
+
+							usleep(100);
 						}
 
 						clearerr(fp);
@@ -1575,7 +1577,18 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 		return -1;
 	}
 	else
-		return getline(lineptr, n, fp);
+	{
+		ssize_t result;
+
+		result = getline(lineptr, n, fp);
+		if (result < 0)
+		{
+			free(*lineptr);
+			*lineptr = NULL;
+		}
+
+		return result;
+	}
 }
 
 /*
@@ -1656,12 +1669,6 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	{
 		int		clen;
 
-		if (line[read - 1] == '\n')
-		{
-			line[read - 1] = '\0';
-			read -= 1;
-		}
-
 		/* In streaming mode exit when you find empty row */
 		if (stream_mode && read == 0)
 		{
@@ -1672,6 +1679,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 				goto next_row;
 
 			break;
+		}
+
+		if (line[read - 1] == '\n')
+		{
+			line[read - 1] = '\0';
+			read -= 1;
 		}
 
 		clen = utf_string_dsplen(line, read);
@@ -3186,11 +3199,9 @@ get_event(MEVENT *mevent,
 
 #ifdef DEBUG_PIPE
 
-	char buffer[20];
+	char	buffer[20];
 
-#endif
-
-	if (1)
+	if (0)
 	{
 		struct mallinfo mi;
 
@@ -3208,6 +3219,7 @@ get_event(MEVENT *mevent,
 		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
 	}
 
+#endif
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
@@ -3408,24 +3420,6 @@ repeat:
 			  keyname(c),
 			  buffer);
 	fflush(debug_pipe);
-
-	if (0)
-	{
-		struct mallinfo mi;
-
-		mi = mallinfo();
-
-		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
-		fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
-		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
-		fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
-		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
-		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
-		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
-		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
-		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
-		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
-	}
 
 #endif
 
@@ -4459,6 +4453,10 @@ exit_while_01:
 		term = newterm(termname(), stdout, stderr);
 	else
 		win = initscr();
+
+	(void) term;
+	(void) win;
+
 
 	if (opts.watch_file)
 	{
@@ -7474,11 +7472,9 @@ refresh:
 
 		if (opts.pathname)
 			free(opts.pathname);
-
 	}
 
 	fclose(debug_pipe);
-
 
 #endif
 
