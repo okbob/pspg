@@ -127,6 +127,8 @@ typedef struct
 	bool	multilines_already_tested;	/* true, when we know where are multilines */
 } DataDesc;
 
+#define		PSPG_WINDOW_COUNT		9
+
 /*
  * This structure can be mutable - depends on displayed data
  */
@@ -143,8 +145,8 @@ typedef struct
 	int		main_start_y;			/* y position of first row of main place */
 	int		main_start_x;			/* x position of first row of main place */
 	int		top_bar_rows;			/* 1 or 0 when top bar is not used */
-	WINDOW	*wins[9];
-	Theme	themes[9];
+	WINDOW	*wins[PSPG_WINDOW_COUNT];
+	Theme	themes[PSPG_WINDOW_COUNT];
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */

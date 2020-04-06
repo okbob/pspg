@@ -1665,6 +1665,12 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		/* In streaming mode exit when you find empty row */
 		if (stream_mode && read == 0)
 		{
+			free(line);
+
+			/* ignore this line if we are on second line - probably watch mode */
+			if (nrows == 1)
+				goto next_row;
+
 			break;
 		}
 
@@ -1747,6 +1753,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			desc->last_row = nrows;
 
 		nrows += 1;
+
+next_row:
 
 		line = NULL;
 
@@ -3182,6 +3190,25 @@ get_event(MEVENT *mevent,
 
 #endif
 
+	if (1)
+	{
+		struct mallinfo mi;
+
+		mi = mallinfo();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+	}
+
+
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 	wint_t	ch;
@@ -3596,6 +3623,9 @@ main(int argc, char *argv[])
 	int		file_format_from_suffix = FILE_NOT_SET;
 	bool	ignore_file_suffix = false;
 
+	WINDOW	   *win = NULL;
+	SCREEN	   *term = NULL;
+
 #ifdef DEBUG_PIPE
 
 	time_t		start_app_sec;
@@ -3672,6 +3702,8 @@ main(int argc, char *argv[])
 
 #endif
 
+	memset(&opts, 0, sizeof(opts));
+
 	opts.pathname = NULL;
 	opts.ignore_case = false;
 	opts.ignore_lower_case = false;
@@ -3712,8 +3744,12 @@ main(int argc, char *argv[])
 	opts.dbname = NULL;
 	opts.watch_file = true;
 	opts.quit_on_f3 = false;
+	opts.no_highlight_lines = false;
 
 	load_config(tilde("~/.pspgconf"), &opts);
+
+	memset(&desc, 0, sizeof(desc));
+	memset(&scrdesc, 0, sizeof(scrdesc));
 
 #ifdef DEBUG_PIPE
 
@@ -4420,9 +4456,9 @@ exit_while_01:
 
 	if (noatty)
 		/* use stderr like stdin. This is fallback solution used by less */
-		newterm(termname(), stdout, stderr);
+		term = newterm(termname(), stdout, stderr);
 	else
-		initscr();
+		win = initscr();
 
 	if (opts.watch_file)
 	{
@@ -7352,6 +7388,17 @@ refresh:
 		}
 	}
 
+	for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+	{
+		if (scrdesc.wins[i])
+			delwin(scrdesc.wins[i]);
+	}
+
+	if (cmdbar)
+		st_cmdbar_free(cmdbar);
+	if (menu)
+		st_menu_free(menu);
+
 	endwin();
 
 	if (logfile)
@@ -7428,13 +7475,10 @@ refresh:
 		if (opts.pathname)
 			free(opts.pathname);
 
-		if (cmdbar)
-			st_cmdbar_free(cmdbar);
-		if (menu)
-			st_menu_free(menu);
 	}
 
 	fclose(debug_pipe);
+
 
 #endif
 
