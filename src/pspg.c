@@ -159,6 +159,7 @@ static int inotify_wd = -1;							/* file descriptor of monitored file */
 static struct pollfd fds[2];
 static bool stream_mode = false;
 static bool is_fifo = false;
+static int hold_stream = 0;
 long int last_cur_position = -1;
 
 static int number_width(int num);
@@ -3288,12 +3289,25 @@ retry:
 		else if (poll_num > 0)
 		{
 			/* process inotify event, but only when we can process it */
-			if (fds[1].revents & POLLIN && file_event)
+			if (fds[1].revents)
 			{
+				short revents = fds[1].revents;
 				char		buff[64];
 				ssize_t		len;
 
 				*file_event = true;
+
+				/* handle implicit events */
+				if (revents & POLLHUP)
+				{
+					if (hold_stream == 1)
+					{
+						*reopen_file = true;
+						return 0;
+					}
+					else
+						leave_ncurses("input stream was closed");
+				}
 
 				if (inotify_fd == -1)
 					return 0;
@@ -3719,6 +3733,7 @@ main(int argc, char *argv[])
 		{"stream", no_argument, 0, 34},
 		{"quit-on-f3", no_argument, 0, 35},
 		{"wait", required_argument, 0, 36},
+		{"hold-stream", required_argument, 0, 37},
 		{0, 0, 0, 0}
 	};
 
@@ -3809,7 +3824,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  -f, --file=FILE          open file\n");
 				fprintf(stderr, "  -F, --quit-if-one-screen\n");
 				fprintf(stderr, "                           quit if content is one screen\n");
-				fprintf(stderr, "  -X                       don't use alternate screen\n");
+				fprintf(stderr, "  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)\n");
 				fprintf(stderr, "  --interactive            force interactive mode\n");
 				fprintf(stderr, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 				fprintf(stderr, "  --ni                     not interactive mode (only for csv and query)\n");
@@ -3820,8 +3835,9 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
 				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 				fprintf(stderr, "  --quit-on-f3             exit on F3 like mc viewers\n");
-				fprintf(stderr, "  --rr ROWNUM              rows reserved for specific purposes\n");
+				fprintf(stderr, "  --rr=ROWNUM              rows reserved for specific purposes\n");
 				fprintf(stderr, "  --stream                 input file is read continually\n");
+				fprintf(stderr, "  -X                       don't use alternate screen\n");
 				fprintf(stderr, "\nOutput format options:\n");
 				fprintf(stderr, "  -a                       force ascii\n");
 				fprintf(stderr, "  -b                       black-white style\n");
@@ -3832,7 +3848,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "  --double-header          header separator uses double lines\n");
 				fprintf(stderr, "  --force-uniborder        replace ascii borders by unicode borders\n");
 				fprintf(stderr, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
-				fprintf(stderr, "  --null string            string used instead NULL\n");
+				fprintf(stderr, "  --null=STRING            STRING used instead NULL\n");
 				fprintf(stderr, "\nSearching options\n");
 				fprintf(stderr, "  -g --hlite-search, -G --HILITE-SEARCH\n");
 				fprintf(stderr, "                           don't highlight lines for searches\n");
@@ -4034,6 +4050,16 @@ main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				break;
+			case 37:
+				hold_stream = atoi(optarg);
+				if (hold_stream < 0 || hold_stream > 2)
+				{
+					fprintf(stderr, "hold-stream should be 0, 1 or 2\n");
+					exit(EXIT_FAILURE);
+				}
+				break;
+
+
 
 
 			case 'V':
@@ -4208,6 +4234,16 @@ main(int argc, char *argv[])
 	{
 		stream_mode = true;
 		opts.watch_file = true;
+
+		/*
+		 * This is hack, that protect pspg agains full close FIFO. When
+		 * FIFO is closed, then poll got POLLHUP signal, and any poll
+		 * finish immediately with POLLHUP. pspg try to reopen FIFO, but
+		 * it will be locked in fopen function. When FIFO is opened by
+		 * pspg for writing, then PULLHUP should not come ever.
+		 */
+		if (hold_stream == 2)
+			freopen(NULL, "a+", fp);
 	}
 
 	if (opts.watch_file)
@@ -5102,6 +5138,10 @@ force_refresh_data:
 										if (stream_mode)
 											fseek(fp, 0, SEEK_END);
 									}
+
+									if (is_fifo)
+										/* use nonblock mode */
+										fcntl(fileno(fp), F_SETFL, O_NONBLOCK);
 								}
 								else
 								{
