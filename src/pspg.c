@@ -100,7 +100,7 @@
 #endif
 #endif
 
-#define PSPG_VERSION "3.0.0"
+#define PSPG_VERSION "3.0.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
