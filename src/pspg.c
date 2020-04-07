@@ -41,6 +41,7 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <poll.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
 #include <termios.h>
@@ -58,7 +59,6 @@
 #ifdef HAVE_INOTIFY
 
 #include <sys/inotify.h>
-#include <poll.h>
 
 #endif
 
@@ -4237,6 +4237,8 @@ main(int argc, char *argv[])
 			}
 
 #else
+
+			(void) inotify_wd;
 
 			fprintf(stderr, "missing inotify support\n");
 			exit(EXIT_FAILURE);
