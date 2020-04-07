@@ -1615,6 +1615,8 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 	is_blocking = !(fcntl(fileno(fp), F_GETFL) & O_NONBLOCK);
 
+	clearerr(fp);
+
 	/* detection truncating */
 	if (stream_mode && opts->watch_file && !is_fifo)
 	{
@@ -4304,6 +4306,7 @@ main(int argc, char *argv[])
 		}
 
 		fseek(fp, 0, SEEK_END);
+		last_cur_position = ftell(fp);
 	}
 
 	if (no_interactive && interactive)
@@ -5136,7 +5139,10 @@ force_refresh_data:
 										fresh_data = true;
 
 										if (stream_mode)
+										{
 											fseek(fp, 0, SEEK_END);
+											last_cur_position = ftell(fp);
+										}
 									}
 
 									if (is_fifo)
