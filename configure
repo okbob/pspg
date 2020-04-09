@@ -6412,7 +6412,6 @@ fi
 if test "x$have_inotify" = "xyes"; then
   if test "x$with_inotify" != "xyes"; then
     have_inotify=no
-    echo "*** Note: inotify support has been disabled ***"
   else
 
 $as_echo "#define HAVE_INOTIFY 1" >>confdefs.h

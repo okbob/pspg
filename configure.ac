@@ -70,7 +70,6 @@ AC_ARG_WITH([inotify],
 if test "x$have_inotify" = "xyes"; then
   if test "x$with_inotify" != "xyes"; then
     have_inotify=no
-    echo "*** Note: inotify support has been disabled ***"
   else
     AC_DEFINE(HAVE_INOTIFY, 1, [Define if you have inotify support (linux only)])
   fi

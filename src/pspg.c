@@ -3788,7 +3788,17 @@ main(int argc, char *argv[])
 	opts.force_password_prompt = false;
 	opts.password = NULL;
 	opts.dbname = NULL;
+
+#ifdef HAVE_INOTIFY
+
 	opts.watch_file = true;
+
+#else
+
+	opts.watch_file = false;
+
+#endif
+
 	opts.quit_on_f3 = false;
 	opts.no_highlight_lines = false;
 
