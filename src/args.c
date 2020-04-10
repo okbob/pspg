@@ -266,8 +266,7 @@ readargs(char **argv,
 					fprintf(stderr, "\nGeneral options:\n");
 					fprintf(stderr, "  --about                  about authors\n");
 					fprintf(stderr, "  --help                   show this help\n");
-					fprintf(stderr, "  -V, --version            show version\n\n");
-					fprintf(stderr, "\n");
+					fprintf(stderr, "  -V, --version            show version\n");
 					fprintf(stderr, "  -f, --file=FILE          open file\n");
 					fprintf(stderr, "  -F, --quit-if-one-screen\n");
 					fprintf(stderr, "                           quit if content is one screen\n");
