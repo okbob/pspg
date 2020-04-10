@@ -286,7 +286,7 @@ readargs(char **argv,
 				{
 					fprintf(stderr, "pspg is a Unix pager designed for table browsing.\n\n");
 					fprintf(stderr, "Usage:\n");
-					fprintf(stderr, "  %s [OPTION]\n", argv[0]);
+					fprintf(stderr, "  %s [OPTION] [file]\n", argv[0]);
 					fprintf(stderr, "\nGeneral options:\n");
 					fprintf(stderr, "  --about                  about authors\n");
 					fprintf(stderr, "  --help                   show this help\n");
