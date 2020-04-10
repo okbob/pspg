@@ -235,6 +235,30 @@ get_format_type(char *path)
 		return FILE_MATRIX;
 }
 
+static bool
+open_file(char *path, Options *opts, StateData *state, char *err, int errsz)
+{
+	char *transf_path = tilde(path);
+
+	if (state->fp)
+	{
+		strncpy(err, "Only one file can be browsed.", errsz);
+		return false;
+	}
+
+	state->fp = fopen(transf_path, "r");
+	if (!state->fp)
+	{
+		snprintf(err, errsz, "cannot to read file: %s\n", path);
+		return false;
+	}
+	opts->pathname = strdup(path);
+	state->file_format_from_suffix = get_format_type(path);
+
+	return true;
+}
+
+
 bool
 readargs(char **argv,
 		 int argc,
@@ -586,18 +610,11 @@ readargs(char **argv,
 				break;
 			case 'f':
 				{
-					char *path = tilde(optarg);
-
-					state->fp = fopen(path, "r");
-					if (state->fp == NULL)
+					if (!open_file(optarg, opts, state, errstrbuf, sizeof(errstrbuf)))
 					{
-						snprintf(errstrbuf, sizeof(errstrbuf), "cannot to read file: %s\n", path);
 						*err = errstrbuf;
 						return false;
 					}
-					opts->pathname = strdup(optarg);
-
-					state->file_format_from_suffix = get_format_type(optarg);
 				}
 				break;
 			case 'F':
@@ -642,6 +659,15 @@ readargs(char **argv,
 					*err = errstrbuf;
 					return false;
 				}
+		}
+	}
+
+	for (; optind < argc; optind++)
+	{
+		if (!open_file(argv[optind], opts, state, errstrbuf, sizeof(errstrbuf)))
+		{
+			*err = errstrbuf;
+			return false;
 		}
 	}
 
