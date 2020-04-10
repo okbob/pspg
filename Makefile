@@ -3,10 +3,10 @@ all:
 # Include setting from the configure script
 -include config.make
 
-#override CFLAGS +=  -pedantic -Wextra -Wimplicit-fallthrough=0
+override CFLAGS +=  -pedantic -Wextra -Wimplicit-fallthrough=0
 
 DEPS=$(wildcard *.d)
-PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o
+PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o
 OBJS=$(PSPG_OFILES)
 
 ifdef COMPILE_MENU
@@ -24,6 +24,9 @@ st_menu.o: src/st_menu.c config.make
 
 csv.o: src/pspg.h src/unicode.h src/pretty-csv.c
 	$(CC) -O3 -c  src/pretty-csv.c -o csv.o $(CPPFLAGS) $(CFLAGS)
+
+args.o: src/pspg.h src/args.c
+	$(CC) -O3 -c  src/args.c -o args.o $(CPPFLAGS) $(CFLAGS)
 
 print.o: src/pspg.h src/unicode.h src/print.c
 	$(CC) -O3 -c  src/print.c -o print.o $(CPPFLAGS) $(CFLAGS)

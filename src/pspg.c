@@ -28,7 +28,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <getopt.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -100,8 +99,6 @@
 #endif
 #endif
 
-#define PSPG_VERSION "3.0.2"
-
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 4096
@@ -157,55 +154,16 @@ static bool active_ncurses = false;
 static int inotify_fd = -1;							/* inotify file descriptor for accessing API */
 static int inotify_wd = -1;							/* file descriptor of monitored file */
 static struct pollfd fds[2];
-static bool stream_mode = false;
 static bool is_fifo = false;
-static int hold_stream = 0;
 long int last_cur_position = -1;
 
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval);
-static char * tilde(char *path);
+static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
 static void print_log_prefix(FILE *logfile);
-
-FILE   *logfile = NULL;
 
 int		named_pipe_fd = 0;
 
-#define			FILE_NOT_SET		0
-#define			FILE_CSV			1
-#define			FILE_TSV			2
-#define			FILE_MATRIX			3
-
-static int
-get_format_type(char *path)
-{
-	char		buffer[4];
-	char	   *r_ptr, *w_ptr;
-	int			i;
-	int			l;
-
-	l = strlen(path);
-	if (l < 5)
-		return FILE_MATRIX;
-
-	r_ptr = path + l - 4;
-	w_ptr = buffer;
-
-	if (*r_ptr++ != '.')
-		return FILE_MATRIX;
-
-	for (i = 0; i < 3; i++)
-		*w_ptr++ = tolower(*r_ptr++);
-
-	*w_ptr = '\0';
-
-	if (strcmp(buffer, "csv") == 0)
-		return FILE_CSV;
-	else if (strcmp(buffer, "tsv") == 0)
-		return FILE_TSV;
-	else
-		return FILE_MATRIX;
-}
+static StateData *current_state = NULL;
 
 static void
 SigintHandler(int sig_num)
@@ -236,10 +194,10 @@ leave_ncurses(const char *str)
 		endwin();
 
 	fprintf(stderr, "%s\n", str);
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "leave ncurses: %s\n", str);
+		print_log_prefix(current_state->logfile);
+		fprintf(current_state->logfile, "leave ncurses: %s\n", str);
 	}
 
 	exit(EXIT_FAILURE);
@@ -252,10 +210,10 @@ leave_ncurses2(const char *fmt, const char *str)
 		endwin();
 
 	fprintf(stderr, fmt, str);
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, fmt, str);
+		print_log_prefix(current_state->logfile);
+		fprintf(current_state->logfile, fmt, str);
 	}
 
 	exit(EXIT_FAILURE);
@@ -264,10 +222,10 @@ leave_ncurses2(const char *fmt, const char *str)
 inline void
 log_writeln(const char *str)
 {
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "%s\n", str);
+		print_log_prefix(current_state->logfile);
+		fprintf(current_state->logfile, "%s\n", str);
 	}
 }
 
@@ -303,7 +261,7 @@ print_duration(time_t start_sec, long start_ms, const char *label)
 /*
  * Case insensitive string comparation.
  */
-static bool
+bool
 nstreq(const char *str1, const char *str2)
 {
 	while (*str1 != '\0')
@@ -1448,6 +1406,127 @@ strncpytrim(Options *opts, char *dest, const char *src,
 	*dest = '\0';
 }
 
+static bool
+is_cmdtag(char *str)
+{
+	if (!str)
+		return false;
+
+	if (*str == '?' && strcmp(str, "???") == 0)
+	{
+			return true;
+	}
+	else if (*str == 'A')
+	{
+		if (strncmp(str, "ALTER ", 6) == 0 ||
+				strcmp(str, "ANALYZE") == 0)
+			return true;
+	}
+	else if (*str == 'B' && strcmp(str, "BEGIN") == 0)
+	{
+		return true;
+	}
+	else if (*str == 'C')
+	{
+		if (strcmp(str, "CALL") == 0 ||
+				strcmp(str, "CHECKPOINT") == 0 ||
+				strncmp(str, "CLOSE", 5) == 0 ||
+				strcmp(str, "CLUSTER") == 0 ||
+				strcmp(str, "COMMENT") == 0 ||
+				strncmp(str, "COMMIT", 6) == 0 ||
+				strncmp(str, "COPY ", 5) == 0 ||
+				strncmp(str, "CREATE ", 7) == 0)
+			return true;
+	}
+	else if (*str == 'D')
+	{
+		if (strncmp(str, "DEALLOCATE", 10) == 0 ||
+				strncmp(str, "DECLARE ", 8) == 0 ||
+				strncmp(str, "DELETE ", 7) == 0 ||
+				strncmp(str, "DISCARD", 7) == 0 ||
+				strcmp(str, "DO") == 0 ||
+				strncmp(str, "DROP ", 5) == 0)
+			return true;
+	}
+	else if (*str == 'E')
+	{
+		if (strcmp(str, "EXECUTE") == 0 ||
+				strcmp(str, "EXPLAIN") == 0)
+			return true;
+	}
+	else if (*str == 'F' && strncmp(str, "FETCH ", 6) == 0)
+	{
+		return true;
+	}
+	else if (*str == 'G' && strncmp(str, "GRANT", 5) == 0)
+	{
+		return true;
+	}
+	else if (*str == 'I')
+	{
+		if (strncmp(str, "IMPORT ", 7) == 0 ||
+				strncmp(str, "INSERT ", 7) == 0)
+			return true;
+	}
+	else if (*str == 'L')
+	{
+		if (strcmp(str, "LISTEN") == 0 ||
+				strcmp(str, "LOAD") == 0 ||
+				strcmp(str, "LOCK TABLE") == 0)
+			return true;
+	}
+	else if (*str == 'M' && strncmp(str, "MOVE ", 5) == 0)
+	{
+		return true;
+	}
+	else if (*str == 'N' && strcmp(str, "NOTIFY") == 0)
+	{
+		return true;
+	}
+	else if (*str == 'P' && strncmp(str, "PREPARE", 7) == 0)
+	{
+		return true;
+	}
+	else if (*str == 'R')
+	{
+		if (strcmp(str, "REASSIGN OWNED") == 0 ||
+				strcmp(str, "REFRESH MATERIALIZED VIEW") == 0 ||
+				strcmp(str, "REINDEX") == 0 ||
+				strcmp(str, "RELEASE") == 0 ||
+				strcmp(str, "RESET") == 0 ||
+				strncmp(str, "REVOKE", 6) == 0 ||
+				strncmp(str, "ROLLBACK", 8) == 0)
+			return true;
+	}
+	else if (*str == 'S')
+	{
+		if (strcmp(str, "SAVEPOINT") == 0 ||
+				strcmp(str, "SECURITY LABEL") == 0 ||
+				strncmp(str, "SELECT ", 7) == 0 ||
+				strncmp(str, "SET", 3) == 0 ||
+				strcmp(str, "SHOW") == 0 ||
+				strcmp(str, "START TRANSACTION") == 0)
+			return true;
+	}
+	else if (*str == 'T' && strcmp(str, "TRUNCATE TABLE") == 0)
+	{
+		return true;
+	}
+	else if (*str == 'U')
+	{
+		if (strcmp(str, "UNLISTEN") == 0 ||
+				strncmp(str, "UPDATE ", 7) == 0)
+			return true;
+	}
+	else if (*str == 'V' && strcmp(str, "VACUUM") == 0)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
 #define STATBUF_SIZE		(10 * 1024)
 
 static size_t
@@ -1551,8 +1630,8 @@ endline_exit:
 					rc = poll(fds, 1, -1);
 					if (rc == -1)
 					{
-						if (logfile)
-							fprintf(logfile, "POLL error\n");
+						if (current_state && current_state->logfile)
+							fprintf(current_state->logfile, "POLL error\n");
 
 						usleep(1000);
 					}
@@ -1576,7 +1655,7 @@ endline_exit:
  * Read data from file and fill DataDesc.
  */
 static bool
-readfile(FILE *fp, Options *opts, DataDesc *desc)
+readfile(FILE *fp, Options *opts, DataDesc *desc, StateData *state)
 {
 	char	   *line = NULL;
 	size_t		len;
@@ -1618,7 +1697,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 	clearerr(fp);
 
 	/* detection truncating */
-	if (stream_mode && opts->watch_file && !is_fifo)
+	if (state->stream_mode && opts->watch_file && !is_fifo)
 	{
 		if (last_cur_position != -1)
 		{
@@ -1626,10 +1705,10 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 
 			if (fstat(fileno(fp), &stats) != 0)
 			{
-				if (logfile)
+				if (current_state && current_state->logfile)
 				{
-					print_log_prefix(logfile);
-					fprintf(logfile, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
+					print_log_prefix(current_state->logfile);
+					fprintf(current_state->logfile, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
 
 #ifdef DEBUG_PIPE
 
@@ -1643,10 +1722,10 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			{
 				if (stats.st_size < last_cur_position)
 				{
-					if (logfile)
+					if (current_state && current_state->logfile)
 					{
-						print_log_prefix(logfile);
-						fprintf(logfile, "file truncated: %s\n", opts->pathname);
+						print_log_prefix(current_state->logfile);
+						fprintf(current_state->logfile, "file truncated: %s\n", opts->pathname);
 					}
 
 #ifdef DEBUG_PIPE
@@ -1706,7 +1785,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 		}
 
 		/* In streaming mode exit when you find empty row */
-		if (stream_mode && read == 0)
+		if (state->stream_mode && read == 0)
 		{
 			free(line);
 
@@ -1796,6 +1875,10 @@ readfile(FILE *fp, Options *opts, DataDesc *desc)
 			desc->last_row = nrows;
 
 		nrows += 1;
+
+		/* Detection of status rows */
+		if (nrows == 1 && is_cmdtag(line))
+			break;
 
 next_row:
 
@@ -2774,18 +2857,18 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	else
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
 		char buffer[1024];
 
-		print_log_prefix(logfile);
+		print_log_prefix(current_state->logfile);
 
 		if (par)
 			snprintf(buffer, 1024, fmt, par);
 		else
 			snprintf(buffer, 1024, "%s", fmt);
 
-		fprintf(logfile, "info: %s\n", buffer);
+		fprintf(current_state->logfile, "info: %s\n", buffer);
 	}
 
 	wclrtoeol(bottom_bar);
@@ -2802,7 +2885,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, NULL, timeout);
+	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, NULL, timeout, 0);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -2901,10 +2984,10 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "input string prompt- \"%s\"\n", prompt);
+		print_log_prefix(current_state->logfile);
+		fprintf(current_state->logfile, "input string prompt- \"%s\"\n", prompt);
 	}
 
 #ifdef HAVE_LIBREADLINE
@@ -3062,10 +3145,10 @@ finish_read:
 	 */
 	scrdesc->refresh_scr = true;
 
-	if (logfile)
+	if (current_state && current_state->logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "input string - \"%s\"\n", buffer);
+		print_log_prefix(current_state->logfile);
+		fprintf(current_state->logfile, "input string - \"%s\"\n", buffer);
 	}
 }
 
@@ -3121,7 +3204,7 @@ reset_searching_lineinfo(LineBuffer *lnb)
 /*
  * Replace tilde by HOME dir
  */
-static char *
+char *
 tilde(char *path)
 {
 	static char	writebuf[MAXPATHLEN];
@@ -3223,7 +3306,8 @@ get_event(MEVENT *mevent,
 		  bool *timeout,
 		  bool *file_event,
 		  bool *reopen_file,
-		  int timeoutval)
+		  int timeoutval,
+		  int hold_stream)
 {
 	bool	first_event = true;
 	int		c;
@@ -3282,10 +3366,10 @@ retry:
 		poll_num = poll(fds, 2, timeoutval);
 		if (poll_num == -1)
 		{
-			if (logfile)
+			if (current_state && current_state->logfile)
 			{
-				print_log_prefix(logfile);
-				fprintf(logfile, "poll error %s\n", strerror(errno));
+				print_log_prefix(current_state->logfile);
+				fprintf(current_state->logfile, "poll error %s\n", strerror(errno));
 			}
 		}
 		else if (poll_num > 0)
@@ -3478,10 +3562,10 @@ repeat:
 
 #endif
 
-		if (logfile)
+		if (current_state && current_state->logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "ERR input - retry no: %d\n", retry_count);
+			print_log_prefix(current_state->logfile);
+			fprintf(current_state->logfile, "ERR input - retry no: %d\n", retry_count);
 		}
 
 		if (++retry_count < 10)
@@ -3493,10 +3577,10 @@ repeat:
 
 #endif
 
-		if (logfile)
+		if (current_state && current_state->logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "ERR input - touch retry limit, stop\n");
+			print_log_prefix(current_state->logfile);
+			fprintf(current_state->logfile, "ERR input - touch retry limit, stop\n");
 		}
 	}
 
@@ -3622,20 +3706,15 @@ main(int argc, char *argv[])
 	int		first_data_row;
 	int		default_freezed_cols = 1;
 	int		i;
-	int		reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	Options			opts;
+	StateData		state;
 	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
-	FILE   *fp = NULL;
 	bool	detected_format = false;
-	bool	no_alternate_screen = false;
 	int		fix_rows_offset = 0;
 
-	int		opt;
-	int		option_index = 0;
 	mmask_t		prev_mousemask = 0;
-	bool	quit_if_one_screen = false;
 	int		search_direction = SEARCH_FORWARD;
 	bool	redirect_mode;
 	bool	noatty;					/* true, when cannot to get keys from stdin */
@@ -3648,9 +3727,6 @@ main(int argc, char *argv[])
 	bool	prev_event_is_mouse_press = false;
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
-	bool	only_for_tables = false;
-	bool	no_interactive = false;
-	bool	interactive = false;
 	bool	raw_output_quit = false;
 
 	bool	mouse_was_initialized = false;
@@ -3661,13 +3737,13 @@ main(int argc, char *argv[])
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
 
-	int		file_format_from_suffix = FILE_NOT_SET;
-	bool	ignore_file_suffix = false;
 
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
 
-	int		boot_wait = 0;
+	char   *argerr = NULL;
+	char   *pspgenv;
+
 
 #ifdef DEBUG_PIPE
 
@@ -3683,62 +3759,6 @@ main(int argc, char *argv[])
 	bool		handle_timeout = false;
 	struct stat statbuf;
 
-	static struct option long_options[] =
-	{
-		/* These options set a flag. */
-		{"force-uniborder", no_argument, 0, 5},
-		{"help", no_argument, 0, 1},
-		{"hlite-search", no_argument, 0, 'g'},
-		{"HILITE-SEARCH", no_argument, 0, 'G'},
-		{"ignore-case", no_argument, 0, 'i'},
-		{"IGNORE-CASE", no_argument, 0, 'I'},
-		{"no-bars", no_argument, 0, 8},
-		{"no-mouse", no_argument, 0, 2},
-		{"no-sound", no_argument, 0, 3},
-		{"less-status-bar", no_argument, 0, 4},
-		{"no-commandbar", no_argument, 0, 6},
-		{"no-topbar", no_argument, 0, 7},
-		{"no-cursor", no_argument, 0, 10},
-		{"vertical-cursor", no_argument, 0, 15},
-		{"tabular-cursor", no_argument, 0, 11},
-		{"line-numbers", no_argument, 0, 9},
-		{"quit-if-one-screen", no_argument, 0, 'F'},
-		{"version", no_argument, 0, 'V'},
-		{"bold-labels", no_argument, 0, 12},
-		{"bold-cursor", no_argument, 0, 13},
-		{"only-for-tables", no_argument, 0, 14},
-		{"about", no_argument, 0, 16},
-		{"csv", no_argument, 0, 17},
-		{"double-header", no_argument, 0, 24},
-		{"csv-separator", required_argument, 0, 18},
-		{"border", required_argument, 0, 19},
-		{"no-sigint-exit", no_argument, 0, 21},
-		{"no-sigint-search-reset", no_argument, 0, 22},
-		{"ni", no_argument, 0, 23},
-		{"log", required_argument, 0, 25},
-		{"watch", required_argument, 0, 'w'},
-		{"query", required_argument, 0, 'q'},
-		{"host", required_argument, 0, 'h'},
-		{"port", required_argument, 0, 'p'},
-		{"password", no_argument, 0, 'W'},
-		{"username", required_argument, 0, 'U'},
-		{"dbname", required_argument, 0, 'd'},
-		{"file", required_argument, 0, 'f'},
-		{"rr", required_argument, 0, 26},
-		{"interactive", no_argument, 0, 27},
-		{"csv-header", required_argument, 0, 28},
-		{"ignore-short-rows", no_argument, 0, 29},
-		{"tsv", no_argument, 0, 30},
-		{"null", required_argument, 0, 31},
-		{"ignore_file_suffix", no_argument, 0, 32},
-		{"no-watch-file", no_argument, 0, 33},
-		{"stream", no_argument, 0, 34},
-		{"quit-on-f3", no_argument, 0, 35},
-		{"wait", required_argument, 0, 36},
-		{"hold-stream", required_argument, 0, 37},
-		{0, 0, 0, 0}
-	};
-
 #ifdef COMPILE_MENU
 
 	bool	menu_is_active = false;
@@ -3746,7 +3766,6 @@ main(int argc, char *argv[])
 	struct ST_CMDBAR	*cmdbar = NULL;
 
 #endif
-
 
 	memset(&opts, 0, sizeof(opts));
 
@@ -3817,402 +3836,49 @@ main(int argc, char *argv[])
 
 #endif
 
-	while ((opt = getopt_long(argc, argv, "abs:c:d:f:h:p:XVFgGiIq:U:w:W",
-							  long_options, &option_index)) != -1)
+	memset(&state, 0, sizeof(state));
+
+	state.reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
+	state.file_format_from_suffix = FILE_NOT_SET;
+
+	pspgenv = getenv("PSPG");
+	if (pspgenv)
 	{
-		int		n;
+		int		argc2;
+		char  **argv2;
 
-		switch (opt)
+		argv2 = buildargv(pspgenv, &argc2, argv[0]);
+
+		argerr = NULL;
+		if (!readargs(argv2, argc2, &opts, &state, &argerr))
 		{
-			case 1:
-				fprintf(stderr, "pspg is a Unix pager designed for table browsing.\n\n");
-				fprintf(stderr, "Usage:\n");
-				fprintf(stderr, "  %s [OPTION]\n", argv[0]);
-				fprintf(stderr, "\nGeneral options:\n");
-				fprintf(stderr, "  --about                  about authors\n");
-				fprintf(stderr, "  --help                   show this help\n");
-				fprintf(stderr, "  -V, --version            show version\n\n");
-				fprintf(stderr, "\n");
-				fprintf(stderr, "  -f, --file=FILE          open file\n");
-				fprintf(stderr, "  -F, --quit-if-one-screen\n");
-				fprintf(stderr, "                           quit if content is one screen\n");
-				fprintf(stderr, "  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)\n");
-				fprintf(stderr, "  --interactive            force interactive mode\n");
-				fprintf(stderr, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
-				fprintf(stderr, "  --ni                     not interactive mode (only for csv and query)\n");
-				fprintf(stderr, "  --no-watch-file          don't watch inotify event of file\n");
-				fprintf(stderr, "  --no-mouse               don't use own mouse handling\n");
-				fprintf(stderr, "  --no-sigint-search-reset\n");
-				fprintf(stderr, "                           without reset searching on sigint (CTRL C)\n");
-				fprintf(stderr, "  --only-for-tables        use std pager when content is not table\n");
-				fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
-				fprintf(stderr, "  --quit-on-f3             exit on F3 like mc viewers\n");
-				fprintf(stderr, "  --rr=ROWNUM              rows reserved for specific purposes\n");
-				fprintf(stderr, "  --stream                 input file is read continually\n");
-				fprintf(stderr, "  -X                       don't use alternate screen\n");
-				fprintf(stderr, "\nOutput format options:\n");
-				fprintf(stderr, "  -a                       force ascii\n");
-				fprintf(stderr, "  -b                       black-white style\n");
-				fprintf(stderr, "  -s N                     set color style number (0..%d)\n", MAX_STYLE);
-				fprintf(stderr, "  --bold-labels            row, column labels use bold font\n");
-				fprintf(stderr, "  --bold-cursor            cursor use bold font\n");
-				fprintf(stderr, "  --border                 type of borders (0..2)\n");
-				fprintf(stderr, "  --double-header          header separator uses double lines\n");
-				fprintf(stderr, "  --force-uniborder        replace ascii borders by unicode borders\n");
-				fprintf(stderr, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
-				fprintf(stderr, "  --null=STRING            STRING used instead NULL\n");
-				fprintf(stderr, "\nSearching options\n");
-				fprintf(stderr, "  -g --hlite-search, -G --HILITE-SEARCH\n");
-				fprintf(stderr, "                           don't highlight lines for searches\n");
-				fprintf(stderr, "  -i --ignore-case         ignore case in searches that do not contain uppercase\n");
-				fprintf(stderr, "  -I --IGNORE-CASE         ignore case in all searches\n");
-				fprintf(stderr, "\nInterface options:\n");
-				fprintf(stderr, "  -c N                     fix N columns (0..9)\n");
-				fprintf(stderr, "  --less-status-bar        status bar like less pager\n");
-				fprintf(stderr, "  --line-numbers           show line number column\n");
-				fprintf(stderr, "  --no-bars, --no-commandbar, --no-topbar\n");
-				fprintf(stderr, "                           don't show bottom, top bar or both\n");
-				fprintf(stderr, "  --no-cursor              row cursor will be hidden\n");
-				fprintf(stderr, "  --no-sound               don't use beep when scroll is not possible\n");
-				fprintf(stderr, "  --tabular-cursor         cursor is visible only when data has table format\n");
-				fprintf(stderr, "  --vertical-cursor        show vertical column cursor\n");
-				fprintf(stderr, "\nInput format options:\n");
-				fprintf(stderr, "  --csv                    input stream has csv format\n");
-				fprintf(stderr, "  --csv-separator          char used as field separator\n");
-				fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
-				fprintf(stderr, "  --tsv                    input stream has tsv format\n");
-				fprintf(stderr, "\nWatch mode options:\n");
-				fprintf(stderr, "  -q, --query=QUERY        execute query\n");
-				fprintf(stderr, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");
-				fprintf(stderr, "\nConnection options\n");
-				fprintf(stderr, "  -d, --dbname=DBNAME      database name\n");
-				fprintf(stderr, "  -h, --host=HOSTNAME      database server host (default: \"local socket\")\n");
-				fprintf(stderr, "  -p, --port=PORT          database server port (default: \"5432\")\n");
-				fprintf(stderr, "  -U, --username=USERNAME  database user name\n");
-				fprintf(stderr, "  -W, --password           force password prompt\n");
-				fprintf(stderr, "\nDebug options:\n");
-				fprintf(stderr, "  --log=FILE               log debug info to file\n");
-				fprintf(stderr, "  --wait=NUM               wait NUM seconds to allow attach from a debugger\n");
-				fprintf(stderr, "\n");
-				fprintf(stderr, "pspg shares lot of key commands with less pager or vi editor.\n");
-				exit(0);
-
-			case 'a':
-				opts.force_ascii_art = true;
-				break;
-			case 'I':
-				opts.ignore_case = true;
-				break;
-			case 'i':
-				opts.ignore_lower_case = true;
-				break;
-			case 'q':
-				opts.query = optarg;
-				break;
-			case 'w':
-				opts.watch_time = atoi(optarg);
-				if (opts.watch_time < 0 || opts.watch_time > 3600)
-				{
-					fprintf(stderr, "query watch time can be between 0 and 3600\n");
-					exit(EXIT_FAILURE);
-				}
-				break;
-			case 2:
-				opts.no_mouse = true;
-				break;
-			case 3:
-				opts.no_sound = true;
-				break;
-			case 4:
-				opts.less_status_bar = true;
-				break;
-			case 5:
-				opts.force_uniborder = true;
-				break;
-			case 6:
-				opts.no_commandbar = true;
-				break;
-			case 7:
-				opts.no_topbar = true;
-				break;
-			case 8:
-				opts.no_commandbar = true;
-				opts.no_topbar = true;
-				break;
-			case 9:
-				opts.show_rownum = true;
-				break;
-			case 10:
-				opts.no_cursor = true;
-				break;
-			case 11:
-				opts.tabular_cursor = true;
-				break;
-			case 12:
-				opts.bold_labels = true;
-				break;
-			case 13:
-				opts.bold_cursor = true;
-				break;
-			case 14:
-				only_for_tables = true;
-				break;
-			case 15:
-				opts.vertical_cursor = true;
-				break;
-			case 16:
-				fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
-				fprintf(stdout, "Authors:\n");
-				fprintf(stdout, "    2017-2020 Pavel Stehule, Benesov district, Czech Republic\n\n");
-				fprintf(stdout, "Licence:\n");
-				fprintf(stdout, "    Distributed under BSD licence\n\n");
-				exit(0);
-				break;
-			case 17:
-				opts.csv_format = true;
-				break;
-			case 18:
-				opts.csv_separator = *optarg;
-				break;
-			case 19:
-				n = atoi(optarg);
-				if (n < 0 || n > 2)
-				{
-					fprintf(stderr, "csv border type can be between 0 and 2\n");
-					exit(EXIT_FAILURE);
-				}
-				opts.border_type = n;
-				break;
-			case 21:
-				opts.on_sigint_exit = true;
-				break;
-			case 22:
-				opts.no_sigint_search_reset = true;
-				break;
-			case 23:
-				no_interactive = true;
-				break;
-			case 24:
-				opts.double_header = true;
-				break;
-			case 25:
-				{
-					const char *path;
-
-					path = tilde(optarg);
-					logfile = fopen(path, "a");
-					if (logfile == NULL)
-					{
-						fprintf(stderr, "cannot to open log file file: %s\n", path);
-						exit(EXIT_FAILURE);
-					}
-					setlinebuf(logfile);
-				}
-				break;
-			case 26:
-				reserved_rows = atoi(optarg);
-				if (reserved_rows < 1 || reserved_rows > 100)
-				{
-					fprintf(stderr, "reserved rows should be between 1 and 100\n");
-					exit(EXIT_FAILURE);
-				}
-				break;
-			case 27:
-				interactive = true;
-				break;
-			case 28:
-				{
-					if (nstreq(optarg, "off"))
-						opts.csv_header = '-';
-					else if (nstreq(optarg, "on"))
-						opts.csv_header = '+';
-					else
-					{
-						fprintf(stderr, "csv_header option can be on \"or\" \"off\"\n");
-						exit(EXIT_FAILURE);
-					}
-				}
-				break;
-			case 29:
-				opts.ignore_short_rows = true;
-				break;
-			case 30:
-				opts.tsv_format = true;
-				break;
-			case 31:
-				opts.nullstr = strdup(optarg);
-				break;
-			case 32:
-				ignore_file_suffix = true;
-				break;
-			case 33:
-				opts.watch_file = false;
-				break;
-			case 34:
-				stream_mode = true;
-				break;
-			case 35:
-				opts.quit_on_f3 = true;
-				break;
-			case 36:
-				boot_wait = atoi(optarg);
-				if (boot_wait < 0 || boot_wait > 120)
-				{
-					fprintf(stderr, "wait should be between 1 and 120 (sec)\n");
-					exit(EXIT_FAILURE);
-				}
-				break;
-			case 37:
-				hold_stream = atoi(optarg);
-				if (hold_stream < 0 || hold_stream > 2)
-				{
-					fprintf(stderr, "hold-stream should be 0, 1 or 2\n");
-					exit(EXIT_FAILURE);
-				}
-				break;
-
-
-
-
-			case 'V':
-				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
-
-#ifdef HAVE_LIBREADLINE
-
-				fprintf(stdout, "with readline (version: 0x%04x)\n", RL_READLINE_VERSION);
-
-#endif
-
-#ifdef COMPILE_MENU
-
-				fprintf(stdout, "with integrated menu\n");
-
-#endif
-
-#ifdef NCURSES_VERSION
-
-				fprintf(stdout, "ncurses version: %s, patch: %ld\n",
-							NCURSES_VERSION,
-							(long) NCURSES_VERSION_PATCH);
-
-#endif
-
-#ifdef HAVE_NCURSESW
-
-				fprintf(stdout, "ncurses with wide char support\n");
-
-#endif
-
-#ifdef NCURSES_WIDECHAR
-
-				fprintf(stdout, "ncurses widechar num: %d\n", NCURSES_WIDECHAR);
-
-#endif
-
-				fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
-
-#ifdef HAVE_POSTGRESQL
-
-				fprintf(stdout, "with postgres client integration\n");
-
-#endif
-
-#ifdef HAVE_INOTIFY
-
-				fprintf(stdout, "with inotify support\n");
-
-#endif
-
-				exit(0);
-			case 'X':
-				no_alternate_screen = true;
-				break;
-			case 'b':
-				opts.theme = 0;
-				break;
-			case 's':
-				n = atoi(optarg);
-				if (n < 0 || n > MAX_STYLE)
-				{
-					fprintf(stderr, "only color schemas 0 .. %d are supported\n", MAX_STYLE);
-					exit(EXIT_FAILURE);
-				}
-				opts.theme = n;
-				break;
-			case 'c':
-				n = atoi(optarg);
-				if (n < 0 || n > 9)
-				{
-					fprintf(stderr, "fixed columns should be between 0 and 4\n");
-					exit(EXIT_FAILURE);
-				}
-				opts.freezed_cols = n;
-				break;
-			case 'f':
-				{
-					char *path = tilde(optarg);
-
-					fp = fopen(path, "r");
-					if (fp == NULL)
-					{
-						fprintf(stderr, "cannot to read file: %s\n", path);
-						exit(EXIT_FAILURE);
-					}
-					opts.pathname = strdup(optarg);
-
-					file_format_from_suffix = get_format_type(optarg);
-				}
-				break;
-			case 'F':
-				quit_if_one_screen = true;
-				break;
-			case 'g':
-				opts.no_highlight_lines = true;
-				break;
-			case 'G':
-				opts.no_highlight_search = true;
-				break;
-
-			case 'h':
-				opts.host = strdup(optarg);
-				break;
-			case 'p':
-				{
-					long port;
-
-					port = strtol(optarg, NULL, 10);
-					if ((port < 1) || (port > 65535))
-					{
-						fprintf(stderr, "invalid port number: %s\n", optarg);
-						exit(EXIT_FAILURE);
-					}
-					opts.port = strdup(optarg);
-				}
-				break;
-			case 'U':
-				opts.username = strdup(optarg);
-				break;
-			case 'W':
-				opts.force_password_prompt = true;
-				break;
-			case 'd':
-				opts.dbname = strdup(optarg);
-				break;
-
-			default:
-				fprintf(stderr, "Try %s --help\n", argv[0]);
-				exit(EXIT_FAILURE);
+			if (argerr)
+				fprintf(stderr, "%s\n", argerr);
+			exit(EXIT_FAILURE);
 		}
 	}
 
-	if (boot_wait > 0)
-		usleep(1000 * 1000 * boot_wait);
-
-	if (!opts.csv_format && !opts.tsv_format && file_format_from_suffix != FILE_NOT_SET && !ignore_file_suffix)
+	argerr = NULL;
+	if (!readargs(argv, argc, &opts, &state, &argerr))
 	{
-		if (file_format_from_suffix == FILE_CSV)
+		if (argerr)
+			fprintf(stderr, "%s\n", argerr);
+		exit(EXIT_FAILURE);
+	}
+
+	current_state = &state;
+
+	if (state.boot_wait > 0)
+		usleep(1000 * 1000 * state.boot_wait);
+
+	if (!opts.csv_format &&
+		!opts.tsv_format &&
+		state.file_format_from_suffix != FILE_NOT_SET &&
+		!state.ignore_file_suffix)
+	{
+		if (state.file_format_from_suffix == FILE_CSV)
 			opts.csv_format = true;
-		else if (file_format_from_suffix == FILE_TSV)
+		else if (state.file_format_from_suffix == FILE_TSV)
 			opts.tsv_format = true;
 	}
 
@@ -4229,9 +3895,9 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
-	if (fp)
+	if (state.fp)
 	{
-		if (fstat(fileno(fp), &statbuf ) != 0 )
+		if (fstat(fileno(state.fp), &statbuf ) != 0 )
 		{
 			fprintf(stderr, "cannot to get fstat file: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
@@ -4244,7 +3910,7 @@ main(int argc, char *argv[])
 
 	if (is_fifo)
 	{
-		stream_mode = true;
+		state.stream_mode = true;
 		opts.watch_file = true;
 
 		/*
@@ -4254,8 +3920,8 @@ main(int argc, char *argv[])
 		 * it will be locked in fopen function. When FIFO is opened by
 		 * pspg for writing, then PULLHUP should not come ever.
 		 */
-		if (hold_stream == 2)
-			freopen(NULL, "a+", fp);
+		if (state.hold_stream == 2)
+			freopen(NULL, "a+", state.fp);
 	}
 
 	if (opts.watch_file)
@@ -4276,7 +3942,7 @@ main(int argc, char *argv[])
 			inotify_wd = inotify_add_watch(inotify_fd,
 										   opts.pathname,
 										   IN_CLOSE_WRITE |
-										   (stream_mode ? IN_MODIFY : 0));
+										   (state.stream_mode ? IN_MODIFY : 0));
 
 			if (inotify_wd == -1)
 			{
@@ -4296,12 +3962,12 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (stream_mode)
+	if (state.stream_mode)
 	{
 		if (is_fifo)
 		{
 			/* use nonblock mode */
-			fcntl(fileno(fp), F_SETFL, O_NONBLOCK);
+			fcntl(fileno(state.fp), F_SETFL, O_NONBLOCK);
 		}
 		else
 		{
@@ -4315,11 +3981,11 @@ main(int argc, char *argv[])
 
 		}
 
-		fseek(fp, 0, SEEK_END);
-		last_cur_position = ftell(fp);
+		fseek(state.fp, 0, SEEK_END);
+		last_cur_position = ftell(state.fp);
 	}
 
-	if (no_interactive && interactive)
+	if (state.no_interactive && state.interactive)
 	{
 		fprintf(stderr, "option --ni and --interactive cannot be used together\n");
 		exit(EXIT_FAILURE);
@@ -4345,10 +4011,10 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "started\n");
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "started\n");
 	}
 
 	if (opts.csv_format || opts.tsv_format || opts.query)
@@ -4356,14 +4022,14 @@ main(int argc, char *argv[])
 		/*
 		 * ToDo: first query can be broken too in watch mode.
 		 */
-		if (!read_and_format(fp, &opts, &desc, &err))
+		if (!read_and_format(state.fp, &opts, &desc, &err))
 		{
 			fprintf(stderr, "%s\n", err);
 			exit(EXIT_FAILURE);
 		}
 	}
 	else
-		readfile(fp, &opts, &desc);
+		readfile(state.fp, &opts, &desc, &state);
 
 	if (opts.watch_time > 0)
 	{
@@ -4371,20 +4037,20 @@ main(int argc, char *argv[])
 		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
 	}
 
-	if (fp != NULL && !stream_mode)
+	if (state.fp != NULL && !state.stream_mode)
 	{
-		fclose(fp);
-		fp = NULL;
+		fclose(state.fp);
+		state.fp = NULL;
 	}
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "read input %d rows\n", desc.total_rows);
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "read input %d rows\n", desc.total_rows);
 	}
 
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
-		(no_interactive || (!interactive && !isatty(STDOUT_FILENO))))
+		(state.no_interactive || (!state.interactive && !isatty(STDOUT_FILENO))))
 	{
 		LineBuffer *lnb = &desc.rows;
 		int			lnb_row = 0;
@@ -4417,28 +4083,28 @@ main(int argc, char *argv[])
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
 		size_is_valid = true;
-		if (logfile)
+		if (state.logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
+			print_log_prefix(state.logfile);
+			fprintf(state.logfile, "terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
 		}
 	}
 	else
 	{
-		if (logfile)
+		if (state.logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
+			print_log_prefix(state.logfile);
+			fprintf(state.logfile, "cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
 		}
 	}
 
 	/* When we know terminal dimensions */
-	if (size_is_valid && quit_if_one_screen)
+	if (size_is_valid && state.quit_if_one_screen)
 	{
 		int		available_rows = size.ws_row;
 
-		if (reserved_rows != -1)
-			available_rows -= reserved_rows;
+		if (state.reserved_rows != -1)
+			available_rows -= state.reserved_rows;
 
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
@@ -4451,17 +4117,17 @@ main(int argc, char *argv[])
 			while (lnb_row < lnb->nrows)
 				printf("%s\n", lnb->rows[lnb_row++]);
 
-			if (logfile)
+			if (state.logfile)
 			{
-				print_log_prefix(logfile);
-				fprintf(logfile, "quit due quit_if_one_screen option without ncurses init\n");
+				print_log_prefix(state.logfile);
+				fprintf(state.logfile, "quit due quit_if_one_screen option without ncurses init\n");
 			}
 
 			return 0;
 		}
 	}
 
-	if (!detected_format && only_for_tables)
+	if (!detected_format && state.only_for_tables)
 	{
 		const char *pagerprog;
 		FILE	   *fout = NULL;
@@ -4514,11 +4180,11 @@ exit_while_01:
 		if (fout != stdout)
 			pclose(fout);
 
-		if (logfile)
+		if (state.logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "exit without start ncurses\n");
-			fclose(logfile);
+			print_log_prefix(state.logfile);
+			fprintf(state.logfile, "exit without start ncurses\n");
+			fclose(state.logfile);
 		}
 
 		return 0;
@@ -4573,7 +4239,7 @@ exit_while_01:
 
 		if (is_fifo)
 		{
-			fds[1].fd = fileno(fp);
+			fds[1].fd = fileno(state.fp);
 			fds[1].events = POLLIN;
 		}
 		else
@@ -4583,10 +4249,10 @@ exit_while_01:
 		}
 	}
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "ncurses started\n");
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "ncurses started\n");
 	}
 
 	active_ncurses = true;
@@ -4684,18 +4350,18 @@ reinit_theme:
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "screen size - maxy: %d, maxx: %d\n", maxy, maxx);
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "screen size - maxy: %d, maxx: %d\n", maxy, maxx);
 	}
 
-	if (quit_if_one_screen)
+	if (state.quit_if_one_screen)
 	{
 		int		available_rows = maxy;
 
-		if (reserved_rows != -1)
-			available_rows -= reserved_rows;
+		if (state.reserved_rows != -1)
+			available_rows -= state.reserved_rows;
 
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && maxx >= desc.maxx)
@@ -4708,10 +4374,10 @@ reinit_theme:
 			while (lnb_row < lnb->nrows)
 				printf("%s\n", lnb->rows[lnb_row++]);
 
-			if (logfile)
+			if (state.logfile)
 			{
-				print_log_prefix(logfile);
-				fprintf(logfile, "ncurses ended and quit due quit_if_one_screen option\n");
+				print_log_prefix(state.logfile);
+				fprintf(state.logfile, "ncurses ended and quit due quit_if_one_screen option\n");
 			}
 
 			return 0;
@@ -5101,7 +4767,8 @@ reinit_theme:
 										  &handle_timeout,
 										  &handle_file_event,
 										  &reopen_file,
-										  opts.watch_time > 0 ? 1000 : -1);
+										  opts.watch_time > 0 ? 1000 : -1,
+										  state.hold_stream);
 
 force_refresh_data:
 
@@ -5130,16 +4797,16 @@ force_refresh_data:
 						{
 							char *path = tilde(opts.pathname);
 
-							if (fp)
+							if (state.fp)
 							{
 								/* should be strem mode */
 								if (reopen_file)
 								{
-									fclose(fp);
+									fclose(state.fp);
 
 									errno = 0;
-									fp = fopen(path, "r");
-									if (fp == NULL)
+									state.fp = fopen(path, "r");
+									if (state.fp == NULL)
 									{
 										err = strerror(errno);
 										fresh_data = false;
@@ -5148,24 +4815,24 @@ force_refresh_data:
 									{
 										fresh_data = true;
 
-										if (stream_mode)
+										if (state.stream_mode)
 										{
-											fseek(fp, 0, SEEK_END);
-											last_cur_position = ftell(fp);
+											fseek(state.fp, 0, SEEK_END);
+											last_cur_position = ftell(state.fp);
 										}
 									}
 
 									if (is_fifo)
 										/* use nonblock mode */
-										fcntl(fileno(fp), F_SETFL, O_NONBLOCK);
+										fcntl(fileno(state.fp), F_SETFL, O_NONBLOCK);
 								}
 								else
 								{
-									clearerr(fp);
+									clearerr(state.fp);
 									fresh_data = true;
 								}
 
-								fp2 = fp;
+								fp2 = state.fp;
 							}
 							else
 							{
@@ -5193,9 +4860,9 @@ force_refresh_data:
 								/* returns false when format is broken */
 								fresh_data = read_and_format(fp2, &opts, &desc2, &err);
 							else
-								fresh_data = readfile(fp2, &opts, &desc2);
+								fresh_data = readfile(fp2, &opts, &desc2, &state);
 
-							if (!stream_mode)
+							if (!state.stream_mode)
 								fclose(fp2);
 						}
 
@@ -5337,10 +5004,10 @@ force_refresh_data:
 
 #endif
 
-			if (logfile)
+			if (state.logfile)
 			{
-				print_log_prefix(logfile);
-				fprintf(logfile, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
+				print_log_prefix(state.logfile);
+				fprintf(state.logfile, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
 			}
 
 			break;
@@ -5435,10 +5102,10 @@ hide_menu:
 
 #endif
 
-		if (logfile)
+		if (state.logfile)
 		{
-			print_log_prefix(logfile);
-			fprintf(logfile, "process command: %s\n", cmd_string(command));
+			print_log_prefix(state.logfile);
+			fprintf(state.logfile, "process command: %s\n", cmd_string(command));
 		}
 
 		if (command == cmd_Quit)
@@ -7514,10 +7181,10 @@ refresh:
 
 	endwin();
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "ncurses ended\n");
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "ncurses ended\n");
 	}
 
 	active_ncurses = false;
@@ -7535,7 +7202,7 @@ refresh:
 			lnb = lnb->next;
 		}
 	}
-	else if (no_alternate_screen)
+	else if (state.no_alternate_screen)
 	{
 		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,
 				  footer_cursor_col, fix_rows_offset);
@@ -7594,14 +7261,14 @@ refresh:
 #endif
 
 	/* close file in streaming mode */
-	if (fp)
-		fclose(fp);
+	if (state.fp)
+		fclose(state.fp);
 
-	if (logfile)
+	if (state.logfile)
 	{
-		print_log_prefix(logfile);
-		fprintf(logfile, "correct quit\n");
-		fclose(logfile);
+		print_log_prefix(state.logfile);
+		fprintf(state.logfile, "correct quit\n");
+		fclose(state.logfile);
 	}
 
 	return 0;

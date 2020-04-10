@@ -27,6 +27,13 @@
 
 #define MAX_STYLE					20
 
+#define			FILE_NOT_SET		0
+#define			FILE_CSV			1
+#define			FILE_TSV			2
+#define			FILE_MATRIX			3
+
+#define PSPG_VERSION "3.0.2"
+
 typedef struct LineInfo
 {
 	char			mask;
@@ -207,6 +214,28 @@ typedef struct
 	bool	multilines[1024];		/* true if column has multiline row */
 } PrintDataDesc;
 
+/*
+ * holds some temporatl config data
+ */
+typedef struct
+{
+	bool	only_for_tables;
+	bool	no_interactive;
+	bool	interactive;
+	bool	ignore_file_suffix;
+	bool	stream_mode;
+	bool	no_alternate_screen;
+	bool	quit_if_one_screen;
+
+	int		reserved_rows;			/* used by dbcli */
+	int		boot_wait;
+	int		hold_stream;
+	int		file_format_from_suffix;
+
+	FILE   *fp;
+	FILE   *logfile;
+} StateData;
+
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
@@ -215,11 +244,13 @@ extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first
 extern void leave_ncurses(const char *str);
 extern void leave_ncurses2(const char *fmt, const char *str);
 extern void log_writeln(const char *str);
+extern char * tilde(char *path);
 
 extern bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
 extern int min_int(int a, int b);
 extern const char *nstrstr(const char *haystack, const char *needle);
 extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
+extern bool nstreq(const char *str1, const char *str2);
 
 extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str);
 
@@ -238,6 +269,10 @@ extern bool read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char 
 
 /* from pgclient.c */
 extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
+
+/* from buildargv.c */
+extern char **buildargv(const char *input, int *argc, char *appname);
+extern bool readargs(char **argv, int argc, Options *opts, StateData *state, char **err);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

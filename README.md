@@ -70,6 +70,7 @@ This pager can be used from `mysql` and `pgcli` clients too.
 * `-U`, `--username`  database user name
 * `-W`, `--password`  force password prompt
 
+Options can be passed inside env variable `PSPG` too.
 
 ## Themes
 0. black & white
