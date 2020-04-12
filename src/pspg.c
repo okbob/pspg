@@ -4190,6 +4190,14 @@ exit_while_01:
 		return 0;
 	}
 
+	/*
+	 * Note: some shorter but for some environments not working
+	 * fragment:
+	 *
+	 * FILE *f = fopen("/dev/tty", "r+");
+	 * newterm(termname(), f, f);
+	 *
+	 */
 	if (!isatty(fileno(stdin)))
 	{
 		if (freopen("/dev/tty", "r", stdin) != NULL)
