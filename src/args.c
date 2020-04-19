@@ -306,7 +306,7 @@ readargs(char **argv,
 					fprintf(stderr, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 					fprintf(stderr, "  --quit-on-f3             exit on F3 like mc viewers\n");
 					fprintf(stderr, "  --rr=ROWNUM              rows reserved for specific purposes\n");
-					fprintf(stderr, "  --stream                 input file is read continually\n");
+					fprintf(stderr, "  --stream                 read input forever\n");
 					fprintf(stderr, "  -X                       don't use alternate screen\n");
 					fprintf(stderr, "\nOutput format options:\n");
 					fprintf(stderr, "  -a                       force ascii\n");

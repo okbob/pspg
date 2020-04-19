@@ -3981,8 +3981,13 @@ main(int argc, char *argv[])
 
 		}
 
-		fseek(state.fp, 0, SEEK_END);
-		last_cur_position = ftell(state.fp);
+		if (state.fp)
+		{
+			fseek(state.fp, 0, SEEK_END);
+			last_cur_position = ftell(state.fp);
+		}
+		else
+			fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
 	}
 
 	if (state.no_interactive && state.interactive)
@@ -4198,7 +4203,32 @@ exit_while_01:
 	 * newterm(termname(), f, f);
 	 *
 	 */
-	if (!isatty(fileno(stdin)))
+	if (!state.fp && state.stream_mode)
+	{
+		/*
+		 * Try to protect current stdin, when input is stdin and user
+		 * want to stream mode. In this case try to open new tty stream
+		 * and start new ncurses terminal with specified input stream.
+		 */
+		state.tty = fopen("/dev/tty", "r+");
+		if (!state.tty)
+			state.tty = fopen(ttyname(fileno(stdout)), "r");
+
+		if (!state.tty)
+		{
+			if (!isatty(fileno(stderr)))
+			{
+				fprintf(stderr, "missing a access to terminal device\n");
+				exit(EXIT_FAILURE);
+			}
+
+			state.tty = stderr;
+		}
+
+		/* quiet compiler */
+		noatty = false;
+	}
+	else if (!isatty(fileno(stdin)))
 	{
 		if (freopen("/dev/tty", "r", stdin) != NULL)
 			noatty = false;
@@ -4226,7 +4256,10 @@ exit_while_01:
 	signal(SIGINT, SigintHandler);
 	atexit(exit_ncurses);
 
-	if (noatty)
+	if (state.tty)
+		/* use created tty device for input */
+		term = newterm(termname(), stdout, state.tty);
+	else if (noatty)
 		/* use stderr like stdin. This is fallback solution used by less */
 		term = newterm(termname(), stdout, stderr);
 	else
@@ -4255,6 +4288,13 @@ exit_while_01:
 			fds[1].fd = inotify_fd;
 			fds[1].events = POLLIN;
 		}
+	}
+	else if (state.stream_mode)
+	{
+		fds[0].fd = fileno(state.tty);
+		fds[0].events = POLLIN;
+		fds[1].fd = fileno(stdin);
+		fds[1].events = POLLIN;
 	}
 
 	if (state.logfile)
@@ -4782,7 +4822,7 @@ force_refresh_data:
 
 				if (force_refresh ||
 					opts.watch_time ||
-					(opts.watch_file && handle_file_event))
+					((opts.watch_file || state.stream_mode) && handle_file_event))
 				{
 					long	ms;
 					time_t	sec;
@@ -4793,7 +4833,7 @@ force_refresh_data:
 
 					if (force_refresh ||
 						(ct > next_watch && !paused) ||
-						(opts.watch_file && handle_file_event))
+						((opts.watch_file || state.stream_mode) && handle_file_event))
 					{
 						FILE	   *fp2 = NULL;
 						DataDesc	desc2;
@@ -4858,8 +4898,11 @@ force_refresh_data:
 						else if (opts.query)
 							fresh_data = true;
 						else
-							/* We cannot to repeat read from stdin */
-							fresh_data = false;
+							/*
+							 * When we have a stream mode without watch file,
+							 * then we can read more times from stdin.
+							 */
+							fresh_data = state.stream_mode;
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -7271,6 +7314,15 @@ refresh:
 	/* close file in streaming mode */
 	if (state.fp)
 		fclose(state.fp);
+
+	if (state.tty)
+	{
+		/* stream mode against stdin */
+		fclose(state.tty);
+
+		/* close input too, send signal to producent */
+		fclose(stdin);
+	}
 
 	if (state.logfile)
 	{

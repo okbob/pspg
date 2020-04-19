@@ -232,8 +232,9 @@ typedef struct
 	int		hold_stream;
 	int		file_format_from_suffix;
 
-	FILE   *fp;
-	FILE   *logfile;
+	FILE   *fp;						/* data input stream */
+	FILE   *logfile;				/* log output stream */
+	FILE   *tty;					/* ncurses stream */
 } StateData;
 
 /* from print.c */
