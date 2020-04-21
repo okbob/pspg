@@ -4532,7 +4532,6 @@ force_refresh_data:
 						(ct > next_watch && !paused) ||
 						((opts.watch_file || state.stream_mode) && handle_file_event))
 					{
-						FILE	   *fp2 = NULL;
 						DataDesc	desc2;
 						bool		fresh_data = false;
 
@@ -4546,51 +4545,18 @@ force_refresh_data:
 								if (reopen_file)
 								{
 									fclose(state.fp);
+									state.fp = NULL;
 
-									errno = 0;
-									state.fp = fopen(state.pathname, "r");
-									if (state.fp == NULL)
-									{
-										strcpy(pspg_errstr_buffer, strerror(errno));
-										state.errstr = pspg_errstr_buffer;
-										fresh_data = false;
-									}
-									else
-									{
-										fresh_data = true;
-
-										if (state.stream_mode)
-										{
-											fseek(state.fp, 0, SEEK_END);
-											state.last_position = ftell(state.fp);
-										}
-									}
-
-									if (state.is_fifo)
-										/* use nonblock mode */
-										fcntl(fileno(state.fp), F_SETFL, O_NONBLOCK);
+									fresh_data = open_data_file(&opts, &state, true);
 								}
 								else
 								{
 									clearerr(state.fp);
 									fresh_data = true;
 								}
-
-								fp2 = state.fp;
 							}
 							else
-							{
-								errno = 0;
-								fp2 = fopen(state.pathname, "r");
-								if (fp2 == NULL)
-								{
-									strcpy(pspg_errstr_buffer, strerror(errno));
-									state.errstr = pspg_errstr_buffer;
-									fresh_data = false;
-								}
-								else
-									fresh_data = true;
-							}
+								fresh_data = open_data_file(&opts, &state, false);
 						}
 						else if (opts.query)
 							fresh_data = true;
@@ -4611,7 +4577,10 @@ force_refresh_data:
 								fresh_data = readfile(&opts, &desc2, &state);
 
 							if (!state.stream_mode)
-								fclose(fp2);
+							{
+								fclose(state.fp);
+								state.fp = NULL;
+							}
 						}
 
 						/* when we have fresh data */
