@@ -202,7 +202,7 @@ open_data_file(Options *opts, StateData *state)
 		state->is_blocking = !(fcntl(fileno(state->fp), F_GETFL) & O_NONBLOCK);
 	}
 
-	if (opts->stream_mode && state->is_fifo)
+	if (state->stream_mode && state->is_fifo)
 		state->fds[1].fd = fileno(state->fp);
 
 	return true;
