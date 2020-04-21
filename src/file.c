@@ -159,7 +159,11 @@ open_data_file(Options *opts, StateData *state, bool reopen)
 		 * stream with write acess. Then POLLHUP signal is never raised.
 		 */
 		if (state->is_fifo && !state->is_pipe && state->hold_stream == 2)
-			freopen(NULL, "a+", state->fp);
+		{
+			state->fp = freopen(NULL, "a+", state->fp);
+			if (!state->fp)
+				leave("cannot to reopen file \"%s\" to hold stream (%s)", state->pathname, strerror(errno));
+		}
 
 		if (state->stream_mode)
 		{
