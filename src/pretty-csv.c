@@ -126,7 +126,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave_ncurses("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output\n");
 	}
 
 	memcpy(printbuf->buffer + printbuf->used, str, size);
@@ -158,7 +158,7 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave_ncurses("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output\n");
 	}
 
 	while (n--)
@@ -186,7 +186,7 @@ pb_putc(PrintbufType *printbuf, char c)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave_ncurses("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output\n");
 	}
 
 	printbuf->free -= 1;
@@ -216,7 +216,7 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave_ncurses("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output\n");
 	}
 
 	memset(printbuf->buffer + printbuf->used, c, n);
@@ -695,7 +695,7 @@ append_char(LinebufType *linebuf, char c)
 		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
 
 		if (!linebuf->buffer)
-			leave_ncurses("out of memory while read csv or tsv data\n");
+			leave("out of memory while read csv or tsv data\n");
 	}
 
 	linebuf->buffer[linebuf->used++] = c;
@@ -715,7 +715,7 @@ append_str(LinebufType *linebuf, char *str)
 		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
 
 		if (!linebuf->buffer)
-			leave_ncurses("out of memory while read csv or tsv data\n");
+			leave("out of memory while read csv or tsv data\n");
 	}
 
 	while (*str)
@@ -1143,16 +1143,10 @@ read_csv(RowBucketType *rb,
 			if (sep != -1 && c == sep && !instr)
 			{
 				if (nfields >= 1024)
-				{
-					fprintf(stderr, "too much columns");
-					exit(EXIT_FAILURE);
-				}
+					leave("too much columns");
 
 				if (skip_initial)
-				{
-					fprintf(stderr, "internal error - unexpected value of variable: \"skip_initial\"\n");
-					exit(EXIT_FAILURE);
-				}
+					leave("internal error - unexpected value of variable: \"skip_initial\"");
 
 				if (last_nw - first_nw > 0 || found_string || nullstr_size == 0)
 				{
@@ -1189,7 +1183,7 @@ read_csv(RowBucketType *rb,
 					c = fgetc(ifile);
 					if (c == EOF)
 					{
-						log_writeln("unexpected quit, broken unicode char\n");
+						log_row("unexpected quit, broken unicode char");
 						break;
 					}
 
@@ -1309,7 +1303,7 @@ next_char:
  *
  */
 bool
-read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
+read_and_format(Options *opts, DataDesc *desc, StateData *state)
 {
 	LinebufType		linebuf;
 	RowBucketType	rowbuckets, *rb;
@@ -1319,22 +1313,8 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 
 	memset(desc, 0, sizeof(DataDesc));
 
-	if (!opts->query)
-	{
-		if (fp != NULL)
-		{
-			if (opts->pathname != NULL)
-			{
-				char	   *name;
-
-				name = basename(opts->pathname);
-				strncpy(desc->filename, name, 64);
-				desc->filename[64] = '\0';
-			}
-		}
-		else
-			fp = stdin;
-	}
+	state->errstr = NULL;
+	state->_errno = 0;
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1377,7 +1357,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 
 	if (opts->query)
 	{
-		if (!pg_exec_query(opts, &rowbuckets, &pdesc, err))
+		if (!pg_exec_query(opts, &rowbuckets, &pdesc, &state->errstr))
 			return false;
 	}
 	else if (opts->csv_format)
@@ -1386,7 +1366,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 				 &linebuf,
 				 opts->csv_separator,
 				 opts->force8bit,
-				 fp, opts->ignore_short_rows,
+				 state->fp, opts->ignore_short_rows,
 				 opts->nullstr);
 
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
@@ -1396,7 +1376,7 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 		read_tsv(&rowbuckets,
 				 &linebuf,
 				 opts->force8bit,
-				 fp,
+				 state->fp,
 				 opts->ignore_short_rows,
 				 opts->nullstr);
 
@@ -1594,8 +1574,6 @@ read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err)
 			free(rb);
 		rb = nextrb;
 	}
-
-	*err = NULL;
 
 	return true;
 }

@@ -25,9 +25,9 @@
 #include <ncurses/ncurses.h>
 #endif
 
-#include <ctype.h>
+//#include <ctype.h>
 #include <errno.h>
-#include <fcntl.h>
+#include <fcntl.h> /* ToDo */
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -99,11 +99,6 @@
 #endif
 #endif
 
-/* GNU Hurd does not define MAXPATHLEN */
-#ifndef MAXPATHLEN
-#define MAXPATHLEN 4096
-#endif
-
 #ifdef HAVE_LIBREADLINE
 
 static char		readline_buffer[1024];
@@ -147,23 +142,18 @@ static MEVENT		event;
 static long	last_watch_ms = 0;
 static time_t	last_watch_sec = 0;					/* time when we did last refresh */
 static bool	paused = false;							/* true, when watch mode is paused */
-static const char *err = NULL;
 
-static bool active_ncurses = false;
-
-static int inotify_fd = -1;							/* inotify file descriptor for accessing API */
-static int inotify_wd = -1;							/* file descriptor of monitored file */
-static struct pollfd fds[2];
-static bool is_fifo = false;
-long int last_cur_position = -1;
+bool active_ncurses = false;
 
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
-static void print_log_prefix(FILE *logfile);
 
-int		named_pipe_fd = 0;
+StateData *current_state = NULL;
 
-static StateData *current_state = NULL;
+/*
+ * Global error buffer - used for building and storing a error messages
+ */
+char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
 static void
 SigintHandler(int sig_num)
@@ -175,58 +165,10 @@ SigintHandler(int sig_num)
 	handle_sigint = true;
 }
 
-int
+inline int
 min_int(int a, int b)
 {
-	if (a < b)
-		return a;
-	else
-		return b;
-}
-
-/*
- * Prints error message and stops application
- */
-void
-leave_ncurses(const char *str)
-{
-	if (active_ncurses)
-		endwin();
-
-	fprintf(stderr, "%s\n", str);
-	if (current_state && current_state->logfile)
-	{
-		print_log_prefix(current_state->logfile);
-		fprintf(current_state->logfile, "leave ncurses: %s\n", str);
-	}
-
-	exit(EXIT_FAILURE);
-}
-
-void
-leave_ncurses2(const char *fmt, const char *str)
-{
-	if (active_ncurses)
-		endwin();
-
-	fprintf(stderr, fmt, str);
-	if (current_state && current_state->logfile)
-	{
-		print_log_prefix(current_state->logfile);
-		fprintf(current_state->logfile, fmt, str);
-	}
-
-	exit(EXIT_FAILURE);
-}
-
-inline void
-log_writeln(const char *str)
-{
-	if (current_state && current_state->logfile)
-	{
-		print_log_prefix(current_state->logfile);
-		fprintf(current_state->logfile, "%s\n", str);
-	}
+	return a < b ? a : b;
 }
 
 static void
@@ -442,387 +384,6 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 	return result;
 }
 
-/*
- * Translate from UTF8 to semantic characters.
- */
-static bool
-translate_headline(Options *opts, DataDesc *desc)
-{
-	char   *srcptr;
-	char   *destptr;
-	char   *last_black_char = NULL;
-	bool	broken_format = false;
-	int		processed_chars = 0;
-	bool	is_expanded_info = false;
-	bool	force8bit = opts->force8bit;
-
-	srcptr = desc->headline;
-	destptr = malloc(desc->headline_size + 2);
-	if (!destptr)
-	{
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-
-	memset(destptr, 0, desc->headline_size + 2);
-	desc->headline_transl = destptr;
-
-	desc->linestyle = 'a';
-	desc->border_type = 0;
-
-	desc->expanded_info_minx = -1;
-
-	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
-	{
-		/* only spaces can be after known right border */
-		if (last_black_char != NULL && *last_black_char == 'R')
-		{
-			if (*srcptr != ' ')
-			{
-				broken_format = true;
-				break;
-			}
-		}
-
-		if (*srcptr != ' ')
-			last_black_char = destptr;
-
-		if (desc->is_expanded_mode && *srcptr == '[')
-		{
-			if (desc->expanded_info_minx != -1)
-			{
-				broken_format = true;
-				break;
-			}
-
-			/* entry to expanded info mode */
-			is_expanded_info = true;
-			desc->expanded_info_minx = processed_chars;
-
-			*destptr++ = 'd';
-			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
-		}
-		else if (is_expanded_info)
-		{
-			if (*srcptr == ']')
-			{
-				is_expanded_info = false;
-			}
-			*destptr++ = 'd';
-			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
-		}
-		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
-				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
-		{
-			/* should be expanded mode */
-			if (processed_chars > 0 || !desc->is_expanded_mode)
-			{
-				broken_format = true;
-				break;
-			}
-			desc->linestyle = 'u';
-			desc->border_type = 2;
-			*destptr++ = 'L';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\220", 3) == 0 || /* ┐ */
-				 strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
-		{
-			if (desc->linestyle != 'u' || desc->border_type != 2 ||
-				!desc->is_expanded_mode)
-			{
-				broken_format = true;
-				break;
-			}
-			*destptr++ = 'R';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\254", 3) == 0 || /* ┬╤ */
-				 strncmp(srcptr, "\342\225\244", 3) == 0 ||
-				 strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
-				 strncmp(srcptr, "\342\225\246", 3) == 0)
-		{
-			if (desc->linestyle != 'u' || !desc->is_expanded_mode)
-			{
-				broken_format = true;
-				break;
-			}
-			if (desc->border_type == 0)
-				desc->border_type = 1;
-
-			*destptr++ = 'I';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
-				 strncmp(srcptr, "\342\225\237", 3) == 0 ||
-				 strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
-				 strncmp(srcptr, "\342\225\240", 3) == 0)
-		{
-			if (processed_chars > 0)
-			{
-				broken_format = true;
-				break;
-			}
-			desc->linestyle = 'u';
-			desc->border_type = 2;
-			*destptr++ = 'L';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\244", 3) == 0 || /* ┤╢ */
-				 strncmp(srcptr, "\342\225\242", 3) == 0 ||
-				 strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
-				 strncmp(srcptr, "\342\225\243", 3) == 0)
-		{
-			if (desc->linestyle != 'u' || desc->border_type != 2)
-			{
-				broken_format = true;
-				break;
-			}
-			*destptr++ = 'R';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\274", 3) == 0 || /* ┼╪ */
-				 strncmp(srcptr, "\342\225\252", 3) == 0 ||
-				 strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
-				 strncmp(srcptr, "\342\225\254", 3) == 0)
-		{
-			if (desc->linestyle != 'u')
-			{
-				broken_format = true;
-				break;
-			}
-			if (desc->border_type == 0)
-				desc->border_type = 1;
-			*destptr++ = 'I';
-			srcptr += 3;
-		}
-		else if (strncmp(srcptr, "\342\224\200", 3) == 0 || /* ─ */
-				 strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
-		{
-			if (processed_chars == 0)
-			{
-				desc->linestyle = 'u';
-			}
-			else if (desc->linestyle != 'u')
-			{
-				broken_format = true;
-				break;
-			}
-			*destptr++ = 'd';
-			srcptr += 3;
-		}
-		else if (*srcptr == '+')
-		{
-			if (processed_chars == 0)
-			{
-				*destptr++ = 'L';
-				desc->linestyle = 'a';
-				desc->border_type = 2;
-			}
-			else
-			{
-				if (desc->linestyle != 'a')
-				{
-					broken_format = true;
-					break;
-				}
-				if (desc->border_type == 0)
-					desc->border_type = 1;
-
-				*destptr++ = (srcptr[1] == '-') ? 'I' : 'R';
-			}
-			srcptr += 1;
-		}
-		else if (*srcptr == '-')
-		{
-			if (processed_chars == 0)
-			{
-				desc->linestyle = 'a';
-			}
-			else if (desc->linestyle != 'a')
-			{
-				broken_format = true;
-				break;
-			}
-			*destptr++ = 'd';
-			srcptr += 1;
-		}
-		else if (*srcptr == '|')
-		{
-			if (processed_chars == 0 && srcptr[1] == '-')
-			{
-				*destptr++ = 'L';
-				desc->linestyle = 'a';
-				desc->border_type = 2;
-				desc->is_pgcli_fmt = true;
-			}
-			else if (processed_chars > 0 && desc->is_pgcli_fmt && srcptr[-1] == '-')
-			{
-				*destptr++ = 'R';
-			}
-			else
-			{
-				broken_format = true;
-				break;
-			}
-			srcptr += 1;
-		}
-		else if (*srcptr == ' ')
-		{
-			if (desc->border_type != 0)
-			{
-				broken_format = true;
-				break;
-			}
-			*destptr++ = 'I';
-			srcptr += 1;
-		}
-		else
-		{
-			broken_format = true;
-			break;
-		}
-		processed_chars += 1;
-	}
-
-	/* should not be - unclosed header */
-	if (is_expanded_info)
-		broken_format = true;
-	else if (desc->is_expanded_mode && desc->expanded_info_minx == -1)
-		broken_format = true;
-
-	if (!broken_format)
-	{
-		char	   *namesline = desc->namesline;
-		char	   *first_char = NULL;				/* first non space char of column name */
-		int			offset;
-		char	   *ptr;
-		int			i;
-
-		/* Move right corner more right */
-		if (desc->border_type == 0)
-		{
-			last_black_char[0] = 'd';
-			last_black_char[1] = 'R';
-			last_black_char[3] = '\0';
-		}
-
-		/* trim ending spaces */
-		else if (last_black_char != 0)
-		{
-			last_black_char[1] = '\0';
-		}
-
-		desc->headline_char_size = strlen(desc->headline_transl);
-
-		desc->columns = 1;
-
-		ptr = desc->headline_transl;
-		while (*ptr)
-		{
-			if (*ptr++ == 'I')
-				desc->columns += 1;
-		}
-
-		desc->cranges = malloc(desc->columns * sizeof(CRange));
-		if (!desc->cranges)
-		{
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-
-		i = 0; offset = 0;
-		ptr = desc->headline_transl;
-		desc->cranges[0].xmin = 0;
-		desc->cranges[0].name_pos = -1;
-		desc->cranges[0].name_size = -1;
-
-		while (*ptr)
-		{
-			char	   *nextchar = NULL;
-			int			display_width;
-
-			if (namesline)
-			{
-				/* invalidate namesline if there are not good enough chars */
-				if (!*namesline)
-				{
-					namesline = NULL;
-					nextchar = NULL;
-				}
-				else
-					nextchar = namesline + (opts->force8bit ? 1 : utf8charlen(*namesline));
-			}
-
-			if (*ptr == 'I')
-			{
-				desc->cranges[i++].xmax = offset;
-				desc->cranges[i].xmin = offset;
-				desc->cranges[i].name_pos = -1;
-				desc->cranges[i].name_size = -1;
-			}
-			else if (*ptr == 'd')
-			{
-				if (namesline && *namesline != ' ')
-				{
-					if (desc->cranges[i].name_pos == -1)
-					{
-						first_char = namesline;
-						desc->cranges[i].name_pos = namesline - desc->namesline;
-						desc->cranges[i].name_size = nextchar - namesline;
-						first_char = namesline;
-					}
-					else
-						desc->cranges[i].name_size = nextchar - first_char;
-				}
-			}
-
-			/* possibly some chars can hold more display possitions */
-			if (namesline)
-			{
-				display_width = utf_dsplen(namesline);
-				namesline = nextchar;
-			}
-			else
-				display_width = 1;
-
-			offset += display_width;
-			ptr += display_width;
-		}
-
-		desc->cranges[i].xmax = offset - 1;
-
-		if (!namesline)
-			desc->namesline = NULL;
-
-		/*
-		 * New PostgreSQL system tables contains visible oid columns. I would to
-		 * detect this situation and increase by one default freezed columns. So
-		 * second column (with name) will be freezed by default too.
-		 */
-		if (desc->namesline && desc->columns >= 2)
-		{
-			if (desc->cranges[0].name_size == 3 &&
-					nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_pos,
-									   desc->cranges[0].name_size,
-									   "oid",
-									   3))
-			{
-				if (desc->cranges[1].name_size > 4 &&
-						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_pos + desc->cranges[1].name_size - 4,
-										   4, "name", 4))
-					desc->oid_name_table = true;
-			}
-		}
-
-		return true;
-	}
-
-	free(desc->headline_transl);
-	desc->headline_transl = NULL;
-
-	return false;
-}
 
 /*
  * Cut text from column and translate it to number.
@@ -881,7 +442,7 @@ cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **res
 
 			cstr = strndup(_str, after_last_nospc - _str);
 			if (!cstr)
-				leave_ncurses("out of memory");
+				leave("out of memory");
 
 			if (force8bit)
 			{
@@ -908,7 +469,7 @@ cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **res
 					dynbuf_size = size + 1;
 					dynbuf = malloc(dynbuf_size);
 					if (!dynbuf)
-						leave_ncurses("out of memory");
+						leave("out of memory");
 
 					errno = 0;
 					size = strxfrm(dynbuf, cstr, dynbuf_size);
@@ -927,7 +488,7 @@ cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **res
 			{
 				dynbuf = strdup(buffer);
 				if (!dynbuf)
-					leave_ncurses("out of memory");
+					leave("out of memory");
 			}
 
 			*result = dynbuf;
@@ -1027,7 +588,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 						{
 							_nullstr = malloc(len + 1);
 							if (!_nullstr)
-								leave_ncurses("out of memory");
+								leave("out of memory");
 
 							memcpy(_nullstr, saved_str, len);
 							_nullstr[len] = '\0';
@@ -1526,7 +1087,6 @@ is_cmdtag(char *str)
 	return false;
 }
 
-
 #define STATBUF_SIZE		(10 * 1024)
 
 static size_t
@@ -1630,8 +1190,7 @@ endline_exit:
 					rc = poll(fds, 1, -1);
 					if (rc == -1)
 					{
-						if (current_state && current_state->logfile)
-							fprintf(current_state->logfile, "POLL error\n");
+						log_row("poll error (%s)",  strerror(errno));
 
 						usleep(1000);
 					}
@@ -1655,15 +1214,13 @@ endline_exit:
  * Read data from file and fill DataDesc.
  */
 static bool
-readfile(FILE *fp, Options *opts, DataDesc *desc, StateData *state)
+readfile(Options *opts, DataDesc *desc, StateData *state)
 {
 	char	   *line = NULL;
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
 	LineBuffer *rows;
-	bool		is_blocking;
-	bool		save_position = false;
 
 #ifdef DEBUG_PIPE
 
@@ -1674,73 +1231,6 @@ readfile(FILE *fp, Options *opts, DataDesc *desc, StateData *state)
 	current_time(&start_sec, &start_ms);
 
 #endif
-
-	/* safe reset */
-	desc->filename[0] = '\0';
-
-	if (fp != NULL)
-	{
-		if (opts->pathname != NULL)
-		{
-			char	   *name;
-
-			name = basename(opts->pathname);
-			strncpy(desc->filename, name, 64);
-			desc->filename[64] = '\0';
-		}
-	}
-	else
-		fp = stdin;
-
-	is_blocking = !(fcntl(fileno(fp), F_GETFL) & O_NONBLOCK);
-
-	clearerr(fp);
-
-	/* detection truncating */
-	if (state->stream_mode && opts->watch_file && !is_fifo)
-	{
-		if (last_cur_position != -1)
-		{
-			struct stat stats;
-
-			if (fstat(fileno(fp), &stats) != 0)
-			{
-				if (current_state && current_state->logfile)
-				{
-					print_log_prefix(current_state->logfile);
-					fprintf(current_state->logfile, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
-
-#ifdef DEBUG_PIPE
-
-					fprintf(debug_pipe, "cannot to stat file: %s (%s)\n", opts->pathname, strerror(errno));
-
-#endif
-
-				}
-			}
-			else
-			{
-				if (stats.st_size < last_cur_position)
-				{
-					if (current_state && current_state->logfile)
-					{
-						print_log_prefix(current_state->logfile);
-						fprintf(current_state->logfile, "file truncated: %s\n", opts->pathname);
-					}
-
-#ifdef DEBUG_PIPE
-
-					fprintf(debug_pipe, "file truncated\n");
-
-#endif
-
-					fseek(fp, 0L, SEEK_SET);
-				}
-			}
-		}
-
-		save_position = true;
-	}
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1769,8 +1259,41 @@ readfile(FILE *fp, Options *opts, DataDesc *desc, StateData *state)
 	desc->oid_name_table = false;
 	desc->multilines_already_tested = false;
 
+	/* safe reset */
+	desc->filename[0] = '\0';
+	state->errstr = NULL;
+	//state->errno = 0;
+
+	if (opts->pathname != NULL)
+	{
+		char	   *name;
+
+		name = basename(opts->pathname);
+		strncpy(desc->filename, name, 64);
+		desc->filename[64] = '\0';
+	}
+
+	clearerr(state->fp);
+
+	/* detection truncating */
+	if (state->detect_truncation)
+	{
+		struct stat stats;
+
+		if (fstat(fileno(state->fp), &stats) == 0)
+		{
+			if (stats.st_size < state->last_position)
+			{
+				log_row("file \"%s\" was truncated", opts->pathname);
+				fseek(state->fp,0L, SEEK_SET);
+			}
+		}
+		else
+			log_row("cannot to stat file: %s (%s)", opts->pathname, strerror(errno));
+	}
+
 	errno = 0;
-	read = _getline(&line, &len, fp, is_blocking, false);
+	read = _getline(&line, &len, state->fp, state->is_blocking, false);
 	if (read == -1)
 		return false;
 
@@ -1802,10 +1325,7 @@ readfile(FILE *fp, Options *opts, DataDesc *desc, StateData *state)
 		{
 			LineBuffer *newrows = malloc(sizeof(LineBuffer));
 			if (!newrows)
-			{
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
-			}
+				leave("out of memory");
 
 			memset(newrows, 0, sizeof(LineBuffer));
 			rows->next = newrows;
@@ -1884,24 +1404,18 @@ next_row:
 
 		line = NULL;
 
-		read = _getline(&line, &len, fp, is_blocking, true);
+		read = _getline(&line, &len, state->fp, state->is_blocking, true);
 	} while (read != -1);
-
-	if (save_position)
-		last_cur_position = ftell(fp);
 
 	if (errno && errno != EAGAIN)
 	{
-
-#ifdef DEBUG_PIPE
-
-		fprintf(stderr, "cannot to read file: %s\n", strerror(errno));
-
-#endif
+		log_row("cannot to read from file (%s)", strerror(errno));
 
 		return false;
-
 	}
+
+	if (state->detect_truncation)
+		state->last_position = ftell(state->fp);
 
 	desc->total_rows = nrows;
 
@@ -1956,11 +1470,389 @@ next_row:
 #endif
 
 	/* clean event buffer */
-	if (inotify_fd >= 0)
-		lseek(inotify_fd, 0, SEEK_END);
+	if (state->inotify_fd >= 0)
+		lseek(state->inotify_fd, 0, SEEK_END);
 
 	return true;
 }
+
+
+/*
+ * Translate from UTF8 to semantic characters.
+ */
+static bool
+translate_headline(Options *opts, DataDesc *desc)
+{
+	char   *srcptr;
+	char   *destptr;
+	char   *last_black_char = NULL;
+	bool	broken_format = false;
+	int		processed_chars = 0;
+	bool	is_expanded_info = false;
+	bool	force8bit = opts->force8bit;
+
+	srcptr = desc->headline;
+	destptr = malloc(desc->headline_size + 2);
+	if (!destptr)
+		leave("Out of memory");
+
+	memset(destptr, 0, desc->headline_size + 2);
+	desc->headline_transl = destptr;
+
+	desc->linestyle = 'a';
+	desc->border_type = 0;
+
+	desc->expanded_info_minx = -1;
+
+	while (*srcptr != '\0' && *srcptr != '\n' && *srcptr != '\r')
+	{
+		/* only spaces can be after known right border */
+		if (last_black_char != NULL && *last_black_char == 'R')
+		{
+			if (*srcptr != ' ')
+			{
+				broken_format = true;
+				break;
+			}
+		}
+
+		if (*srcptr != ' ')
+			last_black_char = destptr;
+
+		if (desc->is_expanded_mode && *srcptr == '[')
+		{
+			if (desc->expanded_info_minx != -1)
+			{
+				broken_format = true;
+				break;
+			}
+
+			/* entry to expanded info mode */
+			is_expanded_info = true;
+			desc->expanded_info_minx = processed_chars;
+
+			*destptr++ = 'd';
+			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
+		}
+		else if (is_expanded_info)
+		{
+			if (*srcptr == ']')
+			{
+				is_expanded_info = false;
+			}
+			*destptr++ = 'd';
+			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
+		}
+		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
+				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
+		{
+			/* should be expanded mode */
+			if (processed_chars > 0 || !desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			desc->linestyle = 'u';
+			desc->border_type = 2;
+			*destptr++ = 'L';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\220", 3) == 0 || /* ┐ */
+				 strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
+		{
+			if (desc->linestyle != 'u' || desc->border_type != 2 ||
+				!desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'R';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\254", 3) == 0 || /* ┬╤ */
+				 strncmp(srcptr, "\342\225\244", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
+				 strncmp(srcptr, "\342\225\246", 3) == 0)
+		{
+			if (desc->linestyle != 'u' || !desc->is_expanded_mode)
+			{
+				broken_format = true;
+				break;
+			}
+			if (desc->border_type == 0)
+				desc->border_type = 1;
+
+			*destptr++ = 'I';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
+				 strncmp(srcptr, "\342\225\237", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
+				 strncmp(srcptr, "\342\225\240", 3) == 0)
+		{
+			if (processed_chars > 0)
+			{
+				broken_format = true;
+				break;
+			}
+			desc->linestyle = 'u';
+			desc->border_type = 2;
+			*destptr++ = 'L';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\244", 3) == 0 || /* ┤╢ */
+				 strncmp(srcptr, "\342\225\242", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
+				 strncmp(srcptr, "\342\225\243", 3) == 0)
+		{
+			if (desc->linestyle != 'u' || desc->border_type != 2)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'R';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\274", 3) == 0 || /* ┼╪ */
+				 strncmp(srcptr, "\342\225\252", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
+				 strncmp(srcptr, "\342\225\254", 3) == 0)
+		{
+			if (desc->linestyle != 'u')
+			{
+				broken_format = true;
+				break;
+			}
+			if (desc->border_type == 0)
+				desc->border_type = 1;
+			*destptr++ = 'I';
+			srcptr += 3;
+		}
+		else if (strncmp(srcptr, "\342\224\200", 3) == 0 || /* ─ */
+				 strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
+		{
+			if (processed_chars == 0)
+			{
+				desc->linestyle = 'u';
+			}
+			else if (desc->linestyle != 'u')
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'd';
+			srcptr += 3;
+		}
+		else if (*srcptr == '+')
+		{
+			if (processed_chars == 0)
+			{
+				*destptr++ = 'L';
+				desc->linestyle = 'a';
+				desc->border_type = 2;
+			}
+			else
+			{
+				if (desc->linestyle != 'a')
+				{
+					broken_format = true;
+					break;
+				}
+				if (desc->border_type == 0)
+					desc->border_type = 1;
+
+				*destptr++ = (srcptr[1] == '-') ? 'I' : 'R';
+			}
+			srcptr += 1;
+		}
+		else if (*srcptr == '-')
+		{
+			if (processed_chars == 0)
+			{
+				desc->linestyle = 'a';
+			}
+			else if (desc->linestyle != 'a')
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'd';
+			srcptr += 1;
+		}
+		else if (*srcptr == '|')
+		{
+			if (processed_chars == 0 && srcptr[1] == '-')
+			{
+				*destptr++ = 'L';
+				desc->linestyle = 'a';
+				desc->border_type = 2;
+				desc->is_pgcli_fmt = true;
+			}
+			else if (processed_chars > 0 && desc->is_pgcli_fmt && srcptr[-1] == '-')
+			{
+				*destptr++ = 'R';
+			}
+			else
+			{
+				broken_format = true;
+				break;
+			}
+			srcptr += 1;
+		}
+		else if (*srcptr == ' ')
+		{
+			if (desc->border_type != 0)
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'I';
+			srcptr += 1;
+		}
+		else
+		{
+			broken_format = true;
+			break;
+		}
+		processed_chars += 1;
+	}
+
+	/* should not be - unclosed header */
+	if (is_expanded_info)
+		broken_format = true;
+	else if (desc->is_expanded_mode && desc->expanded_info_minx == -1)
+		broken_format = true;
+
+	if (!broken_format)
+	{
+		char	   *namesline = desc->namesline;
+		char	   *first_char = NULL;				/* first non space char of column name */
+		int			offset;
+		char	   *ptr;
+		int			i;
+
+		/* Move right corner more right */
+		if (desc->border_type == 0)
+		{
+			last_black_char[0] = 'd';
+			last_black_char[1] = 'R';
+			last_black_char[3] = '\0';
+		}
+
+		/* trim ending spaces */
+		else if (last_black_char != 0)
+		{
+			last_black_char[1] = '\0';
+		}
+
+		desc->headline_char_size = strlen(desc->headline_transl);
+
+		desc->columns = 1;
+
+		ptr = desc->headline_transl;
+		while (*ptr)
+		{
+			if (*ptr++ == 'I')
+				desc->columns += 1;
+		}
+
+		desc->cranges = malloc(desc->columns * sizeof(CRange));
+		if (!desc->cranges)
+			leave("out of memory");
+
+		i = 0; offset = 0;
+		ptr = desc->headline_transl;
+		desc->cranges[0].xmin = 0;
+		desc->cranges[0].name_pos = -1;
+		desc->cranges[0].name_size = -1;
+
+		while (*ptr)
+		{
+			char	   *nextchar = NULL;
+			int			display_width;
+
+			if (namesline)
+			{
+				/* invalidate namesline if there are not good enough chars */
+				if (!*namesline)
+				{
+					namesline = NULL;
+					nextchar = NULL;
+				}
+				else
+					nextchar = namesline + (opts->force8bit ? 1 : utf8charlen(*namesline));
+			}
+
+			if (*ptr == 'I')
+			{
+				desc->cranges[i++].xmax = offset;
+				desc->cranges[i].xmin = offset;
+				desc->cranges[i].name_pos = -1;
+				desc->cranges[i].name_size = -1;
+			}
+			else if (*ptr == 'd')
+			{
+				if (namesline && *namesline != ' ')
+				{
+					if (desc->cranges[i].name_pos == -1)
+					{
+						first_char = namesline;
+						desc->cranges[i].name_pos = namesline - desc->namesline;
+						desc->cranges[i].name_size = nextchar - namesline;
+						first_char = namesline;
+					}
+					else
+						desc->cranges[i].name_size = nextchar - first_char;
+				}
+			}
+
+			/* possibly some chars can hold more display possitions */
+			if (namesline)
+			{
+				display_width = utf_dsplen(namesline);
+				namesline = nextchar;
+			}
+			else
+				display_width = 1;
+
+			offset += display_width;
+			ptr += display_width;
+		}
+
+		desc->cranges[i].xmax = offset - 1;
+
+		if (!namesline)
+			desc->namesline = NULL;
+
+		/*
+		 * New PostgreSQL system tables contains visible oid columns. I would to
+		 * detect this situation and increase by one default freezed columns. So
+		 * second column (with name) will be freezed by default too.
+		 */
+		if (desc->namesline && desc->columns >= 2)
+		{
+			if (desc->cranges[0].name_size == 3 &&
+					nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_pos,
+									   desc->cranges[0].name_size,
+									   "oid",
+									   3))
+			{
+				if (desc->cranges[1].name_size > 4 &&
+						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_pos + desc->cranges[1].name_size - 4,
+										   4, "name", 4))
+					desc->oid_name_table = true;
+			}
+		}
+
+		return true;
+	}
+
+	free(desc->headline_transl);
+	desc->headline_transl = NULL;
+
+	return false;
+}
+
 
 /*
  * Prepare order map - it is used for printing data in different than
@@ -1989,7 +1881,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 
 	sortbuf = malloc(desc->total_rows * sizeof(SortData));
 	if (!sortbuf)
-		leave_ncurses("out of memory");
+		leave("out of memory");
 
 	/* first time we should to detect multilines */
 	if (!desc->multilines_already_tested)
@@ -2051,7 +1943,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 						{
 							lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
 							if (lnb->lineinfo == NULL)
-								leave_ncurses("out of memory");
+								leave("out of memory");
 
 							memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 						}
@@ -2075,7 +1967,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	{
 		desc->order_map = malloc(desc->total_rows * sizeof(MappedLine));
 		if (!desc->order_map)
-			leave_ncurses("out of memory");
+			leave("out of memory");
 	}
 
 	/*
@@ -2178,7 +2070,7 @@ sort_by_string:
 	}
 
 	if (lineno != desc->total_rows)
-		leave_ncurses("unexpected processed rows after sort prepare");
+		leave("unexpected processed rows after sort prepare");
 
 	if (detect_string_column)
 		sort_column_text(sortbuf, sortbuf_pos, desc_sort);
@@ -2571,7 +2463,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		(void) maxy;
 
-		wbkgd(top_bar, err ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
+		wbkgd(top_bar, current_state->errstr ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
 		werase(top_bar);
 
 		if (desc->title[0] != '\0' || desc->filename[0] != '\0')
@@ -2609,20 +2501,21 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 					mvwprintw(top_bar, 0, x, "%*ld/%d", w, td/1000 + 1, opts->watch_time);
 			}
 
-			if (err)
+			if (current_state->errstr)
 			{
 				int		i;
 				char   *ptr = buffer;
 
 				/* copy first row to buffer */
 				for (i = 0; i < 200; i++)
-					if (err[i] == '\0' || err[i] == '\n')
+					if (current_state->errstr[i] == '\0' ||
+						current_state->errstr[i] == '\n')
 					{
 						*ptr = '\0';
 						break;
 					}
 					else
-						*ptr++ = err[i];
+						*ptr++ = current_state->errstr[i];
 
 				wprintw(top_bar, "   %s", buffer);
 			}
@@ -2828,7 +2721,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 		{
 			scrdesc->fmt = strdup(fmt);
 			if (!scrdesc->fmt)
-				leave_ncurses("out of memory");
+				leave("out of memory");
 		}
 		else
 			scrdesc->fmt = NULL;
@@ -2837,7 +2730,7 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 		{
 			scrdesc->par = strdup(par);
 			if (!scrdesc->par)
-				leave_ncurses("out of memory");
+				leave("out of memory");
 		}
 		else
 			scrdesc->par = NULL;
@@ -2857,19 +2750,10 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	else
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
 
-	if (current_state && current_state->logfile)
-	{
-		char buffer[1024];
-
-		print_log_prefix(current_state->logfile);
-
-		if (par)
-			snprintf(buffer, 1024, fmt, par);
-		else
-			snprintf(buffer, 1024, "%s", fmt);
-
-		fprintf(current_state->logfile, "info: %s\n", buffer);
-	}
+	if (par)
+		log_row(fmt, par);
+	else
+		log_row(fmt);
 
 	wclrtoeol(bottom_bar);
 	mvwchgat(bottom_bar, 0, 0, -1, att, PAIR_NUMBER(att), 0);
@@ -2984,11 +2868,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	if (current_state && current_state->logfile)
-	{
-		print_log_prefix(current_state->logfile);
-		fprintf(current_state->logfile, "input string prompt- \"%s\"\n", prompt);
-	}
+	log_row("input string prompt - \"%s\"\n", prompt);
 
 #ifdef HAVE_LIBREADLINE
 
@@ -3145,11 +3025,7 @@ finish_read:
 	 */
 	scrdesc->refresh_scr = true;
 
-	if (current_state && current_state->logfile)
-	{
-		print_log_prefix(current_state->logfile);
-		fprintf(current_state->logfile, "input string - \"%s\"\n", buffer);
-	}
+	log_row("input string - \"%s\"\n", buffer);
 }
 
 #define SEARCH_FORWARD			1
@@ -3199,46 +3075,6 @@ reset_searching_lineinfo(LineBuffer *lnb)
 		}
 		lnb = lnb->next;
 	}
-}
-
-/*
- * Replace tilde by HOME dir
- */
-char *
-tilde(char *path)
-{
-	static char	writebuf[MAXPATHLEN];
-	int			chars = 0;
-	char *w;
-
-	w = writebuf;
-
-	while (*path && chars < MAXPATHLEN - 1)
-	{
-		if (*path == '~')
-		{
-			char *home = getenv("HOME");
-
-			if (home == NULL)
-				leave_ncurses("HOME directory is not defined");
-
-			while (*home && chars < MAXPATHLEN - 1)
-			{
-				*w++ = *home++;
-				chars += 1;
-			}
-			path++;
-		}
-		else
-		{
-			*w++ = *path++;
-			chars += 1;
-		}
-	}
-
-	*w = '\0';
-
-	return writebuf;
 }
 
 /*
@@ -3354,7 +3190,7 @@ retry:
 		*timeout = false;
 
 	/* check file event when it is wanted, and when event is available */
-	if (file_event && fds[1].fd != -1)
+	if (file_event && current_state->fds[1].fd != -1)
 	{
 		int		poll_num;
 
@@ -3363,21 +3199,17 @@ retry:
 		if (reopen_file)
 			*reopen_file = false;
 
-		poll_num = poll(fds, 2, timeoutval);
+		poll_num = poll(current_state->fds, 2, timeoutval);
 		if (poll_num == -1)
 		{
-			if (current_state && current_state->logfile)
-			{
-				print_log_prefix(current_state->logfile);
-				fprintf(current_state->logfile, "poll error %s\n", strerror(errno));
-			}
+			log_row("poll error (%s)", strerror(errno));
 		}
 		else if (poll_num > 0)
 		{
 			/* process inotify event, but only when we can process it */
-			if (fds[1].revents)
+			if (current_state->fds[1].revents)
 			{
-				short revents = fds[1].revents;
+				short revents = current_state->fds[1].revents;
 				char		buff[64];
 				ssize_t		len;
 
@@ -3392,14 +3224,15 @@ retry:
 						return 0;
 					}
 					else
-						leave_ncurses("input stream was closed");
+						leave("input stream was closed");
 				}
 
-				if (inotify_fd == -1)
+				/* go out when we don't use inotify */
+				if (current_state->inotify_fd == -1)
 					return 0;
 
 				/* there are a events on monitored file */
-				len = read(inotify_fd, buff, sizeof(buff));
+				len = read(current_state->inotify_fd, buff, sizeof(buff));
 
 				/*
 				 * read to end, it is notblocking IO, only one event and
@@ -3425,7 +3258,7 @@ retry:
 
 #endif
 
-					len = read(inotify_fd, buff, sizeof(buff));
+					len = read(current_state->inotify_fd, buff, sizeof(buff));
 				}
 
 				/*
@@ -3480,7 +3313,7 @@ repeat:
 		 * Leave this cycle if there is some unexpected error.
 		 * Outer cycle is limited by 10 iteration.
 		 */
-		if (err != 0)
+		if (errno != 0)
 			break;
 
 		/*
@@ -3556,32 +3389,12 @@ repeat:
 
 	if (c == ERR)
 	{
-#ifdef DEBUG_PIPE
-
-		fprintf(debug_pipe, "ERR input - retry no: %d\n", retry_count);
-
-#endif
-
-		if (current_state && current_state->logfile)
-		{
-			print_log_prefix(current_state->logfile);
-			fprintf(current_state->logfile, "ERR input - retry no: %d\n", retry_count);
-		}
+		log_row("ERR input - retry no: %d\n", retry_count);
 
 		if (++retry_count < 10)
 			goto retry;
 
-#ifdef DEBUG_PIPE
-
-		fprintf(debug_pipe, "ERR input - touch retry limit, stop\n");
-
-#endif
-
-		if (current_state && current_state->logfile)
-		{
-			print_log_prefix(current_state->logfile);
-			fprintf(current_state->logfile, "ERR input - touch retry limit, stop\n");
-		}
+		log_row("ERR input - touch retry limit, stop");
 	}
 
 	return c;
@@ -3625,24 +3438,6 @@ DataDescFree(DataDesc *desc)
 	free(desc->cranges);
 }
 
-static void
-print_log_prefix(FILE *logfile)
-{
-	time_t		rawtime;
-	struct tm  *timeinfo;
-	const char *asct;
-	int		len;
-
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-
-	asct = asctime(timeinfo);
-	len = strlen(asct);
-
-	fprintf(logfile, "%.*s ", len - 1, asct);
-	fprintf(logfile, "[%ld] ", (long) getpid());
-}
-
 /*
  * Copy persistent data (search related and info box related)
  * to new instance.
@@ -3681,6 +3476,16 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 	return first_row > max_first_row ? max_first_row : first_row;
 }
 
+/*
+ * Available modes for processing input.
+ *
+ *   1. read and close (default)
+ *   2. repeated read and close (timer)
+ *   3. repeated read and close (inotify)
+ *   4. stream read [pipe]
+ *   5. stream read with reopen [fifo]
+ *   6. stream read with reopen and seek to end [file] (inotify)
+ */
 int
 main(int argc, char *argv[])
 {
@@ -3741,9 +3546,8 @@ main(int argc, char *argv[])
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
 
-	char   *argerr = NULL;
 	char   *pspgenv;
-
+	bool	result;
 
 #ifdef DEBUG_PIPE
 
@@ -3757,7 +3561,6 @@ main(int argc, char *argv[])
 	bool		size_is_valid = false;
 	int			ioctl_result;
 	bool		handle_timeout = false;
-	struct stat statbuf;
 
 #ifdef COMPILE_MENU
 
@@ -3821,7 +3624,7 @@ main(int argc, char *argv[])
 	opts.quit_on_f3 = false;
 	opts.no_highlight_lines = false;
 
-	load_config(tilde("~/.pspgconf"), &opts);
+	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
@@ -3839,7 +3642,17 @@ main(int argc, char *argv[])
 	memset(&state, 0, sizeof(state));
 
 	state.reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
-	state.file_format_from_suffix = FILE_NOT_SET;
+	state.file_format_from_suffix = FILE_UNDEF;	/* input file is not defined */
+	state.last_position = -1;					/* unknown position */
+	state.inotify_fd = -1;						/* invalid filedescriptor */
+	state.inotify_wd = -1;						/* invalid file descriptor */
+
+#ifndef HAVE_INOTIFY
+
+	state.has_notify_support = true;
+
+#endif
+
 
 	pspgenv = getenv("PSPG");
 	if (pspgenv)
@@ -3849,43 +3662,43 @@ main(int argc, char *argv[])
 
 		argv2 = buildargv(pspgenv, &argc2, argv[0]);
 
-		argerr = NULL;
-		if (!readargs(argv2, argc2, &opts, &state, &argerr))
-		{
-			if (argerr)
-				fprintf(stderr, "%s\n", argerr);
-			exit(EXIT_FAILURE);
-		}
+		if (!readargs(argv2, argc2, &opts, &state))
+			leave(state.errstr);
 	}
 
-	argerr = NULL;
-	if (!readargs(argv, argc, &opts, &state, &argerr))
-	{
-		if (argerr)
-			fprintf(stderr, "%s\n", argerr);
-		exit(EXIT_FAILURE);
-	}
+	if (!readargs(argv, argc, &opts, &state))
+		leave(state.errstr);
+
+	if (!args_are_consistent(&opts, &state))
+		leave(state.errstr ? state.errstr : "options are not valid");
 
 	current_state = &state;
+
+	/* open log file when user want it */
+	if (opts.log_pathname)
+	{
+		const char *pathname;
+
+		pathname = tilde(NULL, opts.log_pathname);
+
+		state.logfile = fopen(pathname, "a");
+		if (!state.logfile)
+			leave("cannot to open log file \"%s\"\n", pathname);
+
+		setlinebuf(state.logfile);
+	}
 
 	if (state.boot_wait > 0)
 		usleep(1000 * 1000 * state.boot_wait);
 
-	if (!opts.csv_format &&
-		!opts.tsv_format &&
-		state.file_format_from_suffix != FILE_NOT_SET &&
+	if (!opts.csv_format && !opts.tsv_format &&
+		state.file_format_from_suffix != FILE_UNDEF &&
 		!state.ignore_file_suffix)
 	{
 		if (state.file_format_from_suffix == FILE_CSV)
 			opts.csv_format = true;
 		else if (state.file_format_from_suffix == FILE_TSV)
 			opts.tsv_format = true;
-	}
-
-	if (opts.watch_time && !(opts.query || opts.pathname))
-	{
-		fprintf(stderr, "cannot use watch mode when query or file is missing\n");
-		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -3895,117 +3708,41 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
-	if (state.fp)
+	if (!open_data_file(&opts, &state, false))
 	{
-		if (fstat(fileno(state.fp), &statbuf ) != 0 )
-		{
-			fprintf(stderr, "cannot to get fstat file: %s\n", strerror(errno));
+		/* ncurses are not started yet */
+		if (state.errstr)
+			log_row(state.errstr);
+
+		if (!opts.watch_time)
 			exit(EXIT_FAILURE);
-		}
-
-		is_fifo = S_ISFIFO(statbuf.st_mode);
-	}
-	else
-		is_fifo = false;
-
-	if (is_fifo)
-	{
-		state.stream_mode = true;
-		opts.watch_file = true;
-
-		/*
-		 * This is hack, that protect pspg agains full close FIFO. When
-		 * FIFO is closed, then poll got POLLHUP signal, and any poll
-		 * finish immediately with POLLHUP. pspg try to reopen FIFO, but
-		 * it will be locked in fopen function. When FIFO is opened by
-		 * pspg for writing, then PULLHUP should not come ever.
-		 */
-		if (state.hold_stream == 2)
-			freopen(NULL, "a+", state.fp);
 	}
 
-	if (opts.watch_file)
+	if (state.fp && !ferror(state.fp) &&
+		state.is_file &&
+		(opts.watch_file || state.stream_mode))
 	{
-
-		if (!is_fifo)
-		{
 
 #ifdef HAVE_INOTIFY
 
-			inotify_fd = inotify_init1(IN_NONBLOCK);
-			if (inotify_fd == -1)
-			{
-				fprintf(stderr, "inotify_init1: %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+		state.inotify_fd = inotify_init1(IN_NONBLOCK);
+		if (state.inotify_fd == -1)
+			leave("cannot initialize inotify (%s)\n", strerror(errno));
 
-			inotify_wd = inotify_add_watch(inotify_fd,
-										   opts.pathname,
-										   IN_CLOSE_WRITE |
-										   (state.stream_mode ? IN_MODIFY : 0));
+		state.inotify_wd = inotify_add_watch(state.inotify_fd,
+											 state.pathname,
+											 IN_CLOSE_WRITE |
+											 (state.stream_mode ? IN_MODIFY : 0));
 
-			if (inotify_wd == -1)
-			{
-				fprintf(stderr, "inotify_add_watch(%s): %s\n", opts.pathname, strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+		if (state.inotify_wd == -1)
+			leave("cannot watch file \"%s\" (%s)\n", state.pathname, strerror(errno));
 
 #else
 
-			(void) inotify_wd;
-
-			fprintf(stderr, "missing inotify support\n");
-			exit(EXIT_FAILURE);
+		leave("missing inotify support");
 
 #endif
 
-		}
-	}
-
-	if (state.stream_mode)
-	{
-		if (is_fifo)
-		{
-			/* use nonblock mode */
-			fcntl(fileno(state.fp), F_SETFL, O_NONBLOCK);
-		}
-		else
-		{
-
-#ifndef HAVE_INOTIFY
-
-			fprintf(stderr, "streaming is not available without inotify support\n");
-			exit(EXIT_FAILURE);
-
-#endif
-
-		}
-
-		if (state.fp)
-		{
-			fseek(state.fp, 0, SEEK_END);
-			last_cur_position = ftell(state.fp);
-		}
-		else
-			fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
-	}
-
-	if (state.no_interactive && state.interactive)
-	{
-		fprintf(stderr, "option --ni and --interactive cannot be used together\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (opts.query && opts.pathname)
-	{
-		fprintf(stderr, "option --query and --file cannot be used together\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (opts.csv_format && opts.tsv_format)
-	{
-		fprintf(stderr, "option --csv and --tsv cannot be used together\n");
-		exit(EXIT_FAILURE);
 	}
 
 	if (opts.less_status_bar)
@@ -4016,25 +3753,15 @@ main(int argc, char *argv[])
 	/* Don't use UTF when terminal doesn't use UTF */
 	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
 
-	if (state.logfile)
-	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "started\n");
-	}
+	log_row("started");
 
 	if (opts.csv_format || opts.tsv_format || opts.query)
-	{
-		/*
-		 * ToDo: first query can be broken too in watch mode.
-		 */
-		if (!read_and_format(state.fp, &opts, &desc, &err))
-		{
-			fprintf(stderr, "%s\n", err);
-			exit(EXIT_FAILURE);
-		}
-	}
+		result = read_and_format(&opts, &desc, &state);
 	else
-		readfile(state.fp, &opts, &desc, &state);
+		result = readfile(&opts, &desc, &state);
+
+	if (!result)
+		leave(state.errstr);
 
 	if (opts.watch_time > 0)
 	{
@@ -4048,11 +3775,7 @@ main(int argc, char *argv[])
 		state.fp = NULL;
 	}
 
-	if (state.logfile)
-	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "read input %d rows\n", desc.total_rows);
-	}
+	log_row("read input %d rows\n", desc.total_rows);
 
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
 		(state.no_interactive || (!state.interactive && !isatty(STDOUT_FILENO))))
@@ -4088,20 +3811,10 @@ main(int argc, char *argv[])
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
 		size_is_valid = true;
-		if (state.logfile)
-		{
-			print_log_prefix(state.logfile);
-			fprintf(state.logfile, "terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
-		}
+		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
 	}
 	else
-	{
-		if (state.logfile)
-		{
-			print_log_prefix(state.logfile);
-			fprintf(state.logfile, "cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
-		}
-	}
+		log_row("cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
 
 	/* When we know terminal dimensions */
 	if (size_is_valid && state.quit_if_one_screen)
@@ -4122,11 +3835,7 @@ main(int argc, char *argv[])
 			while (lnb_row < lnb->nrows)
 				printf("%s\n", lnb->rows[lnb_row++]);
 
-			if (state.logfile)
-			{
-				print_log_prefix(state.logfile);
-				fprintf(state.logfile, "quit due quit_if_one_screen option without ncurses init\n");
-			}
+			log_row("quit due quit_if_one_screen option without ncurses init");
 
 			return 0;
 		}
@@ -4185,12 +3894,9 @@ exit_while_01:
 		if (fout != stdout)
 			pclose(fout);
 
+		log_row("exit without start ncurses");
 		if (state.logfile)
-		{
-			print_log_prefix(state.logfile);
-			fprintf(state.logfile, "exit without start ncurses\n");
 			fclose(state.logfile);
-		}
 
 		return 0;
 	}
@@ -4217,10 +3923,7 @@ exit_while_01:
 		if (!state.tty)
 		{
 			if (!isatty(fileno(stderr)))
-			{
-				fprintf(stderr, "missing a access to terminal device\n");
-				exit(EXIT_FAILURE);
-			}
+				leave("missing a access to terminal device");
 
 			state.tty = stderr;
 		}
@@ -4242,10 +3945,8 @@ exit_while_01:
 			 * it it is possible.
 			 */
 			if (!isatty(fileno(stderr)))
-			{
-				fprintf(stderr, "missing a access to terminal device\n");
-				exit(EXIT_FAILURE);
-			}
+				leave("missing a access to terminal device");
+
 			noatty = true;
 			fclose(stdin);
 		}
@@ -4268,45 +3969,41 @@ exit_while_01:
 	(void) term;
 	(void) win;
 
-	fds[0].fd = -1;
-	fds[0].events = 0;
-	fds[1].fd = -1;
-	fds[1].events = -1;
+	state.fds[0].fd = -1;
+	state.fds[0].events = 0;
+	state.fds[1].fd = -1;
+	state.fds[1].events = -1;
 
 	if (opts.watch_file)
 	{
-		fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-		fds[0].events = POLLIN;
+		state.fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
+		state.fds[0].events = POLLIN;
 
-		if (is_fifo)
+		if (state.is_fifo)
 		{
-			fds[1].fd = fileno(state.fp);
-			fds[1].events = POLLIN;
+			state.fds[1].fd = fileno(state.fp);
+			state.fds[1].events = POLLIN;
 		}
 		else
 		{
-			fds[1].fd = inotify_fd;
-			fds[1].events = POLLIN;
+			state.fds[1].fd = state.inotify_fd;
+			state.fds[1].events = POLLIN;
 		}
 	}
 	else if (state.stream_mode)
 	{
-		fds[0].fd = fileno(state.tty);
-		fds[0].events = POLLIN;
-		fds[1].fd = fileno(stdin);
-		fds[1].events = POLLIN;
+		state.fds[0].fd = fileno(state.tty);
+		state.fds[0].events = POLLIN;
+		state.fds[1].fd = fileno(stdin);
+		state.fds[1].events = POLLIN;
 	}
 
-	if (state.logfile)
-	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "ncurses started\n");
-	}
+	log_row("ncurses started");
 
 	active_ncurses = true;
 
 	if(!has_colors())
-		leave_ncurses("your terminal does not support color");
+		leave("your terminal does not support color");
 
 	start_color();
 
@@ -4398,11 +4095,7 @@ reinit_theme:
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	if (state.logfile)
-	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "screen size - maxy: %d, maxx: %d\n", maxy, maxx);
-	}
+	log_row("screen size - maxy: %d, maxx: %d\n", maxy, maxx);
 
 	if (state.quit_if_one_screen)
 	{
@@ -4422,11 +4115,7 @@ reinit_theme:
 			while (lnb_row < lnb->nrows)
 				printf("%s\n", lnb->rows[lnb_row++]);
 
-			if (state.logfile)
-			{
-				print_log_prefix(state.logfile);
-				fprintf(state.logfile, "ncurses ended and quit due quit_if_one_screen option\n");
-			}
+			log_row("ncurses ended and quit due quit_if_one_screen option");
 
 			return 0;
 		}
@@ -4538,7 +4227,7 @@ reinit_theme:
 #ifdef HAVE_READLINE_HISTORY
 
 	if (!reinit)
-		read_history(tilde("~/.pspg_history"));
+		read_history(tilde(NULL, "~/.pspg_history"));
 
 	last_history[0] = '\0';
 
@@ -4841,10 +4530,8 @@ force_refresh_data:
 
 						memset(&desc2, 0, sizeof(desc2));
 
-						if (opts.pathname)
+						if (state.pathname)
 						{
-							char *path = tilde(opts.pathname);
-
 							if (state.fp)
 							{
 								/* should be strem mode */
@@ -4853,10 +4540,11 @@ force_refresh_data:
 									fclose(state.fp);
 
 									errno = 0;
-									state.fp = fopen(path, "r");
+									state.fp = fopen(state.pathname, "r");
 									if (state.fp == NULL)
 									{
-										err = strerror(errno);
+										strcpy(pspg_errstr_buffer, strerror(errno));
+										state.errstr = pspg_errstr_buffer;
 										fresh_data = false;
 									}
 									else
@@ -4866,11 +4554,11 @@ force_refresh_data:
 										if (state.stream_mode)
 										{
 											fseek(state.fp, 0, SEEK_END);
-											last_cur_position = ftell(state.fp);
+											state.last_position = ftell(state.fp);
 										}
 									}
 
-									if (is_fifo)
+									if (state.is_fifo)
 										/* use nonblock mode */
 										fcntl(fileno(state.fp), F_SETFL, O_NONBLOCK);
 								}
@@ -4885,10 +4573,11 @@ force_refresh_data:
 							else
 							{
 								errno = 0;
-								fp2 = fopen(path, "r");
+								fp2 = fopen(state.pathname, "r");
 								if (fp2 == NULL)
 								{
-									err = strerror(errno);
+									strcpy(pspg_errstr_buffer, strerror(errno));
+									state.errstr = pspg_errstr_buffer;
 									fresh_data = false;
 								}
 								else
@@ -4909,9 +4598,9 @@ force_refresh_data:
 						{
 							if (opts.csv_format || opts.tsv_format || opts.query)
 								/* returns false when format is broken */
-								fresh_data = read_and_format(fp2, &opts, &desc2, &err);
+								fresh_data = read_and_format(&opts, &desc2, &state);
 							else
-								fresh_data = readfile(fp2, &opts, &desc2, &state);
+								fresh_data = readfile(&opts, &desc2, &state);
 
 							if (!state.stream_mode)
 								fclose(fp2);
@@ -5049,18 +4738,7 @@ force_refresh_data:
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
 
-#ifdef DEBUG_PIPE
-
-			fprintf(debug_pipe, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
-
-#endif
-
-			if (state.logfile)
-			{
-				print_log_prefix(state.logfile);
-				fprintf(state.logfile, "exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
-			}
-
+			log_row("exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
 			break;
 		}
 
@@ -5147,17 +4825,7 @@ hide_menu:
 
 		prev_first_row = first_row;
 
-#ifdef DEBUG_PIPE
-
-		fprintf(debug_pipe, "main switch: %s\n", cmd_string(command));
-
-#endif
-
-		if (state.logfile)
-		{
-			print_log_prefix(state.logfile);
-			fprintf(state.logfile, "process command: %s\n", cmd_string(command));
-		}
+		log_row("process command: %s\n", cmd_string(command));
 
 		if (command == cmd_Quit)
 			break;
@@ -5294,7 +4962,7 @@ reset_search:
 				break;
 
 			case cmd_SaveSetup:
-				if (!save_config(tilde("~/.pspgconf"), &opts))
+				if (!save_config(tilde(NULL, "~/.pspgconf"), &opts))
 				{
 					if (errno != 0)
 						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (%s) (press any key)", strerror(errno), true, true, false, true);
@@ -5508,7 +5176,7 @@ reset_search:
 					{
 						lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
 						if (lnb->lineinfo == NULL)
-							leave_ncurses("out of memory");
+							leave("out of memory");
 
 						memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 					}
@@ -6369,7 +6037,7 @@ recheck_end:
 						strncpy(last_path, buffer, sizeof(last_path) - 1);
 						last_path[sizeof(last_path) - 1] = '\0';
 
-						path = tilde(buffer);
+						path = tilde(NULL, buffer);
 						fp = fopen(path, "w");
 						if (fp != NULL)
 						{
@@ -6637,7 +6305,7 @@ found_next_pattern:
 						{
 							row = malloc(strlen(rows->rows[rowidx]) + 1);
 							if (row == NULL)
-								leave_ncurses("out of memory");
+								leave("out of memory");
 
 							strcpy(row, rows->rows[rowidx]);
 							row[cut_bytes] = '\0';
@@ -7182,7 +6850,7 @@ found_next_pattern:
 				 * Workaround - the variables COLS, LINES are not refreshed
 				 * when pager is resized and executed inside psql.
 				 */
-				if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
+				if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
 				{
 					resize_term(size.ws_row, size.ws_col);
 					clear();
@@ -7232,11 +6900,7 @@ refresh:
 
 	endwin();
 
-	if (state.logfile)
-	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "ncurses ended\n");
-	}
+	log_row("ncurses ended");
 
 	active_ncurses = false;
 
@@ -7261,12 +6925,12 @@ refresh:
 
 #ifdef HAVE_READLINE_HISTORY
 
-	write_history(tilde("~/.pspg_history"));
+	write_history(tilde(NULL, "~/.pspg_history"));
 
 #endif
 
-	if (inotify_fd >= 0)
-		close(inotify_fd);
+	if (state.inotify_fd >= 0)
+		close(state.inotify_fd);
 
 #ifdef DEBUG_PIPE
 
@@ -7312,7 +6976,7 @@ refresh:
 #endif
 
 	/* close file in streaming mode */
-	if (state.fp)
+	if (state.fp && !state.is_pipe)
 		fclose(state.fp);
 
 	if (state.tty)
@@ -7320,14 +6984,13 @@ refresh:
 		/* stream mode against stdin */
 		fclose(state.tty);
 
-		/* close input too, send signal to producent */
+		/* close input too, send SIGPIPE to producent */
 		fclose(stdin);
 	}
 
 	if (state.logfile)
 	{
-		print_log_prefix(state.logfile);
-		fprintf(state.logfile, "correct quit\n");
+		log_row("correct quit\n");
 		fclose(state.logfile);
 	}
 

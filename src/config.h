@@ -19,6 +19,7 @@
 typedef struct
 {
 	char   *pathname;
+	char   *log_pathname;
 	bool	ignore_case;
 	bool	ignore_lower_case;
 	bool	no_sound;

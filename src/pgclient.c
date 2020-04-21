@@ -94,9 +94,9 @@ column_type_class(Oid ftype)
 
 #endif
 
-#define EXIT_OUT_OF_MEMORY()		do { PQclear(result); PQfinish(conn); leave_ncurses("out of memory"); } while (0)
+#define EXIT_OUT_OF_MEMORY()		do { PQclear(result); PQfinish(conn); leave("out of memory"); } while (0)
 #define RELEASE_AND_LEAVE(s)		do { PQclear(result); PQfinish(conn); *err = s; return false; } while (0)
-#define RELEASE_AND_EXIT(s)			do { PQclear(result); PQfinish(conn); leave_ncurses(s); } while (0)
+#define RELEASE_AND_EXIT(s)			do { PQclear(result); PQfinish(conn); leave(s); } while (0)
 
 #ifdef HAVE_POSTGRESQL
 

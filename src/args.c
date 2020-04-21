@@ -204,73 +204,16 @@ buildargv(const char *input, int *_argc, char *appname)
 	return argv;
 }
 
-static int
-get_format_type(char *path)
-{
-	char		buffer[4];
-	char	   *r_ptr, *w_ptr;
-	int			i;
-	int			l;
-
-	l = strlen(path);
-	if (l < 5)
-		return FILE_MATRIX;
-
-	r_ptr = path + l - 4;
-	w_ptr = buffer;
-
-	if (*r_ptr++ != '.')
-		return FILE_MATRIX;
-
-	for (i = 0; i < 3; i++)
-		*w_ptr++ = tolower(*r_ptr++);
-
-	*w_ptr = '\0';
-
-	if (strcmp(buffer, "csv") == 0)
-		return FILE_CSV;
-	else if (strcmp(buffer, "tsv") == 0)
-		return FILE_TSV;
-	else
-		return FILE_MATRIX;
-}
-
-static bool
-open_file(char *path, Options *opts, StateData *state, char *err, int errsz)
-{
-	char *transf_path = tilde(path);
-
-	if (state->fp)
-	{
-		strncpy(err, "Only one file can be browsed.", errsz);
-		return false;
-	}
-
-	state->fp = fopen(transf_path, "r");
-	if (!state->fp)
-	{
-		snprintf(err, errsz, "cannot to read file: %s\n", path);
-		return false;
-	}
-	opts->pathname = strdup(path);
-	state->file_format_from_suffix = get_format_type(path);
-
-	return true;
-}
-
-
 bool
 readargs(char **argv,
 		 int argc,
 		 Options *opts,
-		 StateData *state,
-		 char **err)
+		 StateData *state)
 {
-	static char	errstrbuf[2048];
 	int		opt;
 	int		option_index = 0;
 
-	*err = NULL;
+	state->errstr = NULL;
 
 	/* force reset getopt interface */
 	optind = 0;
@@ -372,7 +315,7 @@ readargs(char **argv,
 				opts->watch_time = atoi(optarg);
 				if (opts->watch_time < 0 || opts->watch_time > 3600)
 				{
-					*err = "query watch time can be between 0 and 3600";
+					state->errstr = "query watch time can be between 0 and 3600";
 					return false;
 				}
 				break;
@@ -439,7 +382,7 @@ readargs(char **argv,
 				n = atoi(optarg);
 				if (n < 0 || n > 2)
 				{
-					*err = "csv border type can be between 0 and 2";
+					state->errstr = "csv border type can be between 0 and 2";
 					return false;
 				}
 				opts->border_type = n;
@@ -457,25 +400,13 @@ readargs(char **argv,
 				opts->double_header = true;
 				break;
 			case 25:
-				{
-					const char *path;
-
-					path = tilde(optarg);
-					state->logfile = fopen(path, "a");
-					if (state->logfile == NULL)
-					{
-						snprintf(errstrbuf, sizeof(errstrbuf), "cannot to open log file file: %s\n", path);
-						*err = errstrbuf;
-						return false;
-					}
-					setlinebuf(state->logfile);
-				}
+				opts->log_pathname = strdup(optarg);
 				break;
 			case 26:
 				state->reserved_rows = atoi(optarg);
 				if (state->reserved_rows < 1 || state->reserved_rows > 100)
 				{
-					*err = "reserved rows should be between 1 and 100";
+					state->errstr = "reserved rows should be between 1 and 100";
 					return false;
 				}
 				break;
@@ -490,7 +421,7 @@ readargs(char **argv,
 						opts->csv_header = '+';
 					else
 					{
-						*err = "csv_header option can be on \"or\" \"off\"";
+						state->errstr = "csv_header option can be on \"or\" \"off\"";
 						return false;
 					}
 				}
@@ -520,7 +451,7 @@ readargs(char **argv,
 				state->boot_wait = atoi(optarg);
 				if (state->boot_wait < 0 || state->boot_wait > 120)
 				{
-					*err = "wait should be between 1 and 120 (sec)";
+					state->errstr = "wait should be between 1 and 120 (sec)";
 					return false;
 				}
 				break;
@@ -528,7 +459,7 @@ readargs(char **argv,
 				state->hold_stream = atoi(optarg);
 				if (state->hold_stream < 0 || state->hold_stream > 2)
 				{
-					*err = "hold-stream should be 0, 1 or 2";
+					state->errstr = "hold-stream should be 0, 1 or 2";
 					return false;
 				}
 				break;
@@ -593,8 +524,7 @@ readargs(char **argv,
 				n = atoi(optarg);
 				if (n < 0 || n > MAX_STYLE)
 				{
-					snprintf(errstrbuf, sizeof(errstrbuf), "only color schemas 0 .. %d are supported", MAX_STYLE);
-					*err = errstrbuf;
+					format_error("only color schemas 0 .. %d are supported", MAX_STYLE);
 					return false;
 				}
 				opts->theme = n;
@@ -603,18 +533,19 @@ readargs(char **argv,
 				n = atoi(optarg);
 				if (n < 0 || n > 9)
 				{
-					*err = "fixed columns should be between 0 and 4";
+					state->errstr = "fixed columns should be between 0 and 4";
 					return false;
 				}
 				opts->freezed_cols = n;
 				break;
 			case 'f':
 				{
-					if (!open_file(optarg, opts, state, errstrbuf, sizeof(errstrbuf)))
+					if (opts->pathname)
 					{
-						*err = errstrbuf;
+						state->errstr = "only one file can be browsed";
 						return false;
 					}
+					opts->pathname = strdup(optarg);
 				}
 				break;
 			case 'F':
@@ -636,8 +567,7 @@ readargs(char **argv,
 					port = strtol(optarg, NULL, 10);
 					if ((port < 1) || (port > 65535))
 					{
-						snprintf(errstrbuf, sizeof(errstrbuf), "invalid port number: %s\n", optarg);
-						*err = errstrbuf;
+						format_error("invalid port number: %s", optarg);
 						return false;
 					}
 					opts->port = strdup(optarg);
@@ -655,8 +585,7 @@ readargs(char **argv,
 
 			default:
 				{
-					snprintf(errstrbuf, sizeof(errstrbuf), "Try %s --help\n", argv[0]);
-					*err = errstrbuf;
+					format_error("Try %s --help\n", argv[0]);
 					return false;
 				}
 		}
@@ -664,11 +593,48 @@ readargs(char **argv,
 
 	for (; optind < argc; optind++)
 	{
-		if (!open_file(argv[optind], opts, state, errstrbuf, sizeof(errstrbuf)))
+		if (opts->pathname)
 		{
-			*err = errstrbuf;
+			state->errstr = "only one file can be browsed";
 			return false;
 		}
+
+		opts->pathname = strdup(argv[optind]);
+	}
+
+	return true;
+}
+
+/*
+ * Post parsing arguments check
+ */
+bool
+args_are_consistent(Options *opts, StateData *state)
+{
+	state->errstr = NULL;
+
+	if (state->no_interactive && state->interactive)
+	{
+		state->errstr = "option --ni and --interactive cannot be used together";
+		return false;
+	}
+
+	if (opts->query && opts->pathname)
+	{
+		state->errstr = "option --query and --file cannot be used together";
+		return false;
+	}
+
+	if (opts->csv_format && opts->tsv_format)
+	{
+		state->errstr = "option --csv and --tsv cannot be used together";
+		return false;
+	}
+
+	if (opts->watch_time && !(opts->query || opts->pathname))
+	{
+		state->errstr = "cannot use watch mode when query or file is missing";
+		return false;
 	}
 
 	return true;

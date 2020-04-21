@@ -14,6 +14,9 @@
 #ifndef PSPG_PSPG_H
 #define PSPG_PSPG_H
 
+#include <poll.h>
+#include <stdio.h>
+
 #include "config.h"
 #include "themes.h"
 #include "st_menu.h"
@@ -27,12 +30,17 @@
 
 #define MAX_STYLE					20
 
-#define			FILE_NOT_SET		0
+#define			FILE_UNDEF			0
 #define			FILE_CSV			1
 #define			FILE_TSV			2
 #define			FILE_MATRIX			3
 
 #define PSPG_VERSION "3.0.4"
+
+/* GNU Hurd does not define MAXPATHLEN */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 4096
+#endif
 
 typedef struct LineInfo
 {
@@ -215,7 +223,7 @@ typedef struct
 } PrintDataDesc;
 
 /*
- * holds some temporatl config data
+ * holds pager state data
  */
 typedef struct
 {
@@ -226,16 +234,39 @@ typedef struct
 	bool	stream_mode;
 	bool	no_alternate_screen;
 	bool	quit_if_one_screen;
+	bool	has_notify_support;
 
 	int		reserved_rows;			/* used by dbcli */
 	int		boot_wait;
 	int		hold_stream;
 	int		file_format_from_suffix;
 
+	char	pathname[MAXPATHLEN];		/* transformed path to input source */
+
 	FILE   *fp;						/* data input stream */
 	FILE   *logfile;				/* log output stream */
 	FILE   *tty;					/* ncurses stream */
+
+	bool	is_fifo;				/* true, when input is named pipe (can be reopened) */
+	bool	is_pipe;				/* true, when input is pipe (cannot be reopened) */
+	bool	is_file;				/* true, when input is file (can be reopened) */
+	bool	is_blocking;			/* true, when input is in block mode */
+
+	struct pollfd fds[2];
+
+	const char *errstr;				/* ptr to error string */
+	int		_errno;					/* saved errno */
+
+	bool	detect_truncation;		/* true, when input source can be truncated */
+	long int last_position;			/* saved position for truncation file check */
+
+	int		inotify_fd;				/* inotify API access file descriptor */
+	int		inotify_wd;				/* inotify watched file descriptor */
 } StateData;
+
+extern StateData *current_state;
+extern bool active_ncurses;
+
 
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
@@ -245,7 +276,9 @@ extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first
 extern void leave_ncurses(const char *str);
 extern void leave_ncurses2(const char *fmt, const char *str);
 extern void log_writeln(const char *str);
-extern char * tilde(char *path);
+
+#define PSPG_ERRSTR_BUFFER_SIZE		2048
+extern char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
 extern bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
 extern int min_int(int a, int b);
@@ -266,14 +299,25 @@ extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
 extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 
 /* from pretty-csv.c */
-extern bool read_and_format(FILE *fp, Options *opts, DataDesc *desc, const char **err);
+extern bool read_and_format(Options *opts, DataDesc *desc, StateData *state);
 
 /* from pgclient.c */
 extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
 
 /* from buildargv.c */
 extern char **buildargv(const char *input, int *argc, char *appname);
-extern bool readargs(char **argv, int argc, Options *opts, StateData *state, char **err);
+extern bool readargs(char **argv, int argc, Options *opts, StateData *state);
+extern bool args_are_consistent(Options *opts, StateData *state);
+
+/* from infra.c */
+extern void log_row(const char *fmt, ...);
+extern void leave(const char *fmt, ...);
+extern void format_error(const char *fmt, ...);
+
+/* from file.c */
+extern bool open_data_file(Options *opts, StateData *state, bool reopen);
+extern char *tilde(char *dest, char *path);
+
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

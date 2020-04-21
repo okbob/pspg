@@ -264,7 +264,7 @@ window_fill(int window_identifier,
 
 				lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
 				if (lnb->lineinfo == NULL)
-					leave_ncurses("out of memory");
+					leave("out of memory");
 
 				memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
 
@@ -502,7 +502,7 @@ window_fill(int window_identifier,
 
 				free_row = malloc(left_spaces + strlen(rowstr) + 1);
 				if (!free_row)
-					leave_ncurses("out of memory");
+					leave("out of memory");
 
 				p = free_row;
 				while (aux_left_spaces-- > 0)
