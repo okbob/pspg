@@ -3976,32 +3976,28 @@ exit_while_01:
 	(void) win;
 
 	state.fds[0].fd = -1;
-	state.fds[0].events = 0;
 	state.fds[1].fd = -1;
-	state.fds[1].events = -1;
+	state.fds[0].events = POLLIN;
+	state.fds[1].events = POLLIN;
 
-	if (opts.watch_file)
+	if (opts.watch_file && !state.is_fifo && !state.is_pipe)
 	{
 		state.fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-		state.fds[0].events = POLLIN;
-
-		if (state.is_fifo)
-		{
-			state.fds[1].fd = fileno(state.fp);
-			state.fds[1].events = POLLIN;
-		}
-		else
-		{
-			state.fds[1].fd = state.inotify_fd;
-			state.fds[1].events = POLLIN;
-		}
+		state.fds[1].fd = state.inotify_fd;
 	}
 	else if (state.stream_mode)
 	{
-		state.fds[0].fd = fileno(state.tty);
-		state.fds[0].events = POLLIN;
-		state.fds[1].fd = fileno(stdin);
-		state.fds[1].events = POLLIN;
+		if (state.is_pipe)
+		{
+			state.fds[0].fd = fileno(state.tty);
+			state.fds[1].fd = fileno(stdin);
+		}
+		else
+		{
+			/* state = is_fifo */
+			state.fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
+			state.fds[1].fd = fileno(state.fp);
+		}
 	}
 
 	log_row("ncurses started");

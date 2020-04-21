@@ -166,7 +166,6 @@ open_data_file(Options *opts, StateData *state)
 		{
 			log_row("force stream mode because input is FIFO");
 			state->stream_mode = true;
-			opts->watch_file = true;
 		}
 
 		/*
@@ -203,7 +202,7 @@ open_data_file(Options *opts, StateData *state)
 		state->is_blocking = !(fcntl(fileno(state->fp), F_GETFL) & O_NONBLOCK);
 	}
 
-	if (opts->watch_file && state->is_fifo)
+	if (opts->stream_mode && state->is_fifo)
 		state->fds[1].fd = fileno(state->fp);
 
 	return true;
