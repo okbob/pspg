@@ -173,9 +173,11 @@ open_data_file(Options *opts, StateData *state, bool reopen)
 				fseek(state->fp, 0L, SEEK_END);
 				state->last_position = ftell(state->fp);
 			}
-
-			/* in stream mode we use non block reading */
-			fcntl(fileno(state->fp), F_SETFL, O_NONBLOCK);
+			else
+			{
+				/* in stream mode we use non block reading for FIFO or pipes */
+				fcntl(fileno(state->fp), F_SETFL, O_NONBLOCK);
+			}
 		}
 
 		state->is_blocking = !(fcntl(fileno(state->fp), F_GETFL) & O_NONBLOCK);

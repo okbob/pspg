@@ -126,7 +126,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output");
 	}
 
 	memcpy(printbuf->buffer + printbuf->used, str, size);
@@ -158,7 +158,7 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output");
 	}
 
 	while (n--)
@@ -186,7 +186,7 @@ pb_putc(PrintbufType *printbuf, char c)
 
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output");
 	}
 
 	printbuf->free -= 1;
@@ -216,7 +216,7 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
 		if (!printbuf->buffer)
-			leave("out of memory while serialize csv output\n");
+			leave("out of memory while serialize csv output");
 	}
 
 	memset(printbuf->buffer + printbuf->used, c, n);
@@ -695,7 +695,7 @@ append_char(LinebufType *linebuf, char c)
 		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
 
 		if (!linebuf->buffer)
-			leave("out of memory while read csv or tsv data\n");
+			leave("out of memory while read csv or tsv data");
 	}
 
 	linebuf->buffer[linebuf->used++] = c;
@@ -715,7 +715,7 @@ append_str(LinebufType *linebuf, char *str)
 		linebuf->buffer = realloc(linebuf->buffer, linebuf->size);
 
 		if (!linebuf->buffer)
-			leave("out of memory while read csv or tsv data\n");
+			leave("out of memory while read csv or tsv data");
 	}
 
 	while (*str)

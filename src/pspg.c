@@ -1123,7 +1123,6 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 			char   *str;
 
 			errno = 0;
-
 			str = fgets(statbuf, STATBUF_SIZE, fp);
 			_errno = errno;
 
@@ -1262,7 +1261,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	/* safe reset */
 	desc->filename[0] = '\0';
 	state->errstr = NULL;
-	//state->errno = 0;
+	state->_errno = 0;
 
 	if (opts->pathname != NULL)
 	{
@@ -1418,6 +1417,8 @@ next_row:
 		state->last_position = ftell(state->fp);
 
 	desc->total_rows = nrows;
+
+log_row("read rows %d", nrows);
 
 	/*
 	 * border headline cannot be higher than 1000, to simply find it
@@ -2868,7 +2869,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	log_row("input string prompt - \"%s\"\n", prompt);
+	log_row("input string prompt - \"%s\"", prompt);
 
 #ifdef HAVE_LIBREADLINE
 
@@ -3025,7 +3026,7 @@ finish_read:
 	 */
 	scrdesc->refresh_scr = true;
 
-	log_row("input string - \"%s\"\n", buffer);
+	log_row("input string - \"%s\"", buffer);
 }
 
 #define SEARCH_FORWARD			1
@@ -3389,7 +3390,7 @@ repeat:
 
 	if (c == ERR)
 	{
-		log_row("ERR input - retry no: %d\n", retry_count);
+		log_row("ERR input - retry no: %d", retry_count);
 
 		if (++retry_count < 10)
 			goto retry;
@@ -3647,7 +3648,7 @@ main(int argc, char *argv[])
 	state.inotify_fd = -1;						/* invalid filedescriptor */
 	state.inotify_wd = -1;						/* invalid file descriptor */
 
-#ifndef HAVE_INOTIFY
+#ifdef HAVE_INOTIFY
 
 	state.has_notify_support = true;
 
@@ -3683,7 +3684,7 @@ main(int argc, char *argv[])
 
 		state.logfile = fopen(pathname, "a");
 		if (!state.logfile)
-			leave("cannot to open log file \"%s\"\n", pathname);
+			leave("cannot to open log file \"%s\"", pathname);
 
 		setlinebuf(state.logfile);
 	}
@@ -3727,7 +3728,7 @@ main(int argc, char *argv[])
 
 		state.inotify_fd = inotify_init1(IN_NONBLOCK);
 		if (state.inotify_fd == -1)
-			leave("cannot initialize inotify (%s)\n", strerror(errno));
+			leave("cannot initialize inotify (%s)", strerror(errno));
 
 		state.inotify_wd = inotify_add_watch(state.inotify_fd,
 											 state.pathname,
@@ -3735,7 +3736,7 @@ main(int argc, char *argv[])
 											 (state.stream_mode ? IN_MODIFY : 0));
 
 		if (state.inotify_wd == -1)
-			leave("cannot watch file \"%s\" (%s)\n", state.pathname, strerror(errno));
+			leave("cannot watch file \"%s\" (%s)", state.pathname, strerror(errno));
 
 #else
 
@@ -3760,8 +3761,15 @@ main(int argc, char *argv[])
 	else
 		result = readfile(&opts, &desc, &state);
 
+	/* when we can get content later, we can ignore empty dataset */
 	if (!result)
-		leave(state.errstr);
+	{
+		if (state._errno != 0)
+			leave(state.errstr);
+
+		if (!state.stream_mode && !(opts.watch_time > 0))
+			leave("No data");
+	}
 
 	if (opts.watch_time > 0)
 	{
@@ -3775,7 +3783,7 @@ main(int argc, char *argv[])
 		state.fp = NULL;
 	}
 
-	log_row("read input %d rows\n", desc.total_rows);
+	log_row("read input %d rows", desc.total_rows);
 
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
 		(state.no_interactive || (!state.interactive && !isatty(STDOUT_FILENO))))
@@ -3811,10 +3819,10 @@ main(int argc, char *argv[])
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
 		size_is_valid = true;
-		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d\n", size.ws_row, size.ws_col);
+		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
 	}
 	else
-		log_row("cannot to detect terminal size via TIOCGWINSZ: res: %d\n", ioctl_result);
+		log_row("cannot to detect terminal size via TIOCGWINSZ: res: %d", ioctl_result);
 
 	/* When we know terminal dimensions */
 	if (size_is_valid && state.quit_if_one_screen)
@@ -3909,7 +3917,7 @@ exit_while_01:
 	 * newterm(termname(), f, f);
 	 *
 	 */
-	if (!state.fp && state.stream_mode)
+	if (state.fp == stdin && state.stream_mode)
 	{
 		/*
 		 * Try to protect current stdin, when input is stdin and user
@@ -4095,7 +4103,7 @@ reinit_theme:
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	log_row("screen size - maxy: %d, maxx: %d\n", maxy, maxx);
+	log_row("screen size - maxy: %d, maxx: %d", maxy, maxx);
 
 	if (state.quit_if_one_screen)
 	{
@@ -4671,9 +4679,16 @@ force_refresh_data:
 							next_watch = next_watch + 1000 * opts.watch_time;
 						else
 							next_watch = ct + 100 * opts.watch_time;
+						/*
+						 * Force refresh, only when we got fresh data or when
+						 * this event was forced by timer.
+						 */
+						if (fresh_data || opts.watch_time > 0 || state._errno != 0)
+						{
+							clear();
+							refresh_scr = true;
+						}
 
-						clear();
-						refresh_scr = true;
 						handle_timeout = false;
 					}
 
@@ -4738,7 +4753,7 @@ force_refresh_data:
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
 
-			log_row("exit main loop: %s\n", event_keycode == ERR ? "input error" : "F10");
+			log_row("exit main loop: %s", event_keycode == ERR ? "input error" : "F10");
 			break;
 		}
 
@@ -4825,7 +4840,7 @@ hide_menu:
 
 		prev_first_row = first_row;
 
-		log_row("process command: %s\n", cmd_string(command));
+		log_row("process command: %s", cmd_string(command));
 
 		if (command == cmd_Quit)
 			break;
