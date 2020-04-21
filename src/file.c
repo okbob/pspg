@@ -104,7 +104,7 @@ get_format_type(char *path)
  * Try to open input stream.
  */
 bool
-open_data_file(Options *opts, StateData *state, bool reopen)
+open_data_file(Options *opts, StateData *state)
 {
 	state->_errno = 0;
 	state->errstr = NULL;
@@ -152,6 +152,16 @@ open_data_file(Options *opts, StateData *state, bool reopen)
 
 		state->is_fifo = S_ISFIFO(statbuf.st_mode);		/* is FIFO file or pipe */
 		state->is_file = S_ISREG(statbuf.st_mode);		/* is regular file */
+
+		/*
+		 * FIFO doesn't work well in non stream mode, it's more pipe, than file.
+		 * So when we know, so input is FIFO, we force stream mode.
+		 */
+		if (state->is_fifo)
+		{
+			log_row("force stream mode because input is FIFO");
+			state->stream_mode = true;
+		}
 
 		/*
 		 * when source is FIFO and not pipe, then we can protect source

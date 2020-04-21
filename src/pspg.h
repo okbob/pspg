@@ -315,7 +315,7 @@ extern void leave(const char *fmt, ...);
 extern void format_error(const char *fmt, ...);
 
 /* from file.c */
-extern bool open_data_file(Options *opts, StateData *state, bool reopen);
+extern bool open_data_file(Options *opts, StateData *state);
 extern char *tilde(char *dest, char *path);
 
 

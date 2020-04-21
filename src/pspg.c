@@ -3707,7 +3707,7 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
-	if (!open_data_file(&opts, &state, false))
+	if (!open_data_file(&opts, &state))
 	{
 		/* ncurses are not started yet */
 		if (state.errstr)
@@ -4545,7 +4545,7 @@ force_refresh_data:
 									fclose(state.fp);
 									state.fp = NULL;
 
-									fresh_data = open_data_file(&opts, &state, true);
+									fresh_data = open_data_file(&opts, &state);
 								}
 								else
 								{
@@ -4554,7 +4554,7 @@ force_refresh_data:
 								}
 							}
 							else
-								fresh_data = open_data_file(&opts, &state, false);
+								fresh_data = open_data_file(&opts, &state);
 						}
 						else if (opts.query)
 							fresh_data = true;

@@ -197,8 +197,8 @@ or by specification watch time by option `--watch`.
 
 # Special options for reading from stream (file or FIFO)
 
-`pspg` can continually read from file or FIFO (named pipe). This behave is default
-for FIFO. For file should be forced by option `--stream`.
+`pspg` can continually read from file or FIFO (named pipe). This behave should
+should be forced by option `--stream`.
 
 When last writer to FIFO is ending, then `pspg` is ending too. This behave can be
 changed by option `--hold-stream`. Default value is 0. When `--hold-stream=1` then
