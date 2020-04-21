@@ -25,9 +25,7 @@
 #include <ncurses/ncurses.h>
 #endif
 
-//#include <ctype.h>
 #include <errno.h>
-#include <fcntl.h> /* ToDo */
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
