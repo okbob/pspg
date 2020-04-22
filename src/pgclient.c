@@ -144,6 +144,8 @@ bool
 pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err)
 {
 
+	log_row("execute query \"%s\"", opts->query);
+
 #ifdef HAVE_POSTGRESQL
 
 	PGconn	   *conn = NULL;

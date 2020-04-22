@@ -115,7 +115,7 @@ format_error(const char *fmt, ...)
 	va_list		args;
 
 	if (!current_state)
-		leave("curren_state is not initialized");
+		leave("current_state is not initialized");
 
 	va_start(args, fmt);
 	vsnprintf(pspg_errstr_buffer, PSPG_ERRSTR_BUFFER_SIZE, fmt, args);

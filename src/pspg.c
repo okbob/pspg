@@ -3652,6 +3652,7 @@ main(int argc, char *argv[])
 
 #endif
 
+	current_state = &state;
 
 	pspgenv = getenv("PSPG");
 	if (pspgenv)
@@ -3671,7 +3672,6 @@ main(int argc, char *argv[])
 	if (!args_are_consistent(&opts, &state))
 		leave(state.errstr ? state.errstr : "options are not valid");
 
-	current_state = &state;
 
 	/* open log file when user want it */
 	if (opts.log_pathname)
@@ -3775,7 +3775,7 @@ main(int argc, char *argv[])
 		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
 	}
 
-	if (state.fp != NULL && !state.stream_mode)
+	if (state.fp && !state.stream_mode)
 	{
 		fclose(state.fp);
 		state.fp = NULL;
@@ -4570,7 +4570,7 @@ force_refresh_data:
 							else
 								fresh_data = readfile(&opts, &desc2, &state);
 
-							if (!state.stream_mode)
+							if (!state.stream_mode && state.fp)
 							{
 								fclose(state.fp);
 								state.fp = NULL;
