@@ -41,8 +41,6 @@ current_time(time_t *sec, long *ms)
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
-#ifdef DEBUG_PIPE
-
 static void
 print_duration(time_t start_sec, long start_ms, const char *label)
 {
@@ -55,10 +53,6 @@ print_duration(time_t start_sec, long start_ms, const char *label)
 			label,
 			time_diff(end_sec, end_ms, start_sec, start_ms));
 }
-
-#endif
-
-
 
 #endif
 
