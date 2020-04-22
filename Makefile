@@ -3,10 +3,10 @@ all:
 # Include setting from the configure script
 -include config.make
 
-# override CFLAGS +=  -pedantic -Wextra -Wimplicit-fallthrough=0
+# override CFLAGS +=  -pedantic -Wall -Wextra -Wimplicit-fallthrough=0
 
 DEPS=$(wildcard *.d)
-PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o infra.o file.o
+PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o infra.o file.o table.o string.o
 OBJS=$(PSPG_OFILES)
 
 ifdef COMPILE_MENU
@@ -17,52 +17,58 @@ endif
 all: pspg
 
 st_menu_styles.o: src/st_menu_styles.c config.make
-	$(CC) -O3 src/st_menu_styles.c -c $(CPPFLAGS) $(CFLAGS)
+	$(CC)  src/st_menu_styles.c -c $(CPPFLAGS) $(CFLAGS)
 
 st_menu.o: src/st_menu.c config.make
-	$(CC) -O3 src/st_menu.c -c $(CPPFLAGS) $(CFLAGS)
+	$(CC)  src/st_menu.c -c $(CPPFLAGS) $(CFLAGS)
 
 csv.o: src/pspg.h src/unicode.h src/pretty-csv.c
-	$(CC) -O3 -c  src/pretty-csv.c -o csv.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c  src/pretty-csv.c -o csv.o $(CPPFLAGS) $(CFLAGS)
 
 args.o: src/pspg.h src/args.c
-	$(CC) -O3 -c  src/args.c -o args.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c  src/args.c -o args.o $(CPPFLAGS) $(CFLAGS)
 
 print.o: src/pspg.h src/unicode.h src/print.c
-	$(CC) -O3 -c  src/print.c -o print.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c  src/print.c -o print.o $(CPPFLAGS) $(CFLAGS)
 
 commands.o: src/pspg.h src/commands.h src/commands.c
-	$(CC) -O3 -c src/commands.c -o commands.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/commands.c -o commands.o $(CPPFLAGS) $(CFLAGS)
 
 config.o: src/config.h src/config.c
-	$(CC) -O3 -c src/config.c -o config.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/config.c -o config.o $(CPPFLAGS) $(CFLAGS)
 
 unicode.o: src/unicode.h src/unicode.c
-	$(CC) -O3 -c src/unicode.c -o unicode.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/unicode.c -o unicode.o $(CPPFLAGS) $(CFLAGS)
 
 themes.o: src/themes.h src/themes.c
-	$(CC) -O3 -c src/themes.c -o themes.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/themes.c -o themes.o $(CPPFLAGS) $(CFLAGS)
 
 sort.o: src/pspg.h src/sort.c
-	$(CC) -O3 -c src/sort.c -o sort.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/sort.c -o sort.o $(CPPFLAGS) $(CFLAGS)
 
 menu.o: src/pspg.h src/st_menu.h src/commands.h src/menu.c
-	$(CC) -O3 -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/menu.c -o menu.o $(CPPFLAGS) $(CFLAGS)
 
 pgclient.o: src/pspg.h src/pgclient.c
-	$(CC) -O3 -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CPPFLAGS)
+	$(CC)  -c src/pgclient.c -o pgclient.o $(CPPFLAGS) $(CFLAGS) $(PG_CPPFLAGS)
 
 infra.o: src/pspg.h src/infra.c
-	$(CC) -O3 -c src/infra.c -o infra.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/infra.c -o infra.o $(CPPFLAGS) $(CFLAGS)
 
 file.o: src/pspg.h src/file.c
-	$(CC) -O3 -c src/file.c -o file.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/file.c -o file.o $(CPPFLAGS) $(CFLAGS)
+
+table.o: src/pspg.h src/table.c
+	$(CC)  -c src/table.c -o table.o $(CPPFLAGS) $(CFLAGS)
+
+string.o: src/pspg.h src/string.c
+	$(CC)  -c src/string.c -o string.o $(CPPFLAGS) $(CFLAGS)
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
-	$(CC) -O3 -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)
+	$(CC)  -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)
 
 pspg:  $(PSPG_OFILES) $(ST_MENU_OFILES) config.make
-	$(CC) -O3 $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS) $(PG_LDFLAGS) $(PG_LIBS)
+	$(CC)  $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS) $(PG_LDFLAGS) $(PG_LIBS)
 
 clean:
 	$(RM) $(ST_MENU_OFILES)

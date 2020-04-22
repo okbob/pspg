@@ -318,6 +318,17 @@ extern void format_error(const char *fmt, ...);
 extern bool open_data_file(Options *opts, StateData *state);
 extern char *tilde(char *dest, char *path);
 
+/* from table.c */
+extern bool readfile(Options *opts, DataDesc *desc, StateData *state);
+extern bool translate_headline(Options *opts, DataDesc *desc);
+extern void update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort);
+
+/* from string.c */
+extern const char *nstrstr(const char *haystack, const char *needle);
+extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
+extern bool nstreq(const char *str1, const char *str2);
+extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_size,
+				   const char *needle, int needle_size);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

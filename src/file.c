@@ -162,7 +162,7 @@ open_data_file(Options *opts, StateData *state)
 		 * FIFO doesn't work well in non stream mode, it's more pipe, than file.
 		 * So when we know, so input is FIFO, we force stream mode.
 		 */
-		if (state->is_fifo)
+		if (state->is_fifo && !state->is_pipe)
 		{
 			log_row("force stream mode because input is FIFO");
 			state->stream_mode = true;

@@ -11,9 +11,6 @@
  *-------------------------------------------------------------------------
  */
 
-/*
- * This code is part of libiberty library
- */
 #include <ctype.h>
 #include <getopt.h>
 #include <stddef.h>
@@ -106,6 +103,9 @@ consume_whitespace(const char **input)
 	}
 }
 
+/*
+ * This code is part of libiberty library
+ */
 char **
 buildargv(const char *input, int *_argc, char *appname)
 {
