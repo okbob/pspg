@@ -77,7 +77,7 @@ leave(const char *fmt, ...)
 		endwin();
 
 	if (!fmt)
-		fmt = "no data";
+		exit(EXIT_FAILURE);
 
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
