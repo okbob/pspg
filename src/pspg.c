@@ -36,6 +36,7 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <stdint.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
 #include <termios.h>
@@ -2652,7 +2653,7 @@ force_refresh_data:
 
 						memset(&desc2, 0, sizeof(desc2));
 
-						if (state.pathname)
+						if (state.pathname[0])
 						{
 							if (state.fp)
 							{
