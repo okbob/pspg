@@ -1108,7 +1108,7 @@ translate_headline(Options *opts, DataDesc *desc)
 			}
 
 			/* possibly some chars can hold more display possitions */
-			if (namesline)
+			if (namesline && !opts->force8bit)
 			{
 				display_width = utf_dsplen(namesline);
 				namesline = nextchar;
