@@ -5,7 +5,11 @@ Everybody who uses `psql` uses `less` pager. It is working well, but there is no
 support for tabular data. I found few projects, but no one was completed for this purpose.
 I decided to write some small specialized pager for usage as `psql` pager.
 
-This pager can be used from `mysql` and `pgcli` clients too.
+This pager can be used from the following clients command line clients too:
+
+- `mysql`
+- `sqlite`
+- [`pgcli`](https://github.com/dbcli/pgcli/)
 
 ## Main target
 * possibility to freeze first few rows, first few columns
@@ -243,6 +247,15 @@ SQLite native client doesn't produce well formatted output, but can be forced
 to generate CSV format - and this format is well readable for `pspg`
 
     sqlite3 -csv -header testdb.db 'select * from foo2' | pspg --csv --csv-header=on --double-header
+    
+# pgcli
+
+[pgcli](https://github.com/dbcli/pgcli/) needs the following configuration options (`~/.config/pgcli/config`):
+
+```
+pager = /usr/bin/pspg --csv --rr=2 --quit-if-one-screen --ignore-case --csv-header on 
+table_format = csv
+```
 
 # Note - compilation issue
 Some linker issues can be fixed by:
