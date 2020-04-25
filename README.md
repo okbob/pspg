@@ -224,6 +224,10 @@ some possible configuration:
 :xx
 </pre>
 
+`LC_CTYPE` should be correct. Mainly when you use unicode borders.
+ncurses doesn't display unicode borders (produced by `psql`) without
+correct setting of this variable. Is possible to check a value 'C.UTF8'.
+
 ## Attention
 
 When you use a option `--only-for-tables`, then
@@ -239,7 +243,7 @@ MariaDB [sakila]> select now();
 MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 </pre>
 
-`LC_CTYPE` should be correct.
+
 
 # SQLite
 
