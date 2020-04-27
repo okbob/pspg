@@ -3,7 +3,7 @@ all:
 # Include setting from the configure script
 -include config.make
 
-# override CFLAGS +=  -pedantic -Wall -Wextra -Wimplicit-fallthrough=0
+# override CFLAGS += -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wjump-misses-init -Wdouble-promotion -Wshadow -pedantic -Wimplicit-fallthrough=0
 
 DEPS=$(wildcard *.d)
 PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o infra.o file.o table.o string.o
