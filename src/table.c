@@ -367,6 +367,7 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 		for (;;)
 		{
 			char   *str;
+			int	len = 0;
 
 			errno = 0;
 			str = fgets(statbuf, STATBUF_SIZE, fp);
@@ -374,8 +375,10 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_dat
 
 			if (str)
 			{
-				volatile int	len = strlen(str);
-				bool	endline = str[len - 1] == '\n';
+				bool	endline;
+
+				len = strlen(str);
+				endline = str[len - 1] == '\n';
 
 				if (dynbuf)
 				{

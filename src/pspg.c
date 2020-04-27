@@ -207,18 +207,17 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 {
 	bool	ignore_case = opts->ignore_case;
 	bool	ignore_lower_case = opts->ignore_lower_case;
-	bool	force8bit = opts->force8bit;
 	bool	has_upperchr = scrdesc->has_upperchr;
 	const char *searchterm = scrdesc->searchterm;
 	const char *result;
 
 	if (ignore_case || (ignore_lower_case && !has_upperchr))
 	{
-		result = force8bit ? nstrstr(str, searchterm) : utf8_nstrstr(str, searchterm);
+		result = opts->force8bit ? nstrstr(str, searchterm) : utf8_nstrstr(str, searchterm);
 	}
 	else if (ignore_lower_case && has_upperchr)
 	{
-		result = force8bit ? nstrstr_ignore_lower_case(str, searchterm) : utf8_nstrstr_ignore_lower_case(str, searchterm);
+		result = opts->force8bit ? nstrstr_ignore_lower_case(str, searchterm) : utf8_nstrstr_ignore_lower_case(str, searchterm);
 	}
 	else
 		result = strstr(str, searchterm);
@@ -1398,18 +1397,18 @@ retry:
 				{
 #ifdef HAVE_INOTIFY
 
-					const struct inotify_event *event = (struct inotify_event *) buff;
+					const struct inotify_event *ino_event = (struct inotify_event *) buff;
 
 					while (len > 0 && 0)
 					{
-						if ((event->mask & IN_CLOSE_WRITE))
+						if ((ino_event->mask & IN_CLOSE_WRITE))
 						{
 							if (reopen_file)
 								*reopen_file = true;
 						}
 
-						len -= sizeof (struct inotify_event) + event->len;
-						event += sizeof (struct inotify_event) + event->len;
+						len -= sizeof (struct inotify_event) + ino_event->len;
+						ino_event += sizeof (struct inotify_event) + ino_event->len;
 					}
 
 #endif
@@ -1668,7 +1667,6 @@ main(int argc, char *argv[])
 	int		prev_first_row;
 	int		first_data_row;
 	int		default_freezed_cols = 1;
-	int		i;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	Options			opts;
@@ -1700,6 +1698,7 @@ main(int argc, char *argv[])
 	long	mouse_event = 0;
 	long	vertical_cursor_changed_mouse_event = 0;
 
+	int		pspg_win_iter;
 
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
@@ -3162,9 +3161,9 @@ reset_search:
 
 					if (opts.vertical_cursor)
 					{
-						int		i;
 						int		xpoint;
 						int		prev_command = translated_command_history;
+						int			i;
 
 						if (scrdesc.found && (
 								prev_command == cmd_SearchPrev || prev_command == cmd_SearchNext ||
@@ -3735,7 +3734,7 @@ recheck_left:
 							}
 							else
 							{
-								int		i;
+								int			i;
 
 								for (i = 1; i <= 30; i++)
 								{
@@ -3826,8 +3825,8 @@ recheck_right:
 							}
 							else
 							{
-								int		i;
 								char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
+								int		i;
 
 								for (i = 1; i <= 30; i++)
 								{
@@ -4147,6 +4146,8 @@ recheck_end:
 
 							while (lnb)
 							{
+								int		i;
+
 								for (i = 0; i < lnb->nrows; i++)
 								{
 									/*
@@ -4821,10 +4822,10 @@ found_next_pattern:
 
 		if (fresh_found && scrdesc.found)
 		{
-			int		maxy, maxx;
+			int		maxy_loc, maxx_loc;
 			bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
 
-			UNUSED(maxy);
+			UNUSED(maxy_loc);
 
 			if (opts.vertical_cursor && !_is_footer_cursor)
 			{
@@ -4844,18 +4845,18 @@ found_next_pattern:
 
 			if (fresh_found && w_fix_cols(&scrdesc) != NULL)
 			{
-				getmaxyx(w_fix_cols(&scrdesc), maxy, maxx);
+				getmaxyx(w_fix_cols(&scrdesc), maxy_loc, maxx_loc);
 
-				if (scrdesc.found_start_x + scrdesc.searchterm_char_size <= maxx)
+				if (scrdesc.found_start_x + scrdesc.searchterm_char_size <= maxx_loc)
 					fresh_found = false;
 			}
 
 			if (fresh_found && !_is_footer_cursor &&  w_rows(&scrdesc) != NULL)
 			{
-				getmaxyx(w_rows(&scrdesc), maxy, maxx);
+				getmaxyx(w_rows(&scrdesc), maxy_loc, maxx_loc);
 
 				if (cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
-						cursor_col + scrdesc.fix_cols_cols + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
+						cursor_col + scrdesc.fix_cols_cols + maxx_loc >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
 				{
 					fresh_found = false;
 				}
@@ -4864,17 +4865,17 @@ found_next_pattern:
 					/* we would to move cursor_col to left or right to be partially visible */
 					if (cursor_col + scrdesc.fix_cols_cols > scrdesc.found_start_x)
 						next_command = cmd_MoveLeft;
-					else if (cursor_col + scrdesc.fix_cols_cols + maxx < scrdesc.found_start_x + scrdesc.searchterm_char_size)
+					else if (cursor_col + scrdesc.fix_cols_cols + maxx_loc < scrdesc.found_start_x + scrdesc.searchterm_char_size)
 						next_command = cmd_MoveRight;
 				}
 			}
 
 			if (fresh_found  && _is_footer_cursor && w_footer(&scrdesc) != NULL)
 			{
-				getmaxyx(w_footer(&scrdesc), maxy, maxx);
+				getmaxyx(w_footer(&scrdesc), maxy_loc, maxx_loc);
 
 				if (footer_cursor_col + scrdesc.fix_cols_cols <= scrdesc.found_start_x &&
-						footer_cursor_col + maxx >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
+						footer_cursor_col + maxx_loc >= scrdesc.found_start_x + scrdesc.searchterm_char_size)
 				{
 					fresh_found = false;
 				}
@@ -4883,7 +4884,7 @@ found_next_pattern:
 					/* we would to move cursor_col to left or right to be partially visible */
 					if (footer_cursor_col > scrdesc.found_start_x)
 						next_command = cmd_MoveLeft;
-					else if (footer_cursor_col + maxx < scrdesc.found_start_x + scrdesc.searchterm_char_size)
+					else if (footer_cursor_col + maxx_loc < scrdesc.found_start_x + scrdesc.searchterm_char_size)
 						next_command = cmd_MoveRight;
 				}
 			}
@@ -4987,10 +4988,10 @@ refresh:
 		}
 	}
 
-	for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+	for (pspg_win_iter = 0; pspg_win_iter < PSPG_WINDOW_COUNT; pspg_win_iter++)
 	{
-		if (scrdesc.wins[i])
-			delwin(scrdesc.wins[i]);
+		if (scrdesc.wins[pspg_win_iter])
+			delwin(scrdesc.wins[pspg_win_iter]);
 	}
 
 	if (cmdbar)

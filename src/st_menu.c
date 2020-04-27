@@ -1200,8 +1200,6 @@ pulldownmenu_draw(struct ST_MENU *menu, bool is_top)
 
 		if (*menu_items->text == '\0' || strncmp(menu_items->text, "--", 2) == 0)
 		{
-			int		i;
-
 			if (draw_box)
 			{
 				wmove(draw_area, row, 0);
@@ -1573,7 +1571,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 	if (menu->active_submenu)
 	{
 		bool	_is_nested_pulldown = is_nested_pulldown ? true : (is_menubar ? false : true);
-		bool	unpost_submenu = false;
+		bool	unpost_submenu_loc = false;
 
 		/*
 		 * Key right is used in pulldown menu for access to nested menu.
@@ -1589,9 +1587,9 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		 * pulldown menu, and nested object should be nested pulldown menu.
 		 */
 		processed = _st_menu_driver(menu->active_submenu, c, alt, mevent,
-												false, _is_nested_pulldown, &unpost_submenu);
+												false, _is_nested_pulldown, &unpost_submenu_loc);
 
-		if (unpost_submenu)
+		if (unpost_submenu_loc)
 		{
 			st_menu_unpost(menu->active_submenu, false);
 			menu->active_submenu = NULL;
@@ -1716,17 +1714,17 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 			}
 			else
 			{
-				int		row, col;
+				int		row_loc, col_loc;
 
-				row = mevent->y;
-				col = mevent->x;
+				row_loc = mevent->y;
+				col_loc = mevent->x;
 
 				/* fix mouse coordinates, if draw_area has "wrong" coordinates */
-				add_correction(menu->draw_area, &row, &col);
+				add_correction(menu->draw_area, &row_loc, &col_loc);
 
 				/* calculate row from transformed mouse event */
-				if (wmouse_trafo(menu->draw_area, &row, &col, false))
-						mouse_row = row + 1 - (config->draw_box ? 1:0) + (menu->first_row - 1);
+				if (wmouse_trafo(menu->draw_area, &row_loc, &col_loc, false))
+						mouse_row = row_loc + 1 - (config->draw_box ? 1:0) + (menu->first_row - 1);
 			}
 		}
 	}
@@ -2848,8 +2846,8 @@ st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items)
 	if (config->funckey_bar_style)
 	{
 		int		width = maxx / 10;
-		float	extra_width = (maxx % 10) / 10.0;
-		float	extra_width_sum = 0;
+		double	extra_width = (maxx % 10) / 10.0;
+		double	extra_width_sum = 0;
 
 		if (width < 7)
 		{

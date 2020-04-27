@@ -272,11 +272,6 @@ extern bool active_ncurses;
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 
-/* from pspg.c */
-extern void leave_ncurses(const char *str);
-extern void leave_ncurses2(const char *fmt, const char *str);
-extern void log_writeln(const char *str);
-
 #define PSPG_ERRSTR_BUFFER_SIZE		2048
 extern char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
@@ -311,7 +306,7 @@ extern bool args_are_consistent(Options *opts, StateData *state);
 
 /* from infra.c */
 extern void log_row(const char *fmt, ...);
-extern void leave(const char *fmt, ...);
+extern void leave(const char *fmt, ...)  __attribute__ ((noreturn));
 extern void format_error(const char *fmt, ...);
 
 /* from file.c */
