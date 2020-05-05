@@ -123,3 +123,57 @@ format_error(const char *fmt, ...)
 
 	current_state->errstr = pspg_errstr_buffer;
 }
+
+/*
+ * Safe memory operation.
+ */
+void *
+smalloc(int size)
+{
+	void *result;
+
+	result = malloc(size);
+
+	if (!result)
+		leave("out of memory");
+
+	memset(result, 0, size);
+
+	return result;
+}
+
+void *
+smalloc2(int size, char *debugstr)
+{
+	void *result;
+
+	result = malloc(size);
+	if (!result)
+		leave("out of memory while %s", debugstr);
+
+	memset(result, 0, size);
+
+	return result;
+}
+
+char *
+sstrdup(char *str)
+{
+	char *result = strdup(str);
+
+	if (!result)
+		leave("out of memory");
+
+	return result;
+}
+
+char *
+sstrdup2(char *str, char *debugstr)
+{
+	char *result = strdup(str);
+
+	if (!result)
+		leave("out of memory while %s", debugstr);
+
+	return result;
+}

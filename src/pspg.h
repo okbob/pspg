@@ -216,10 +216,12 @@ typedef struct _rowBucketType
 typedef struct
 {
 	int		nfields;
+	int		nfields_all;
 	bool	has_header;
 	char	types[1024];			/* a or d .. content in column */
 	int		widths[1024];			/* column's display width */
 	bool	multilines[1024];		/* true if column has multiline row */
+	int		columns_map[1024];		/* column numbers - used when some column is hidden */
 } PrintDataDesc;
 
 /*
@@ -308,6 +310,11 @@ extern bool args_are_consistent(Options *opts, StateData *state);
 extern void log_row(const char *fmt, ...);
 extern void leave(const char *fmt, ...)  __attribute__ ((noreturn));
 extern void format_error(const char *fmt, ...);
+
+extern void *smalloc(int size);
+extern void *smalloc2(int size, char *debugstr);
+extern char *sstrdup(char *str);
+extern char *sstrdup2(char *str, char *debugstr);
 
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);

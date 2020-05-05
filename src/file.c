@@ -66,39 +66,6 @@ tilde(char *dest, char *path)
 	return dest;
 }
 
-/*
- * Deduce format type from file suffix
- */
-static int
-get_format_type(char *path)
-{
-	char		buffer[4];
-	char	   *r_ptr, *w_ptr;
-	int			i;
-	int			l;
-
-	l = strlen(path);
-	if (l < 5)
-		return FILE_MATRIX;
-
-	r_ptr = path + l - 4;
-	w_ptr = buffer;
-
-	if (*r_ptr++ != '.')
-		return FILE_MATRIX;
-
-	for (i = 0; i < 3; i++)
-		*w_ptr++ = tolower(*r_ptr++);
-
-	*w_ptr = '\0';
-
-	if (strcmp(buffer, "csv") == 0)
-		return FILE_CSV;
-	else if (strcmp(buffer, "tsv") == 0)
-		return FILE_TSV;
-	else
-		return FILE_MATRIX;
-}
 
 /*
  * Try to open input stream.
@@ -128,8 +95,6 @@ open_data_file(Options *opts, StateData *state)
 			format_error("cannot to open file \"%s\" (%s)", pathname, strerror(errno));
 			return false;
 		}
-
-		state->file_format_from_suffix = get_format_type(opts->pathname);
 	}
 	else
 	{

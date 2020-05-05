@@ -401,7 +401,7 @@ endline_exit:
 					}
 					else
 					{
-						*lineptr = strdup(statbuf);
+						*lineptr = sstrdup(statbuf);
 						*n = *lineptr ? len + 1 : 0;
 
 						return *lineptr ? len : -1;
@@ -410,7 +410,7 @@ endline_exit:
 
 				if (!dynbuf)
 				{
-					dynbuf = strdup(statbuf);
+					dynbuf = sstrdup(statbuf);
 					if (!dynbuf)
 						return -1;
 					fetched_chars += len;
@@ -625,11 +625,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 		if (rows->nrows == 1000)
 		{
-			LineBuffer *newrows = malloc(sizeof(LineBuffer));
-			if (!newrows)
-				leave("out of memory");
+			LineBuffer *newrows = smalloc(sizeof(LineBuffer));
 
-			memset(newrows, 0, sizeof(LineBuffer));
 			rows->next = newrows;
 			newrows->prev = rows;
 			rows = newrows;
@@ -796,11 +793,8 @@ translate_headline(Options *opts, DataDesc *desc)
 	bool	force8bit = opts->force8bit;
 
 	srcptr = desc->headline;
-	destptr = malloc(desc->headline_size + 2);
-	if (!destptr)
-		leave("Out of memory");
+	destptr = smalloc(desc->headline_size + 2);
 
-	memset(destptr, 0, desc->headline_size + 2);
 	desc->headline_transl = destptr;
 
 	desc->linestyle = 'a';
@@ -1060,9 +1054,7 @@ translate_headline(Options *opts, DataDesc *desc)
 				desc->columns += 1;
 		}
 
-		desc->cranges = malloc(desc->columns * sizeof(CRange));
-		if (!desc->cranges)
-			leave("out of memory");
+		desc->cranges = smalloc(desc->columns * sizeof(CRange));
 
 		i = 0; offset = 0;
 		ptr = desc->headline_transl;
@@ -1239,9 +1231,7 @@ cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **res
 						free(dynbuf);
 
 					dynbuf_size = size + 1;
-					dynbuf = malloc(dynbuf_size);
-					if (!dynbuf)
-						leave("out of memory");
+					dynbuf = smalloc(dynbuf_size);
 
 					errno = 0;
 					size = strxfrm(dynbuf, cstr, dynbuf_size);
@@ -1258,7 +1248,7 @@ cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **res
 
 			if (!dynbuf)
 			{
-				dynbuf = strdup(buffer);
+				dynbuf = sstrdup(buffer);
 				if (!dynbuf)
 					leave("out of memory");
 			}
@@ -1358,9 +1348,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 						}
 						else
 						{
-							_nullstr = malloc(len + 1);
-							if (!_nullstr)
-								leave("out of memory");
+							_nullstr = smalloc(len + 1);
 
 							memcpy(_nullstr, saved_str, len);
 							_nullstr[len] = '\0';
@@ -1497,9 +1485,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	xmin = desc->cranges[sbcn - 1].xmin;
 	xmax = desc->cranges[sbcn - 1].xmax;
 
-	sortbuf = malloc(desc->total_rows * sizeof(SortData));
-	if (!sortbuf)
-		leave("out of memory");
+	sortbuf = smalloc(desc->total_rows * sizeof(SortData));
 
 	/* first time we should to detect multilines */
 	if (!desc->multilines_already_tested)
@@ -1558,13 +1544,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 					if (found_continuation_symbol)
 					{
 						if (lnb->lineinfo == NULL)
-						{
-							lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
-							if (lnb->lineinfo == NULL)
-								leave("out of memory");
-
-							memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
-						}
+							lnb->lineinfo = smalloc(1000 * sizeof(LineInfo));
 
 						lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
 						has_multilines = true;
@@ -1582,11 +1562,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	sortbuf_pos = 0;
 
 	if (!desc->order_map)
-	{
-		desc->order_map = malloc(desc->total_rows * sizeof(MappedLine));
-		if (!desc->order_map)
-			leave("out of memory");
-	}
+		desc->order_map = smalloc(desc->total_rows * sizeof(MappedLine));
 
 	/*
 	 * There are two possible sorting methods: numeric or string.

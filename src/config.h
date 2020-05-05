@@ -45,6 +45,7 @@ typedef struct
 	char	csv_separator;
 	char	csv_header;			/* a - auto, - off, + on */
 	char   *nullstr;
+	char   *csv_skip_columns_like;
 	bool	ignore_short_rows;
 	char	double_header;
 	int		border_type;

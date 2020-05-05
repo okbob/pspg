@@ -40,6 +40,7 @@ typedef struct
 	int			firstdigit[1024];	/* rows where first char is digit */
 	size_t		widths[1024];			/* column's display width */
 	bool		multilines[1024];		/* true if column has multiline row */
+	bool		hidden[1024];
 } LinebufType;
 
 typedef struct
@@ -64,24 +65,6 @@ typedef struct
 	bool		ignore_short_rows;
 } PrintConfigType;
 
-static void *
-smalloc(int size, char *debugstr)
-{
-	char *result;
-
-	result = malloc(size);
-	if (!result)
-	{
-		if (debugstr)
-			fprintf(stderr, "out of memory while %s\n", debugstr);
-		else
-			fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-
-	return result;
-}
-
 /*
  * Add new row to LineBuffer
  */
@@ -92,7 +75,7 @@ pb_flush_line(PrintbufType *printbuf)
 
 	if (printbuf->linebuf->nrows == 1000)
 	{
-		LineBuffer *nb = smalloc(sizeof(LineBuffer), "serialize csv output");
+		LineBuffer *nb = smalloc2(sizeof(LineBuffer), "serialize csv output");
 
 		memset(nb, 0, sizeof(LineBuffer));
 
@@ -101,7 +84,7 @@ pb_flush_line(PrintbufType *printbuf)
 		printbuf->linebuf = nb;
 	}
 
-	line = smalloc(printbuf->used + 1, "serialize csv output");
+	line = smalloc2(printbuf->used + 1, "serialize csv output");
 	memcpy(line, printbuf->buffer, printbuf->used);
 	line[printbuf->used] = '\0';
 
@@ -450,34 +433,17 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 			int		j;
 			bool	isheader = false;
 			RowType	   *row;
-			bool	free_row;
 			bool	more_lines = true;
 			bool	multiline = rb->multilines[i];
+			char	   *fields[1024];
+			int			multiline_lineno;
 
 			/* skip broken rows */
-			if (pconfig->ignore_short_rows && rb->rows[i]->nfields != pdesc->nfields)
+			if (pconfig->ignore_short_rows && rb->rows[i]->nfields != pdesc->nfields_all)
 				continue;
 
-			/*
-			 * For multilines we can modify pointers so do copy now
-			 */
-			if (multiline)
-			{
-				RowType	   *source = rb->rows[i];
-				int			size;
-
-				size = offsetof(RowType, fields) + (source->nfields * sizeof(char*));
-
-				row = smalloc(size, "RowType");
-				memcpy(row, source, size);
-
-				free_row = true;
-			}
-			else
-			{
-				row = rb->rows[i];
-				free_row = false;
-			}
+			multiline_lineno = 0;
+			row = rb->rows[i];
 
 			while (more_lines)
 			{
@@ -495,7 +461,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 				isheader = printed_rows == 0 ? pdesc->has_header : false;
 
-				for (j = 0; j < row->nfields; j++)
+				for (j = 0; j < pdesc->nfields; j++)
 				{
 					int		width;
 					int		spaces;
@@ -513,7 +479,18 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 						}
 					}
 
-					field = row->fields[j];
+					if (pdesc->columns_map[j] < row->nfields)
+					{
+						if (multiline_lineno == 0)
+						{
+							field = row->fields[pdesc->columns_map[j]];
+							fields[j] = NULL;
+						}
+						else
+							field = fields[j];
+					}
+					else
+						field = NULL;
 
 					if (field && *field != '\0')
 					{
@@ -567,9 +544,9 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 							pb_putc_repeat(printbuf, spaces, ' ');
 
 						if (multiline)
-							row->fields[j] = pb_put_line(row->fields[j], multiline, printbuf);
+							fields[j] = pb_put_line(field, multiline, printbuf);
 						else
-							(void) pb_put_line(row->fields[j], multiline, printbuf);
+							(void) pb_put_line(field, multiline, printbuf);
 
 						/* right spaces */
 						if (isheader)
@@ -594,26 +571,6 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 					}
 				}
 
-				for (j = row->nfields; j < pdesc->nfields; j++)
-				{
-					bool	addspace;
-
-					if (j > 0)
-					{
-						if (border != 0)
-						{
-							if (linestyle == 'a')
-								pb_write(printbuf, "| ", 2);
-							else
-								pb_write(printbuf, "\342\224\202 ", 4);
-						}
-					}
-
-					addspace = border != 0 || j < last_column_num || is_last_column_multiline;
-
-					pb_putc_repeat(printbuf, pdesc->widths[j] + (addspace ? 1 : 0), ' ');
-				}
-
 				if (border == 2)
 				{
 					if (linestyle == 'a')
@@ -631,10 +588,8 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 				}
 
 				printed_rows += 1;
+				multiline_lineno += 1;
 			}
-
-			if (free_row)
-				free(row);
 		}
 
 		rb = rb->next_bucket;
@@ -655,13 +610,18 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, Pri
 {
 	int				i;
 
-	/* copy data from linebuf */
-	pdesc->nfields = linebuf->maxfields;
+	pdesc->nfields_all = linebuf->maxfields;
+	pdesc->nfields = 0;
 
-	for (i = 0; i < pdesc->nfields; i++)
+	/* copy data from linebuf */
+	for (i = 0; i < linebuf->maxfields; i++)
 	{
-		pdesc->widths[i] = linebuf->widths[i];
-		pdesc->multilines[i] = linebuf->multilines[i];
+		if (!linebuf->hidden[i])
+		{
+			pdesc->widths[pdesc->nfields] = linebuf->widths[i];
+			pdesc->multilines[pdesc->nfields] = linebuf->multilines[i];
+			pdesc->columns_map[pdesc->nfields++] = i;
+		}
 	}
 
 	if (pconfig->header_mode == 'a')
@@ -672,11 +632,11 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, Pri
 	/* try to detect types from numbers of digits */
 	for (i = 0; i < pdesc->nfields; i++)
 	{
-		if ((linebuf->tsizes[i] == 0 && linebuf->digits[i] > 0) ||
-			(linebuf->firstdigit[i] > 0 && linebuf->processed - 1 == 1))
+		if ((linebuf->tsizes[pdesc->columns_map[i]] == 0 && linebuf->digits[pdesc->columns_map[i]] > 0) ||
+			(linebuf->firstdigit[pdesc->columns_map[i]] > 0 && linebuf->processed - 1 == 1))
 			pdesc->types[i] = 'd';
-		else if ((((double) linebuf->firstdigit[i] / (double) (linebuf->processed - 1)) > 0.8)
-			&& (((double) linebuf->digits[i] / (double) linebuf->tsizes[i]) > 0.5))
+		else if ((((double) linebuf->firstdigit[pdesc->columns_map[i]] / (double) (linebuf->processed - 1)) > 0.8)
+			&& (((double) linebuf->digits[pdesc->columns_map[i]] / (double) linebuf->tsizes[pdesc->columns_map[i]]) > 0.5))
 			pdesc->types[i] = 'd';
 		else
 			pdesc->types[i] = 'a';
@@ -732,7 +692,7 @@ prepare_RowBucket(RowBucketType *rb)
 	/* move row from linebuf to rowbucket */
 	if (rb->nrows >= 1000)
 	{
-		RowBucketType *new = smalloc(sizeof(RowBucketType), "import csv data");
+		RowBucketType *new = smalloc2(sizeof(RowBucketType), "import csv data");
 
 		new->nrows = 0;
 		new->allocated = true;
@@ -773,6 +733,10 @@ postprocess_fields(int nfields,
 		long int	digits = 0;
 		long int	total = 0;
 		bool		multiline;
+
+		/* don't calculate width for hidden columns */
+		if (linebuf->hidden[i])
+			continue;
 
 		if (force8bit)
 		{
@@ -880,8 +844,8 @@ postprocess_rows(RowBucketType *rb,
 					}
 				}
 
-				locbuf = smalloc(newsize, "postprocess csv or tsv data");
-				newrow = smalloc(offsetof(RowType, fields) + (linebuf->maxfields * sizeof(char*)),
+				locbuf = smalloc2(newsize, "postprocess csv or tsv data");
+				newrow = smalloc2(offsetof(RowType, fields) + (linebuf->maxfields * sizeof(char*)),
 								 "postprocess csv or tsv data");
 				newrow->nfields = linebuf->maxfields;
 
@@ -919,6 +883,48 @@ postprocess_rows(RowBucketType *rb,
 	}
 }
 
+static void
+mark_hidden_columns(LinebufType *linebuf,
+					RowType *row,
+					int nfields,
+					Options *opts)
+{
+	char	   *names;
+	char	   *endnames;
+	char	   *ptr;
+	int		i;
+
+	/* prepare list of hidden columns */
+	names = sstrdup(opts->csv_skip_columns_like);
+
+	endnames = names + strlen(names);
+	ptr = names;
+	while (*ptr)
+	{
+		/* space is separator between words */
+		if (*ptr == ' ')
+			*ptr = '\0';
+		ptr += 1;
+	}
+
+	for (i = 0; i < nfields; i++)
+	{
+		ptr = names;
+		while (ptr < endnames)
+		{
+			if (*ptr)
+			{
+				if (strstr(row->fields[i], ptr))
+					linebuf->hidden[i] = true;
+			}
+
+			ptr += strlen(ptr) + 1;
+		}
+	}
+
+	free(names);
+}
+
 /*
  * Read tsv format from ifile
  */
@@ -928,13 +934,13 @@ read_tsv(RowBucketType *rb,
 		 bool force8bit,
 		 FILE *ifile,
 		 bool ignore_short_rows,
-		 char *nullstr)
+		 Options *opts)
 {
 	bool	closed = false;
 	int		size = 0;
 	int		nfields = 0;
 	int		c;
-	int		nullstr_size = strlen(nullstr);
+	int		nullstr_size = strlen(opts->nullstr);
 
 	c = fgetc(ifile);
 	do
@@ -957,7 +963,7 @@ read_tsv(RowBucketType *rb,
 					/* NULL */
 					if (c == 'N')
 					{
-						append_str(linebuf, nullstr);
+						append_str(linebuf, opts->nullstr);
 						size += nullstr_size;
 						goto next_char;
 					}
@@ -1014,10 +1020,10 @@ read_tsv(RowBucketType *rb,
 
 				rb = prepare_RowBucket(rb);
 
-				locbuf = smalloc(linebuf->used, "import csv data");
+				locbuf = smalloc2(linebuf->used, "import tsv data");
 				memcpy(locbuf, linebuf->buffer, linebuf->used);
 
-				row = smalloc(offsetof(RowType, fields) + (nfields * sizeof(char*)), "import csv data");
+				row = smalloc2(offsetof(RowType, fields) + (nfields * sizeof(char*)), "import csv data");
 				row->nfields = nfields;
 
 				for (i = 0; i < nfields; i++)
@@ -1025,6 +1031,9 @@ read_tsv(RowBucketType *rb,
 					row->fields[i] = locbuf;
 					locbuf += linebuf->sizes[i];
 				}
+
+				if (linebuf->processed == 0 && opts->csv_skip_columns_like)
+					mark_hidden_columns(linebuf, row, nfields, opts);
 
 				postprocess_fields(nfields,
 								   row,
@@ -1036,6 +1045,8 @@ read_tsv(RowBucketType *rb,
 
 				rb->multilines[rb->nrows] = multiline;
 				rb->rows[rb->nrows++] = row;
+
+				linebuf->processed += 1;
 			}
 
 			nfields = 0;
@@ -1052,7 +1063,7 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, nullstr);
+		postprocess_rows(rb, linebuf, force8bit, opts->nullstr);
 }
 
 static void
@@ -1062,7 +1073,7 @@ read_csv(RowBucketType *rb,
 		 bool force8bit,
 		 FILE *ifile,
 		 bool ignore_short_rows,
-		 char *nullstr)
+		 Options *opts)
 {
 	bool	skip_initial = true;
 	bool	closed = false;
@@ -1073,7 +1084,7 @@ read_csv(RowBucketType *rb,
 	int		nfields = 0;
 	int		instr = false;			/* true when csv string is processed */
 	int		c;
-	int		nullstr_size = strlen(nullstr);
+	int		nullstr_size = strlen(opts->nullstr);
 
 	c = fgetc(ifile);
 	do
@@ -1159,7 +1170,7 @@ read_csv(RowBucketType *rb,
 					linebuf->sizes[nfields] = nullstr_size;
 					linebuf->starts[nfields++] = pos;
 
-					append_str(linebuf, nullstr);
+					append_str(linebuf, opts->nullstr);
 					pos += nullstr_size;
 				}
 
@@ -1222,7 +1233,7 @@ read_csv(RowBucketType *rb,
 				linebuf->sizes[nfields] = nullstr_size;
 				linebuf->starts[nfields++] = pos;
 
-				append_str(linebuf, nullstr);
+				append_str(linebuf, opts->nullstr);
 				pos += nullstr_size;
 			}
 			else
@@ -1240,10 +1251,10 @@ read_csv(RowBucketType *rb,
 			for (i = 0; i < nfields; i++)
 				data_size += linebuf->sizes[i] + 1;
 
-			locbuf = smalloc(data_size, "import csv data");
+			locbuf = smalloc2(data_size, "import csv data");
 			memset(locbuf, 0, data_size);
 
-			row = smalloc(offsetof(RowType, fields) + (nfields * sizeof(char*)), "import csv data");
+			row = smalloc2(offsetof(RowType, fields) + (nfields * sizeof(char*)), "import csv data");
 			row->nfields = nfields;
 
 			multiline = false;
@@ -1258,6 +1269,9 @@ read_csv(RowBucketType *rb,
 				locbuf[linebuf->sizes[i]] = '\0';
 				locbuf += linebuf->sizes[i] + 1;
 			}
+
+			if (linebuf->processed == 0 && opts->csv_skip_columns_like)
+				mark_hidden_columns(linebuf, row, nfields, opts);
 
 			postprocess_fields(nfields,
 							   row,
@@ -1295,7 +1309,7 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, nullstr);
+		postprocess_rows(rb, linebuf, force8bit, opts->nullstr);
 }
 
 /*
@@ -1367,7 +1381,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 				 opts->csv_separator,
 				 opts->force8bit,
 				 state->fp, opts->ignore_short_rows,
-				 opts->nullstr);
+				 opts);
 
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
@@ -1378,7 +1392,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 				 opts->force8bit,
 				 state->fp,
 				 opts->ignore_short_rows,
-				 opts->nullstr);
+				 opts);
 
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
@@ -1458,9 +1472,9 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		 * "translate" headline here (generate translated headline).
 		 */
 		desc->columns = linebuf.maxfields;
-		desc->cranges = smalloc(desc->columns * sizeof(CRange), "prepare metadata");
+		desc->cranges = smalloc2(desc->columns * sizeof(CRange), "prepare metadata");
 		memset(desc->cranges, 0, desc->columns * sizeof(CRange));
-		desc->headline_transl = smalloc(desc->maxbytes + 3, "prepare metadata");
+		desc->headline_transl = smalloc2(desc->maxbytes + 3, "prepare metadata");
 
 		ptr = desc->headline_transl;
 

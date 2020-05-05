@@ -873,20 +873,12 @@ show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep,
 	if (refresh_first && scrdesc->fmt == NULL)
 	{
 		if (fmt != NULL)
-		{
-			scrdesc->fmt = strdup(fmt);
-			if (!scrdesc->fmt)
-				leave("out of memory");
-		}
+			scrdesc->fmt = sstrdup(fmt);
 		else
 			scrdesc->fmt = NULL;
 
 		if (par != NULL)
-		{
-			scrdesc->par = strdup(par);
-			if (!scrdesc->par)
-				leave("out of memory");
-		}
+			scrdesc->par = sstrdup(par);
 		else
 			scrdesc->par = NULL;
 		scrdesc->beep = beep;
@@ -1810,16 +1802,6 @@ main(int argc, char *argv[])
 
 	if (state.boot_wait > 0)
 		usleep(1000 * 1000 * state.boot_wait);
-
-	if (!opts.csv_format && !opts.tsv_format &&
-		state.file_format_from_suffix != FILE_UNDEF &&
-		!state.ignore_file_suffix)
-	{
-		if (state.file_format_from_suffix == FILE_CSV)
-			opts.csv_format = true;
-		else if (state.file_format_from_suffix == FILE_TSV)
-			opts.tsv_format = true;
-	}
 
 	/*
 	 * don't use inotify, when user prefer periodic watch time, or when we
@@ -3272,13 +3254,7 @@ reset_search:
 					}
 
 					if (lnb->lineinfo == NULL)
-					{
-						lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
-						if (lnb->lineinfo == NULL)
-							leave("out of memory");
-
-						memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
-					}
+						lnb->lineinfo = smalloc(1000 * sizeof(LineInfo));
 
 					lnb->lineinfo[lnb_row].mask ^= LINEINFO_BOOKMARK;
 				}
@@ -4404,11 +4380,8 @@ found_next_pattern:
 
 						if (cut_bytes != 0)
 						{
-							row = malloc(strlen(rows->rows[rowidx]) + 1);
-							if (row == NULL)
-								leave("out of memory");
+							row = sstrdup(rows->rows[rowidx]);
 
-							strcpy(row, rows->rows[rowidx]);
 							row[cut_bytes] = '\0';
 							free_row = true;
 						}

@@ -66,6 +66,7 @@ This pager can be used from the following clients command line clients too:
 * `--vertical-cursor`  show column cursor
 * `--on-sigint-exit`  double escape or ctrl c ending pager
 * `--quit-on-f3`  exit on press F3 (like mc viewer)
+* `--skip-colums-like`  space separated list of ignored columns (only for csv and tsv format)
 * `-q`, `--query`  execute query
 * `-w`, `--watch n`  repeat query execution every time sec
 * `-d`, `--dbname`  database name

@@ -91,6 +91,7 @@ static struct option long_options[] =
 	{"quit-on-f3", no_argument, 0, 35},
 	{"wait", required_argument, 0, 36},
 	{"hold-stream", required_argument, 0, 37},
+	{"skip-columns-like", required_argument, 0, 38},
 	{0, 0, 0, 0}
 };
 
@@ -118,13 +119,13 @@ buildargv(const char *input, int *_argc, char *appname)
 	int			maxargc = 8;
 	char	  **argv;
 
-	argv = (char **) malloc(maxargc * sizeof (char *));
+	argv = (char **) smalloc(maxargc * sizeof (char *));
 
 	argv[0] = appname;
 
 	if (input != NULL)
 	{
-		copybuf = (char *) malloc(strlen(input) + 1);
+		copybuf = (char *) smalloc(strlen(input) + 1);
 
 		/*
 		 * Is a do{}while to always execute the loop once.  Always return an
@@ -191,7 +192,7 @@ buildargv(const char *input, int *_argc, char *appname)
 
 			*arg = '\0';
 
-			argv[argc++] = strdup(copybuf);
+			argv[argc++] = sstrdup(copybuf);
 			consume_whitespace(&input);
 		}
 		while (*input != '\0');
@@ -281,6 +282,8 @@ readargs(char **argv,
 					fprintf(stderr, "  --csv                    input stream has csv format\n");
 					fprintf(stderr, "  --csv-separator          char used as field separator\n");
 					fprintf(stderr, "  --csv-header [on/off]    specify header line usage\n");
+					fprintf(stderr, "  --skip-columns-like=\"SPACE SEPARATED STRING LIST\"\n");
+					fprintf(stderr, "                           columns with substr in name are ignored\n");
 					fprintf(stderr, "  --tsv                    input stream has tsv format\n");
 					fprintf(stderr, "\nWatch mode options:\n");
 					fprintf(stderr, "  -q, --query=QUERY        execute query\n");
@@ -400,7 +403,7 @@ readargs(char **argv,
 				opts->double_header = true;
 				break;
 			case 25:
-				opts->log_pathname = strdup(optarg);
+				opts->log_pathname = sstrdup(optarg);
 				break;
 			case 26:
 				state->reserved_rows = atoi(optarg);
@@ -433,7 +436,7 @@ readargs(char **argv,
 				opts->tsv_format = true;
 				break;
 			case 31:
-				opts->nullstr = strdup(optarg);
+				opts->nullstr = sstrdup(optarg);
 				break;
 			case 32:
 				state->ignore_file_suffix = true;
@@ -462,6 +465,9 @@ readargs(char **argv,
 					state->errstr = "hold-stream should be 0, 1 or 2";
 					return false;
 				}
+				break;
+			case 38:
+				opts->csv_skip_columns_like = sstrdup(optarg);
 				break;
 
 			case 'V':
@@ -545,7 +551,7 @@ readargs(char **argv,
 						state->errstr = "only one file can be browsed";
 						return false;
 					}
-					opts->pathname = strdup(optarg);
+					opts->pathname = sstrdup(optarg);
 				}
 				break;
 			case 'F':
@@ -558,7 +564,7 @@ readargs(char **argv,
 				opts->no_highlight_search = true;
 				break;
 			case 'h':
-				opts->host = strdup(optarg);
+				opts->host = sstrdup(optarg);
 				break;
 			case 'p':
 				{
@@ -570,17 +576,17 @@ readargs(char **argv,
 						format_error("invalid port number: %s", optarg);
 						return false;
 					}
-					opts->port = strdup(optarg);
+					opts->port = sstrdup(optarg);
 				}
 				break;
 			case 'U':
-				opts->username = strdup(optarg);
+				opts->username = sstrdup(optarg);
 				break;
 			case 'W':
 				opts->force_password_prompt = true;
 				break;
 			case 'd':
-				opts->dbname = strdup(optarg);
+				opts->dbname = sstrdup(optarg);
 				break;
 
 			default:
@@ -599,10 +605,44 @@ readargs(char **argv,
 			return false;
 		}
 
-		opts->pathname = strdup(argv[optind]);
+		opts->pathname = sstrdup(argv[optind]);
 	}
 
 	return true;
+}
+
+/*
+ * Deduce format type from file suffix
+ */
+static int
+get_format_type(char *path)
+{
+	char		buffer[4];
+	char	   *r_ptr, *w_ptr;
+	int			i;
+	int			l;
+
+	l = strlen(path);
+	if (l < 5)
+		return FILE_MATRIX;
+
+	r_ptr = path + l - 4;
+	w_ptr = buffer;
+
+	if (*r_ptr++ != '.')
+		return FILE_MATRIX;
+
+	for (i = 0; i < 3; i++)
+		*w_ptr++ = tolower(*r_ptr++);
+
+	*w_ptr = '\0';
+
+	if (strcmp(buffer, "csv") == 0)
+		return FILE_CSV;
+	else if (strcmp(buffer, "tsv") == 0)
+		return FILE_TSV;
+	else
+		return FILE_MATRIX;
 }
 
 /*
@@ -636,6 +676,27 @@ args_are_consistent(Options *opts, StateData *state)
 		state->errstr = "cannot use watch mode when query or file is missing";
 		return false;
 	}
+
+	if (opts->csv_skip_columns_like && opts->csv_header != '+')
+	{
+		state->errstr = "skipping columns requires header row (option \"csv-header on\")";
+		return false;
+	}
+
+	/* post parsing, checking auto setting */
+	if (opts->pathname)
+		state->file_format_from_suffix = get_format_type(opts->pathname);
+
+	if (!opts->csv_format && !opts->tsv_format &&
+		state->file_format_from_suffix != FILE_UNDEF &&
+		!state->ignore_file_suffix)
+	{
+		if (state->file_format_from_suffix == FILE_CSV)
+			opts->csv_format = true;
+		else if (state->file_format_from_suffix == FILE_TSV)
+			opts->tsv_format = true;
+	}
+
 
 	return true;
 }
