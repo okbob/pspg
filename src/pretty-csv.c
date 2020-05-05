@@ -914,7 +914,22 @@ mark_hidden_columns(LinebufType *linebuf,
 		{
 			if (*ptr)
 			{
-				if (strstr(row->fields[i], ptr))
+				size_t		len = strlen(ptr);
+
+				if (*ptr == '^')
+				{
+					if (strncmp(row->fields[i], ptr + 1, len - 1) == 0)
+						linebuf->hidden[i] = true;
+				}
+				else if (ptr[len - 1] == '$')
+				{
+					size_t		len2 = strlen(row->fields[i]);
+
+					if (len2 > (len - 1) &&
+							strncmp(row->fields[i] + len2 - len + 1, ptr, len - 1) == 0)
+						linebuf->hidden[i] = true;
+				}
+				else if (strstr(row->fields[i], ptr))
 					linebuf->hidden[i] = true;
 			}
 
