@@ -883,7 +883,7 @@ postprocess_rows(RowBucketType *rb,
 	}
 }
 
-static void
+static bool
 mark_hidden_columns(LinebufType *linebuf,
 					RowType *row,
 					int nfields,
@@ -893,6 +893,7 @@ mark_hidden_columns(LinebufType *linebuf,
 	char	   *endnames;
 	char	   *ptr;
 	int		i;
+	bool	result = false;
 
 	/* prepare list of hidden columns */
 	names = sstrdup(opts->csv_skip_columns_like);
@@ -919,18 +920,27 @@ mark_hidden_columns(LinebufType *linebuf,
 				if (*ptr == '^')
 				{
 					if (strncmp(row->fields[i], ptr + 1, len - 1) == 0)
+					{
 						linebuf->hidden[i] = true;
+						result = true;
+					}
 				}
 				else if (ptr[len - 1] == '$')
 				{
 					size_t		len2 = strlen(row->fields[i]);
 
 					if (len2 > (len - 1) &&
-							strncmp(row->fields[i] + len2 - len + 1, ptr, len - 1) == 0)
+						strncmp(row->fields[i] + len2 - len + 1, ptr, len - 1) == 0)
+					{
 						linebuf->hidden[i] = true;
+						result = true;
+					}
 				}
 				else if (strstr(row->fields[i], ptr))
+				{
 					linebuf->hidden[i] = true;
+					result = true;
+				}
 			}
 
 			ptr += strlen(ptr) + 1;
@@ -938,6 +948,8 @@ mark_hidden_columns(LinebufType *linebuf,
 	}
 
 	free(names);
+
+	return result;
 }
 
 /*
@@ -1264,7 +1276,8 @@ read_csv(RowBucketType *rb,
 
 			data_size = 0;
 			for (i = 0; i < nfields; i++)
-				data_size += linebuf->sizes[i] + 1;
+				if (!linebuf->hidden[i])
+					data_size += linebuf->sizes[i] + 1;
 
 			locbuf = smalloc2(data_size, "import csv data");
 			memset(locbuf, 0, data_size);
@@ -1276,13 +1289,18 @@ read_csv(RowBucketType *rb,
 
 			for (i = 0; i < nfields; i++)
 			{
-				row->fields[i] = locbuf;
+				if (!linebuf->hidden[i])
+				{
+					row->fields[i] = locbuf;
 
-				if (linebuf->sizes[i] > 0)
-					memcpy(locbuf, linebuf->buffer + linebuf->starts[i], linebuf->sizes[i]);
+					if (linebuf->sizes[i] > 0)
+						memcpy(locbuf, linebuf->buffer + linebuf->starts[i], linebuf->sizes[i]);
 
-				locbuf[linebuf->sizes[i]] = '\0';
-				locbuf += linebuf->sizes[i] + 1;
+					locbuf[linebuf->sizes[i]] = '\0';
+					locbuf += linebuf->sizes[i] + 1;
+				}
+				else
+					row->fields[i] = NULL;
 			}
 
 			if (linebuf->processed == 0 && opts->csv_skip_columns_like)
