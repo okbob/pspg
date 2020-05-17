@@ -1523,7 +1523,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		{
 			int		width = linebuf.widths[i];
 
-			desc->cranges[i].name_pos = -1;
+			desc->cranges[i].name_offset = -1;
 			desc->cranges[i].name_size = -1;
 
 			if (i > 0)

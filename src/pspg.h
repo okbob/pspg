@@ -87,7 +87,9 @@ typedef struct
 {
 	int		xmin;
 	int		xmax;
-	int		name_pos;				/* column's name position */
+	int		name_pos;				/* column's name position in chars */
+	int		name_width;				/* size of column name in display chars */
+	int		name_offset;			/* start of column's name in bytes */
 	int		name_size;				/* size of column name in bytes */
 } CRange;
 

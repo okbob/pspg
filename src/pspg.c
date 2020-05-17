@@ -4504,7 +4504,7 @@ found_next_pattern:
 							{
 								if (opts.force8bit)
 								{
-									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
 														   desc.cranges[colnum - 1].name_size,
 														   scrdesc.searchcolterm,
 														   scrdesc.searchcolterm_size))
@@ -4515,7 +4515,7 @@ found_next_pattern:
 								}
 								else
 								{
-									if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+									if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
 														   desc.cranges[colnum - 1].name_size,
 														   scrdesc.searchcolterm,
 														   scrdesc.searchcolterm_size))
@@ -4532,7 +4532,7 @@ found_next_pattern:
 
 								for (colnum = 1; colnum < startcolumn; colnum++)
 								{
-									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_pos,
+									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
 														   desc.cranges[colnum - 1].name_size,
 														   scrdesc.searchcolterm,
 														   scrdesc.searchcolterm_size))

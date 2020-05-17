@@ -129,6 +129,205 @@ flush_bytes(WINDOW *win,
 	}
 }
 
+static void
+print_column_names(WINDOW *win,
+				   int srcx,						/* offset to displayed data */
+				   int vcursor_xmin,				/* xmin in display coordinates */
+				   int vcursor_xmax,				/* xmax in display coordinates */
+				   DataDesc *desc,
+				   Options *opts,
+				   Theme *t)
+{
+	char   *headline_ptr = desc->headline_transl;
+	char   *headline_end_ptr = headline_ptr + desc->headline_char_size;
+	char   *namesline = desc->namesline;
+	char   *ptr = namesline;
+	int		maxy, maxx;
+	int		cy, cx;
+	int		pos = 0;
+	int		bytes;
+	int		chars;
+	int		extra_space = desc->border_type == 0 ? 0 : 1;
+	attr_t		active_attr = 0;
+	attr_t		new_attr;
+	int		i;
+
+	getyx(win, cy, cx);
+	getmaxyx(win, maxy, maxx);
+
+	(void) cx;
+	(void) maxy;
+
+	/* skip left invisible chars */
+	while (pos < srcx)
+	{
+		bytes = utf8charlen(*ptr);
+		chars = utf_dsplen(ptr);
+
+		if (pos + chars > srcx)
+		{
+			wprintw(win, "%*s", pos + chars - srcx, "");
+
+			pos += chars;
+			ptr += bytes;
+			headline_ptr += chars;
+
+			break;
+		}
+
+		pos += chars;
+		ptr += bytes;
+		headline_ptr += chars;
+	}
+
+	/* position starts from zero again to be comparable with maxx */
+	pos -= srcx;
+
+	/* for each visible column (position) and defined colum */
+	while (pos < maxx && headline_ptr < headline_end_ptr)
+	{
+		char	column_format = *headline_ptr;
+		bool	is_cursor = vcursor_xmin <= pos && pos <= vcursor_xmax;
+
+		bytes = utf8charlen(*ptr);
+		chars = utf_dsplen(ptr);
+
+		if (is_cursor )
+			new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
+		else
+			new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
+
+		if (active_attr != new_attr)
+		{
+			/* disable current style */
+			wattroff(win, active_attr);
+
+			/* active new style */
+			active_attr = new_attr;
+			wattron(win, active_attr);
+		}
+
+		if (column_format != 'd')
+		{
+			if (desc->linestyle == 'a' && opts->force_uniborder)
+				waddch(win, ACS_VLINE);
+			else
+				wprintw(win, "%.*s", bytes, ptr);
+		}
+		else
+			wprintw(win, "%*s", chars, "");
+
+		headline_ptr += chars;
+		ptr += bytes;
+		pos += chars;
+	}
+
+	wattroff(win, active_attr);
+
+	/* check all column names and print that are visible */
+	for (i = 0; i < desc->columns; i++)
+	{
+		CRange *col = &desc->cranges[i];
+		int		reduced_xmin = col->xmin - srcx;
+		int		reduced_xmax = col->xmax - srcx;
+		int		visible_xmin;
+		int		visible_xmax;
+		int		visible_width;
+		int		x;
+		int		skipbytes = 0;
+		char   *colname;
+		int		colname_size;
+		int		colname_width;
+
+		/* skip invisible columns */
+		if (reduced_xmax < 0)
+			continue;
+
+		/* leave when no other column can be visible */
+		if (reduced_xmin > maxx)
+			break;
+
+		colname = desc->namesline + col->name_offset;
+		colname_size = col->name_size;
+		colname_width = col->name_width;
+
+		visible_xmin = reduced_xmin > 1 ? reduced_xmin : 1;
+		visible_xmax = reduced_xmax < maxx ? reduced_xmax : maxx;
+		visible_width = visible_xmax - visible_xmin + extra_space;
+
+		if (reduced_xmin >= 1 && reduced_xmax <= maxx)
+		{
+			/* center content */
+			x = (visible_width - colname_width - 1) / 2 + visible_xmin + 1;
+		}
+		else if (reduced_xmin >= 1)
+		{
+			/*
+			 * display first visible chars from column name when all chars
+			 * from column name cannot be displayed, or center content.
+			 */
+			if (visible_width <= colname_width + 1 + extra_space)
+			{
+				char   *ptr = colname;
+				int		x2;
+
+				/* size of visible chars will be calculated */
+				colname_size = 0;
+
+				x = visible_xmin + 1 + extra_space;
+				x2 = x;
+
+				while (x2 <= maxx)
+				{
+					bytes = utf8charlen(*ptr);
+					chars = utf_dsplen(ptr);
+
+					if (x2 + chars > maxx)
+						break;
+
+					colname_size += bytes;
+					x2 += chars;
+					ptr += bytes;
+				}
+			}
+			else
+				x = (visible_width - colname_width - 1) / 2 + visible_xmin + 1;
+		}
+		else if (reduced_xmin < 1)
+		{
+			/* display last visible chars or center content */
+			if (visible_width <= col->name_width + 1 + extra_space)
+			{
+				char   *ptr = colname;
+				int		reduce_width = colname_width + 1 + extra_space - visible_width;
+
+				x = visible_xmin;
+
+				while (reduce_width > 0)
+				{
+					bytes = utf8charlen(*ptr);
+					chars = utf_dsplen(ptr);
+
+					skipbytes += bytes;
+					reduce_width -= chars;
+					ptr += chars;
+				}
+
+				if (reduce_width < 0)
+					x += abs(reduce_width);
+			}
+			else
+				x = (visible_width - col->name_width - 1) / 2 + visible_xmin;
+		}
+
+		new_attr = (vcursor_xmin <= x && x <= vcursor_xmax) ? t->cursor_data_attr : t->data_attr;
+
+		wattron(win, new_attr);
+		mvwprintw(win, cy, x, "%.*s", colname_size - skipbytes, colname + skipbytes);
+		wattroff(win, new_attr);
+	}
+}
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -154,6 +353,7 @@ window_fill(int window_identifier,
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
+	bool		is_fix_rows_only = window_identifier == WINDOW_FIX_ROWS;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -460,6 +660,16 @@ window_fill(int window_identifier,
 				is_expand_head = false;
 			}
 
+			/*
+			 * To ensure visible column names how it can be possible, we should to
+			 * print column names directly (not like input document row.
+			 */
+			if (is_fix_rows_only && rowstr == desc->namesline )
+			{
+				print_column_names(win, srcx, vcursor_xmin, vcursor_xmax, desc, opts, t);
+				continue;
+			}
+
 			/* skip first srcx chars */
 			i = srcx;
 			left_spaces = 0;
@@ -500,9 +710,7 @@ window_fill(int window_identifier,
 				char   *p;
 				int		aux_left_spaces = left_spaces;
 
-				free_row = malloc(left_spaces + strlen(rowstr) + 1);
-				if (!free_row)
-					leave("out of memory");
+				free_row = smalloc(left_spaces + strlen(rowstr) + 1);
 
 				p = free_row;
 				while (aux_left_spaces-- > 0)

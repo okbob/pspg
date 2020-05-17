@@ -777,7 +777,6 @@ next_row:
 	return true;
 }
 
-
 /*
  * Translate from UTF8 to semantic characters.
  */
@@ -1059,7 +1058,7 @@ translate_headline(Options *opts, DataDesc *desc)
 		i = 0; offset = 0;
 		ptr = desc->headline_transl;
 		desc->cranges[0].xmin = 0;
-		desc->cranges[0].name_pos = -1;
+		desc->cranges[0].name_offset = -1;
 		desc->cranges[0].name_size = -1;
 
 		while (*ptr)
@@ -1076,38 +1075,44 @@ translate_headline(Options *opts, DataDesc *desc)
 					nextchar = NULL;
 				}
 				else
+				{
 					nextchar = namesline + (opts->force8bit ? 1 : utf8charlen(*namesline));
+					display_width = opts->force8bit ? 1 : utf_dsplen(namesline);
+				}
 			}
+			else
+				display_width = 1;
 
 			if (*ptr == 'I')
 			{
 				desc->cranges[i++].xmax = offset;
 				desc->cranges[i].xmin = offset;
-				desc->cranges[i].name_pos = -1;
+				desc->cranges[i].name_offset = -1;
 				desc->cranges[i].name_size = -1;
 			}
 			else if (*ptr == 'd')
 			{
 				if (namesline && *namesline != ' ')
 				{
-					if (desc->cranges[i].name_pos == -1)
+					if (desc->cranges[i].name_offset == -1)
 					{
-						first_char = namesline;
-						desc->cranges[i].name_pos = namesline - desc->namesline;
+						desc->cranges[i].name_pos = ptr - desc->headline_transl;
+						desc->cranges[i].name_width = display_width;
+						desc->cranges[i].name_offset = namesline - desc->namesline;
 						desc->cranges[i].name_size = nextchar - namesline;
 						first_char = namesline;
 					}
 					else
+					{
 						desc->cranges[i].name_size = nextchar - first_char;
+						desc->cranges[i].name_width = offset + display_width - desc->cranges[i].name_pos;
+					}
 				}
 			}
 
 			/* possibly some chars can hold more display possitions */
 			if (namesline)
-			{
-				display_width = opts->force8bit ? 1 : utf_dsplen(namesline);
 				namesline = nextchar;
-			}
 			else
 				display_width = 1;
 
@@ -1128,13 +1133,13 @@ translate_headline(Options *opts, DataDesc *desc)
 		if (desc->namesline && desc->columns >= 2)
 		{
 			if (desc->cranges[0].name_size == 3 &&
-					nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_pos,
+					nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_offset,
 									   desc->cranges[0].name_size,
 									   "oid",
 									   3))
 			{
 				if (desc->cranges[1].name_size > 4 &&
-						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_pos + desc->cranges[1].name_size - 4,
+						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_offset + desc->cranges[1].name_size - 4,
 										   4, "name", 4))
 					desc->oid_name_table = true;
 			}
