@@ -233,7 +233,7 @@ print_column_names(WINDOW *win,
 		int		visible_xmin;
 		int		visible_xmax;
 		int		visible_width;
-		int		x;
+		int		x = -1;
 		int		skipbytes = 0;
 		char   *colname;
 		int		colname_size;
@@ -296,24 +296,31 @@ print_column_names(WINDOW *win,
 		else if (reduced_xmin < 1)
 		{
 			/* display last visible chars or center content */
-			if (visible_width <= col->name_width + 1 + extra_space)
+			if (visible_width <= col->name_width + extra_space)
 			{
 				char   *ptr = colname;
-				int		reduce_width = colname_width + 1 + extra_space - visible_width;
+				int		reduce_width = colname_width + extra_space - visible_width;
 
-				x = visible_xmin;
+				/* there is not a space from left */
+				x = visible_xmin - 1;
 
-				while (reduce_width > 0)
+				if (reduce_width < colname_width)
 				{
-					bytes = utf8charlen(*ptr);
-					chars = utf_dsplen(ptr);
+					while (reduce_width > 0)
+					{
+						bytes = utf8charlen(*ptr);
+						chars = utf_dsplen(ptr);
 
-					skipbytes += bytes;
-					reduce_width -= chars;
-					ptr += chars;
+						skipbytes += bytes;
+						reduce_width -= chars;
+						ptr += bytes;
+					}
 				}
+				else
+					/* there is not any content to print */
+					x = -1;
 
-				if (reduce_width < 0)
+				if (reduce_width < 0 && x != -1)
 					x += abs(reduce_width);
 			}
 			else
@@ -322,9 +329,12 @@ print_column_names(WINDOW *win,
 
 		new_attr = (vcursor_xmin <= x && x <= vcursor_xmax) ? t->cursor_data_attr : t->data_attr;
 
-		wattron(win, new_attr);
-		mvwprintw(win, cy, x, "%.*s", colname_size - skipbytes, colname + skipbytes);
-		wattroff(win, new_attr);
+		if (x != -1)
+		{
+			wattron(win, new_attr);
+			mvwprintw(win, cy, x, "%.*s", colname_size - skipbytes, colname + skipbytes);
+			wattroff(win, new_attr);
+		}
 	}
 }
 
