@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	3.0.7
+Version: 	3.0.8
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Tue May 19 2020 Pavel Stehule <pavel.stehule@gmail.com>
+- code cleaning
+- option skip-columns-like
+- column names dynamic positioning
+
 * Mon Apr  6 2020 Pavel Stehule <pavel.stehule@gmail.com>
 - streaming mode for file (requires inotify)
 - named pipe can be source stream
