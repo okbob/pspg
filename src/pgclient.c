@@ -291,6 +291,8 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 									  field_info(opts, row->fields[j], &multiline_col));
 			pdesc->multilines[j] |= multiline_col;
 			multiline_row |= multiline_col;
+
+			pdesc->columns_map[j] = j;
 		}
 
 		rb = push_row(rb, row, multiline_row);
