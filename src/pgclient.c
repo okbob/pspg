@@ -135,7 +135,83 @@ max_int(int a, int b)
 	return a > b ? a : b;
 }
 
+/*
+ * Returns true, when some column should be hidden.
+ */
+static int
+mark_hidden_columns(PGresult *result,
+					int nfields,
+					Options *opts,
+					bool *hidden)
+{
+	char	   *names;
+	char	   *endnames;
+	char	   *ptr;
+	int		i;
+	int		visible_columns = 0;
+
+	for (i = 0; i < nfields; i++)
+		hidden[i] = false;
+
+	if (!opts->csv_skip_columns_like)
+		return nfields;
+
+	/* prepare list of hidden columns */
+	names = sstrdup(opts->csv_skip_columns_like);
+
+	endnames = names + strlen(names);
+	ptr = names;
+	while (*ptr)
+	{
+		/* space is separator between words */
+		if (*ptr == ' ')
+			*ptr = '\0';
+		ptr += 1;
+	}
+
+	for (i = 0; i < nfields; i++)
+	{
+		char	   *fieldname = PQfname(result, i);
+
+		ptr = names;
+		while (ptr < endnames)
+		{
+			if (*ptr)
+			{
+				size_t		len = strlen(ptr);
+
+				if (*ptr == '^')
+				{
+					if (strncmp(fieldname, ptr + 1, len - 1) == 0)
+						hidden[i] = true;
+				}
+				else if (ptr[len - 1] == '$')
+				{
+					size_t		len2 = strlen(fieldname);
+
+					if (len2 > (len - 1) &&
+						strncmp(fieldname + len2 - len + 1, ptr, len - 1) == 0)
+						hidden[i] = true;
+				}
+				else if (strstr(fieldname, ptr))
+					hidden[i] = true;
+			}
+
+			ptr += strlen(ptr) + 1;
+		}
+
+		if (!hidden[i])
+			visible_columns += 1;
+	}
+
+	free(names);
+
+	return visible_columns;
+}
+
+
 #endif
+
 
 /*
  * exit on fatal error, or return error
@@ -154,6 +230,7 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 	int			nfields;
 	int			size;
 	int			i, j;
+	int			n;
 	char	   *locbuf;
 	RowType	   *row;
 	bool		multiline_row;
@@ -162,6 +239,8 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 
 	const char *keywords[8];
 	const char *values[8];
+
+	bool	   *hidden;
 
 	rb->nrows = 0;
 	rb->next_bucket = NULL;
@@ -220,38 +299,48 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 	if ((nfields = PQnfields(result)) > 1024)
 		RELEASE_AND_EXIT("too much columns");
 
-	pdesc->nfields = nfields;
+	hidden = smalloc(1024 * sizeof(bool));
+
+	pdesc->nfields = mark_hidden_columns(result, nfields, opts, hidden);
+
 	pdesc->has_header = true;
+	n = 0;
 	for (i = 0; i < nfields; i++)
-		pdesc->types[i] = column_type_class(PQftype(result, i));
+		if (!hidden[i])
+			pdesc->types[n++] = column_type_class(PQftype(result, i));
 
 	/* calculate necessary size of header data */
 	size = 0;
 	for (i = 0; i < nfields; i++)
-		size += strlen(PQfname(result, i)) + 1;
+		if (!hidden[i])
+			size += strlen(PQfname(result, i)) + 1;
 
 	locbuf = malloc(size);
 	if (!locbuf)
 		EXIT_OUT_OF_MEMORY();
 
 	/* store header */
-	row = malloc(offsetof(RowType, fields) + (nfields * sizeof(char *)));
+	row = malloc(offsetof(RowType, fields) + (pdesc->nfields * sizeof(char *)));
 	if (!row)
 		EXIT_OUT_OF_MEMORY();
 
 	row->nfields = nfields;
 
 	multiline_row = false;
+	n = 0;
 	for (i = 0; i < nfields; i++)
 	{
 		char   *name = PQfname(result, i);
 
+		if (hidden[i])
+			continue;
+
 		strcpy(locbuf, name);
-		row->fields[i] = locbuf;
+		row->fields[n] = locbuf;
 		locbuf += strlen(name) + 1;
 
-		pdesc->widths[i] = field_info(opts, row->fields[i], &multiline_col);
-		pdesc->multilines[i] = multiline_col;
+		pdesc->widths[n] = field_info(opts, row->fields[n], &multiline_col);
+		pdesc->multilines[n++] = multiline_col;
 
 		multiline_row |= multiline_col;
 	}
@@ -265,34 +354,42 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 	{
 		size = 0;
 		for (j = 0; j < nfields; j++)
-			size += strlen(PQgetvalue(result, i, j)) + 1;
+			if (!hidden[j])
+				size += strlen(PQgetvalue(result, i, j)) + 1;
 
 		locbuf = malloc(size);
 		if (!locbuf)
 			EXIT_OUT_OF_MEMORY();
 
 		/* store data */
-		row = malloc(offsetof(RowType, fields) + (nfields * sizeof(char *)));
+		row = malloc(offsetof(RowType, fields) + (pdesc->nfields * sizeof(char *)));
 		if (!row)
 			EXIT_OUT_OF_MEMORY();
 
-		row->nfields = nfields;
+		row->nfields = pdesc->nfields;
 
 		multiline_row = false;
+		n = 0;
 		for (j = 0; j < nfields; j++)
 		{
-			char	*value = PQgetvalue(result, i, j);
+			char	*value;
+
+			if (hidden[j])
+				continue;
+
+			value = PQgetvalue(result, i, j);
 
 			strcpy(locbuf, value);
-			row->fields[j] = locbuf;
+			row->fields[n] = locbuf;
 			locbuf += strlen(value) + 1;
 
-			pdesc->widths[j] = max_int(pdesc->widths[j],
-									  field_info(opts, row->fields[j], &multiline_col));
-			pdesc->multilines[j] |= multiline_col;
+			pdesc->widths[n] = max_int(pdesc->widths[n],
+									  field_info(opts, row->fields[n], &multiline_col));
+			pdesc->multilines[n] |= multiline_col;
 			multiline_row |= multiline_col;
 
-			pdesc->columns_map[j] = j;
+			pdesc->columns_map[n] = n;
+			n += 1;
 		}
 
 		rb = push_row(rb, row, multiline_row);

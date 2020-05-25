@@ -677,7 +677,7 @@ args_are_consistent(Options *opts, StateData *state)
 		return false;
 	}
 
-	if (opts->csv_skip_columns_like && opts->csv_header != '+')
+	if (opts->csv_skip_columns_like && (opts->csv_header != '+' && !opts->query))
 	{
 		state->errstr = "skipping columns requires header row (option \"csv-header on\")";
 		return false;
