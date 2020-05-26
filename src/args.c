@@ -697,6 +697,5 @@ args_are_consistent(Options *opts, StateData *state)
 			opts->tsv_format = true;
 	}
 
-
 	return true;
 }

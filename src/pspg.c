@@ -1865,7 +1865,7 @@ main(int argc, char *argv[])
 	/* when we can get content later, we can ignore empty dataset */
 	if (!result)
 	{
-		if (state._errno != 0)
+		if (state.errstr)
 			leave(state.errstr);
 
 		if (!state.stream_mode && !(opts.watch_time > 0))
