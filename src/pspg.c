@@ -4105,7 +4105,7 @@ recheck_end:
 
 					errno = 0;
 
-					get_string(&opts, &scrdesc, "log file: ", buffer, sizeof(buffer) - 1, last_path);
+					get_string(&opts, &scrdesc, "save to file: ", buffer, sizeof(buffer) - 1, last_path);
 
 					if (buffer[0] != '\0')
 					{
