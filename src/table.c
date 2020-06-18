@@ -100,6 +100,10 @@ isHeadLeftChar(char *str)
 	if (str[0] == '-' && str[1] == '[')
 		return true;
 
+	/* csv double header */
+	if ((str[0] == ':' || str[0] == '=') && str[1] == '=')
+		return true;
+
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
@@ -945,7 +949,7 @@ translate_headline(Options *opts, DataDesc *desc)
 			*destptr++ = 'd';
 			srcptr += 3;
 		}
-		else if (*srcptr == '+')
+		else if (*srcptr == '+' || *srcptr == ':')
 		{
 			if (processed_chars == 0)
 			{
@@ -963,11 +967,11 @@ translate_headline(Options *opts, DataDesc *desc)
 				if (desc->border_type == 0)
 					desc->border_type = 1;
 
-				*destptr++ = (srcptr[1] == '-') ? 'I' : 'R';
+				*destptr++ = (srcptr[1] == '-' || srcptr[1] == '=') ? 'I' : 'R';
 			}
 			srcptr += 1;
 		}
-		else if (*srcptr == '-')
+		else if (*srcptr == '-' || *srcptr == '=')
 		{
 			if (processed_chars == 0)
 			{
