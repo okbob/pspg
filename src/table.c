@@ -737,6 +737,9 @@ next_row:
 
 	if (desc->border_head_row != -1)
 	{
+		if (desc->border_head_row == 0 && !desc->is_expanded_mode)
+			goto broken_format;
+
 		desc->headline = desc->rows.rows[desc->border_head_row];
 		desc->headline_size = strlen(desc->headline);
 
@@ -754,6 +757,8 @@ next_row:
 	}
 	else
 	{
+broken_format:
+
 		desc->headline = NULL;
 		desc->headline_size = 0;
 		desc->headline_char_size = 0;
@@ -1033,7 +1038,7 @@ translate_headline(Options *opts, DataDesc *desc)
 		{
 			last_black_char[0] = 'd';
 			last_black_char[1] = 'R';
-			last_black_char[3] = '\0';
+			last_black_char[2] = '\0';
 		}
 
 		/* trim ending spaces */
