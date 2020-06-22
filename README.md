@@ -71,7 +71,7 @@ This pager can be used from the following clients command line clients too:
 * `-w`, `--watch n`  repeat query execution every time sec
 * `-d`, `--dbname`  database name
 * `-h`, `--host`  database host name
-* `-p`, `--port`  databae port
+* `-p`, `--port`  database port
 * `-U`, `--username`  database user name
 * `-W`, `--password`  force password prompt
 
