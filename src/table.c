@@ -104,6 +104,10 @@ isHeadLeftChar(char *str)
 	if ((str[0] == ':' || str[0] == '=') && str[1] == '=')
 		return true;
 
+	/* monetdb */
+	if (str[0] == '+' && str[1] == '=')
+		return true;
+
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
