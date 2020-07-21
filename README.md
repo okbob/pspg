@@ -10,6 +10,7 @@ This pager can be used from the following clients command line clients too:
 - `mysql`
 - `sqlite`
 - [`pgcli`](https://github.com/dbcli/pgcli/)
+- monetdb
 
 ## Main target
 * possibility to freeze first few rows, first few columns
