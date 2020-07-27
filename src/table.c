@@ -243,6 +243,16 @@ is_cmdtag(char *str)
 	}
 	else if (*str == 'C')
 	{
+		if (strncmp(str, "CREATE TABLE", 7) == 0)
+		{
+			/*
+			 * MonetDB client show table definition in DDL format. Unfortunately
+			 * it is on first line, so there is partial matching with status
+			 * line format. But Postgres status line is exactly "CREATE TABLE"
+			 * string. It is not hard to different these two situation.
+			 */
+			return str[7] == '\0';
+		}
 		if (strcmp(str, "CALL") == 0 ||
 				strcmp(str, "CHECKPOINT") == 0 ||
 				strncmp(str, "CLOSE", 5) == 0 ||

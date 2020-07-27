@@ -1,0 +1,16 @@
+CREATE TABLE "import"."import_template" (
+        "id"                 BIGINT        NOT NULL DEFAULT next value for "import"."seq_8886",
+        "created_by"         VARCHAR(128)  NOT NULL,
+        "created_timestamp"  TIMESTAMP     NOT NULL DEFAULT "sys"."current_timestamp"(),
+        "modified_by"        VARCHAR(128)  NOT NULL,
+        "modified_timestamp" TIMESTAMP     NOT NULL DEFAULT "sys"."current_timestamp"(),
+        "import_name"        VARCHAR(128)  NOT NULL,
+        "template_name"      VARCHAR(128)  NOT NULL,
+        "server_name"        VARCHAR(256)  NOT NULL,
+        "database_name"      VARCHAR(256)  NOT NULL,
+        "sort_order"         INTEGER       NOT NULL,
+        CONSTRAINT "import_template_id_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "import_template_import_name_fkey" FOREIGN KEY ("import_name") REFERENCES "import"."import" ("name"),
+        CONSTRAINT "import_template_server_name_fkey" FOREIGN KEY ("server_name") REFERENCES "import"."server" ("name"),
+        CONSTRAINT "import_template_template_name_fkey" FOREIGN KEY ("template_name") REFERENCES "import"."database_template" ("name")
+);
