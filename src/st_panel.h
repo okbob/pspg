@@ -1,4 +1,3 @@
-
 #if defined HAVE_NCURSESW_PANEL_H
 #include <ncursesw/panel.h>
 #elif defined HAVE_NCURSES_PANEL_H

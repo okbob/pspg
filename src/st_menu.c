@@ -1,8 +1,8 @@
+#include "st_menu.h"
+
 #include <ctype.h>
-#include "st_curses.h"
 #include "st_panel.h"
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <wchar.h>
 
@@ -21,7 +21,6 @@
 
 #endif
 
-#include "st_menu.h"
 
 /*
  * This window is main application window. It is used for taking content

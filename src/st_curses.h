@@ -1,4 +1,3 @@
-
 #if defined HAVE_NCURSESW_CURSES_H
 #include <ncursesw/curses.h>
 #elif defined HAVE_NCURSESW_H
@@ -13,7 +12,6 @@
 /* fallback */
 #include <ncurses/ncurses.h>
 #endif
-
 
 #ifdef PDCURSES
 /* Add some APIs that are part of ncurses but not pdcurses */

@@ -1,5 +1,3 @@
-#include <stdbool.h>
-
 #include "st_menu.h"
 
 #include <string.h>
@@ -45,13 +43,20 @@ slc(short id, short foreground, short background)
  * style it is number of already existing color pair.
  */
 int
-st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn)
+st_menu_load_style(ST_MENU_CONFIG *config, int style, int start_from_cpn,
+				   bool force8bit, bool force_ascii_art)
 {
-	return st_menu_load_style_rgb(config, style, start_from_cpn, NULL);
+	return st_menu_load_style_rgb(config,
+								  style,
+								  start_from_cpn,
+								  NULL,
+								  force8bit,
+								  force_ascii_art);
 }
 
 int
-st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb)
+st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, int *start_from_rgb,
+					   bool force8bit, bool force_ascii_art)
 {
 	memset(config, 0, sizeof(ST_MENU_CONFIG));
 
@@ -64,14 +69,16 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 	config->scroll_down_tag = 'v';
 	config->draw_box = true;
 	config->extern_accel_text_space = 2;
-	config->force_ascii_art = false;
+
+	config->force8bit = force8bit;
+	config->force_ascii_art = force_ascii_art;
 
 	config->submenu_offset_y = 0;
 	config->submenu_offset_x = 0;
 
 #if defined  HAVE_NCURSESW
 
-	if (!config->force8bit)
+	if (!config->force8bit && !config->force_ascii_art)
 	{
 		config->mark_tag = L'\x2714';
 /*

@@ -155,11 +155,9 @@ ST_MENU_ITEM menubar[] = {
   {NULL}
 };
 
-
 ST_MENU_CONFIG		menu_config;
 ST_MENU_CONFIG		menu_config2;
 int menu_theme = -1;
-
 
 /*
  * Returns menu style joined to main theme
@@ -218,36 +216,38 @@ init_menu_config(Options *opts)
 {
 	int start_from_rgb = 220;
 
-	menu_config.force8bit = opts->force8bit;
-	menu_config.force_ascii_art = opts->force_ascii_art;
-	menu_config.language = NULL;
-	menu_config.encoding = NULL;
-
-	menu_config2.force8bit = opts->force8bit;
-	menu_config2.language = NULL;
-	menu_config2.encoding = NULL;
-
 	menu_theme = get_menu_style(opts->theme);
 
 	if (menu_theme == ST_MENU_STYLE_FREE_DOS)
 	{
 		int		fcp;
 
-		fcp = st_menu_load_style(&menu_config, menu_theme, 30);
-		st_menu_load_style(&menu_config2, ST_MENU_STYLE_FREE_DOS_P, fcp);
-	}
-		st_menu_load_style_rgb(&menu_config, menu_theme,
-								menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 30, &start_from_rgb);
+		fcp = st_menu_load_style(&menu_config,
+								 menu_theme,
+								 30,
+								 opts->force8bit,
+								 opts->force_ascii_art);
 
+		st_menu_load_style(&menu_config2,
+						   ST_MENU_STYLE_FREE_DOS_P,
+						   fcp,
+						   opts->force8bit,
+						   opts->force_ascii_art);
+	}
+	else
+		st_menu_load_style_rgb(&menu_config,
+							   menu_theme,
+							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 30,
+							   &start_from_rgb,
+							   opts->force8bit,
+							   opts->force_ascii_art);
+
+	/* extra pspg menu theme customization */
 	if (opts->theme == 1)
 		menu_config.shadow_width = 2;
 	else if (opts->theme == 4)
 		menu_config.text_space = 4;
-
-	menu_config.force_ascii_art = opts->force_ascii_art;
-	menu_config2.force_ascii_art = opts->force_ascii_art;
 }
-
 
 /*
  * Prepare configuration and initialize menu
