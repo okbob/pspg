@@ -268,7 +268,7 @@ print_column_names(WINDOW *win,
 			 */
 			if (visible_width <= colname_width + 1 + extra_space)
 			{
-				char   *ptr = colname;
+				char   *chr_ptr = colname;
 				int		x2;
 
 				/* size of visible chars will be calculated */
@@ -279,15 +279,15 @@ print_column_names(WINDOW *win,
 
 				while (x2 <= maxx)
 				{
-					bytes = utf8charlen(*ptr);
-					chars = utf_dsplen(ptr);
+					bytes = utf8charlen(*chr_ptr);
+					chars = utf_dsplen(chr_ptr);
 
 					if (x2 + chars > maxx)
 						break;
 
 					colname_size += bytes;
 					x2 += chars;
-					ptr += bytes;
+					chr_ptr += bytes;
 				}
 			}
 			else
@@ -298,7 +298,7 @@ print_column_names(WINDOW *win,
 			/* display last visible chars or center content */
 			if (visible_width <= col->name_width + extra_space)
 			{
-				char   *ptr = colname;
+				char   *chr_ptr = colname;
 				int		reduce_width = colname_width + extra_space - visible_width;
 
 				/* there is not a space from left */
@@ -308,12 +308,12 @@ print_column_names(WINDOW *win,
 				{
 					while (reduce_width > 0)
 					{
-						bytes = utf8charlen(*ptr);
-						chars = utf_dsplen(ptr);
+						bytes = utf8charlen(*chr_ptr);
+						chars = utf_dsplen(chr_ptr);
 
 						skipbytes += bytes;
 						reduce_width -= chars;
-						ptr += bytes;
+						chr_ptr += bytes;
 					}
 				}
 				else
