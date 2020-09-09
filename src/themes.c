@@ -713,6 +713,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
 			init_color_rgb_ff(213, 0xfb, 0xf1, 0xc7); /* cursor bg */
 			init_color_rgb_ff(214, 0xd0, 0xcf, 0xa0); /* mark line cursor */
+			init_color_rgb_ff(215, 0xff, 0xff, 0xff); /* mark fg - white */
+
 
 			init_pair(1, 204, 200);
 
@@ -727,7 +729,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(10, 203, 205);
 			init_pair(11, 206, 205);
 			init_pair(13, 203, 202);
-			init_pair(14, COLOR_WHITE, 211);
+			init_pair(14, 215, 211);
 			init_pair(15, 212, 204);
 			init_pair(16, 201, 204);
 			init_pair(17, 206, 204);
