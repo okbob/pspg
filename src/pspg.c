@@ -4168,7 +4168,12 @@ exit:
 				{
 					char	locsearchterm[256];
 
+					search_direction = SEARCH_FORWARD;
+
 					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
+
+					reset_searching_lineinfo(&desc.rows);
+
 					if (locsearchterm[0] != '\0')
 					{
 						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
@@ -4183,6 +4188,8 @@ exit:
 						scrdesc.searchterm[0] = '\0';
 						scrdesc.searchterm_size = 0;
 						scrdesc.searchterm_char_size = 0;
+
+						break;
 					}
 
 					reset_searching_lineinfo(&desc.rows);
@@ -4198,6 +4205,9 @@ exit:
 					int		rownum = 0;
 					int		skip_bytes = 0;
 					LineBuffer   *lnb = &desc.rows;
+
+					if (!*scrdesc.searchterm)
+						break;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (command == cmd_SearchNext && search_direction == SEARCH_BACKWARD && !redirect_mode)
@@ -4298,7 +4308,12 @@ found_next_pattern:
 				{
 					char	locsearchterm[256];
 
+					search_direction = SEARCH_BACKWARD;
+
 					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
+
+					reset_searching_lineinfo(&desc.rows);
+
 					if (locsearchterm[0] != '\0')
 					{
 						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
@@ -4313,11 +4328,9 @@ found_next_pattern:
 						scrdesc.searchterm[0] = '\0';
 						scrdesc.searchterm_size = 0;
 						scrdesc.searchterm_char_size = 0;
+
+						break;
 					}
-
-					reset_searching_lineinfo(&desc.rows);
-
-					search_direction = SEARCH_BACKWARD;
 
 					/* continue to find next: */
 				}
@@ -4328,6 +4341,9 @@ found_next_pattern:
 					int		search_row;
 					LineBuffer   *rows = &desc.rows;
 					int		cut_bytes = 0;
+
+					if (!*scrdesc.searchterm)
+						break;
 
 					/* call inverse command when search direction is SEARCH_BACKWARD */
 					if (command == cmd_SearchPrev && search_direction == SEARCH_BACKWARD && !redirect_mode)
