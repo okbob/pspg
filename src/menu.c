@@ -116,6 +116,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_g_Solar Light theme", cmd_SetTheme_SolarLight, NULL, 0, 0, 0, NULL},
 	{"_u_Gruvbox Light theme", cmd_SetTheme_GruvboxLight, NULL, 0, 0, 0, NULL},
 	{"_t_Tao Light theme", cmd_SetTheme_TaoLight, NULL, 0, 0, 0, NULL},
+	{"_f_Flatwhite theme", cmd_SetTheme_Flatwhite, NULL, 0, 0, 0, NULL},
 	{NULL},
 };
 
@@ -203,6 +204,8 @@ get_menu_style(int main_theme)
 			return ST_MENU_STYLE_ONECOLOR;
 		case 20:
 			return ST_MENU_STYLE_TAO;
+		case 21:
+			return ST_MENU_STYLE_FLATWHITE;
 		default:
 			return ST_MENU_STYLE_VISION;
 	}

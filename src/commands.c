@@ -164,6 +164,9 @@ cmd_string(int cmd)
 			return "SetTheme_GruvboxLight";
 		case cmd_SetTheme_TaoLight:
 			return "SetTheme_TaoLight";
+		case cmd_SetTheme_Flatwhite:
+			return "SetTheme_Flatwhite";
+
 		case cmd_SaveSetup:
 			return "SaveSetup";
 
@@ -468,6 +471,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_GruvboxLight;
 		case 20:
 			return cmd_SetTheme_TaoLight;
+		case 21:
+			return cmd_SetTheme_Flatwhite;
 
 	};
 
@@ -525,6 +530,8 @@ cmd_get_theme(int cmd)
 			return 19;
 		case cmd_SetTheme_TaoLight:
 			return 20;
+		case cmd_SetTheme_Flatwhite:
+			return 21;
 	};
 
 	return 1;

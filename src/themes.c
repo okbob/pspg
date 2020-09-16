@@ -110,8 +110,6 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(21, -1, -1, false, 0);							/* rownum colors */
 			set_colour(22, -1, -1, false, A_REVERSE);					/* cross cursor data */
 			set_colour(23, -1, -1, false, A_REVERSE);					/* cross cursor line */
-			set_colour(22, -1, -1, false, A_REVERSE);					/* cross cursor data */
-			set_colour(23, -1, -1, false, A_REVERSE);					/* cross cursor line */
 			set_colour(24, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);/* vertical cursor pattern data */
 			set_colour(25, COLOR_BLACK, COLOR_WHITE, false, cursor_attr);/* vertical cursor pattern line */
 			set_colour(27, -1, -1, false, 0);		/* input */
@@ -800,6 +798,66 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 			init_pair(24, 213, 217);
 			init_pair(25, 204, 217);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
+			break;
+
+		case 21:
+			/* Flatwhite theme */
+			init_color_rgb_ff(200, 0xf7, 0xf3, 0xee); /* background */
+			init_color_rgb_ff(201, 0x60, 0x5A, 0x52); /* foreground */
+			init_color_rgb_ff(202, 0xb9, 0xA9, 0x92); /* modeline bg */
+			init_color_rgb_ff(203, 0x17, 0x17, 0x17); /* modeline fg */
+			init_color_rgb_ff(204, 0xb9, 0xa9, 0x92); /* table decor */
+			init_color_rgb_ff(205, 0x6a, 0x4d, 0xff); /* cursor bg */
+			init_color_rgb_ff(213, 0xf6, 0xf6, 0xf6); /* cursor fg */
+			init_color_rgb_ff(206, 0x9e, 0x9e, 0x9e); /* footer */
+			init_color_rgb_ff(207, 0xf7, 0xf3, 0xee); /* lineno bg */
+
+			init_color_rgb_ff(210, 0x09, 0x09, 0x08); /* labels */
+			init_color_rgb_ff(211, 0Xf7, 0xe0, 0xc3); /* bookmark - bg */
+			init_color_rgb_ff(212, 0x60, 0x5a, 0x52); /* bookmark - fg */
+			init_color_rgb_ff(215, 0xe2, 0xe9, 0xc1); /* mark bg */
+			init_color_rgb_ff(214, 0xe2, 0xe9, 0xc1); /* marked line bg */
+			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+
+			init_color_rgb_ff(217, 0x40, 0x40, 0x40); /* vertical marked cursor bg */
+			init_color_rgb_ff(218, 0x00, 0x00, 0x00);
+			init_color_rgb_ff(219, 0x5f, 0x45, 0xe5);
+			init_color_rgb_ff(199, 0x87, 0x70, 0xff);
+
+			init_color(240, 40, 50, 200);
+
+			init_pair(1, 204, 200);
+			init_pair(2, 203, 202);
+			init_pair(3, 201, 200);
+			init_pair(4, 210, 200);
+			init_pair(5, 213, 205);
+			init_pair(6, 213, 205);
+			init_pair(7, 203, 202);
+			init_pair(8, 17, 200);
+			init_pair(9, 206, 200);
+			init_pair(10, 213, 205);
+			init_pair(11, 204, 205);
+			init_pair(13, 203, 202);
+			init_pair(14, 212, 211);
+			init_pair(15, 216, 214);
+			init_pair(16, 201, 214);
+			init_pair(17, 204, 214);
+			init_pair(18, -1, -1);
+			init_pair(19, 201, 205);
+			init_pair(20, 218, 205);
+			init_pair(21, 204, 207);
+
+			set_colour(22, COLOR_WHITE, 199, true, cursor_attr);
+			set_colour(23, 204, 199, false, 0);
+			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
+
+			init_pair(24, 213, 219);
+			init_pair(25, 204, 219);
 
 			theme_attrs[4] = labels_attr;
 			theme_attrs[5] = cursor_attr;

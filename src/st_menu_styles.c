@@ -971,6 +971,87 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 
 			break;
 
+		case ST_MENU_STYLE_FLATWHITE:
+			if (start_from_rgb)
+			{
+				int		_start_from_rgb = *start_from_rgb;
+
+				*start_from_rgb += 7;
+
+				init_color_rgb_ff(_start_from_rgb + 0, 0xb9, 0xA9, 0x92); /* menu bg */
+				init_color_rgb_ff(_start_from_rgb + 1, 0x17, 0x17, 0x17); /* menu fg */
+				init_color_rgb_ff(_start_from_rgb + 2, 0x6a, 0x4d, 0xff); /* cursor bg */
+				init_color_rgb_ff(_start_from_rgb + 5, 0xff, 0xff, 0xff); /* cursor fg */
+				init_color_rgb_ff(_start_from_rgb + 3, 0x84, 0x7e, 0x76); /* shadow */
+				init_color_rgb_ff(_start_from_rgb + 4, 0x66, 0x66, 0x66); /* disabled */
+				init_color_rgb_ff(_start_from_rgb + 6, 0x00, 0x00, 0x00); /* accel */
+
+				config->menu_background_cpn = start_from_cpn;
+				init_pair(start_from_cpn++, _start_from_rgb + 1, _start_from_rgb + 0);
+				config->menu_background_attr = 0;
+
+				config->menu_unfocused_cpn = start_from_cpn;
+				init_pair(start_from_cpn++, _start_from_rgb + 1, _start_from_rgb + 0);
+				config->menu_unfocused_attr = 0;
+
+				config->menu_shadow_cpn = start_from_cpn;
+				config->menu_shadow_attr = 0;
+				init_pair(start_from_cpn++, COLOR_WHITE, _start_from_rgb + 3);
+
+				config->accelerator_cpn = start_from_cpn;
+				init_pair(start_from_cpn++, _start_from_rgb + 6, _start_from_rgb + 0);
+				config->accelerator_attr = A_UNDERLINE;
+
+				config->cursor_cpn = start_from_cpn;
+				init_pair(start_from_cpn++, _start_from_rgb + 5, _start_from_rgb + 2);
+				config->cursor_attr = 0;
+
+				config->cursor_accel_cpn = start_from_cpn;
+				init_pair(start_from_cpn++, _start_from_rgb + 5, _start_from_rgb + 2);
+				config->cursor_accel_attr = A_UNDERLINE ;
+
+				config->disabled_cpn = start_from_cpn;
+				init_pair(start_from_cpn, _start_from_rgb + 4, _start_from_rgb + 0);
+				config->disabled_attr = 0;
+			}
+			else
+			{
+				/* fallback */
+				config->menu_background_cpn = start_from_cpn;
+				config->menu_background_attr = islc(COLOR_BLACK, COLOR_WHITE);
+
+				config->menu_unfocused_cpn = start_from_cpn;
+				config->menu_unfocused_attr = islc(COLOR_BLACK, COLOR_WHITE);
+
+				config->menu_shadow_cpn = start_from_cpn;
+				config->menu_shadow_attr = 0;
+				init_pair(start_from_cpn++, COLOR_BLUE, COLOR_BLACK);
+
+				config->accelerator_cpn = start_from_cpn;
+				config->accelerator_attr = A_UNDERLINE | islc(COLOR_BLACK, COLOR_WHITE);
+
+				config->cursor_cpn = start_from_cpn;
+				config->cursor_attr = islc(COLOR_WHITE, COLOR_BLACK);
+
+				config->cursor_accel_cpn = start_from_cpn;
+				config->cursor_accel_attr = A_UNDERLINE | islc(COLOR_WHITE, COLOR_BLACK);
+
+				config->disabled_cpn = start_from_cpn;
+				config->disabled_attr = A_DIM | islc(COLOR_BLACK, COLOR_WHITE);
+			}
+
+			config->left_alligned_shortcuts = true;
+			config->wide_vborders = true;
+			config->wide_hborders = false;
+			config->extra_inner_space = false;
+
+			config->shortcut_space = 5;
+			config->text_space = 5;
+			config->init_text_space = 2;
+			config->menu_bar_menu_offset = 1;
+			config->shadow_width = 2;
+
+			break;
 	}
 
 	return start_from_cpn;
