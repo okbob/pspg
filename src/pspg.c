@@ -1814,7 +1814,10 @@ main(int argc, char *argv[])
 	{
 		/* ncurses are not started yet */
 		if (state.errstr)
+		{
 			log_row(state.errstr);
+			fprintf(stderr, "%s\n", state.errstr);
+		}
 
 		if (!opts.watch_time)
 			exit(EXIT_FAILURE);
