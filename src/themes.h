@@ -40,11 +40,11 @@ typedef struct
 	attr_t cursor_line_attr;		/* colors for cursor on border position */
 	attr_t cursor_expi_attr;		/* colors for cursor on expanded headers */
 	attr_t bookmark_data_attr;		/* colors for bookmark */
-	attr_t bookmark_line_attr;		
+	attr_t bookmark_line_attr;		/* colors for bookmark line art */
 	attr_t cursor_bookmark_attr;	/* colors for cursor on bookmark line */
 	attr_t found_str_attr;			/* colors for marked string */
 	attr_t pattern_data_attr;		/* colors for pattern line data */
-	attr_t pattern_line_attr;		/* colors for pattern lide art */
+	attr_t pattern_line_attr;		/* colors for pattern line art */
 	attr_t cursor_pattern_attr;		/* colors for pattern on cursor line */
 	attr_t title_attr;				/* colors for title window */
 	attr_t bottom_attr;				/* colors for bottom text */
