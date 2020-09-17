@@ -1785,7 +1785,6 @@ main(int argc, char *argv[])
 	if (!args_are_consistent(&opts, &state))
 		leave(state.errstr ? state.errstr : "options are not valid");
 
-
 	/* open log file when user want it */
 	if (opts.log_pathname)
 	{
