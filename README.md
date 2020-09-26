@@ -214,6 +214,19 @@ writing. `--hold-stream=2` is different strategy. The `pspg` reopen FIFO in writ
 mode, and then FIFO will be opened until `pspg` is running.
 
 # Recommended psql configuration
+you should to add to your profile:
+<pre>
+#for Postgres 10 and older
+export PAGER="pspg"
+
+#for postgres 11 and newer
+export PSQL_PAGER="pspg"
+
+#or "\setenv PAGER pspg" to .psqlrc
+</pre>
+
+and <code>.psqlrc</code>
+
 <pre>
 \pset linestyle unicode
 \pset border 2
