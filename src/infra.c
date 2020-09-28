@@ -77,7 +77,11 @@ leave(const char *fmt, ...)
 		endwin();
 
 	if (!fmt)
+	{
+		if (current_state && current_state->logfile)
+			fclose(current_state->logfile);
 		exit(EXIT_FAILURE);
+	}
 
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
@@ -94,6 +98,7 @@ leave(const char *fmt, ...)
 		va_end(args);
 
 		fputc('\n', current_state->logfile);
+		fclose(current_state->logfile);
 	}
 
 #ifdef DEBUG_PIPE

@@ -1745,7 +1745,7 @@ main(int argc, char *argv[])
 
 	debug_pipe = fopen(DEBUG_PIPE, "w");
 	setlinebuf(debug_pipe);
-	fprintf(debug_pipe, "demo application start\n");
+	fprintf(debug_pipe, "application start\n");
 
 	current_time(&start_app_sec, &start_app_ms);
 
@@ -1776,11 +1776,17 @@ main(int argc, char *argv[])
 		argv2 = buildargv(pspgenv, &argc2, argv[0]);
 
 		if (!readargs(argv2, argc2, &opts, &state))
-			leave(state.errstr);
+			if (state.errstr)
+				leave(state.errstr);
+			else
+				exit(EXIT_SUCCESS);
 	}
 
 	if (!readargs(argv, argc, &opts, &state))
-		leave(state.errstr);
+			if (state.errstr)
+				leave(state.errstr);
+			else
+				exit(EXIT_SUCCESS);
 
 	if (!args_are_consistent(&opts, &state))
 		leave(state.errstr ? state.errstr : "options are not valid");
