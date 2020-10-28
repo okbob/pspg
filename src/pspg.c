@@ -1776,17 +1776,21 @@ main(int argc, char *argv[])
 		argv2 = buildargv(pspgenv, &argc2, argv[0]);
 
 		if (!readargs(argv2, argc2, &opts, &state))
+		{
 			if (state.errstr)
 				leave(state.errstr);
 			else
 				exit(EXIT_SUCCESS);
+		}
 	}
 
 	if (!readargs(argv, argc, &opts, &state))
-			if (state.errstr)
-				leave(state.errstr);
-			else
-				exit(EXIT_SUCCESS);
+	{
+		if (state.errstr)
+			leave(state.errstr);
+		else
+			exit(EXIT_SUCCESS);
+	}
 
 	if (!args_are_consistent(&opts, &state))
 		leave(state.errstr ? state.errstr : "options are not valid");
