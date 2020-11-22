@@ -248,7 +248,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-sigint-search-reset\n");
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
-					fprintf(stdout, "  --on-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+					fprintf(stdout, "  --no-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 					fprintf(stdout, "  --quit-on-f3             exit on F3 like mc viewers\n");
 					fprintf(stdout, "  --rr=ROWNUM              rows reserved for specific purposes\n");
 					fprintf(stdout, "  --stream                 read input forever\n");
