@@ -1676,7 +1676,7 @@ main(int argc, char *argv[])
 	bool	reinit = false;
 
 	bool	ignore_mouse_release = false;		/* after leave menu by press ignore release too */
-	bool	no_doupdate = false;				/* when we sure stdstr refresh is useles */
+	bool	no_doupdate = false;				/* when we sure stdstr refresh is useless */
 	bool	prev_event_is_mouse_press = false;
 	int		prev_mouse_event_y = -1;
 	int		prev_mouse_event_x = -1;
@@ -2603,7 +2603,7 @@ reinit_theme:
 
 				/*
 				 * Store previous event, if this event is mouse press. With it we
-				 * can join following mouse release together, and reduce useles
+				 * can join following mouse release together, and reduce useless
 				 * refresh.
 				 */
 				if (event_keycode == KEY_MOUSE && event.bstate == BUTTON1_PRESSED)
