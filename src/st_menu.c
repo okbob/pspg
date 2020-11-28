@@ -807,7 +807,7 @@ debug_print_size(WINDOW *window, char *name)
 #endif
 
 /*
- * adjust pulldown possition - move panels from ideal position to any position
+ * adjust pulldown position - move panels from ideal position to any position
  * where can be fully displayed.
  */
 static void
