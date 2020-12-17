@@ -248,7 +248,7 @@ correct setting of this variable. Is possible to check a value 'C.UTF8'.
 
 When you use a option `--only-for-tables`, then
 
-* set `PAGER` to `pspg` and `PSPG_PAGER` to `less` or
+* set `PAGER` to `pspg` and `PSQL_PAGER` to `less` or
 * set `PAGER` to `less` and `PSQL_PAGER` to `pspg`
 
 # MySQL usage
