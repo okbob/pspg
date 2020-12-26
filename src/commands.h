@@ -96,6 +96,7 @@ typedef enum PspgCommand
 	cmd_ShowFirstCol,
 	cmd_ShowLastCol,
 	cmd_SaveData,
+	cmd_SaveAsCSV,
 	cmd_ForwardSearch,
 	cmd_BackwardSearch,
 	cmd_SearchNext,
@@ -113,7 +114,13 @@ typedef enum PspgCommand
 	cmd_SortDesc,
 	cmd_OriginalSort,
 	cmd_TogglePause,
-	cmd_Refresh
+	cmd_Refresh,
+
+	cmd_UseClipboard_CSV,
+	cmd_UseClipboard_TSVC,
+	cmd_UseClipboard_text,
+	cmd_UseClipboard_INSERT,
+	cmd_UseClipboard_INSERT_with_comments,
 } PspgCommand;
 
 extern void initialize_special_keycodes();

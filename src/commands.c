@@ -222,6 +222,8 @@ cmd_string(int cmd)
 			return "ShowLastCol";
 		case cmd_SaveData:
 			return "SaveData";
+		case cmd_SaveAsCSV:
+			return "SaveAsCSV";
 		case cmd_ForwardSearch:
 			return "ForwardSearch";
 		case cmd_BackwardSearch:
@@ -264,6 +266,16 @@ cmd_string(int cmd)
 		case cmd_Refresh:
 			return "Refresh";
 
+		case cmd_UseClipboard_CSV:
+			return "UseClipboardFormatCSV";
+		case cmd_UseClipboard_TSVC:
+			return "UseClipboardFormatTSVC";
+		case cmd_UseClipboard_text:
+			return "UseClipboardFormattext";
+		case cmd_UseClipboard_INSERT:
+			return "UseClipboardFormatINSERT";
+		case cmd_UseClipboard_INSERT_with_comments:
+			return "UseClipboardFormatINSERTwithcomments";
 		default:
 			return "unknown command";
 	}

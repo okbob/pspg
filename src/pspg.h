@@ -80,6 +80,15 @@ typedef struct
 	int				lnb_row;
 } SortData;
 
+typedef enum
+{
+	CLIPBOARD_FORMAT_CSV,
+	CLIPBOARD_FORMAT_TSVC,
+	CLIPBOARD_FORMAT_TEXT,
+	CLIPBOARD_FORMAT_INSERT,
+	CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS
+} ClipboardFormat;
+
 /*
  * Column range
  */
@@ -292,6 +301,7 @@ extern void init_menu_config(Options *opts);
 extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
+extern void refresh_clipboard_options(Options *opts, struct ST_MENU *menu);
 
 /* from sort.c */
 extern void sort_column_num(SortData *sortbuf, int rows, bool desc);

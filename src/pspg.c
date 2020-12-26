@@ -1735,6 +1735,7 @@ main(int argc, char *argv[])
 
 	opts.quit_on_f3 = false;
 	opts.no_highlight_lines = false;
+	opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -2865,7 +2866,13 @@ force_refresh_data:
 				if (activated)
 				{
 					next_command = ami->code;
-					goto hide_menu;
+
+					if (next_command != cmd_UseClipboard_CSV &&
+						next_command != cmd_UseClipboard_TSVC &&
+						next_command != cmd_UseClipboard_text &&
+						next_command != cmd_UseClipboard_INSERT &&
+						next_command != cmd_UseClipboard_INSERT_with_comments)
+						goto hide_menu;
 				}
 
 				aci = st_menu_selected_command(&activated);
@@ -2974,6 +2981,31 @@ hide_menu:
 				}
 
 #endif
+
+			case cmd_UseClipboard_CSV:
+				opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
+				refresh_clipboard_options(&opts, menu);
+				break;
+
+			case cmd_UseClipboard_TSVC:
+				opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
+				refresh_clipboard_options(&opts, menu);
+				break;
+
+			case cmd_UseClipboard_text:
+				opts.clipboard_format = CLIPBOARD_FORMAT_TEXT;
+				refresh_clipboard_options(&opts, menu);
+				break;
+
+			case cmd_UseClipboard_INSERT:
+				opts.clipboard_format = CLIPBOARD_FORMAT_INSERT;
+				refresh_clipboard_options(&opts, menu);
+				break;
+
+			case cmd_UseClipboard_INSERT_with_comments:
+				opts.clipboard_format = CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS;
+				refresh_clipboard_options(&opts, menu);
+				break;
 
 			case cmd_NoHighlight:
 				opts.no_highlight_search = true;

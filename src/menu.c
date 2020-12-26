@@ -17,8 +17,9 @@
 #include "st_menu.h"
 #include "commands.h"
 
-#define MENU_ITEM_THEME				1
-#define MENU_ITEM_OPTIONS			2
+#define MENU_ITEM_THEME				10
+#define MENU_ITEM_OPTIONS			11
+#define MENU_ITEM_COPY				12
 
 ST_CMDBAR_ITEM _bottombar[] = {
 	{"Save", false, 2, cmd_SaveData, 0},
@@ -31,14 +32,37 @@ ST_CMDBAR_ITEM _bottombar[] = {
 ST_CMDBAR_ITEM _bottombar_alt1[] = {
 	{"Save", false, 2, cmd_SaveData, 0},
 	{"Quit", false, 3, cmd_Quit, 0},
+	{"Copy", false, 5, 0, 0},
 	{"Search", false, 7, cmd_ForwardSearch, 0},
 	{"Menu", false, 9, cmd_ShowMenu, 0},
 	{"Quit", false, 10, cmd_Quit, 0},
 	{NULL, false, 0, 0, 0}
 };
 
+ST_MENU_ITEM _copy[] = {
+	{"~C~opy", 0, "F5", 0, 0, 0, NULL},
+	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~l~ine", 0, NULL, 0, 0, 0, NULL},
+	{"Copy line e~x~tended", 0, NULL, 0, 0, 0, NULL},
+	{"Copy col~u~mn", 0, NULL, 0, 0, 0, NULL},
+	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~m~arked lines", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~s~earched lines", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~a~ll", 0, NULL, 0, 0, 0, NULL},
+	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"_0_Use CSV format", cmd_UseClipboard_CSV, NULL, 0, 0, 0, NULL},
+	{"_1_Use LibreOffice TSVC format", cmd_UseClipboard_TSVC, NULL, 0, 0, 0, NULL},
+	{"_2_Use formatted text", cmd_UseClipboard_text, NULL, 0, 0, 0, NULL},
+	{"_3_Use INSERT format", cmd_UseClipboard_INSERT, NULL, 0, 0, 0, NULL},
+	{"_4_Use commented INSERT format", cmd_UseClipboard_INSERT_with_comments, NULL, 0, 0, 0, NULL},
+	{NULL, 0, NULL, 0, 0, 0, NULL}
+};
+
 ST_MENU_ITEM _file[] = {
+	{"~C~opy to clipboard", 0, NULL, 0, 0, 0, _copy},
+	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~S~ave", cmd_SaveData, "s", 0, 0, 0, NULL},
+	{"Sa~v~e as CSV", cmd_SaveAsCSV, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~R~aw output quit", cmd_RawOutputQuit, "M-q", 0, 0, 0, NULL},
 	{"E~x~it", cmd_Quit, "q, F10", 0, 0, 0, NULL},
@@ -334,4 +358,17 @@ post_menu(Options *opts, struct ST_MENU *menu)
 
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
+
+	refresh_clipboard_options(opts, menu);
+}
+
+void
+refresh_clipboard_options(Options *opts, struct ST_MENU *menu)
+{
+	st_menu_set_option(menu, cmd_UseClipboard_CSV, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_CSV);
+	st_menu_set_option(menu, cmd_UseClipboard_TSVC, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_TSVC);
+	st_menu_set_option(menu, cmd_UseClipboard_text, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_TEXT);
+	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_INSERT);
+	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_MARKED,
+					   opts->clipboard_format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
 }

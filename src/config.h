@@ -61,6 +61,7 @@ typedef struct
 	char   *dbname;
 	bool	watch_file;
 	bool	quit_on_f3;
+	int		clipboard_format;
 } Options;
 
 extern bool save_config(char *path, Options *opts);
