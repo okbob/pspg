@@ -1034,7 +1034,7 @@ window_fill(int window_identifier,
 				i += trailing_spaces;
 			}
 
-			/* When we don't possition of last char, we can (for cursor draw) use 0 */
+			/* When we don't position of last char, we can (for cursor draw) use 0 */
 			i = i != -1 ? i : 0;
 
 			/* clean other chars on line */
