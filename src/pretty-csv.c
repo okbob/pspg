@@ -1114,6 +1114,18 @@ read_csv(RowBucketType *rb,
 	int		nullstr_size = strlen(opts->nullstr);
 
 	c = fgetc(ifile);
+
+	if (opts->pgcli_fix && c == '>')
+	{
+		while (c != '\n' && c != EOF)
+		{
+			fputc(c, stdout);
+			c = fgetc(ifile);
+		}
+
+		fputc('\n', stdout);
+	}
+
 	do
 	{
 		/* ignore ^M */

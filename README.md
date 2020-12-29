@@ -76,6 +76,7 @@ This pager can be used from the following clients command line clients too:
 * `-p`, `--port`  database port
 * `-U`, `--username`  database user name
 * `-W`, `--password`  force password prompt
+* `--pgcli-fix`  used for fixing some pgcli related issues
 
 Options can be passed inside env variable `PSPG` too.
 
@@ -273,7 +274,7 @@ to generate CSV format - and this format is well readable for `pspg`
 [pgcli](https://github.com/dbcli/pgcli/) needs the following configuration options (`~/.config/pgcli/config`):
 
 ```
-pager = /usr/bin/pspg --csv --rr=2 --quit-if-one-screen --ignore-case --csv-header on 
+pager = /usr/bin/pspg --csv --rr=2 --quit-if-one-screen --ignore-case --csv-header on --pgcli-fix
 table_format = csv
 ```
 

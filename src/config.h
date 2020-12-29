@@ -47,6 +47,7 @@ typedef struct
 	char   *nullstr;
 	char   *csv_skip_columns_like;
 	bool	ignore_short_rows;
+	bool	pgcli_fix;			/* hints for using from pgcli */
 	char	double_header;
 	int		border_type;
 	bool	on_sigint_exit;

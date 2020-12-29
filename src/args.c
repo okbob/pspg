@@ -92,6 +92,7 @@ static struct option long_options[] =
 	{"wait", required_argument, 0, 36},
 	{"hold-stream", required_argument, 0, 37},
 	{"skip-columns-like", required_argument, 0, 38},
+	{"pgcli-fix", no_argument, 0, 39},
 	{0, 0, 0, 0}
 };
 
@@ -249,6 +250,7 @@ readargs(char **argv,
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
 					fprintf(stdout, "  --no-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+					fprintf(stdout, "  --pgcli-fix              try to fix some pgcli related issues\n");
 					fprintf(stdout, "  --quit-on-f3             exit on F3 like mc viewers\n");
 					fprintf(stdout, "  --rr=ROWNUM              rows reserved for specific purposes\n");
 					fprintf(stdout, "  --stream                 read input forever\n");
@@ -469,6 +471,9 @@ readargs(char **argv,
 				break;
 			case 38:
 				opts->csv_skip_columns_like = sstrdup(optarg);
+				break;
+			case 39:
+				opts->pgcli_fix = true;
 				break;
 
 			case 'V':
