@@ -46,9 +46,13 @@ ST_MENU_ITEM _copy[] = {
 	{"Copy line e~x~tended", 0, NULL, 0, 0, 0, NULL},
 	{"Copy col~u~mn", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~t~op lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~m~arked lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~s~earched lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~a~ll", 0, NULL, 0, 0, 0, NULL},
+	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"Copy to ~f~ile", 0, NULL, 0, 0, 0, NULL},
+	{"Copy to clip~b~oard", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"_0_Use CSV format", cmd_UseClipboard_CSV, NULL, 0, 0, 0, NULL},
 	{"_1_Use LibreOffice TSVC format", cmd_UseClipboard_TSVC, NULL, 0, 0, 0, NULL},
@@ -59,7 +63,7 @@ ST_MENU_ITEM _copy[] = {
 };
 
 ST_MENU_ITEM _file[] = {
-	{"~C~opy to clipboard", 0, NULL, 0, 0, 0, _copy},
+	{"~C~opy to", 0, NULL, 0, 0, 0, _copy},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~S~ave", cmd_SaveData, "s", 0, 0, 0, NULL},
 	{"Sa~v~e as CSV", cmd_SaveAsCSV, NULL, 0, 0, 0, NULL},
