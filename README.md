@@ -11,7 +11,7 @@ This pager can be used from the following clients command line clients too:
 - `sqlite`
 - [`pgcli`](https://github.com/dbcli/pgcli/)
 - `monetdb`
-- [`prestosql`](https://prestosql.io/)
+- [`Trino (formerly Presto SQL)`](https://trino.io/)
 
 ## Main target
 * possibility to freeze first few rows, first few columns
