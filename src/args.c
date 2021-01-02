@@ -93,6 +93,7 @@ static struct option long_options[] =
 	{"hold-stream", required_argument, 0, 37},
 	{"skip-columns-like", required_argument, 0, 38},
 	{"pgcli-fix", no_argument, 0, 39},
+	{"style", required_argument, 0, 's'},
 	{0, 0, 0, 0}
 };
 
@@ -215,7 +216,6 @@ readargs(char **argv,
 	int		opt;
 	int		option_index = 0;
 
-
 	state->errstr = NULL;
 
 	/* force reset getopt interface */
@@ -258,7 +258,7 @@ readargs(char **argv,
 					fprintf(stdout, "\nOutput format options:\n");
 					fprintf(stdout, "  -a                       force ascii\n");
 					fprintf(stdout, "  -b                       black-white style\n");
-					fprintf(stdout, "  -s N                     set color style number (0..%d)\n", MAX_STYLE);
+					fprintf(stdout, "  -s, --style=N            set color style number (0..%d)\n", MAX_STYLE);
 					fprintf(stdout, "  --bold-labels            row, column labels use bold font\n");
 					fprintf(stdout, "  --bold-cursor            cursor use bold font\n");
 					fprintf(stdout, "  --border                 type of borders (0..2)\n");

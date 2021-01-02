@@ -28,7 +28,7 @@
 #define LINEINFO_UNKNOWN			8
 #define LINEINFO_CONTINUATION		16
 
-#define MAX_STYLE					21
+#define MAX_STYLE					22
 
 #define			FILE_UNDEF			0
 #define			FILE_CSV			1

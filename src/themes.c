@@ -884,6 +884,38 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			theme_attrs[6] = cursor_attr;
 			theme_attrs[10] = cursor_attr;
 			break;
+
+		case 22:
+			/* mc theme */
+			init_pair(1, COLOR_GREEN, COLOR_BLACK);
+
+			set_colour(2, COLOR_RED, COLOR_BLACK, true, 0);
+			set_colour(3, COLOR_CYAN, COLOR_BLACK, false, 0);
+			set_colour(4, COLOR_WHITE, COLOR_BLACK, true, labels_attr);
+			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
+			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
+			set_colour(7, COLOR_RED, COLOR_BLACK, true, 0);
+			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_YELLOW, COLOR_BLACK, false, 0);
+			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
+			set_colour(11, COLOR_GREEN, COLOR_CYAN, true, 0);
+			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(13, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
+			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
+			set_colour(17, COLOR_GREEN, COLOR_GREEN, true, 0);
+			set_colour(18, COLOR_GREEN, COLOR_BLUE, false, 0);
+			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
+			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
+			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
+			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
+			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
+			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(28, COLOR_GREEN, COLOR_RED, true, 0);
+			break;
 	}
 }
 

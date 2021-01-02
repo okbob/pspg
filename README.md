@@ -102,6 +102,8 @@ Options can be passed inside env variable `PSPG` too.
 18. Solarized light theme
 19. Gruvbox light theme
 20. Tao Light theme
+21. FlatWhite theme
+22. Relational pipes theme
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 

@@ -46,13 +46,14 @@ ST_MENU_ITEM _copy[] = {
 	{"Copy line e~x~tended", 0, NULL, 0, 0, 0, NULL},
 	{"Copy col~u~mn", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~a~ll", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~t~op lines", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~b~ottom lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~m~arked lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~s~earched lines", 0, NULL, 0, 0, 0, NULL},
-	{"Copy ~a~ll", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Copy to ~f~ile", 0, NULL, 0, 0, 0, NULL},
-	{"Copy to clip~b~oard", 0, NULL, 0, 0, 0, NULL},
+	{"Copy to cli~p~board", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"_0_Use CSV format", cmd_UseClipboard_CSV, NULL, 0, 0, 0, NULL},
 	{"_1_Use LibreOffice TSVC format", cmd_UseClipboard_TSVC, NULL, 0, 0, 0, NULL},
@@ -145,6 +146,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_u_Gruvbox Light theme", cmd_SetTheme_GruvboxLight, NULL, 0, 0, 0, NULL},
 	{"_t_Tao Light theme", cmd_SetTheme_TaoLight, NULL, 0, 0, 0, NULL},
 	{"_f_Flatwhite theme", cmd_SetTheme_Flatwhite, NULL, 0, 0, 0, NULL},
+	{"_a_Relational Pipes theme", cmd_SetTheme_RelationalPipes, NULL, 0, 0, 0, NULL},
 	{NULL},
 };
 
@@ -234,6 +236,8 @@ get_menu_style(int main_theme)
 			return ST_MENU_STYLE_TAO;
 		case 21:
 			return ST_MENU_STYLE_FLATWHITE;
+		case 22:
+			return ST_MENU_STYLE_DBASE;
 		default:
 			return ST_MENU_STYLE_VISION;
 	}

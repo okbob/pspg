@@ -166,6 +166,8 @@ cmd_string(int cmd)
 			return "SetTheme_TaoLight";
 		case cmd_SetTheme_Flatwhite:
 			return "SetTheme_Flatwhite";
+		case cmd_SetTheme_RelationalPipes:
+			return "SetThemeRelationalPipes";
 
 		case cmd_SaveSetup:
 			return "SaveSetup";
@@ -485,7 +487,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_TaoLight;
 		case 21:
 			return cmd_SetTheme_Flatwhite;
-
+		case 22:
+			return cmd_SetTheme_RelationalPipes;
 	};
 
 	return cmd_Invalid;
@@ -544,6 +547,8 @@ cmd_get_theme(int cmd)
 			return 20;
 		case cmd_SetTheme_Flatwhite:
 			return 21;
+		case cmd_SetTheme_RelationalPipes:
+			return 22;
 	};
 
 	return 1;

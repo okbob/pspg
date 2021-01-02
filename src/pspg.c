@@ -3120,6 +3120,7 @@ reset_search:
 			case cmd_SetTheme_GruvboxLight:
 			case cmd_SetTheme_TaoLight:
 			case cmd_SetTheme_Flatwhite:
+			case cmd_SetTheme_RelationalPipes:
 				opts.theme = cmd_get_theme(command);
 				reinit = true;
 				goto reinit_theme;
