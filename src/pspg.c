@@ -116,6 +116,9 @@ static char		last_row_search[256];
 static char		last_col_search[256];
 static char		last_line[256];
 static char		last_path[1025];
+static char		last_rows_number[256];
+
+int		clipboard_application_id = 0;
 
 #ifdef HAVE_READLINE_HISTORY
 
@@ -1623,6 +1626,218 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 	return first_row > max_first_row ? max_first_row : first_row;
 }
 
+static void
+check_clipboard_app()
+{
+	if (!clipboard_application_id)
+	{
+		FILE	   *f;
+		char	   *line = NULL;
+		size_t		size = 0;
+		int			status;
+		bool		isokstr = false;
+
+		/* check wl-clipboard https://github.com/bugaevc/wl-clipboard.git */
+		errno = 0;
+		f = popen("wl-copy -v 2>/dev/null", "r");
+		if (f)
+		{
+			getline(&line, &size, f);
+			if (line)
+			{
+				if (strncmp(line, "wl-clipboard", 12) == 0)
+					isokstr = true;
+
+				free(line);
+				line = NULL;
+				size = 0;
+			}
+
+			status = pclose(f);
+			if (status == 0 && isokstr)
+			{
+				clipboard_application_id = 1;
+				return;
+			}
+		}
+	}
+}
+
+
+static void
+export_to_file(char *prompt,
+		  PspgCommand command,
+		  ClipboardFormat format,
+		  int *next_event_keycode,
+		  Options *opts,
+		  ScrDesc *scrdesc,
+		  DataDesc *desc,
+		  bool *force_refresh)
+{
+	char	buffer[MAXPATHLEN + 1024];
+	char	number[100];
+	int		rows = 0;
+	double  percent = 0.0;
+	FILE   *fp;
+	char   *path = NULL;
+	bool	isok = false;
+	bool	copy_to_file = false;
+
+	*force_refresh = false;
+
+	if (command == cmd_SaveData ||
+		command == cmd_SaveAsCSV ||
+		opts->copy_target == COPY_TARGET_FILE)
+	{
+		get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path);
+		if (buffer[0] == '\0')
+			return;
+
+		strncpy(last_path, buffer, sizeof(last_path) - 1);
+		last_path[sizeof(last_path) - 1] = '\0';
+
+		copy_to_file = true;
+	}
+
+	if (command == cmd_CopyTopLines ||
+		command == cmd_CopyBottomLines)
+	{
+		char	   *endptr;
+
+		get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number);
+		if (number[0] == '\0')
+			return;
+
+		errno = 0;
+		percent = strtod(number, &endptr);
+
+		if (endptr == number)
+		{
+			show_info_wait(opts, scrdesc, " Cannot convert input string to number", NULL, true, true, false, true);
+			return;
+		}
+		else if (errno != 0)
+		{
+			show_info_wait(opts, scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false, true);
+			return;
+		}
+
+		if (*endptr != '%')
+		{
+			rows = (int) percent;
+			percent = 0.0;
+		}
+
+		strncpy(last_rows_number, number, sizeof(last_rows_number) - 1);
+		last_rows_number[sizeof(last_rows_number) - 1] = '\0';
+	}
+
+	if (copy_to_file)
+	{
+		path = tilde(NULL, buffer);
+
+		errno = 0;
+		current_state->errstr = NULL;
+
+		fp = fopen(path, "w");
+	}
+	else
+	{
+		char *fmt;
+		char cmdline[1024];
+
+		check_clipboard_app();
+
+		if (!clipboard_application_id)
+		{
+			*next_event_keycode = show_info_wait(opts,
+												 scrdesc,
+												 " Cannot find clipboard application (press any key)",
+												 NULL,
+												 true, true, false, true);
+			*force_refresh = true;
+
+			return;
+		}
+
+		if (format == CLIPBOARD_FORMAT_TEXT ||
+			format == CLIPBOARD_FORMAT_INSERT ||
+			format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+		{
+			if (opts->force8bit)
+				fmt = "text/plain";
+			else
+				fmt = "text/plain;charset=utf-8";
+		}
+		else /* fallback */
+		{
+			if (opts->force8bit)
+				fmt = "text/plain";
+			else
+				fmt = "text/plain;charset=utf-8";
+		}
+
+		if (clipboard_application_id == 1)
+			snprintf(cmdline, 1024, "wl-copy -t %s", fmt);
+
+		fp = popen(cmdline, "w");
+	}
+
+	if (fp)
+	{
+		isok = export_data(desc, fp, rows, percent, command, format);
+
+		if (copy_to_file)
+			fclose(fp);
+		else
+		{
+			int		status;
+
+			/*
+			 * The status check is working well only a) when mode is read or
+			 * when LANG=C. In other cases an error is ignored.
+			 */
+			status = pclose(fp);
+			if (status != 0)
+			{
+				*next_event_keycode = show_info_wait(opts,
+													 scrdesc,
+													 " Cannot write to clipboard (press any key)",
+													 NULL,
+													 true, true, false, true);
+				*force_refresh = true;
+
+				return;
+			}
+		}
+	}
+
+	if (!isok)
+	{
+		if (path)
+		{
+			if (current_state->errstr != 0)
+				snprintf(buffer, sizeof(buffer), "%s (%s)", path, current_state->errstr);
+			else
+				strcpy(buffer, path);
+		}
+		else
+		{
+			if (current_state->errstr != 0)
+				snprintf(buffer, sizeof(buffer), "clipboard (%s)", current_state->errstr);
+			else
+				strcpy(buffer, "clipboard");
+		}
+
+		*next_event_keycode = show_info_wait(opts,
+											 scrdesc,
+											 " Cannot write to %s (press any key)",
+											 buffer,
+											 true, false, false, true);
+		*force_refresh = true;
+	}
+}
+
 /*
  * Available modes for processing input.
  *
@@ -1735,6 +1950,7 @@ main(int argc, char *argv[])
 
 	opts.quit_on_f3 = false;
 	opts.no_highlight_lines = false;
+	opts.copy_target = COPY_TARGET_CLIPBOARD;
 	opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
@@ -2333,6 +2549,7 @@ reinit_theme:
 	last_col_search[0] = '\0';
 	last_line[0] = '\0';
 	last_path[0] = '\0';
+	last_rows_number[0] = '\0';
 
 #if RL_READLINE_VERSION > 0x0603
 
@@ -2871,7 +3088,9 @@ force_refresh_data:
 						next_command != cmd_UseClipboard_TSVC &&
 						next_command != cmd_UseClipboard_text &&
 						next_command != cmd_UseClipboard_INSERT &&
-						next_command != cmd_UseClipboard_INSERT_with_comments)
+						next_command != cmd_UseClipboard_INSERT_with_comments &&
+						next_command != cmd_SetCopyFile &&
+						next_command != cmd_SetCopyClipboard)
 						goto hide_menu;
 				}
 
@@ -2981,6 +3200,16 @@ hide_menu:
 				}
 
 #endif
+
+			case cmd_SetCopyFile:
+				opts.copy_target = COPY_TARGET_FILE;
+				refresh_copy_target_options(&opts, menu);
+				break;
+
+			case cmd_SetCopyClipboard:
+				opts.copy_target = COPY_TARGET_CLIPBOARD;
+				refresh_copy_target_options(&opts, menu);
+				break;
 
 			case cmd_UseClipboard_CSV:
 				opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
@@ -4144,65 +4373,83 @@ recheck_end:
 
 			case cmd_SaveData:
 				{
-					char	buffer[MAXPATHLEN + 1024];
-					char   *path;
-					FILE   *fp;
-					bool	ok = false;
+					export_to_file("save to file: ",
+								   cmd_SaveData,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   &force_refresh);
 
-					errno = 0;
+					if (force_refresh)
+						goto force_refresh_data;
 
-					get_string(&opts, &scrdesc, "save to file: ", buffer, sizeof(buffer) - 1, last_path);
+					refresh_scr = true;
 
-					if (buffer[0] != '\0')
-					{
-						strncpy(last_path, buffer, sizeof(last_path) - 1);
-						last_path[sizeof(last_path) - 1] = '\0';
+					break;
+				}
 
-						path = tilde(NULL, buffer);
-						fp = fopen(path, "w");
-						if (fp != NULL)
-						{
-							LineBuffer *lnb = &desc.rows;
+			case cmd_SaveAsCSV:
+				{
+					export_to_file("save to CSV file: ",
+								   cmd_SaveAsCSV,
+								   CLIPBOARD_FORMAT_CSV,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   &force_refresh);
 
-							ok = true;
+					if (force_refresh)
+						goto force_refresh_data;
 
-							while (lnb)
-							{
-								int		i;
+					refresh_scr = true;
 
-								for (i = 0; i < lnb->nrows; i++)
-								{
-									/*
-									 * Reset errno. Previous openf can dirty it, when file was
-									 * created.
-									 */
-									errno = 0;
+					break;
+				}
 
-									fprintf(fp, "%s\n", lnb->rows[i]);
-									if (errno != 0)
-									{
-										ok = false;
-										goto exit;
-									}
-								}
-								lnb = lnb->next;
-							}
+			case cmd_CopyAllLines:
+				{
+					export_to_file("save to file: ",
+								   cmd_CopyAllLines,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   &force_refresh);
 
-							fclose(fp);
-						}
+					if (force_refresh)
+						goto force_refresh_data;
 
-exit:
+					refresh_scr = true;
 
-						if (!ok)
-						{
-							if (errno != 0)
-								snprintf(buffer, sizeof(buffer), "%s (%s)", path, strerror(errno));
-							else
-								strcpy(buffer, path);
+					break;
+				}
 
-							next_event_keycode = show_info_wait(&opts, &scrdesc, " Cannot write to %s (press any key)", buffer, true, false, false, true);
-						}
-					}
+			case cmd_CopyTopLines:
+				{
+					export_to_file("save to file: ",
+								   cmd_CopyTopLines,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopyBottomLines:
+				{
+					export_to_file("save to file: ",
+								   cmd_CopyBottomLines,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
 
 					refresh_scr = true;
 

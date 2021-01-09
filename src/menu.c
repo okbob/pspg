@@ -46,14 +46,14 @@ ST_MENU_ITEM _copy[] = {
 	{"Copy line e~x~tended", 0, NULL, 0, 0, 0, NULL},
 	{"Copy col~u~mn", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
-	{"Copy ~a~ll", 0, NULL, 0, 0, 0, NULL},
-	{"Copy ~t~op lines", 0, NULL, 0, 0, 0, NULL},
-	{"Copy ~b~ottom lines", 0, NULL, 0, 0, 0, NULL},
+	{"Copy ~a~ll", cmd_CopyAllLines, NULL, 0, 0, 0, NULL},
+	{"Copy ~t~op lines", cmd_CopyTopLines, NULL, 0, 0, 0, NULL},
+	{"Copy ~b~ottom lines", cmd_CopyBottomLines, NULL, 0, 0, 0, NULL},
 	{"Copy ~m~arked lines", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~s~earched lines", 0, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
-	{"Copy to ~f~ile", 0, NULL, 0, 0, 0, NULL},
-	{"Copy to cli~p~board", 0, NULL, 0, 0, 0, NULL},
+	{"Copy to ~f~ile", cmd_SetCopyFile, NULL, 0, 0, 0, NULL},
+	{"Copy to cli~p~board", cmd_SetCopyClipboard, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"_0_Use CSV format", cmd_UseClipboard_CSV, NULL, 0, 0, 0, NULL},
 	{"_1_Use LibreOffice TSVC format", cmd_UseClipboard_TSVC, NULL, 0, 0, 0, NULL},
@@ -367,6 +367,7 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
 
+	refresh_copy_target_options(opts, menu);
 	refresh_clipboard_options(opts, menu);
 }
 
@@ -379,4 +380,11 @@ refresh_clipboard_options(Options *opts, struct ST_MENU *menu)
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_INSERT);
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_MARKED,
 					   opts->clipboard_format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
+}
+
+void
+refresh_copy_target_options(Options *opts, struct ST_MENU *menu)
+{
+	st_menu_set_option(menu, cmd_SetCopyFile, ST_MENU_OPTION_MARKED, opts->copy_target == COPY_TARGET_FILE);
+	st_menu_set_option(menu, cmd_SetCopyClipboard, ST_MENU_OPTION_MARKED, opts->copy_target == COPY_TARGET_CLIPBOARD);
 }

@@ -268,6 +268,11 @@ cmd_string(int cmd)
 		case cmd_Refresh:
 			return "Refresh";
 
+		case cmd_SetCopyFile:
+			return "SetCopyFile";
+		case cmd_SetCopyClipboard:
+			return "SetCopyClipboard";
+
 		case cmd_UseClipboard_CSV:
 			return "UseClipboardFormatCSV";
 		case cmd_UseClipboard_TSVC:
@@ -278,6 +283,13 @@ cmd_string(int cmd)
 			return "UseClipboardFormatINSERT";
 		case cmd_UseClipboard_INSERT_with_comments:
 			return "UseClipboardFormatINSERTwithcomments";
+		case cmd_CopyAllLines:
+			return "CopyAllLines";
+		case cmd_CopyTopLines:
+			return "CopyTopLines";
+		case cmd_CopyBottomLines:
+			return "CopyBottomLines";
+
 		default:
 			return "unknown command";
 	}

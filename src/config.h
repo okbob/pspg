@@ -16,6 +16,21 @@
 
 #include <stdbool.h>
 
+typedef enum
+{
+	CLIPBOARD_FORMAT_CSV,
+	CLIPBOARD_FORMAT_TSVC,
+	CLIPBOARD_FORMAT_TEXT,
+	CLIPBOARD_FORMAT_INSERT,
+	CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS
+} ClipboardFormat;
+
+typedef enum
+{
+	COPY_TARGET_FILE,
+	COPY_TARGET_CLIPBOARD
+} CopyTarget;
+
 typedef struct
 {
 	char   *pathname;
@@ -62,7 +77,8 @@ typedef struct
 	char   *dbname;
 	bool	watch_file;
 	bool	quit_on_f3;
-	int		clipboard_format;
+	ClipboardFormat clipboard_format;
+	CopyTarget copy_target;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

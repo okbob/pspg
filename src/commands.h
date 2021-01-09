@@ -116,12 +116,16 @@ typedef enum PspgCommand
 	cmd_OriginalSort,
 	cmd_TogglePause,
 	cmd_Refresh,
-
+	cmd_SetCopyFile,
+	cmd_SetCopyClipboard,
 	cmd_UseClipboard_CSV,
 	cmd_UseClipboard_TSVC,
 	cmd_UseClipboard_text,
 	cmd_UseClipboard_INSERT,
 	cmd_UseClipboard_INSERT_with_comments,
+	cmd_CopyAllLines,
+	cmd_CopyTopLines,
+	cmd_CopyBottomLines
 } PspgCommand;
 
 extern void initialize_special_keycodes();

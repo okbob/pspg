@@ -17,6 +17,7 @@
 #include <poll.h>
 #include <stdio.h>
 
+#include "commands.h"
 #include "config.h"
 #include "themes.h"
 #include "st_menu.h"
@@ -79,15 +80,6 @@ typedef struct
 	LineBuffer	   *lnb;
 	int				lnb_row;
 } SortData;
-
-typedef enum
-{
-	CLIPBOARD_FORMAT_CSV,
-	CLIPBOARD_FORMAT_TSVC,
-	CLIPBOARD_FORMAT_TEXT,
-	CLIPBOARD_FORMAT_INSERT,
-	CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS
-} ClipboardFormat;
 
 /*
  * Column range
@@ -302,6 +294,7 @@ extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 extern void refresh_clipboard_options(Options *opts, struct ST_MENU *menu);
+extern void refresh_copy_target_options(Options *opts, struct ST_MENU *menu);
 
 /* from sort.c */
 extern void sort_column_num(SortData *sortbuf, int rows, bool desc);
@@ -343,6 +336,9 @@ extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *n
 extern bool nstreq(const char *str1, const char *str2);
 extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_size,
 				   const char *needle, int needle_size);
+
+/* from export.c */
+extern bool export_data(DataDesc *desc, FILE *fp, int rows, double percent, PspgCommand command, ClipboardFormat format);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
