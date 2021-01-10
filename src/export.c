@@ -23,6 +23,9 @@
  */
 bool
 export_data(DataDesc *desc,
+			ScrDesc *scrdesc,
+			int cursor_row,
+			int cursor_column,
 			FILE *fp,
 			int rows,
 			double percent,
@@ -53,7 +56,7 @@ export_data(DataDesc *desc,
 		}
 
 		if (percent != 0.0)
-			rows = (double) desc->data_rows * percent;
+			rows = (double) (desc->last_data_row - desc->first_data_row + 1) * (percent / 100.0);
 
 		if (cmd == cmd_CopyBottomLines)
 			skip_data_rows = desc->last_data_row - desc->first_data_row + 1 - rows;
@@ -71,16 +74,24 @@ export_data(DataDesc *desc,
 
 	for (rn = 0; rn <= desc->last_row; rn++)
 	{
+		LineInfo *linfo;
+	
 		if (desc->order_map)
 		{
 			MappedLine *mp = &desc->order_map[rn];
+			LineBuffer *auxlnb = mp->lnb;
+			int		auxlbrn = mp->lnb_row;
 
-			rowstr = mp->lnb->rows[mp->lnb_row];
+			rowstr = auxlnb->rows[auxlbrn];
+			linfo = auxlnb->lineinfo ? &auxlnb->lineinfo[auxlbrn] : NULL;
 		}
 		else
 		{
-			if (lbrn > lnb->nrows)
+			if (lbrn >= lnb->nrows)
+			{
 				lnb = lnb->next;
+				lbrn = 0;
+			}
 
 			if (!lnb)
 			{
@@ -88,6 +99,7 @@ export_data(DataDesc *desc,
 				leave("internal data error - missing data");
 			}
 
+			linfo = lnb->lineinfo ? &lnb->lineinfo[lbrn] : NULL;
 			rowstr = lnb->rows[lbrn++];
 		}
 
@@ -96,6 +108,23 @@ export_data(DataDesc *desc,
 		{
 			if (rn < min_row || rn > max_row)
 				continue;
+
+			if (cmd == cmd_CopyMarkedLines)
+			{
+				if (!linfo || ((linfo->mask & LINEINFO_BOOKMARK) == 0))
+					continue;
+			}
+			else if (cmd == cmd_CopyLine)
+			{
+				if (rn - desc->first_data_row != cursor_row)
+					continue;
+			}
+
+		//	if (cmd == cmd_CopySearchedLines)
+		//	{
+		//		if (!linfo || ((linfo->mask & LINEINFO_FOUNDSTR) == 0))
+		//			continue;
+		//	}
 		}
 		else
 		{

@@ -125,7 +125,11 @@ typedef enum PspgCommand
 	cmd_UseClipboard_INSERT_with_comments,
 	cmd_CopyAllLines,
 	cmd_CopyTopLines,
-	cmd_CopyBottomLines
+	cmd_CopyBottomLines,
+	cmd_CopyLine,
+	cmd_CopyColumn,
+	cmd_CopyMarkedLines,
+	cmd_CopySearchedLines
 } PspgCommand;
 
 extern void initialize_special_keycodes();

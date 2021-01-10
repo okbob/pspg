@@ -338,7 +338,7 @@ extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_s
 				   const char *needle, int needle_size);
 
 /* from export.c */
-extern bool export_data(DataDesc *desc, FILE *fp, int rows, double percent, PspgCommand command, ClipboardFormat format);
+extern bool export_data(DataDesc *desc, ScrDesc *scrdesc, int cursor_row, int cursor_column, FILE *fp, int rows, double percent, PspgCommand command, ClipboardFormat format);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

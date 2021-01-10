@@ -1665,14 +1665,15 @@ check_clipboard_app()
 
 
 static void
-export_to_file(char *prompt,
-		  PspgCommand command,
-		  ClipboardFormat format,
-		  int *next_event_keycode,
-		  Options *opts,
-		  ScrDesc *scrdesc,
-		  DataDesc *desc,
-		  bool *force_refresh)
+export_to_file(PspgCommand command,
+			  ClipboardFormat format,
+			  int *next_event_keycode,
+			  Options *opts,
+			  ScrDesc *scrdesc,
+			  DataDesc *desc,
+			  int cursor_row,
+			  int cursor_column,
+			  bool *force_refresh)
 {
 	char	buffer[MAXPATHLEN + 1024];
 	char	number[100];
@@ -1689,6 +1690,13 @@ export_to_file(char *prompt,
 		command == cmd_SaveAsCSV ||
 		opts->copy_target == COPY_TARGET_FILE)
 	{
+		char *prompt;
+
+		if (format == CLIPBOARD_FORMAT_CSV)
+			prompt = "save to CSV file: ";
+		else
+			prompt = "save to file: ";
+
 		get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path);
 		if (buffer[0] == '\0')
 			return;
@@ -1785,7 +1793,11 @@ export_to_file(char *prompt,
 
 	if (fp)
 	{
-		isok = export_data(desc, fp, rows, percent, command, format);
+		isok = export_data(desc, scrdesc,
+						   cursor_row, cursor_column,
+						   fp,
+						   rows, percent,
+						   command, format);
 
 		if (copy_to_file)
 			fclose(fp);
@@ -4373,11 +4385,11 @@ recheck_end:
 
 			case cmd_SaveData:
 				{
-					export_to_file("save to file: ",
-								   cmd_SaveData,
+					export_to_file(cmd_SaveData,
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
+								   0, 0,
 								   &force_refresh);
 
 					if (force_refresh)
@@ -4390,11 +4402,28 @@ recheck_end:
 
 			case cmd_SaveAsCSV:
 				{
-					export_to_file("save to CSV file: ",
-								   cmd_SaveAsCSV,
+					export_to_file(cmd_SaveAsCSV,
 								   CLIPBOARD_FORMAT_CSV,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
+								   0, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopyLine:
+				{
+					export_to_file(cmd_CopyLine,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   cursor_row, 0,
 								   &force_refresh);
 
 					if (force_refresh)
@@ -4407,11 +4436,11 @@ recheck_end:
 
 			case cmd_CopyAllLines:
 				{
-					export_to_file("save to file: ",
-								   cmd_CopyAllLines,
+					export_to_file(cmd_CopyAllLines,
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
+								   0, 0,
 								   &force_refresh);
 
 					if (force_refresh)
@@ -4424,11 +4453,11 @@ recheck_end:
 
 			case cmd_CopyTopLines:
 				{
-					export_to_file("save to file: ",
-								   cmd_CopyTopLines,
+					export_to_file(cmd_CopyTopLines,
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
+								   0, 0,
 								   &force_refresh);
 
 					if (force_refresh)
@@ -4441,11 +4470,45 @@ recheck_end:
 
 			case cmd_CopyBottomLines:
 				{
-					export_to_file("save to file: ",
-								   cmd_CopyBottomLines,
+					export_to_file(cmd_CopyBottomLines,
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
+								   0, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopyMarkedLines:
+				{
+					export_to_file(cmd_CopyMarkedLines,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   0, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopySearchedLines:
+				{
+					export_to_file(cmd_CopySearchedLines,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   0, 0,
 								   &force_refresh);
 
 					if (force_refresh)

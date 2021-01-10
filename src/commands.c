@@ -289,6 +289,14 @@ cmd_string(int cmd)
 			return "CopyTopLines";
 		case cmd_CopyBottomLines:
 			return "CopyBottomLines";
+		case cmd_CopyLine:
+			return "CopyLine";
+		case cmd_CopyColumn:
+			return "CopyColumn";
+		case cmd_CopyMarkedLines:
+			return "CopyMarkedLines";
+		case cmd_CopySearchedLines:
+			return "CopySearchedLines";
 
 		default:
 			return "unknown command";
