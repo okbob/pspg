@@ -94,6 +94,10 @@ static struct option long_options[] =
 	{"skip-columns-like", required_argument, 0, 38},
 	{"pgcli-fix", no_argument, 0, 39},
 	{"style", required_argument, 0, 's'},
+	{"reprint-on-exit", no_argument, 0, 'X'},
+	{"ascii", no_argument, 0, 'a'},
+	{"blackwhite", no_argument, 0, 'b'},
+	{"freezecols", required_argument, 0, 'c'},
 	{0, 0, 0, 0}
 };
 
@@ -254,10 +258,10 @@ readargs(char **argv,
 					fprintf(stdout, "  --quit-on-f3             exit on F3 like mc viewers\n");
 					fprintf(stdout, "  --rr=ROWNUM              rows reserved for specific purposes\n");
 					fprintf(stdout, "  --stream                 read input forever\n");
-					fprintf(stdout, "  -X                       don't use alternate screen\n");
+					fprintf(stdout, "  -X, --reprint-on-exit    preserve content after exit\n");
 					fprintf(stdout, "\nOutput format options:\n");
-					fprintf(stdout, "  -a                       force ascii\n");
-					fprintf(stdout, "  -b                       black-white style\n");
+					fprintf(stdout, "  -a, --ascii              force ascii\n");
+					fprintf(stdout, "  -b, --blackwhite         black-white style\n");
 					fprintf(stdout, "  -s, --style=N            set color style number (0..%d)\n", MAX_STYLE);
 					fprintf(stdout, "  --bold-labels            row, column labels use bold font\n");
 					fprintf(stdout, "  --bold-cursor            cursor use bold font\n");
@@ -272,7 +276,7 @@ readargs(char **argv,
 					fprintf(stdout, "  -i --ignore-case         ignore case in searches that do not contain uppercase\n");
 					fprintf(stdout, "  -I --IGNORE-CASE         ignore case in all searches\n");
 					fprintf(stdout, "\nInterface options:\n");
-					fprintf(stdout, "  -c N                     fix N columns (0..9)\n");
+					fprintf(stdout, "  -c, --freezecols=N       freeze N columns (0..9)\n");
 					fprintf(stdout, "  --less-status-bar        status bar like less pager\n");
 					fprintf(stdout, "  --line-numbers           show line number column\n");
 					fprintf(stdout, "  --no-bars, --no-commandbar, --no-topbar\n");
