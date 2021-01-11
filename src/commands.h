@@ -123,10 +123,12 @@ typedef enum PspgCommand
 	cmd_UseClipboard_text,
 	cmd_UseClipboard_INSERT,
 	cmd_UseClipboard_INSERT_with_comments,
+	cmd_Copy,
 	cmd_CopyAllLines,
 	cmd_CopyTopLines,
 	cmd_CopyBottomLines,
 	cmd_CopyLine,
+	cmd_CopyLineExtended,
 	cmd_CopyColumn,
 	cmd_CopyMarkedLines,
 	cmd_CopySearchedLines

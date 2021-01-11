@@ -328,6 +328,7 @@ extern char *tilde(char *dest, char *path);
 /* from table.c */
 extern bool readfile(Options *opts, DataDesc *desc, StateData *state);
 extern bool translate_headline(Options *opts, DataDesc *desc);
+
 extern void update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort);
 
 /* from string.c */
@@ -338,7 +339,11 @@ extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_s
 				   const char *needle, int needle_size);
 
 /* from export.c */
-extern bool export_data(DataDesc *desc, ScrDesc *scrdesc, int cursor_row, int cursor_column, FILE *fp, int rows, double percent, PspgCommand command, ClipboardFormat format);
+extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
+						int cursor_row, int cursor_column,
+						FILE *fp,
+						int rows, double percent,
+						PspgCommand cmd, ClipboardFormat format);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

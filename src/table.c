@@ -1178,10 +1178,15 @@ translate_headline(Options *opts, DataDesc *desc)
 }
 
 /*
- * Cut text from column and translate it to number.
+ * Cut text from column.
  */
 static bool
-cut_text(char *str, int xmin, int xmax, bool border0, bool force8bit, char **result)
+cut_text(char *str,
+		 int xmin,
+		 int xmax,
+		 bool border0,
+		 bool force8bit,
+		 char **result)
 {
 #define TEXT_STACK_BUFFER_SIZE		1024
 

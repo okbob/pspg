@@ -283,6 +283,8 @@ cmd_string(int cmd)
 			return "UseClipboardFormatINSERT";
 		case cmd_UseClipboard_INSERT_with_comments:
 			return "UseClipboardFormatINSERTwithcomments";
+		case cmd_Copy:
+			return "Copy";
 		case cmd_CopyAllLines:
 			return "CopyAllLines";
 		case cmd_CopyTopLines:
@@ -291,6 +293,8 @@ cmd_string(int cmd)
 			return "CopyBottomLines";
 		case cmd_CopyLine:
 			return "CopyLine";
+		case cmd_CopyLineExtended:
+			return "CopyLineExtended";
 		case cmd_CopyColumn:
 			return "CopyColumn";
 		case cmd_CopyMarkedLines:
@@ -358,6 +362,8 @@ translate_event(int c, bool alt, Options *opts)
 				if (opts->quit_on_f3)
 					return cmd_Quit;
 				break;
+			case KEY_IC:
+				return cmd_Copy;
 			case KEY_UP:
 			case 'k':
 				return cmd_CursorUp;

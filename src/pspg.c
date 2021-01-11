@@ -1686,6 +1686,19 @@ export_to_file(PspgCommand command,
 
 	*force_refresh = false;
 
+	if (command == cmd_CopyColumn && !opts->vertical_cursor)
+	{
+		show_info_wait(opts, scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
+		return;
+	}
+
+	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
+		opts->no_cursor)
+	{
+		show_info_wait(opts, scrdesc, " Cursor is not visible", NULL, true, true, true, false);
+		return;
+	}
+
 	if (command == cmd_SaveData ||
 		command == cmd_SaveAsCSV ||
 		opts->copy_target == COPY_TARGET_FILE)
@@ -1793,7 +1806,7 @@ export_to_file(PspgCommand command,
 
 	if (fp)
 	{
-		isok = export_data(desc, scrdesc,
+		isok = export_data(opts, scrdesc, desc,
 						   cursor_row, cursor_column,
 						   fp,
 						   rows, percent,
@@ -4417,6 +4430,23 @@ recheck_end:
 					break;
 				}
 
+			case cmd_Copy:
+				{
+					export_to_file(cmd_Copy,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   cursor_row, vertical_cursor_column,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
 			case cmd_CopyLine:
 				{
 					export_to_file(cmd_CopyLine,
@@ -4424,6 +4454,40 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopyLineExtended:
+				{
+					export_to_file(cmd_CopyLineExtended,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   cursor_row, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
+			case cmd_CopyColumn:
+				{
+					export_to_file(cmd_CopyColumn,
+								   CLIPBOARD_FORMAT_TEXT,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   0, vertical_cursor_column,
 								   &force_refresh);
 
 					if (force_refresh)

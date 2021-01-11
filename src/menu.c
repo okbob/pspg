@@ -40,10 +40,10 @@ ST_CMDBAR_ITEM _bottombar_alt1[] = {
 };
 
 ST_MENU_ITEM _copy[] = {
-	{"~C~opy", 0, "F5", 0, 0, 0, NULL},
+	{"~C~opy", cmd_Copy, "Ins", 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~l~ine", cmd_CopyLine, NULL, 0, 0, 0, NULL},
-	{"Copy line e~x~tended", 0, NULL, 0, 0, 0, NULL},
+	{"Copy line e~x~tended", cmd_CopyLineExtended, NULL, 0, 0, 0, NULL},
 	{"Copy col~u~mn", cmd_CopyColumn, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~a~ll", cmd_CopyAllLines, NULL, 0, 0, 0, NULL},

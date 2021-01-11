@@ -12,18 +12,71 @@
  */
 
 
-#include "pspg.h"
-#include "commands.h"
-
 #include <errno.h>
 #include <string.h>
+
+#include "pspg.h"
+#include "commands.h"
+#include "unicode.h"
+
+static char *
+pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit)
+{
+	char   *substr = NULL;
+
+	*substrlen = 0;
+
+	if (force8bit)
+	{
+		int		len = strlen(str);
+
+		if (len > xmin)
+		{
+			*substrlen = xmax - xmin - 1;
+			len = len - xmin - 1;
+
+			if (len < *substrlen)
+				*substrlen = len;
+
+			substr = str + xmin + 1;
+		}
+	}
+	else
+	{
+		int		pos = 0;
+
+		while (*str)
+		{
+			int		charlen = utf8charlen(*str);
+
+			if (pos > xmin)
+			{
+				if (!substr)
+					substr = str;
+			}
+
+			charlen = utf8charlen(*str);
+			pos += utf_dsplen(str);
+			str += charlen;
+
+			if (pos > xmax)
+				break;
+
+			if (substr)
+				*substrlen += charlen;
+		}
+	}
+
+	return substr;
+}
 
 /*
  * Returns true, when the operation was successfull
  */
 bool
-export_data(DataDesc *desc,
+export_data(Options *opts,
 			ScrDesc *scrdesc,
+			DataDesc *desc,
 			int cursor_row,
 			int cursor_column,
 			FILE *fp,
@@ -36,13 +89,43 @@ export_data(DataDesc *desc,
 	int		lbrn = 0;
 	LineBuffer *lnb = &desc->rows;
 	char   *rowstr;
+	int		rowstrlen;
 	bool	print_header = true;
 	bool	print_footer = true;
 	bool	print_border = true;
+	bool	print_header_line = true;
+
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_data_row;
+	int		xmin = -1;
+	int		xmax = -1;
 
 	current_state->errstr = NULL;
+
+	if (cmd == cmd_CopyLine ||
+		cmd == cmd_CopyLineExtended ||
+		(cmd == cmd_Copy && !opts->no_cursor))
+	{
+		min_row = max_row = cursor_row + desc->first_data_row;
+		print_footer = false;
+	}
+
+	if ((cmd == cmd_Copy && opts->vertical_cursor) ||
+		cmd == cmd_CopyColumn)
+	{
+		xmin = desc->cranges[cursor_column - 1].xmin;
+		xmax = desc->cranges[cursor_column - 1].xmax;
+
+		print_border = false;
+		print_footer = false;
+	}
+
+	/* copy value from cross of vertical and horizontal cursor */
+	if (cmd == cmd_Copy && !opts->no_cursor && opts->vertical_cursor)
+	{
+		print_header = false;
+		print_header_line = false;
+	}
 
 	if (cmd == cmd_CopyTopLines ||
 		cmd == cmd_CopyBottomLines)
@@ -130,8 +213,10 @@ export_data(DataDesc *desc,
 		{
 			if (!print_border &&
 				(rn == desc->border_top_row ||
-				 rn == desc->border_head_row ||
 				 rn == desc->border_bottom_row))
+				continue;
+			if (!print_header_line &&
+				rn == desc->border_head_row)
 				continue;
 			if (!print_header && rn < desc->fixed_rows)
 				continue;
@@ -139,10 +224,20 @@ export_data(DataDesc *desc,
 				continue;
 		}
 
+		rowstrlen = -1;
+
+		if (xmin != -1)
+			rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit);
+
 		errno = 0;
 
 		if (format == CLIPBOARD_FORMAT_TEXT)
-			fprintf(fp, "%s\n", rowstr);
+		{
+			if (rowstrlen != -1)
+				fprintf(fp, "%.*s\n", rowstrlen, rowstr ? rowstr : "");
+			else
+				fprintf(fp, "%s\n", rowstr ? rowstr : "");
+		}
 
 		if (errno != 0)
 		{
