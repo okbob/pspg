@@ -130,6 +130,53 @@ flush_bytes(WINDOW *win,
 }
 
 static void
+get_column_data_dim(DataDesc *desc, int n,
+					int *x, int *width)
+{
+	CRange *col = &desc->cranges[n];
+
+	*width = col->xmax - col->xmin + 1;
+	*x = col->xmin;
+
+	if (desc->border_type == 0)
+	{
+		if (n == 0)
+		{
+			*width -= 1;
+			*x += 0;
+		}
+		else
+		{
+			*width -= 2;
+			*x += 1;
+		}
+	}
+	else if (desc->border_type == 1)
+	{
+		if (n == 0)
+		{
+			*width -= 3;
+			*x += 1;
+		}
+		else if (n + 1 == desc->columns)
+		{
+			*width -= 3;
+			*x += 2;
+		}
+		else
+		{
+			*width -= 4;
+			*x += 2;
+		}
+	}
+	else if (desc->border_type == 2)
+	{
+		*width -= 4;
+		*x += 2;
+	}
+}
+
+static void
 print_column_names(WINDOW *win,
 				   int srcx,						/* offset to displayed data */
 				   int vcursor_xmin,				/* xmin in display coordinates */
@@ -147,7 +194,8 @@ print_column_names(WINDOW *win,
 	int		pos = 0;
 	int		bytes;
 	int		chars;
-	int		extra_space = desc->border_type == 0 ? 0 : 1;
+	bool	force8bit = opts->force8bit;
+
 	attr_t		active_attr = 0;
 	attr_t		new_attr;
 	int		i;
@@ -161,8 +209,16 @@ print_column_names(WINDOW *win,
 	/* skip left invisible chars */
 	while (pos < srcx)
 	{
-		bytes = utf8charlen(*ptr);
-		chars = utf_dsplen(ptr);
+		if (!force8bit)
+		{
+			bytes = utf8charlen(*ptr);
+			chars = utf_dsplen(ptr);
+		}
+		else
+		{
+			bytes = 1;
+			chars = 1;
+		}
 
 		if (pos + chars > srcx)
 		{
@@ -189,8 +245,16 @@ print_column_names(WINDOW *win,
 		char	column_format = *headline_ptr;
 		bool	is_cursor = vcursor_xmin <= pos && pos <= vcursor_xmax;
 
-		bytes = utf8charlen(*ptr);
-		chars = utf_dsplen(ptr);
+		if (!force8bit)
+		{
+			bytes = utf8charlen(*ptr);
+			chars = utf_dsplen(ptr);
+		}
+		else
+		{
+			bytes = 1;
+			chars = 1;
+		}
 
 		if (is_cursor )
 			new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
@@ -215,6 +279,7 @@ print_column_names(WINDOW *win,
 				wprintw(win, "%.*s", bytes, ptr);
 		}
 		else
+			/* clean background of colum names */
 			wprintw(win, "%*s", chars, "");
 
 		headline_ptr += chars;
@@ -228,113 +293,107 @@ print_column_names(WINDOW *win,
 	for (i = 0; i < desc->columns; i++)
 	{
 		CRange *col = &desc->cranges[i];
-		int		reduced_xmin = col->xmin - srcx;
-		int		reduced_xmax = col->xmax - srcx;
-		int		visible_xmin;
-		int		visible_xmax;
-		int		visible_width;
-		int		x = -1;
-		int		skipbytes = 0;
+
 		char   *colname;
 		int		colname_size;
 		int		colname_width;
 
-		/* skip invisible columns */
-		if (reduced_xmax < 0)
-			continue;
+		int		data_x, data_width;
+		int		act_xmin, act_xmax, act_width;
+		int		overlap_left = 0, overlap_right = 0;
 
-		/* leave when no other column can be visible */
-		if (reduced_xmin > maxx)
-			break;
+		get_column_data_dim(desc, i, &data_x, &data_width);
+
+		if (data_x + data_width < srcx)
+			continue;
+		if (maxx + srcx < data_x)
+			continue;
 
 		colname = desc->namesline + col->name_offset;
 		colname_size = col->name_size;
 		colname_width = col->name_width;
 
-		visible_xmin = reduced_xmin > 1 ? reduced_xmin : 1;
-		visible_xmax = reduced_xmax < maxx ? reduced_xmax : maxx;
-		visible_width = visible_xmax - visible_xmin + extra_space;
+		act_xmin = data_x - srcx;
+		act_xmax = act_xmin + data_width - 1;
 
-		if (reduced_xmin >= 1 && reduced_xmax <= maxx)
+		if (act_xmin < 0)
 		{
-			/* center content */
-			x = (visible_width - colname_width - 1) / 2 + visible_xmin + 1;
+			overlap_left = - act_xmin;
+			act_xmin = 0;
 		}
-		else if (reduced_xmin >= 1)
-		{
-			/*
-			 * display first visible chars from column name when all chars
-			 * from column name cannot be displayed, or center content.
-			 */
-			if (visible_width <= colname_width + 1 + extra_space)
-			{
-				char   *chr_ptr = colname;
-				int		x2;
 
-				/* size of visible chars will be calculated */
+		if (act_xmax > maxx)
+		{
+			overlap_right = act_xmax - maxx;
+			act_xmax = maxx;
+		}
+
+		act_width = act_xmax - act_xmin + 1;
+
+		new_attr = (vcursor_xmin <= act_xmin && act_xmin <= vcursor_xmax) ? t->cursor_data_attr : t->data_attr;
+
+		if (colname_width <= act_width)
+		{
+			act_xmin = (act_width - colname_width - 1) / 2 + act_xmin;
+		}
+		else
+		{
+			if (overlap_right > 0 || overlap_right > overlap_left)
+			{
+				char    *str = colname;
+				int		width = 0;
 				colname_size = 0;
 
-				x = visible_xmin + 1 + extra_space;
-				x2 = x;
-
-				while (x2 <= maxx)
+				/* first n chars */
+				while (*str)
 				{
-					bytes = utf8charlen(*chr_ptr);
-					chars = utf_dsplen(chr_ptr);
+					if (!force8bit)
+					{
+						bytes = utf8charlen(*str);
+						chars = utf_dsplen(str);
+					}
+					else
+					{
+						bytes = 1;
+						chars = 1;
+					}
 
-					if (x2 + chars > maxx)
+					if (width + chars > act_width)
+						break;
+					width += chars;
+					str += bytes;
+					colname_size += bytes;
+				}
+			}
+			else
+			{
+				/* last n chars */
+				while (*colname)
+				{
+					if (!force8bit)
+					{
+						bytes = utf8charlen(*colname);
+						chars = utf_dsplen(colname);
+					}
+					else
+					{
+						bytes = 1;
+						chars = 1;
+					}
+
+					if (colname_width <= act_width)
 						break;
 
-					colname_size += bytes;
-					x2 += chars;
-					chr_ptr += bytes;
+					colname_width -= chars;
+					colname += bytes;
+					colname_size -= bytes;
 				}
 			}
-			else
-				x = (visible_width - colname_width - 1) / 2 + visible_xmin + 1;
-		}
-		else if (reduced_xmin < 1)
-		{
-			/* display last visible chars or center content */
-			if (visible_width <= col->name_width + extra_space)
-			{
-				char   *chr_ptr = colname;
-				int		reduce_width = colname_width + extra_space - visible_width;
-
-				/* there is not a space from left */
-				x = visible_xmin - 1;
-
-				if (reduce_width < colname_width)
-				{
-					while (reduce_width > 0)
-					{
-						bytes = utf8charlen(*chr_ptr);
-						chars = utf_dsplen(chr_ptr);
-
-						skipbytes += bytes;
-						reduce_width -= chars;
-						chr_ptr += bytes;
-					}
-				}
-				else
-					/* there is not any content to print */
-					x = -1;
-
-				if (reduce_width < 0 && x != -1)
-					x += abs(reduce_width);
-			}
-			else
-				x = (visible_width - col->name_width - 1) / 2 + visible_xmin;
 		}
 
-		new_attr = (vcursor_xmin <= x && x <= vcursor_xmax) ? t->cursor_data_attr : t->data_attr;
-
-		if (x != -1)
-		{
-			wattron(win, new_attr);
-			mvwprintw(win, cy, x, "%.*s", colname_size - skipbytes, colname + skipbytes);
-			wattroff(win, new_attr);
-		}
+		wattron(win, new_attr);
+		mvwprintw(win, cy, act_xmin, "%.*s", colname_size, colname);
+		wattroff(win, new_attr);
 	}
 }
 

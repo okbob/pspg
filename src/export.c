@@ -19,8 +19,32 @@
 #include "commands.h"
 #include "unicode.h"
 
+static void
+getdeco(char *str, char **ldeco, char **rdeco, int *ldecolen, int *rdecolen)
+{
+	char	   *start = NULL;
+	char	   *stop = NULL;
+
+	while (*str)
+	{
+		if (!start)
+			start = str;
+
+		if (*str != ' ')
+			stop = str;
+
+		str += utf8charlen(*str);
+	}
+
+	*ldeco = start;
+	*ldecolen = utf8charlen(*start);
+	*rdeco = stop;
+	*rdecolen = utf8charlen(*stop);
+}
+
+
 static char *
-pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit)
+pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit, bool trim)
 {
 	char   *substr = NULL;
 
@@ -39,11 +63,23 @@ pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit)
 				*substrlen = len;
 
 			substr = str + xmin + 1;
+
+			if (trim && *substrlen > 1)
+			{
+				char *ptr = substr + *substrlen - 1;
+
+				while (ptr > substr && *ptr == ' ')
+				{
+					ptr--;
+					*substrlen -= 1;
+				}
+			}
 		}
 	}
 	else
 	{
 		int		pos = 0;
+		char   *first_ending_space = NULL;
 
 		while (*str)
 		{
@@ -55,15 +91,37 @@ pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit)
 					substr = str;
 			}
 
+			if (*str == ' ')
+			{
+				if (!first_ending_space)
+					first_ending_space = str;
+			}
+			else
+			{
+				if (first_ending_space)
+					first_ending_space = NULL;
+			}
+
 			charlen = utf8charlen(*str);
 			pos += utf_dsplen(str);
 			str += charlen;
 
-			if (pos > xmax)
+			if (pos >= xmax)
 				break;
+		}
 
-			if (substr)
-				*substrlen += charlen;
+		if (trim && first_ending_space)
+			*substrlen = first_ending_space - substr;
+		else
+			*substrlen = str - substr;
+	}
+
+	if (trim)
+	{
+		while (*substr == ' ')
+		{
+			*substrlen -= 1;
+			substr++;
 		}
 	}
 
@@ -94,6 +152,7 @@ export_data(Options *opts,
 	bool	print_footer = true;
 	bool	print_border = true;
 	bool	print_header_line = true;
+	bool	print_vertical_border = false;
 
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_data_row;
@@ -116,8 +175,8 @@ export_data(Options *opts,
 		xmin = desc->cranges[cursor_column - 1].xmin;
 		xmax = desc->cranges[cursor_column - 1].xmax;
 
-		print_border = false;
 		print_footer = false;
+		print_vertical_border = desc->border_type == 2;
 	}
 
 	/* copy value from cross of vertical and horizontal cursor */
@@ -125,6 +184,8 @@ export_data(Options *opts,
 	{
 		print_header = false;
 		print_header_line = false;
+		print_vertical_border = false;
+		print_border = false;
 	}
 
 	if (cmd == cmd_CopyTopLines ||
@@ -158,7 +219,9 @@ export_data(Options *opts,
 	for (rn = 0; rn <= desc->last_row; rn++)
 	{
 		LineInfo *linfo;
-	
+		char   *ldeco = NULL, *rdeco = NULL;
+		int		ldecolen = 0, rdecolen = 0;
+
 		if (desc->order_map)
 		{
 			MappedLine *mp = &desc->order_map[rn];
@@ -227,14 +290,32 @@ export_data(Options *opts,
 		rowstrlen = -1;
 
 		if (xmin != -1)
-			rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit);
+		{
+			if (print_vertical_border)
+			{
+				getdeco(rowstr,
+						&ldeco, &rdeco,
+						&ldecolen, &rdecolen);
+
+				rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit, false);
+			}
+			else
+				rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit, true);
+		}
 
 		errno = 0;
 
 		if (format == CLIPBOARD_FORMAT_TEXT)
 		{
-			if (rowstrlen != -1)
-				fprintf(fp, "%.*s\n", rowstrlen, rowstr ? rowstr : "");
+			if (xmin != -1)
+			{
+				if (print_vertical_border)
+					fprintf(fp, "%.*s%.*s%.*s\n", ldecolen, ldeco,
+												rowstrlen, rowstr ? rowstr : "",
+												rdecolen, rdeco);
+				else
+					fprintf(fp, "%.*s\n", rowstrlen, rowstr ? rowstr : "");
+			}
 			else
 				fprintf(fp, "%s\n", rowstr ? rowstr : "");
 		}
