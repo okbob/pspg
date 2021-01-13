@@ -213,6 +213,12 @@ export_data(Options *opts,
 		print_footer = false;
 	}
 
+	if (cmd == cmd_CopyMarkedLines ||
+		cmd == cmd_CopySearchedLines)
+	{
+		print_footer = false;
+	}
+
 	if (format != CLIPBOARD_FORMAT_TEXT)
 		print_border = false;
 
@@ -225,11 +231,11 @@ export_data(Options *opts,
 		if (desc->order_map)
 		{
 			MappedLine *mp = &desc->order_map[rn];
-			LineBuffer *auxlnb = mp->lnb;
-			int		auxlbrn = mp->lnb_row;
+			lnb = mp->lnb;
+			lbrn = mp->lnb_row;
 
-			rowstr = auxlnb->rows[auxlbrn];
-			linfo = auxlnb->lineinfo ? &auxlnb->lineinfo[auxlbrn] : NULL;
+			rowstr = lnb->rows[lbrn];
+			linfo = lnb->lineinfo ? &lnb->lineinfo[lbrn] : NULL;
 		}
 		else
 		{
@@ -265,12 +271,14 @@ export_data(Options *opts,
 				if (rn - desc->first_data_row != cursor_row)
 					continue;
 			}
+			if (cmd == cmd_CopySearchedLines)
+			{
+				/* force lineinfo setting */
+				linfo = set_line_info(opts, scrdesc, lnb, lbrn, rowstr);
 
-		//	if (cmd == cmd_CopySearchedLines)
-		//	{
-		//		if (!linfo || ((linfo->mask & LINEINFO_FOUNDSTR) == 0))
-		//			continue;
-		//	}
+				if (!linfo || ((linfo->mask & LINEINFO_FOUNDSTR) == 0))
+					continue;
+			}
 		}
 		else
 		{

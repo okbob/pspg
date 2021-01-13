@@ -397,6 +397,91 @@ print_column_names(WINDOW *win,
 	}
 }
 
+LineInfo *
+set_line_info(Options *opts,
+			  ScrDesc *scrdesc,
+			  LineBuffer *lnb,
+			  int lbrn,
+			  char *rowstr)
+{
+	LineInfo   *linfo = NULL;
+
+	if (*scrdesc->searchterm == '\0' || !lnb || !rowstr)
+		return linfo;
+
+	if (!lnb->lineinfo)
+	{
+		int		i;
+
+		lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
+		if (lnb->lineinfo == NULL)
+			leave("out of memory");
+
+		memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
+
+		for (i = 0; i < lnb->nrows; i++)
+			lnb->lineinfo[i].mask = LINEINFO_UNKNOWN;
+	}
+
+	linfo = &lnb->lineinfo[lbrn - 1];
+
+	if (linfo->mask & LINEINFO_UNKNOWN)
+	{
+		const char *str = rowstr;
+
+		linfo->mask ^= LINEINFO_UNKNOWN;
+		linfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
+
+		while (str != NULL)
+		{
+			/*
+			 * When we would to ignore case or lower case (in this case, we know, so
+			 * pattern has not any upper char, then we have to use slower case insensitive
+			 * searching.
+			 */
+			if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
+			{
+				if (opts->force8bit)
+					str = nstrstr(str, scrdesc->searchterm);
+				else
+					str = utf8_nstrstr(str, scrdesc->searchterm);
+			}
+			else if (opts->ignore_lower_case && scrdesc->has_upperchr)
+			{
+				if (opts->force8bit)
+					str = nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+				else
+					str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+			}
+			else
+				/* we can use case sensitive searching (binary comparation) */
+				str = strstr(str, scrdesc->searchterm);
+
+			if (str != NULL)
+			{
+				if (linfo->mask & LINEINFO_FOUNDSTR)
+				{
+					/* When we detect multi occurrence, then stop searching */
+					linfo->mask |= LINEINFO_FOUNDSTR_MULTI;
+					break;
+				}
+				else
+				{
+					linfo->mask |= LINEINFO_FOUNDSTR;
+					if (opts->force8bit)
+						linfo->start_char = str - rowstr;
+					else
+						linfo->start_char = utf8len_start_stop(rowstr, str);
+				}
+
+				str += scrdesc->searchterm_size;
+			}
+		}
+	}
+
+	return linfo;
+}
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -524,79 +609,8 @@ window_fill(int window_identifier,
 
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
-		if (!is_fix_rows && *scrdesc->searchterm != '\0' && lnb != NULL &&  rowstr != NULL
-					  && !opts->no_highlight_search)
-		{
-			if (lineinfo == NULL)
-			{
-				int		i;
-
-				lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
-				if (lnb->lineinfo == NULL)
-					leave("out of memory");
-
-				memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
-
-				for (i = 0; i < lnb->nrows; i++)
-					lnb->lineinfo[i].mask = LINEINFO_UNKNOWN;
-
-				lineinfo = &lnb->lineinfo[lnb_row - 1];
-			}
-
-			if (lineinfo->mask & LINEINFO_UNKNOWN)
-			{
-				const char *str = rowstr;
-
-				lineinfo->mask ^= LINEINFO_UNKNOWN;
-				lineinfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
-
-				while (str != NULL)
-				{
-					/*
-					 * When we would to ignore case or lower case (in this case, we know, so
-					 * pattern has not any upper char, then we have to use slower case insensitive
-					 * searching.
-					 */
-					if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
-					{
-						if (opts->force8bit)
-							str = nstrstr(str, scrdesc->searchterm);
-						else
-							str = utf8_nstrstr(str, scrdesc->searchterm);
-					}
-					else if (opts->ignore_lower_case && scrdesc->has_upperchr)
-					{
-						if (opts->force8bit)
-							str = nstrstr_ignore_lower_case(str, scrdesc->searchterm);
-						else
-							str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
-					}
-					else
-						/* we can use case sensitive searching (binary comparation) */
-						str = strstr(str, scrdesc->searchterm);
-
-					if (str != NULL)
-					{
-						if (lineinfo->mask & LINEINFO_FOUNDSTR)
-						{
-							/* When we detect multi occurrence, then stop searching */
-							lineinfo->mask |= LINEINFO_FOUNDSTR_MULTI;
-							break;
-						}
-						else
-						{
-							lineinfo->mask |= LINEINFO_FOUNDSTR;
-							if (opts->force8bit)
-								lineinfo->start_char = str - rowstr;
-							else
-								lineinfo->start_char = utf8len_start_stop(rowstr, str);
-						}
-
-						str += scrdesc->searchterm_size;
-					}
-				}
-			}
-		}
+		if (!is_fix_rows && *scrdesc->searchterm != '\0' && !opts->no_highlight_search)
+			lineinfo = set_line_info(opts, scrdesc, lnb, lnb_row, rowstr);
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
 
