@@ -1660,9 +1660,54 @@ check_clipboard_app()
 				return;
 			}
 		}
+
+		errno = 0;
+		f = popen("xclip -version 2>&1", "r");
+		if (f)
+		{
+			getline(&line, &size, f);
+			if (line)
+			{
+				if (strncmp(line, "xclip", 5) == 0)
+					isokstr = true;
+
+				free(line);
+				line = NULL;
+				size = 0;
+			}
+
+			status = pclose(f);
+			if (status == 0 && isokstr)
+			{
+				clipboard_application_id = 2;
+				return;
+			}
+		}
+
+		errno = 0;
+		f = popen("pbcopy", "r");
+		if (f)
+		{
+			getline(&line, &size, f);
+			if (line)
+			{
+				/* there is not version option */
+				isokstr = true;
+
+				free(line);
+				line = NULL;
+				size = 0;
+			}
+
+			status = pclose(f);
+			if (status == 0 && isokstr)
+			{
+				clipboard_application_id = 3;
+				return;
+			}
+		}
 	}
 }
-
 
 static void
 export_to_file(PspgCommand command,
@@ -1800,6 +1845,10 @@ export_to_file(PspgCommand command,
 
 		if (clipboard_application_id == 1)
 			snprintf(cmdline, 1024, "wl-copy -t %s", fmt);
+		else if (clipboard_application_id == 2)
+			snprintf(cmdline, 1024, "xclip -sel clip");
+		else if (clipboard_application_id == 3)
+			snprintf(cmdline, 1024, "pbcopy");
 
 		fp = popen(cmdline, "w");
 	}
