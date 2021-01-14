@@ -572,14 +572,28 @@ export_data(Options *opts,
 			log_row("Cannot write (%s)", current_state->errstr);
 
 			if (columns)
+			{
+				int		i;
+
+				for (i = 0; i < desc->columns; i++)
+					free(columns[i]);
+
 				free(columns);
+			}
 
 			return false;
 		}
 	}
 
 	if (columns)
+	{
+		int		i;
+
+		for (i = 0; i < desc->columns; i++)
+			free(columns[i]);
+
 		free(columns);
+	}
 
 	return true;
 }
