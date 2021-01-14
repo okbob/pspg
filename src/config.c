@@ -120,6 +120,10 @@ save_config(char *path, Options *opts)
 	if (result < 0)
 		return false;
 
+	result = fprintf(f, "default_clipboard_format = %d\n", opts->clipboard_format);
+	if (result < 0)
+		return false;
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
@@ -179,7 +183,10 @@ load_config(char *path, Options *opts)
 			else if (strcmp(key, "show_rownum") == 0)
 				opts->show_rownum = bool_val;
 			else if (strcmp(key, "theme") == 0)
-				opts->theme = int_val;
+			{
+				if (int_val >= 0 && int_val <= MAX_STYLE)
+					opts->theme = int_val;
+			}
 			else if (strcmp(key, "without_commandbar") == 0)
 				opts->no_commandbar = bool_val;
 			else if (strcmp(key, "without_topbar") == 0)
@@ -198,6 +205,11 @@ load_config(char *path, Options *opts)
 				opts->quit_on_f3 = bool_val;
 			else if (strcmp(key, "pgcli_fix") == 0)
 				opts->pgcli_fix = bool_val;
+			else if (strcmp(key, "default_clipboard_format") == 0)
+			{
+				if (int_val > 0 && int_val <= CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+					opts->clipboard_format = int_val;
+			}
 
 			free(line);
 			line = NULL;

@@ -16,6 +16,8 @@
 
 #include <stdbool.h>
 
+#define MAX_STYLE					22
+
 typedef enum
 {
 	CLIPBOARD_FORMAT_CSV,

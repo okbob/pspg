@@ -11,7 +11,6 @@
  *-------------------------------------------------------------------------
  */
 
-
 #include <errno.h>
 #include <string.h>
 
@@ -19,17 +18,17 @@
 #include "commands.h"
 #include "unicode.h"
 
+/*
+ * Returns first and last nospace chars. These chars should be vertical decoration.
+ */
 static void
 getdeco(char *str, char **ldeco, char **rdeco, int *ldecolen, int *rdecolen)
 {
-	char	   *start = NULL;
+	char	   *start = str;
 	char	   *stop = NULL;
 
 	while (*str)
 	{
-		if (!start)
-			start = str;
-
 		if (*str != ' ')
 			stop = str;
 
@@ -38,11 +37,22 @@ getdeco(char *str, char **ldeco, char **rdeco, int *ldecolen, int *rdecolen)
 
 	*ldeco = start;
 	*ldecolen = utf8charlen(*start);
-	*rdeco = stop;
-	*rdecolen = utf8charlen(*stop);
+
+	if (stop)
+	{
+		*rdeco = stop;
+		*rdecolen = utf8charlen(*stop);
+	}
+	else
+	{
+		*rdeco = "x";
+		*rdecolen = 1;
+	}
 }
 
-
+/*
+ * Return substring. When trim is true, then spaces from returned value are trimmed.
+ */
 static char *
 pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit, bool trim)
 {
@@ -129,6 +139,67 @@ pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit, bool t
 }
 
 /*
+ * Ensure correct formatting of CSV value. Can returns
+ * malloc ed string when value should be quoted.
+ */
+static char *
+csv_format(char *str, int *slen, bool force8bit)
+{
+	char   *ptr = str;
+	char   *result;
+	bool	needs_quoting = false;
+	int		_slen;
+
+	_slen = *slen;
+	while (_slen > 0)
+	{
+		int		size;
+
+		if (*ptr == '"' || *ptr == ',' ||
+			*ptr == '\t' || *ptr == '\r' || *ptr == '\n')
+		{
+			needs_quoting = true;
+			break;
+		}
+
+		size = force8bit ? 1 : utf8charlen(*ptr);
+
+		ptr += size;
+		_slen -= size;
+	}
+
+	if (!needs_quoting)
+		return str;
+
+	result = ptr = smalloc2(*slen * 2 + 2 + 1,
+							"CSV format output buffer allocation");
+
+	*ptr++ = '"';
+
+	_slen = *slen;
+	*slen = 0;
+	while (_slen > 0)
+	{
+		int		size = force8bit ? 1 : utf8charlen(*ptr);
+
+		if (*str == '"')
+			*ptr++ = '"';
+
+		_slen -= size;
+		*slen += size;
+
+		while (size--)
+			*ptr++ = *str++;
+	}
+
+	*ptr++ = '"';
+	*ptr = '\0';
+
+	return result;
+}
+
+/*
+ * Exports data to defined stream in requested format.
  * Returns true, when the operation was successfull
  */
 bool
@@ -220,7 +291,12 @@ export_data(Options *opts,
 	}
 
 	if (format != CLIPBOARD_FORMAT_TEXT)
+	{
 		print_border = false;
+		print_footer = false;
+		print_header_line = false;
+		print_vertical_border = false;
+	}
 
 	for (rn = 0; rn <= desc->last_row; rn++)
 	{
@@ -326,6 +402,113 @@ export_data(Options *opts,
 			}
 			else
 				fprintf(fp, "%s\n", rowstr ? rowstr : "");
+		}
+		else
+		{
+			char   *headline_transl = desc->headline_transl;
+			bool	is_first = true;
+
+			while (rowstr && *rowstr && *headline_transl)
+			{
+				char   *fieldstr;
+				int		fieldstrlen;
+
+				if (xmin != -1)
+				{
+					fieldstr = rowstr;
+					fieldstrlen = rowstrlen;
+					rowstr = NULL;
+					rowstrlen = 0;
+				}
+				else
+				{
+					int		ignored_spaces = 0;
+
+					fieldstr = rowstr;
+					fieldstrlen = 0;
+
+					while (rowstr && *rowstr && *headline_transl)
+					{
+						char	hlc = *headline_transl;
+						int		size;
+						int		width;
+
+						if (opts->force8bit)
+						{
+							size = 1;
+							width = 1;
+						}
+						else
+						{
+							size = utf8charlen(*rowstr);
+							width = utf_dsplen(rowstr);
+						}
+
+						headline_transl += width;
+
+						if (hlc == 'L')
+						{
+							rowstr += size;
+							fieldstr = rowstr;
+						}
+						else if (hlc == 'd')
+						{
+							if (*rowstr == ' ')
+								ignored_spaces += 1;
+							else
+							{
+								fieldstrlen += size + ignored_spaces;
+								ignored_spaces = 0;
+							}
+
+							rowstr += size;
+						}
+						else
+						{
+							rowstr += size;
+							break;
+						}
+					}
+
+					while (*fieldstr == ' ' && fieldstrlen > 0)
+					{
+						fieldstr += 1;
+						fieldstrlen -= 1;
+					}
+				}
+
+				if (format == CLIPBOARD_FORMAT_CSV ||
+					format == CLIPBOARD_FORMAT_TSVC)
+				{
+					int		saved_errno;
+					char   *outstr = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
+
+					if (is_first)
+						is_first = false;
+					else
+					{
+						if (format == CLIPBOARD_FORMAT_CSV)
+							fputc(',', fp);
+						else if (format == CLIPBOARD_FORMAT_TSVC)
+							fputc('\t', fp);
+					}
+
+					fwrite(fieldstr, fieldstrlen, 1, fp);
+					saved_errno = errno;
+
+					if (outstr != fieldstr)
+						free(outstr);
+
+					errno = saved_errno;
+				}
+			}
+
+			/* end of line */
+			if (format == CLIPBOARD_FORMAT_CSV ||
+				format == CLIPBOARD_FORMAT_TSVC)
+			{
+				fputc('\n', fp);
+			}
 		}
 
 		if (errno != 0)

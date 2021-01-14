@@ -1835,6 +1835,17 @@ export_to_file(PspgCommand command,
 			else
 				fmt = "text/plain;charset=utf-8";
 		}
+		else if (format == CLIPBOARD_FORMAT_CSV)
+		{
+			if (opts->force8bit)
+				fmt = "text/csv";
+			else
+				fmt = "text/csv;charset=utf-8";
+		}
+		else if (format == CLIPBOARD_FORMAT_TSVC)
+		{
+			fmt = "application/x-libreoffice-tsvc";
+		}
 		else /* fallback */
 		{
 			if (opts->force8bit)
@@ -2025,7 +2036,7 @@ main(int argc, char *argv[])
 	opts.quit_on_f3 = false;
 	opts.no_highlight_lines = false;
 	opts.copy_target = COPY_TARGET_CLIPBOARD;
-	opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
+	opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -4482,7 +4493,7 @@ recheck_end:
 			case cmd_Copy:
 				{
 					export_to_file(cmd_Copy,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, vertical_cursor_column,
@@ -4499,7 +4510,7 @@ recheck_end:
 			case cmd_CopyLine:
 				{
 					export_to_file(cmd_CopyLine,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
@@ -4516,7 +4527,7 @@ recheck_end:
 			case cmd_CopyLineExtended:
 				{
 					export_to_file(cmd_CopyLineExtended,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
@@ -4533,7 +4544,7 @@ recheck_end:
 			case cmd_CopyColumn:
 				{
 					export_to_file(cmd_CopyColumn,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, vertical_cursor_column,
@@ -4550,7 +4561,7 @@ recheck_end:
 			case cmd_CopyAllLines:
 				{
 					export_to_file(cmd_CopyAllLines,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
@@ -4567,7 +4578,7 @@ recheck_end:
 			case cmd_CopyTopLines:
 				{
 					export_to_file(cmd_CopyTopLines,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
@@ -4584,7 +4595,7 @@ recheck_end:
 			case cmd_CopyBottomLines:
 				{
 					export_to_file(cmd_CopyBottomLines,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
@@ -4601,7 +4612,7 @@ recheck_end:
 			case cmd_CopyMarkedLines:
 				{
 					export_to_file(cmd_CopyMarkedLines,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
@@ -4618,7 +4629,7 @@ recheck_end:
 			case cmd_CopySearchedLines:
 				{
 					export_to_file(cmd_CopySearchedLines,
-								   CLIPBOARD_FORMAT_TEXT,
+								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
