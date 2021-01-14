@@ -224,13 +224,32 @@ export_data(Options *opts,
 	bool	print_border = true;
 	bool	print_header_line = true;
 	bool	print_vertical_border = false;
+	bool	save_column_names = false;
 
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_data_row;
 	int		xmin = -1;
 	int		xmax = -1;
+	int		colnum = 0;
+
+	char  **columns = NULL;
 
 	current_state->errstr = NULL;
+
+	if (cmd == cmd_CopyLineExtended ||
+		format == CLIPBOARD_FORMAT_INSERT ||
+		format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+	{
+		columns = smalloc(sizeof(char *) * desc->columns);
+		save_column_names = true;
+	}
+
+	if (cmd == cmd_CopyLineExtended &&
+		format != CLIPBOARD_FORMAT_CSV &&
+		format != CLIPBOARD_FORMAT_TSVC)
+	{
+		format = CLIPBOARD_FORMAT_CSV;
+	}
 
 	if (cmd == cmd_CopyLine ||
 		cmd == cmd_CopyLineExtended ||
@@ -303,6 +322,9 @@ export_data(Options *opts,
 		LineInfo *linfo;
 		char   *ldeco = NULL, *rdeco = NULL;
 		int		ldecolen = 0, rdecolen = 0;
+		bool	save_column_name = false;
+
+		colnum = 0;
 
 		if (desc->order_map)
 		{
@@ -358,6 +380,9 @@ export_data(Options *opts,
 		}
 		else
 		{
+			if (save_column_names)
+				save_column_name = true;
+
 			if (!print_border &&
 				(rn == desc->border_top_row ||
 				 rn == desc->border_bottom_row))
@@ -477,20 +502,49 @@ export_data(Options *opts,
 					}
 				}
 
-				if (format == CLIPBOARD_FORMAT_CSV ||
+				if (save_column_name)
+				{
+					if (format == CLIPBOARD_FORMAT_CSV ||
+						format == CLIPBOARD_FORMAT_TSVC)
+					{
+						char    *str = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
+
+						columns[colnum++] = sstrndup(str, fieldstrlen);
+						if (str != fieldstr)
+							free(str);
+					}
+				}
+				else if (format == CLIPBOARD_FORMAT_CSV ||
 					format == CLIPBOARD_FORMAT_TSVC)
 				{
 					int		saved_errno;
 					char   *outstr = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
 
-					if (is_first)
-						is_first = false;
-					else
+					if (cmd == cmd_CopyLineExtended)
 					{
+						if (is_first)
+							is_first = false;
+						else
+							fputc('\n', fp);
+
+						fputs(columns[colnum++], fp);
+
 						if (format == CLIPBOARD_FORMAT_CSV)
 							fputc(',', fp);
 						else if (format == CLIPBOARD_FORMAT_TSVC)
 							fputc('\t', fp);
+					}
+					else
+					{
+						if (is_first)
+							is_first = false;
+						else
+						{
+							if (format == CLIPBOARD_FORMAT_CSV)
+								fputc(',', fp);
+							else if (format == CLIPBOARD_FORMAT_TSVC)
+								fputc('\t', fp);
+						}
 					}
 
 					fwrite(fieldstr, fieldstrlen, 1, fp);
@@ -504,8 +558,9 @@ export_data(Options *opts,
 			}
 
 			/* end of line */
-			if (format == CLIPBOARD_FORMAT_CSV ||
-				format == CLIPBOARD_FORMAT_TSVC)
+			if (!save_column_name &&
+				(format == CLIPBOARD_FORMAT_CSV ||
+				 format == CLIPBOARD_FORMAT_TSVC))
 			{
 				fputc('\n', fp);
 			}
@@ -516,9 +571,15 @@ export_data(Options *opts,
 			format_error("%s", strerror(errno));
 			log_row("Cannot write (%s)", current_state->errstr);
 
+			if (columns)
+				free(columns);
+
 			return false;
 		}
 	}
+
+	if (columns)
+		free(columns);
 
 	return true;
 }

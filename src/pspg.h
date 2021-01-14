@@ -319,6 +319,7 @@ extern void *smalloc(int size);
 extern void *smalloc2(int size, char *debugstr);
 extern char *sstrdup(char *str);
 extern char *sstrdup2(char *str, char *debugstr);
+extern char *sstrndup(char *str, int bytes);
 
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);

@@ -182,3 +182,18 @@ sstrdup2(char *str, char *debugstr)
 
 	return result;
 }
+
+char *
+sstrndup(char *str, int bytes)
+{
+	char   *result, *ptr;
+
+	result = ptr = smalloc(bytes + 1);
+
+	while (*str && bytes-- > 0)
+		*ptr++ = *str++;
+
+	*ptr = '\0';
+
+	return result;
+}
