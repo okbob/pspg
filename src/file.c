@@ -3,7 +3,7 @@
  * file.c
  *	  a routines related to file processing
  *
- * Portions Copyright (c) 2017-2020 Pavel Stehule
+ * Portions Copyright (c) 2017-2021 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/file.c

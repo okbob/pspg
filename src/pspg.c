@@ -3,7 +3,7 @@
  * pspg.c
  *	  a terminal pager designed for usage from psql
  *
- * Portions Copyright (c) 2017-2020 Pavel Stehule
+ * Portions Copyright (c) 2017-2021 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/pspg.c
