@@ -342,7 +342,7 @@ extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_s
 extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						int cursor_row, int cursor_column,
 						FILE *fp,
-						int rows, double percent,
+						int rows, double percent, char *table_name,
 						PspgCommand cmd, ClipboardFormat format);
 
 /*

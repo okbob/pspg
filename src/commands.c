@@ -283,6 +283,8 @@ cmd_string(int cmd)
 			return "UseClipboardFormatINSERT";
 		case cmd_UseClipboard_INSERT_with_comments:
 			return "UseClipboardFormatINSERTwithcomments";
+		case cmd_TogleEmptyStringIsNULL:
+			return "TogleEmptyStringIsNULL";
 		case cmd_Copy:
 			return "Copy";
 		case cmd_CopyAllLines:

@@ -27,6 +27,9 @@ typedef enum
 	CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS
 } ClipboardFormat;
 
+#define DSV_FORMAT_TYPE(f)		(f == CLIPBOARD_FORMAT_CSV || f == CLIPBOARD_FORMAT_TSVC)
+#define INSERT_FORMAT_TYPE(f)	(f == CLIPBOARD_FORMAT_INSERT || f == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+
 typedef enum
 {
 	COPY_TARGET_FILE,
@@ -81,6 +84,7 @@ typedef struct
 	bool	quit_on_f3;
 	ClipboardFormat clipboard_format;
 	CopyTarget copy_target;
+	bool	empty_string_is_null;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

@@ -117,6 +117,7 @@ static char		last_col_search[256];
 static char		last_line[256];
 static char		last_path[1025];
 static char		last_rows_number[256];
+static char		last_table_name[256];
 
 int		clipboard_application_id = 0;
 
@@ -1722,6 +1723,7 @@ export_to_file(PspgCommand command,
 {
 	char	buffer[MAXPATHLEN + 1024];
 	char	number[100];
+	char	table_name[255];
 	int		rows = 0;
 	double  percent = 0.0;
 	FILE   *fp;
@@ -1763,6 +1765,16 @@ export_to_file(PspgCommand command,
 		last_path[sizeof(last_path) - 1] = '\0';
 
 		copy_to_file = true;
+	}
+
+	if (INSERT_FORMAT_TYPE(format))
+	{
+		get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name);
+		if (buffer[0] == '\0')
+			return;
+
+		strncpy(last_table_name, table_name, sizeof(last_table_name) - 1);
+		last_path[sizeof(last_table_name) - 1] = '\0';
 	}
 
 	if (command == cmd_CopyTopLines ||
@@ -1827,8 +1839,7 @@ export_to_file(PspgCommand command,
 		}
 
 		if (format == CLIPBOARD_FORMAT_TEXT ||
-			format == CLIPBOARD_FORMAT_INSERT ||
-			format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+			INSERT_FORMAT_TYPE(format))
 		{
 			if (opts->force8bit)
 				fmt = "text/plain";
@@ -1869,7 +1880,7 @@ export_to_file(PspgCommand command,
 		isok = export_data(opts, scrdesc, desc,
 						   cursor_row, cursor_column,
 						   fp,
-						   rows, percent,
+						   rows, percent, table_name,
 						   command, format);
 
 		if (copy_to_file)
@@ -2037,6 +2048,7 @@ main(int argc, char *argv[])
 	opts.no_highlight_lines = false;
 	opts.copy_target = COPY_TARGET_CLIPBOARD;
 	opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
+	opts.empty_string_is_null = true;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -3175,7 +3187,8 @@ force_refresh_data:
 						next_command != cmd_UseClipboard_INSERT &&
 						next_command != cmd_UseClipboard_INSERT_with_comments &&
 						next_command != cmd_SetCopyFile &&
-						next_command != cmd_SetCopyClipboard)
+						next_command != cmd_SetCopyClipboard &&
+						next_command != cmd_TogleEmptyStringIsNULL)
 						goto hide_menu;
 				}
 
@@ -3285,6 +3298,14 @@ hide_menu:
 				}
 
 #endif
+
+			case cmd_TogleEmptyStringIsNULL:
+				opts.empty_string_is_null = !opts.empty_string_is_null;
+				st_menu_set_option(menu,
+								   cmd_TogleEmptyStringIsNULL,
+								   ST_MENU_OPTION_MARKED,
+								   opts.empty_string_is_null);
+				break;
 
 			case cmd_SetCopyFile:
 				opts.copy_target = COPY_TARGET_FILE;
@@ -4526,8 +4547,15 @@ recheck_end:
 
 			case cmd_CopyLineExtended:
 				{
+					ClipboardFormat fmt;
+
+					if (DSV_FORMAT_TYPE(opts.clipboard_format))
+						fmt = opts.clipboard_format;
+					else
+						fmt = CLIPBOARD_FORMAT_CSV;
+
 					export_to_file(cmd_CopyLineExtended,
-								   opts.clipboard_format,
+								   fmt,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,

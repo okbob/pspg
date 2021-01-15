@@ -177,7 +177,7 @@ csv_format(char *str, int *slen, bool force8bit)
 	*ptr++ = '"';
 
 	_slen = *slen;
-	*slen = 0;
+	*slen = 1;
 	while (_slen > 0)
 	{
 		int		size = force8bit ? 1 : utf8charlen(*ptr);
@@ -194,6 +194,175 @@ csv_format(char *str, int *slen, bool force8bit)
 
 	*ptr++ = '"';
 	*ptr = '\0';
+	*slen += 1;
+
+	return result;
+}
+
+/*
+ * Ensure correct format for SQL identifier
+ */
+static char *
+quote_sql_identifier(char *str, int *slen, bool force8bit)
+{
+	bool	needs_quoting = false;
+	char   *ptr, *result;
+	int		_slen;
+
+	/* it is quoted already? */
+	if (*str == '"')
+		return str;
+
+	if (!str || *str == '\0' || *slen == 0)
+		return str;
+
+	if (*str != ' ' && (*str < 'a' || *str > 'z'))
+		needs_quoting = true;
+	else
+	{
+		ptr = str;
+		_slen = *slen;
+
+		while (*ptr && _slen > 0)
+		{
+			int		size = force8bit ? 1 : utf8charlen(*ptr);
+
+			if (!((*ptr >= 'a' && *ptr <= 'z') ||
+				(*ptr >= '0' && *ptr <= '9') ||
+				 *ptr == '_'))
+			{
+				needs_quoting = true;
+				break;
+			}
+
+			_slen -= size;
+			ptr += size;
+		}
+	}
+
+	if (!needs_quoting)
+		return str;
+
+	result = ptr = smalloc2(*slen * 2 + 2 + 1,
+							"SQL identifier output buffer allocation");
+
+	*ptr++ = '"';
+
+	_slen = *slen;
+	*slen = 1;
+
+	while (_slen > 0)
+	{
+		int		size = force8bit ? 1 : utf8charlen(*ptr);
+
+		if (*str == '"')
+			*ptr++ = '"';
+
+		_slen -= size;
+		*slen += size;
+
+		while (size--)
+			*ptr++ = *str++;
+	}
+
+	*ptr++ = '"';
+	*ptr = '\0';
+	*slen += 1;
+
+	return result;
+}
+
+static char *
+quote_sql_literal(char *str,
+				  int *slen,
+				  bool force8bit,
+				  bool empty_string_is_null)
+{
+	char   *ptr = str;
+	char   *result;
+	int		_slen = *slen;
+	bool	has_dot = false;
+
+	bool	needs_quoting = false;
+
+	if (*slen == 0)
+	{
+		if (empty_string_is_null)
+		{
+			*slen = 4;
+			return sstrdup("NULL");
+		}
+		else
+		{
+			*slen = 2;
+			return sstrdup("''");
+		}
+	}
+
+	if (*slen == 4 &&
+		(strncmp(str, "NULL", *slen) == 0 ||
+		 strncmp(str, "null", *slen) == 0))
+		return str;
+
+	if (!force8bit &&
+		*slen == 3 && strncmp(str, "\342\210\205", 3) == 0)
+	{
+		*slen = 4;
+		return sstrdup("NULL");
+	}
+
+	while (*ptr && _slen > 0)
+	{
+		int		size = force8bit ? 1 : utf8charlen(*ptr);
+
+		if (*ptr == '.')
+		{
+			if (has_dot)
+			{
+				needs_quoting = true;
+				break;
+			}
+			else
+				has_dot = true;
+		}
+		else if (!(*ptr >= '0' && *ptr <= '9'))
+		{
+			needs_quoting = true;
+			break;
+		}
+
+		ptr += size;
+		_slen -= size;
+	}
+
+	if (!needs_quoting)
+		return str;
+
+	result = ptr = smalloc2(*slen * 2 + 2 + 1,
+							"SQL literal output buffer allocation");
+
+	*ptr++ = '\'';
+
+	_slen = *slen;
+	*slen = 1;
+
+	while (_slen > 0)
+	{
+		int		size = force8bit ? 1 : utf8charlen(*ptr);
+
+		if (*str == '\'')
+			*ptr++ = '\'';
+
+		_slen -= size;
+		*slen += size;
+
+		while (size--)
+			*ptr++ = *str++;
+	}
+
+	*ptr++ = '\'';
+	*ptr = '\0';
+	*slen += 1;
 
 	return result;
 }
@@ -211,6 +380,7 @@ export_data(Options *opts,
 			FILE *fp,
 			int rows,
 			double percent,
+			char *table_name,
 			PspgCommand cmd,
 			ClipboardFormat format)
 {
@@ -233,22 +403,34 @@ export_data(Options *opts,
 	int		colnum = 0;
 
 	char  **columns = NULL;
+	char   *quoted_table_name = NULL;
 
 	current_state->errstr = NULL;
 
-	if (cmd == cmd_CopyLineExtended ||
-		format == CLIPBOARD_FORMAT_INSERT ||
-		format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
-	{
-		columns = smalloc(sizeof(char *) * desc->columns);
-		save_column_names = true;
-	}
-
 	if (cmd == cmd_CopyLineExtended &&
-		format != CLIPBOARD_FORMAT_CSV &&
-		format != CLIPBOARD_FORMAT_TSVC)
+		!DSV_FORMAT_TYPE(format))
 	{
 		format = CLIPBOARD_FORMAT_CSV;
+	}
+
+	if (cmd == cmd_CopyLineExtended ||
+		INSERT_FORMAT_TYPE(format))
+	{
+		if (INSERT_FORMAT_TYPE(format))
+		{
+			char   *str = table_name;
+			int		slen = strlen(table_name);
+
+			str = quote_sql_identifier(str, &slen, opts->force8bit);
+			quoted_table_name = sstrndup(str, slen);
+
+			if (str != table_name)
+				free(str);
+		}
+
+		columns = smalloc(sizeof(char *) * desc->columns);
+		memset(columns, 0, sizeof(char *) * desc->columns);
+		save_column_names = true;
 	}
 
 	if (cmd == cmd_CopyLine ||
@@ -315,6 +497,11 @@ export_data(Options *opts,
 		print_footer = false;
 		print_header_line = false;
 		print_vertical_border = false;
+	}
+
+	if (save_column_names)
+	{
+		print_header = true;
 	}
 
 	for (rn = 0; rn <= desc->last_row; rn++)
@@ -504,18 +691,22 @@ export_data(Options *opts,
 
 				if (save_column_name)
 				{
-					if (format == CLIPBOARD_FORMAT_CSV ||
-						format == CLIPBOARD_FORMAT_TSVC)
-					{
-						char    *str = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
+					char   *str = NULL;
 
-						columns[colnum++] = sstrndup(str, fieldstrlen);
-						if (str != fieldstr)
-							free(str);
+					if (DSV_FORMAT_TYPE(format))
+					{
+						str = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
 					}
+					else if (INSERT_FORMAT_TYPE(format))
+					{
+						str = quote_sql_identifier(fieldstr, &fieldstrlen, opts->force8bit);
+					}
+
+					columns[colnum++] = sstrndup(str, fieldstrlen);
+					if (str != fieldstr)
+						free(str);
 				}
-				else if (format == CLIPBOARD_FORMAT_CSV ||
-					format == CLIPBOARD_FORMAT_TSVC)
+				else if (DSV_FORMAT_TYPE(format))
 				{
 					int		saved_errno;
 					char   *outstr = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
@@ -547,7 +738,7 @@ export_data(Options *opts,
 						}
 					}
 
-					fwrite(fieldstr, fieldstrlen, 1, fp);
+					fwrite(outstr, fieldstrlen, 1, fp);
 					saved_errno = errno;
 
 					if (outstr != fieldstr)
@@ -555,12 +746,132 @@ export_data(Options *opts,
 
 					errno = saved_errno;
 				}
+				else if (INSERT_FORMAT_TYPE(format))
+				{
+					if (is_first)
+					{
+						int		i;
+						char   *outstr;
+
+						fputs("INSERT INTO ", fp);
+
+						fputs(quoted_table_name, fp);
+
+						fputc('(', fp);
+
+						if (format == CLIPBOARD_FORMAT_INSERT)
+						{
+							for (i = 0; i < desc->columns; i++)
+							{
+								if (i > 0)
+									fputs(", ", fp);
+								fputs(columns[i], fp);
+							}
+
+							fputs(") VALUES(", fp);
+						}
+						else
+						{
+							int		indent_spaces;
+
+							if (opts->force8bit)
+								indent_spaces = strlen(quoted_table_name) + 1 + 12;
+							else
+								indent_spaces = utf_string_dsplen(quoted_table_name, SIZE_MAX) + 1 + 12;
+
+							for (i = 0; i < desc->columns; i++)
+							{
+								if (i > 0)
+									fprintf(fp, "%*.s", indent_spaces, "");
+
+								fputs(columns[i], fp);
+
+								if (i < desc->columns - 1)
+									fprintf(fp, ",\t\t -- %d.\n", i + 1);
+								else
+								{
+									fprintf(fp, ")\t\t -- %d.\n", i + 1);
+									fputs("   VALUES(", fp);
+								}
+							}
+						}
+
+						outstr = quote_sql_literal(fieldstr,
+												   &fieldstrlen,
+												   opts->force8bit,
+												   opts->empty_string_is_null);
+
+						fwrite(outstr, fieldstrlen, 1, fp);
+
+						colnum += 1;
+
+						if (outstr != fieldstr)
+							free(outstr);
+
+						if (format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+						{
+							if (desc->columns > 1)
+							{
+								fprintf(fp, ",\t\t -- %d. %s\n", 1, columns[0]);
+							}
+							else
+							{
+								fprintf(fp, ");\t\t -- %d. %s\n", 1, columns[0]);
+							}
+						}
+						else
+						{
+							if (desc->columns == 1)
+								fputs(");\n", fp);
+						}
+
+						is_first = false;
+					}
+					else
+					{
+						char   *outstr;
+
+						outstr = quote_sql_literal(fieldstr,
+												   &fieldstrlen,
+												   opts->force8bit,
+												   opts->empty_string_is_null);
+
+						if (format == CLIPBOARD_FORMAT_INSERT)
+						{
+							fputs(", ", fp);
+						}
+						else
+							fputs("          ", fp);
+
+						fwrite(outstr, fieldstrlen, 1, fp);
+						if (outstr != fieldstr)
+							free(outstr);
+
+						colnum += 1;
+
+						if (format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
+						{
+							if (colnum < desc->columns)
+							{
+								fprintf(fp, ",\t\t -- %d. %s\n", colnum, columns[colnum - 1]);
+							}
+							else
+							{
+								fprintf(fp, ");\t\t -- %d. %s\n", colnum, columns[colnum - 1]);
+							}
+						}
+						else
+						{
+							if (colnum >= desc->columns)
+								fputs(");\n", fp);
+						}
+					}
+				}
 			}
 
 			/* end of line */
 			if (!save_column_name &&
-				(format == CLIPBOARD_FORMAT_CSV ||
-				 format == CLIPBOARD_FORMAT_TSVC))
+				DSV_FORMAT_TYPE(format))
 			{
 				fputc('\n', fp);
 			}
@@ -581,6 +892,9 @@ export_data(Options *opts,
 				free(columns);
 			}
 
+			if (quoted_table_name)
+				free(quoted_table_name);
+
 			return false;
 		}
 	}
@@ -594,6 +908,9 @@ export_data(Options *opts,
 
 		free(columns);
 	}
+
+	if (quoted_table_name)
+		free(quoted_table_name);
 
 	return true;
 }
