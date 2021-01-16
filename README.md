@@ -152,6 +152,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>u</kbd> - unsorted (sorted in origin order)
 * <kbd>space</kbd> - stop/continue in watch mode
 * <kbd>R</kbd> - Repaint screen and refresh input file
+* <kbd>Ins</kbd> - export row, column or cell to default target
 
 ## Ending
 
@@ -165,6 +166,11 @@ Column search is case insensitive every time. Searched column is marked by verti
 Last non empty string searching pattern is used when current searching pattern is empty string.
 Searching is starting after visible vertical column or on first visible not freezed columns (after
 some horizontal scrolling) or on first column. After last column searching starts from first again.
+
+# Clipboard
+
+For clipboard support the clipboard application should be installed: wl-clipboard (Wayland),
+xlip (xwindows) or pbcopy (MacOS).
 
 ## Status line description
 * `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char possitions from) .. (char possitions to)
