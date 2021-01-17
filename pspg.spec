@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	4.0.0
+Version: 	4.0.1
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -45,7 +45,6 @@ CFLAGS="$RPM_OPT_FLAGS"
 %changelog
 * Sat Jan 16 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - possibility to export to clipboard or file in CSV, TSVC, formatted text and INSERT formats
-
 
 * Tue May 19 2020 Pavel Stehule <pavel.stehule@gmail.com>
 - code cleaning
