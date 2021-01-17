@@ -13,6 +13,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "pspg.h"
 #include "commands.h"
