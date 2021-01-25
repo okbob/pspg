@@ -10,7 +10,8 @@ Possible ToDo
 * hide outer border
 * hide inner borders
 * draw scrollbars FoxPro style
-* row select, column select, export to file, copy to clipboard
+* range selection, F3, F13
+* better mouse handling - drag support
 * mouse support for range select
 * support fetched data - columns width can be different
 
