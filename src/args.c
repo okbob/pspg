@@ -98,6 +98,7 @@ static struct option long_options[] =
 	{"ascii", no_argument, 0, 'a'},
 	{"blackwhite", no_argument, 0, 'b'},
 	{"freezecols", required_argument, 0, 'c'},
+	{"no_xterm_mouse_mode", no_argument, 0, 40},
 	{0, 0, 0, 0}
 };
 
@@ -252,6 +253,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-mouse               don't use own mouse handling\n");
 					fprintf(stdout, "  --no-sigint-search-reset\n");
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
+					fprintf(stdout, "  --no_xterm_mouse_mode    don't use optional xterm mouse mode\n");
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
 					fprintf(stdout, "  --no-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 					fprintf(stdout, "  --pgcli-fix              try to fix some pgcli related issues\n");
@@ -478,6 +480,10 @@ readargs(char **argv,
 				break;
 			case 39:
 				opts->pgcli_fix = true;
+				break;
+
+			case 40:
+				opts->xterm_mouse_mode =  false;
 				break;
 
 			case 'V':

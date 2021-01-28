@@ -85,6 +85,7 @@ typedef struct
 	ClipboardFormat clipboard_format;
 	CopyTarget copy_target;
 	bool	empty_string_is_null;
+	bool	xterm_mouse_mode;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

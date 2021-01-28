@@ -268,8 +268,9 @@ typedef struct
 } StateData;
 
 extern StateData *current_state;
-extern bool active_ncurses;
 
+/* from pspg.c */
+void exit_ncurses(void);
 
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);

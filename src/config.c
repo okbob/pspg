@@ -111,6 +111,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("double_header", opts->double_header);
 	SAFE_SAVE_BOOL_OPTION("quit_on_f3", opts->quit_on_f3);
 	SAFE_SAVE_BOOL_OPTION("pgcli_fix", opts->pgcli_fix);
+	SAFE_SAVE_BOOL_OPTION("xterm_mouse_mode", opts->xterm_mouse_mode);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -210,6 +211,8 @@ load_config(char *path, Options *opts)
 				if (int_val > 0 && int_val <= CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
 					opts->clipboard_format = int_val;
 			}
+			else if (strcmp(key, "xterm_mouse_mode") == 0)
+				opts->xterm_mouse_mode = bool_val;
 
 			free(line);
 			line = NULL;

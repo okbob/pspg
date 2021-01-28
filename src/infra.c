@@ -73,8 +73,7 @@ leave(const char *fmt, ...)
 {
 	va_list		args;
 
-	if (active_ncurses)
-		endwin();
+	exit_ncurses();
 
 	if (!fmt)
 	{

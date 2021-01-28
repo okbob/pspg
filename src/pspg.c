@@ -146,7 +146,8 @@ static long	last_watch_ms = 0;
 static time_t	last_watch_sec = 0;					/* time when we did last refresh */
 static bool	paused = false;							/* true, when watch mode is paused */
 
-bool active_ncurses = false;
+static bool active_ncurses = false;
+static bool xterm_mouse_mode_was_initialized = false;
 
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
@@ -1556,11 +1557,17 @@ repeat:
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
-static void
+void
 exit_ncurses(void)
 {
 	if (active_ncurses)
 		endwin();
+
+	if (xterm_mouse_mode_was_initialized)
+	{
+		printf("\033[?1002l;");
+		fflush(stdout);
+	}
 }
 
 static void
@@ -2049,6 +2056,7 @@ main(int argc, char *argv[])
 	opts.copy_target = COPY_TARGET_CLIPBOARD;
 	opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
 	opts.empty_string_is_null = true;
+	opts.xterm_mouse_mode = true;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -2433,6 +2441,62 @@ exit_while_01:
 
 	active_ncurses = true;
 
+	/* xterm mouse mode recheck */
+	if (opts.xterm_mouse_mode)
+	{
+
+#if NCURSES_MOUSE_VERSION > 1
+
+#ifdef NCURSES_EXT_FUNCS
+
+		char	   *s;
+
+		s = tigetstr((NCURSES_CONST char *) "kmous");
+
+		if (s != NULL && s != (char *) -1)
+		{
+			char	   *termval = getenv("TERM");
+
+			/*
+			 * Robust identificantion of xterm mouse modes supports should be based on
+			 * one valid prereqeusities: TERM has substring "xterm" or kmous string is
+			 * "\033[M". But some terminal' emulators support these modes too although
+			 * mentioned rules are not valid. So I'll try to use xterm mouse move more
+			 * aggresively to detect that terminals doesn't support xterm mouse modes.
+			 *
+			 * if (strcmp(s, "\033[M") == 0 ||
+			 *   (termval && strstr(termval, "xterm")))
+			 *
+			 * I have a plan to create an list of terminals, where xterm mouse modes
+			 * are not supported, and fix possible issues step by step.
+			 *
+			 * User workaround: using --no_xterm_mouse_mode option.
+			 */
+			log_row("kmous=\\E%s, TERM=%s", s + 1, termval ? termval : "");
+
+			opts.xterm_mouse_mode = true;
+		}
+		else
+			opts.xterm_mouse_mode = false;
+
+#else
+
+		opts.xterm_mouse_mode = false;
+
+#endif
+
+#else
+
+		opts.xterm_mouse_mode = false;
+
+#endif
+	}
+
+	if (opts.xterm_mouse_mode)
+		log_row("xterm mouse mode 1002 will be used");
+	else
+		log_row("without xterm mouse mode support");
+
 	if(!has_colors())
 		leave("your terminal does not support color");
 
@@ -2467,7 +2531,21 @@ reinit_theme:
 
 #if NCURSES_MOUSE_VERSION > 1
 
-		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
+		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
+				  BUTTON4_PRESSED | BUTTON5_PRESSED |
+				  BUTTON_ALT | BUTTON_SHIFT | BUTTON_CTRL |
+				  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
+				  NULL);
+
+		if (opts.xterm_mouse_mode)
+		{
+			xterm_mouse_mode_was_initialized = true;
+
+			printf("\033[?1002h;");
+			fflush(stdout);
+
+			log_row("xterm mouse mode 1002 activated");
+		}
 
 #else
 
@@ -2476,6 +2554,7 @@ reinit_theme:
 #endif
 
 	}
+
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 	{
@@ -3476,17 +3555,29 @@ reset_search:
 					{
 						mousemask(0, &prev_mousemask);
 						opts.no_mouse = true;
+
+						if (xterm_mouse_mode_was_initialized)
+						{
+							printf("\033[?1002l;");
+							fflush(stdout);
+
+							xterm_mouse_mode_was_initialized = false;
+						}
 					}
 					else
 					{
-
 						if (!mouse_was_initialized)
 						{
 							mouseinterval(0);
 
 #if NCURSES_MOUSE_VERSION > 1
 
-							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED | BUTTON_ALT, NULL);
+
+							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
+									  BUTTON4_PRESSED | BUTTON5_PRESSED |
+									  BUTTON_ALT | BUTTON_SHIFT | BUTTON_CTRL |
+									  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
+									  NULL);
 
 #else
 
@@ -3499,8 +3590,15 @@ reset_search:
 						else
 							mousemask(prev_mousemask, NULL);
 
-						opts.no_mouse= false;
+						if (opts.xterm_mouse_mode)
+						{
+							xterm_mouse_mode_was_initialized = true;
 
+							printf("\033[?1002h;");
+							fflush(stdout);
+						}
+
+						opts.no_mouse= false;
 					}
 
 					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true, false);
@@ -5171,6 +5269,89 @@ found_next_pattern:
 						}
 						else
 							make_beep(&opts);
+					}
+					else if (event.bstate & REPORT_MOUSE_POSITION)
+					{
+						if (event.y >= scrdesc.main_start_y + scrdesc.fix_rows_rows && event.y <= scrdesc.main_maxy)
+						{
+							int		max_cursor_row;
+							bool	_is_footer_cursor;
+
+							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
+
+							if (cursor_row < 0)
+								cursor_row = 0;
+
+							if (cursor_row + fix_rows_offset < first_row)
+								first_row = cursor_row + fix_rows_offset;
+							else
+								first_row = first_row;
+
+							max_cursor_row = MAX_CURSOR_ROW;
+							if (cursor_row > max_cursor_row)
+								cursor_row = max_cursor_row;
+
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row += 1;
+
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
+
+							_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+
+							/*
+							 * Save last x focused point. It will be used for repeated hide/unhide
+							 * vertical cursor. But only if cursor is not in footer area.
+							 */
+							if (!_is_footer_cursor)
+								last_x_focus = event.x;
+
+							if (!_is_footer_cursor && opts.vertical_cursor)
+							{
+								int		xpoint = event.x - scrdesc.main_start_x;
+								int		vertical_cursor_column_orig = vertical_cursor_column;
+								int		i;
+
+								if (xpoint > scrdesc.fix_cols_cols - 1)
+									xpoint += cursor_col;
+
+								if (xpoint >= 0)
+								{
+									for (i = 0; i  < desc.columns; i++)
+									{
+										if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
+										{
+											int		xmin = desc.cranges[i].xmin;
+											int		xmax = desc.cranges[i].xmax;
+
+											vertical_cursor_column = i + 1;
+
+											if (vertical_cursor_column != vertical_cursor_column_orig &&
+												event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows) 
+											{
+												vertical_cursor_changed_mouse_event = mouse_event;
+											}
+
+											if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
+											{
+												if (xmax > scrdesc.main_maxx + cursor_col)
+												{
+													cursor_col = xmax - scrdesc.main_maxx;
+												}
+												else if (xmin < scrdesc.fix_cols_cols + cursor_col)
+												{
+													cursor_col = xmin - scrdesc.fix_cols_cols + 1;
+												}
+											}
+
+											last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
+											break;
+										}
+									}
+								}
+							}
+						}
+						else
+							log_row("mouse position ignored");
 					}
 					else
 

@@ -63,7 +63,6 @@ initialize_special_keycodes()
 
 	CTRL_HOME = get_code("kHOM5", 538);
 	CTRL_END = get_code("kEND5", 533);
-
 }
 
 /*
