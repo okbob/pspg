@@ -1055,6 +1055,14 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	mousemask(0, &prev_mousemask);
 
+	if (xterm_mouse_mode_was_initialized)
+	{
+		printf("\033[?1002l");
+		fflush(stdout);
+
+		xterm_mouse_mode_was_initialized = false;
+	}
+
 	/* use default value from buffer */
 	if (defstr && *defstr)
 	{
@@ -1106,6 +1114,14 @@ finish_read:
 	}
 
 	mousemask(prev_mousemask, NULL);
+
+	if (opts->xterm_mouse_mode)
+	{
+		xterm_mouse_mode_was_initialized = true;
+
+		printf("\033[?1002h");
+		fflush(stdout);
+	}
 
 	rl_callback_handler_remove();
 
@@ -1565,7 +1581,7 @@ exit_ncurses(void)
 
 	if (xterm_mouse_mode_was_initialized)
 	{
-		printf("\033[?1002l;");
+		printf("\033[?1002l");
 		fflush(stdout);
 	}
 }
@@ -2540,7 +2556,7 @@ reinit_theme:
 		{
 			xterm_mouse_mode_was_initialized = true;
 
-			printf("\033[?1002h;");
+			printf("\033[?1002h");
 			fflush(stdout);
 
 			log_row("xterm mouse mode 1002 activated");
@@ -3557,7 +3573,7 @@ reset_search:
 
 						if (xterm_mouse_mode_was_initialized)
 						{
-							printf("\033[?1002l;");
+							printf("\033[?1002l");
 							fflush(stdout);
 
 							xterm_mouse_mode_was_initialized = false;
@@ -3593,7 +3609,7 @@ reset_search:
 						{
 							xterm_mouse_mode_was_initialized = true;
 
-							printf("\033[?1002h;");
+							printf("\033[?1002h");
 							fflush(stdout);
 						}
 
@@ -5269,94 +5285,19 @@ found_next_pattern:
 						else
 							make_beep(&opts);
 					}
-					else if (event.bstate & REPORT_MOUSE_POSITION)
-					{
-						if (event.y >= scrdesc.main_start_y + scrdesc.fix_rows_rows && event.y <= scrdesc.main_maxy)
-						{
-							int		max_cursor_row;
-							bool	_is_footer_cursor;
-
-							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
-
-							if (cursor_row < 0)
-								cursor_row = 0;
-
-							if (cursor_row + fix_rows_offset < first_row)
-								first_row = cursor_row + fix_rows_offset;
-							else
-								first_row = first_row;
-
-							max_cursor_row = MAX_CURSOR_ROW;
-							if (cursor_row > max_cursor_row)
-								cursor_row = max_cursor_row;
-
-							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
-								first_row += 1;
-
-							first_row = adjust_first_row(first_row, &desc, &scrdesc);
-
-							_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
-
-							/*
-							 * Save last x focused point. It will be used for repeated hide/unhide
-							 * vertical cursor. But only if cursor is not in footer area.
-							 */
-							if (!_is_footer_cursor)
-								last_x_focus = event.x;
-
-							if (!_is_footer_cursor && opts.vertical_cursor)
-							{
-								int		xpoint = event.x - scrdesc.main_start_x;
-								int		vertical_cursor_column_orig = vertical_cursor_column;
-								int		i;
-
-								if (xpoint > scrdesc.fix_cols_cols - 1)
-									xpoint += cursor_col;
-
-								if (xpoint >= 0)
-								{
-									for (i = 0; i  < desc.columns; i++)
-									{
-										if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
-										{
-											int		xmin = desc.cranges[i].xmin;
-											int		xmax = desc.cranges[i].xmax;
-
-											vertical_cursor_column = i + 1;
-
-											if (vertical_cursor_column != vertical_cursor_column_orig &&
-												event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows) 
-											{
-												vertical_cursor_changed_mouse_event = mouse_event;
-											}
-
-											if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
-											{
-												if (xmax > scrdesc.main_maxx + cursor_col)
-												{
-													cursor_col = xmax - scrdesc.main_maxx;
-												}
-												else if (xmin < scrdesc.fix_cols_cols + cursor_col)
-												{
-													cursor_col = xmin - scrdesc.fix_cols_cols + 1;
-												}
-											}
-
-											last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
-											break;
-										}
-									}
-								}
-							}
-						}
-						else
-							log_row("mouse position ignored");
-					}
 					else
 
 #endif
 
-					if (event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_RELEASED)
+					if (event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_RELEASED
+
+#if NCURSES_MOUSE_VERSION > 1
+
+						|| event.bstate & REPORT_MOUSE_POSITION
+
+#endif
+
+						)
 					{
 						int		max_cursor_row;
 						bool	is_double_click = false;
@@ -5366,10 +5307,16 @@ found_next_pattern:
 
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
-							next_command = cmd_ShowMenu;
-							reuse_event = true;
-							prev_event_keycode = 0;
-							break;
+							/* Activate menu only on BUTTON1_PRESS event */
+							if (event.bstate & BUTTON1_PRESSED)
+							{
+								next_command = cmd_ShowMenu;
+								reuse_event = true;
+								prev_event_keycode = 0;
+								break;
+							}
+							else
+								continue;
 						}
 
 						if (event.bstate & BUTTON1_RELEASED)

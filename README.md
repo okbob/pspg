@@ -61,6 +61,7 @@ This pager can be used from the following clients command line clients too:
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
 * `--no-sigint-search-reset`  sigint is not used to reset searching
+* `--no-xterm-mouse-mode` don't use extended mouse protocol
 * `--tabular-cursor`  cursor is displayed only for table
 * `--only-for-tables`  use std pager when content is not a table
 * `--bold-labels`  bold font for row, column labels

@@ -2750,7 +2750,15 @@ cmdbar_driver(struct ST_CMDBAR *cmdbar, int c, bool alt, MEVENT *mevent)
 	ST_CMDBAR_ITEM *cmdbar_item = cmdbar->cmdbar_items;
 	ST_MENU_CONFIG *config = cmdbar->config;
 
-	if (c == KEY_MOUSE && mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED))
+	if (c == KEY_MOUSE &&
+		mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED
+
+#if NCURSES_MOUSE_VERSION > 1
+
+						  | REPORT_MOUSE_POSITION
+
+#endif
+	  ))
 	{
 		int		y = mevent->y;
 		int		x = mevent->x;
