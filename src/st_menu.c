@@ -1557,7 +1557,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 	cursor_row = menu->cursor_row;		/* number of active menu item */
 	is_menubar = menu->is_menubar;		/* true, when processed object is menu bar */
 
-	/* Fucus filter */
+	/* Focus filter */
 	if ((menu->focus == ST_MENU_FOCUS_MOUSE_ONLY && c != KEY_MOUSE) ||
 		(menu->focus == ST_MENU_FOCUS_ALT_MOUSE && c != KEY_MOUSE && !alt) ||
 		(menu->focus == ST_MENU_FOCUS_NONE))
@@ -1619,7 +1619,20 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 			return is_top ? true : false;
 		}
 
-		if (c == KEY_MOUSE && mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED))
+		/*
+		 * Unpost menu (close) when mouse click outside menu window. Mouse position
+		 * event is processed specially. We want to close only submenu, or we want
+		 * to swith to other bar menu item.
+		 */
+		if (c == KEY_MOUSE &&
+			mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED
+
+#if NCURSES_MOUSE_VERSION > 1
+
+							  | REPORT_MOUSE_POSITION
+
+#endif
+		  ))
 		{
 			int		y = mevent->y;
 			int		x = mevent->x;
@@ -1636,8 +1649,37 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 
 			if (!is_menubar && !wenclose(menu->draw_area, y, x))
 			{
+
+#if NCURSES_MOUSE_VERSION > 1
+
+				if (mevent->bstate & REPORT_MOUSE_POSITION)
+				{
+					/*
+					 * We want to ignore move movement outside menu's window. Without
+					 * it the behaviour is too sensitive, and it is not user friendly.
+					 * But we need to close submenus, and we want to allow usage of
+					 * bar menu. For these case we should to allow sending event to
+					 * upper objects.
+					 */
+					if (is_nested_pulldown)
+						return false;
+					else
+						/* true when we are not in menu bar position */
+						return y != 0;
+				}
+				else
+				{
+					*unpost_submenu = true;
+					return false;
+				}
+
+#else
+
 				*unpost_submenu = true;
 				return false;
+
+#endif
+
 			}
 		}
 
@@ -1668,7 +1710,14 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 
 #endif
 
-		if (mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED))
+		if (mevent->bstate & (BUTTON1_PRESSED | BUTTON1_RELEASED
+
+#if NCURSES_MOUSE_VERSION > 1
+
+		 | REPORT_MOUSE_POSITION
+
+#endif
+		  ))
 		{
 			if (is_menubar)
 			{
@@ -1856,7 +1905,15 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 				processed = true;
 				post_menu = true;
 
-				if (mevent->bstate & BUTTON1_PRESSED)
+				if (mevent->bstate & BUTTON1_PRESSED
+
+#if NCURSES_MOUSE_VERSION > 1
+
+				|| mevent->bstate & REPORT_MOUSE_POSITION
+
+#endif
+
+				  )
 				{
 					menu->mouse_row = mouse_row;
 				}
@@ -1926,8 +1983,6 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 			}
 		}
 	}
-
-
 
 	/* when menubar is changed, unpost active pulldown submenu */
 	if (menu->active_submenu && cursor_row != menu->cursor_row)

@@ -2528,12 +2528,11 @@ reinit_theme:
 		mouse_was_initialized = true;
 		mouseinterval(0);
 
-
 #if NCURSES_MOUSE_VERSION > 1
 
 		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
 				  BUTTON4_PRESSED | BUTTON5_PRESSED |
-				  BUTTON_ALT | BUTTON_SHIFT | BUTTON_CTRL |
+				  BUTTON_ALT |
 				  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 				  NULL);
 

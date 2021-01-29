@@ -154,11 +154,13 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>R</kbd> - Repaint screen and refresh input file
 * <kbd>Ins</kbd> - export row, column or cell to default target
 
+
 ## Ending
 
 The pager can be ended by pressing keys <kbd>q</kbd> or <kbd>F10</kbd> or <kbd>Esc</kbd> <kbd>0</kbd>.
 With option `--on-sigint-exit` then the pager is closed by pressing keys <kbd>Ctrl</kbd>+<kbd>c</kbd>
 or <kbd>Esc</kbd> <kbd>Esc</kbd>.
+
 
 ## Column search
 
@@ -167,17 +169,21 @@ Last non empty string searching pattern is used when current searching pattern i
 Searching is starting after visible vertical column or on first visible not freezed columns (after
 some horizontal scrolling) or on first column. After last column searching starts from first again.
 
+
 # Clipboard
 
 For clipboard support the clipboard application should be installed: wl-clipboard (Wayland),
 xlip (xwindows) or pbcopy (MacOS).
 
-## Status line description
+
+# Status line description
+
 * `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char possitions from) .. (char possitions to)
 * `FC: d` - freezed columns length in chars
 * `C: d..d/d` - unfreezed visible data in chars (from .. to)/(total)
 * `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
 * `d%` - percent of already displayed data
+
 
 # Usage as csv viewer
 
@@ -194,12 +200,16 @@ It can be integrated into <code>mc</code>
 * insert there
 
 <pre>
+
+
 #csv
+
 regex/\.csv
     View=pspg -f %f --csv
 </pre>
 
 * restart <code>mc</code>
+
 
 # Usage in watch mode
 
@@ -210,6 +220,7 @@ possible vertical cursor, possible ordering. The refreshing should be paused by 
 `pspg` uses inotify API when it is available, and when input file is changed, then
 `pspg` reread file immediately. This behave can be disabled by option `--no-watch-file`
 or by specification watch time by option `--watch`.
+
 
 # Special options for reading from stream (file or FIFO)
 
@@ -222,7 +233,9 @@ changed by option `--hold-stream`. Default value is 0. When `--hold-stream=1` th
 writing. `--hold-stream=2` is different strategy. The `pspg` reopen FIFO in write
 mode, and then FIFO will be opened until `pspg` is running.
 
+
 # Recommended psql configuration
+
 you should to add to your profile:
 <pre>
 #for Postgres 10 and older
@@ -253,6 +266,7 @@ some possible configuration:
 ncurses doesn't display unicode borders (produced by `psql`) without
 correct setting of this variable. Is possible to check a value 'C.UTF8'.
 
+
 ## Attention
 
 When you use a option `--only-for-tables`, then
@@ -260,14 +274,15 @@ When you use a option `--only-for-tables`, then
 * set `PAGER` to `pspg` and `PSQL_PAGER` to `less` or
 * set `PAGER` to `less` and `PSQL_PAGER` to `pspg`
 
+
 # MySQL usage
+
 <pre>
 MariaDB [sakila]> pager pspg -s 14 -X --force-uniborder --quit-if-one-screen
 PAGER set to 'pspg -s 14 -X --force-uniborder --quit-if-one-screen'
 MariaDB [sakila]> select now();
 MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 </pre>
-
 
 
 # SQLite
@@ -277,6 +292,8 @@ to generate CSV format - and this format is well readable for `pspg`
 
     sqlite3 -csv -header testdb.db 'select * from foo2' | pspg --csv --csv-header=on --double-header
     
+
+
 # pgcli
 
 [pgcli](https://github.com/dbcli/pgcli/) needs the following configuration options (`~/.config/pgcli/config`):
@@ -286,7 +303,16 @@ pager = /usr/bin/pspg --csv --rr=2 --quit-if-one-screen --ignore-case --csv-head
 table_format = csv
 ```
 
+# Note - mouse
+
+pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique. If there
+are problems with usage - unwanted visual artefacts when you move with mouse when some mouse
+button is pressed, then 1. please, report issue (please, attach log file), 2. use an option
+`--no-xterm-mouse-mode` and `pspg` will not try to activate this mode.
+
+
 # Note - compilation issue
+
 Some linker issues can be fixed by:
 <pre>
 I changed 
@@ -302,6 +328,7 @@ On some old systems a compilation fails with error
 In this case comment line with function set_escdelay
 
 # Note - Installation
+
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
 If you would to display UTF-8 characters, then `pspg` should be linked with `ncursesw`
@@ -386,16 +413,19 @@ option.
     export PKG_CONFIG_PATH="/opt/csw/lib/64/pkgconfig"
     ./configure
 
+
 # Possible ToDo
 
 * Store data in some column format (now data are stored like array of rows). With this change can
   be possible to operate over columns - hide columns, change width, cyclic iteration over columns,
   change order of columns, mark columns and export only selected columns (selected rows).
 
+
 # st_menu
 
 This project uses st_menu library - implementation of CUA menubar and pulldown menu for ncurses
 https://github.com/okbob/ncurses-st-menu
+
 
 # Note
 

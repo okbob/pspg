@@ -98,7 +98,7 @@ static struct option long_options[] =
 	{"ascii", no_argument, 0, 'a'},
 	{"blackwhite", no_argument, 0, 'b'},
 	{"freezecols", required_argument, 0, 'c'},
-	{"no_xterm_mouse_mode", no_argument, 0, 40},
+	{"no-xterm-mouse-mode", no_argument, 0, 40},
 	{0, 0, 0, 0}
 };
 
