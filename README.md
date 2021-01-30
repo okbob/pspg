@@ -171,10 +171,15 @@ Searching is starting after visible vertical column or on first visible not free
 some horizontal scrolling) or on first column. After last column searching starts from first again.
 
 
-# Clipboard
+# Export & Clipboard
 
 For clipboard support the clipboard application should be installed: wl-clipboard (Wayland),
 xlip (xwindows) or pbcopy (MacOS).
+
+`pspg` try to translate unicode symbol '∅' to NULL every time. If you don't use special setting
+by `\pset null ...`, then `psql` displays empty string instead NULL. `pspg` hasn't any special
+detection (in export routines) for this case. You should to check and enable or disable menu
+item `Empty string is NULL`.
 
 
 # Status line description

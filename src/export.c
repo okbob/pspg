@@ -144,12 +144,29 @@ pos_substr(char *str, int xmin, int xmax, int *substrlen, bool force8bit, bool t
  * malloc ed string when value should be quoted.
  */
 static char *
-csv_format(char *str, int *slen, bool force8bit)
+csv_format(char *str, int *slen, bool force8bit, bool empty_string_is_null)
 {
 	char   *ptr = str;
 	char   *result;
 	bool	needs_quoting = false;
 	int		_slen;
+
+	/* Detect NULL symbol ∅ */
+	if (!force8bit &&
+		*slen == 3 && strncmp(str, "\342\210\205", 3) == 0)
+	{
+		*slen = 0;
+		return NULL;
+	}
+
+	if (*slen == 0)
+	{
+		if (empty_string_is_null)
+			return NULL;
+
+		*slen = 2;
+		return sstrdup("\"\"");
+	}
 
 	_slen = *slen;
 	while (_slen > 0)
@@ -696,21 +713,30 @@ export_data(Options *opts,
 
 					if (DSV_FORMAT_TYPE(format))
 					{
-						str = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
+						str = csv_format(fieldstr,
+										 &fieldstrlen,
+										 opts->force8bit,
+										 opts->empty_string_is_null);
 					}
 					else if (INSERT_FORMAT_TYPE(format))
 					{
 						str = quote_sql_identifier(fieldstr, &fieldstrlen, opts->force8bit);
 					}
 
-					columns[colnum++] = sstrndup(str, fieldstrlen);
-					if (str != fieldstr)
-						free(str);
+					if (str == NULL)
+						columns[colnum++] = strdup("");
+					else if (str != fieldstr)
+						columns[colnum++] = str;
+					else
+						columns[colnum++] = sstrndup(str, fieldstrlen);
 				}
 				else if (DSV_FORMAT_TYPE(format))
 				{
 					int		saved_errno;
-					char   *outstr = csv_format(fieldstr, &fieldstrlen, opts->force8bit);
+					char   *outstr = csv_format(fieldstr,
+												&fieldstrlen,
+												opts->force8bit,
+												opts->empty_string_is_null);
 
 					if (cmd == cmd_CopyLineExtended)
 					{
@@ -739,10 +765,12 @@ export_data(Options *opts,
 						}
 					}
 
-					fwrite(outstr, fieldstrlen, 1, fp);
+					if (outstr)
+						fwrite(outstr, fieldstrlen, 1, fp);
+
 					saved_errno = errno;
 
-					if (outstr != fieldstr)
+					if (outstr && outstr != fieldstr)
 						free(outstr);
 
 					errno = saved_errno;
