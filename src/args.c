@@ -378,7 +378,7 @@ readargs(char **argv,
 				{
 					fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
 					fprintf(stdout, "Authors:\n");
-					fprintf(stdout, "    2017-2020 Pavel Stehule, Benesov district, Czech Republic\n\n");
+					fprintf(stdout, "    2017-2021 Pavel Stehule, Benesov district, Czech Republic\n\n");
 					fprintf(stdout, "Licence:\n");
 					fprintf(stdout, "    Distributed under BSD licence\n\n");
 
