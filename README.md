@@ -256,8 +256,11 @@ export PSQL_PAGER="pspg"
 and <code>.psqlrc</code>
 
 <pre>
+\set QUIET 1
 \pset linestyle unicode
 \pset border 2
+\pset null ∅
+\unset QUIET
 </pre>
 
 some possible configuration:
