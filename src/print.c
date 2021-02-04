@@ -508,6 +508,7 @@ window_fill(int window_identifier,
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	bool		is_fix_rows_only = window_identifier == WINDOW_FIX_ROWS;
+	bool		is_scrollbar = window_identifier == WINDOW_VSCROLLBAR;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -529,6 +530,47 @@ window_fill(int window_identifier,
 	{
 		/* just clean */
 		werase(win);
+		return;
+	}
+
+	if (is_scrollbar)
+	{
+		int		i;
+		int		curret_pos;
+
+		werase(win);
+
+		wattron(win, COLOR_PAIR(99));
+
+		for (i = 0; i < scrdesc->scrollbar_maxy; i++)
+			waddch(win, ACS_CKBOARD);
+
+		if (opts->force8bit || opts->force_ascii_art)
+		{
+			mvwaddch(win, 0, 0, ACS_UARROW);
+			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+		}
+		else
+		{
+			mvwprintw(win, 0, 0, "%lc", L'\x25b2');
+			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
+		}
+
+		curret_pos = (int) (((double) cursor_row) / ((double) (desc->last_row - desc->first_data_row + 1)) * 
+							(scrdesc->scrollbar_maxy  - scrdesc->slider_size - 1));
+
+		if (curret_pos < 0)
+			curret_pos = 0;
+
+		/* increment position about 1 for scrollbar "go line up" symbol */
+		curret_pos += 1;
+
+		scrdesc->slider_min_y = curret_pos;
+
+		/* draw slider */
+		for (i = 0; i < scrdesc->slider_size; i++)
+			mvwprintw(win, curret_pos + i, 0, " ");
+
 		return;
 	}
 

@@ -307,6 +307,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		scrdesc->main_maxx -= startx;
 	}
 
+
 	scrdesc->fix_cols_cols = 0;
 
 	/* search end of fixCol'th column */
@@ -352,6 +353,38 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	desc->fixed_rows = scrdesc->fix_rows_rows;
+
+	if (opts->show_scrollbar)
+	{
+		int		data_rows = desc->last_row + 1;
+		int		slider_rows = scrdesc->main_maxy;
+
+		/* show scrollbar only when display is less than data */
+		if (slider_rows < data_rows)
+		{
+			scrdesc->main_maxx -= 1;
+
+			scrdesc->scrollbar_x = scrdesc->maxx - 1;
+			scrdesc->scrollbar_start_y = scrdesc->main_start_y;
+			scrdesc->scrollbar_maxy = scrdesc->main_maxy;
+
+			if (slider_rows > 3)
+			{
+				scrdesc->slider_size = floor((pow((double) (slider_rows - 2), 2) / (double) data_rows));
+
+				if (scrdesc->slider_size < 2)
+					scrdesc->slider_size = 2;
+			}
+			else
+				scrdesc->slider_size = 1;
+
+			scrdesc->slider_min_y = 1;
+		}
+		else
+			scrdesc->scrollbar_x = -1;
+	}
+	else
+		scrdesc->scrollbar_x = -1;
 }
 
 static void
@@ -391,6 +424,12 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 	{
 		delwin(w_rownum_luc(scrdesc));
 		w_rownum_luc(scrdesc) = NULL;
+	}
+
+	if (w_vscrollbar(scrdesc) != NULL)
+	{
+		delwin(w_vscrollbar(scrdesc));
+		w_vscrollbar(scrdesc) = NULL;
 	}
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
@@ -497,6 +536,16 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 								   scrdesc->fix_rows_rows + scrdesc->main_start_y,
 								   0);
 	}
+
+	if (opts->show_scrollbar)
+	{
+		w_vscrollbar(scrdesc) = subwin(stdscr,
+									  scrdesc->scrollbar_maxy,
+									  1,
+									  scrdesc->scrollbar_start_y,
+									  scrdesc->scrollbar_x);
+	}
+
 }
 
 /*
@@ -2053,6 +2102,9 @@ main(int argc, char *argv[])
 
 #endif
 
+		bool	scrollbar_mode = false;
+
+
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
@@ -2073,6 +2125,7 @@ main(int argc, char *argv[])
 	opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
 	opts.empty_string_is_null = true;
 	opts.xterm_mouse_mode = true;
+	opts.show_scrollbar = true;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -2911,6 +2964,10 @@ reinit_theme:
 							-1, -1,
 							&desc, &scrdesc, &opts);
 
+				window_fill(WINDOW_VSCROLLBAR,
+							0, 0, cursor_row, -1, -1,
+							&desc, &scrdesc, &opts);
+
 				if (w_luc(&scrdesc))
 					wnoutrefresh(w_luc(&scrdesc));
 				if (w_rows(&scrdesc))
@@ -2925,6 +2982,8 @@ reinit_theme:
 					wnoutrefresh(w_rownum(&scrdesc));
 				if (w_rownum_luc(&scrdesc))
 					wnoutrefresh(w_rownum_luc(&scrdesc));
+				if (w_vscrollbar(&scrdesc))
+					wnoutrefresh(w_vscrollbar(&scrdesc));
 
 #ifdef DEBUG_PIPE
 
@@ -2951,21 +3010,25 @@ reinit_theme:
 				no_doupdate = false;
 			else if (next_command == 0 || scrdesc.fmt != NULL)
 			{
+
 #ifdef DEBUG_PIPE
+
+				time_t	start_draw_sec;
+				long	start_draw_ms;
 
 				current_time(&start_draw_sec, &start_draw_ms);
 
 #endif
 
-
 				doupdate();
 
 #ifdef DEBUG_PIPE
 
-			print_duration(start_draw_sec, start_draw_ms, "doupdate");
+				print_duration(start_draw_sec, start_draw_ms, "doupdate");
 
 #endif
 
+			}
 
 #ifdef DEBUG_PIPE
 
@@ -2976,8 +3039,6 @@ reinit_theme:
 				}
 
 #endif
-
-			}
 
 			if (scrdesc.fmt != NULL)
 			{
@@ -3493,6 +3554,11 @@ reset_search:
 					if (!opts.less_status_bar)
 					cmdbar = init_cmdbar(cmdbar, &opts);
 
+				refresh_scr = true;
+				break;
+
+			case cmd_ShowScrollbar:
+				opts.show_scrollbar = !opts.show_scrollbar;
 				refresh_scr = true;
 				break;
 
@@ -5259,6 +5325,7 @@ found_next_pattern:
 							first_row += 1;
 
 						first_row = first_row > max_first_row ? max_first_row : first_row;
+						usleep(30 * 1000);
 					}
 					else if (event.bstate & BUTTON4_PRESSED)
 					{
@@ -5284,6 +5351,14 @@ found_next_pattern:
 						}
 						else
 							make_beep(&opts);
+
+						/*
+						 * Without extra sleep time, an usage of mouse wheel can generate
+						 * events peak (too much frequent doupdate(s)) with unwanted
+						 * terminal flickering. We can limit a number of processed events
+						 * just by sleeping.
+						 */
+						usleep(30 * 1000);
 					}
 					else
 
@@ -5305,6 +5380,89 @@ found_next_pattern:
 						long	ms;
 						time_t	sec;
 
+						/* leave scrollbar mode after mouse button is released */
+						if (scrollbar_mode && event.bstate & BUTTON1_RELEASED)
+						{
+							scrollbar_mode = false;
+							last_sec = 0;
+							break;;
+						}
+
+						/* scrollbar events implementation */
+						if (scrollbar_mode ||
+							(event.x == scrdesc.scrollbar_x &&
+							 event.y >= scrdesc.scrollbar_start_y &&
+							 event.y <= scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy))
+						{
+							if (!scrollbar_mode)
+							{
+								if (event.bstate & BUTTON1_PRESSED)
+								{
+									if (event.y == scrdesc.scrollbar_start_y)
+									{
+										next_command = cmd_CursorUp;
+										last_sec = 0;
+										break;
+									}
+									else if (event.y == scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - 1)
+									{
+										next_command = cmd_CursorDown;
+										last_sec = 0;
+										break;
+									}
+									else
+									{
+										if (scrdesc.slider_min_y != -1)
+										{
+											if (event.y  < scrdesc.slider_min_y + scrdesc.scrollbar_start_y)
+											{
+												next_command = cmd_PageUp;
+												last_sec = 0;
+												break;
+											}
+											else if (event.y  > scrdesc.slider_min_y + scrdesc.slider_size)
+											{
+												next_command = cmd_PageDown;
+												last_sec = 0;
+												break;
+											}
+										}
+
+										scrollbar_mode = true;
+									}
+								}
+							}
+
+#if NCURSES_MOUSE_VERSION > 1
+
+							if (scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION)
+							{
+								int max_cursor_row = MAX_CURSOR_ROW;
+
+								cursor_row = 0;
+								first_row = cursor_row + fix_rows_offset;
+
+								cursor_row = ((double)(event.y - scrdesc.scrollbar_start_y - 1)) /
+												((double)(scrdesc.scrollbar_maxy - 2 - 1)) * max_cursor_row;
+
+								if (cursor_row < 0)
+									cursor_row = 0;
+
+								if (cursor_row > max_cursor_row)
+									cursor_row = max_cursor_row;
+
+								if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
+								{
+									first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+									first_row = adjust_first_row(first_row, &desc, &scrdesc);
+								}
+							}
+
+#endif
+
+							break;
+						}
+
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
 							/* Activate menu only on BUTTON1_PRESS event */
@@ -5315,8 +5473,6 @@ found_next_pattern:
 								prev_event_keycode = 0;
 								break;
 							}
-							else
-								continue;
 						}
 
 						if (event.bstate & BUTTON1_RELEASED)

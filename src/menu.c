@@ -166,6 +166,7 @@ ST_MENU_ITEM _options[] = {
 	{"Show line ~n~umbers", cmd_RowNumToggle, "M-n", 0, 0, 0, NULL},
 	{"Show top bar", cmd_ShowTopBar, NULL, 0, 0, 0, NULL},
 	{"Show bottom bar", cmd_ShowBottomBar, NULL, 0, 0, 0, NULL},
+	{"Show scrollbar", cmd_ShowScrollbar, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~M~ouse support", cmd_MouseToggle, "M-m", 0, 0, 0, NULL},
 	{"~Q~uiet mode", cmd_SoundToggle, NULL, 0, 0, 0, NULL},
@@ -365,6 +366,8 @@ post_menu(Options *opts, struct ST_MENU *menu)
 
 	st_menu_set_option(menu, cmd_BoldLabelsToggle, ST_MENU_OPTION_MARKED, opts->bold_labels);
 	st_menu_set_option(menu, cmd_BoldCursorToggle, ST_MENU_OPTION_MARKED, opts->bold_cursor);
+
+	st_menu_set_option(menu, cmd_ShowScrollbar, ST_MENU_OPTION_MARKED, opts->show_scrollbar);
 
 	st_menu_reset_all_submenu_options(menu, MENU_ITEM_THEME, ST_MENU_OPTION_MARKED);
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);

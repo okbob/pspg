@@ -60,6 +60,7 @@ This pager can be used from the following clients command line clients too:
 * `--no-commandbar`  the bottom bar will be hidden
 * `--no-topbar`  the top bar will be hidden
 * `--no-bars`  both bars will be hidden
+* `--no-scrollbar`  scrollbar will be hidden
 * `--no-sigint-search-reset`  sigint is not used to reset searching
 * `--no-xterm-mouse-mode` don't use extended mouse protocol
 * `--tabular-cursor`  cursor is displayed only for table

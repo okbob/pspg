@@ -79,6 +79,9 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);		/* error */
 	set_colour(27, COLOR_BLACK, COLOR_WHITE, false, 0);		/* input */
 
+	set_colour(99, COLOR_BLUE, COLOR_CYAN, false, 0);
+	set_colour(100, COLOR_WHITE, COLOR_BLACK, false, 0);
+
 	memset(theme_attrs, 0, sizeof(theme_attrs));
 
 	switch (theme)

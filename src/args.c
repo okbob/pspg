@@ -54,6 +54,7 @@ static struct option long_options[] =
 	{"no-commandbar", no_argument, 0, 6},
 	{"no-topbar", no_argument, 0, 7},
 	{"no-cursor", no_argument, 0, 10},
+	{"no-scrollbar", no_argument, 0, 41},
 	{"vertical-cursor", no_argument, 0, 15},
 	{"tabular-cursor", no_argument, 0, 11},
 	{"line-numbers", no_argument, 0, 9},
@@ -284,6 +285,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-bars, --no-commandbar, --no-topbar\n");
 					fprintf(stdout, "                           don't show bottom, top bar or both\n");
 					fprintf(stdout, "  --no-cursor              row cursor will be hidden\n");
+					fprintf(stdout, "  --no-scrollbar           don't show scrollbar\n");
 					fprintf(stdout, "  --no-sound               don't use beep when scroll is not possible\n");
 					fprintf(stdout, "  --tabular-cursor         cursor is visible only when data has table format\n");
 					fprintf(stdout, "  --vertical-cursor        show vertical column cursor\n");
@@ -484,6 +486,10 @@ readargs(char **argv,
 
 			case 40:
 				opts->xterm_mouse_mode =  false;
+				break;
+
+			case 41:
+				opts->show_scrollbar = false;
 				break;
 
 			case 'V':
