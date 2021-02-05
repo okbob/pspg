@@ -186,6 +186,7 @@ typedef struct
 	int		scrollbar_x;			/* x position of horisontal scrollbar */
 	int		slider_min_y;			/* position of scrollbar slider */
 	int		slider_size;			/* height of slider (vertical) */
+	bool	scrollbar_mode;			/* true, when vertical scrollbar is active */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])

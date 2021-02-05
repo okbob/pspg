@@ -536,7 +536,6 @@ window_fill(int window_identifier,
 	if (is_scrollbar)
 	{
 		int		i;
-		int		curret_pos;
 
 		werase(win);
 
@@ -556,20 +555,23 @@ window_fill(int window_identifier,
 			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
 		}
 
-		curret_pos = (int) (((double) cursor_row) / ((double) (desc->last_row - desc->first_data_row + 1)) * 
-							(scrdesc->scrollbar_maxy  - scrdesc->slider_size - 1));
+		if (scrdesc->scrollbar_mode)
+		{
+			wattron(win, COLOR_PAIR(100) | A_REVERSE);
 
-		if (curret_pos < 0)
-			curret_pos = 0;
+			/* draw slider */
+			for (i = 0; i < scrdesc->slider_size; i++)
+				mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
 
-		/* increment position about 1 for scrollbar "go line up" symbol */
-		curret_pos += 1;
+			wattroff(win, COLOR_PAIR(100) | A_REVERSE);
+		}
+		else
+		{
 
-		scrdesc->slider_min_y = curret_pos;
-
-		/* draw slider */
-		for (i = 0; i < scrdesc->slider_size; i++)
-			mvwprintw(win, curret_pos + i, 0, " ");
+			/* draw slider */
+			for (i = 0; i < scrdesc->slider_size; i++)
+				mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
+		}
 
 		return;
 	}
