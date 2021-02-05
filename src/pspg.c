@@ -5301,6 +5301,7 @@ found_next_pattern:
 						int		max_cursor_row;
 						int		offset = 1;
 						int		max_first_row = MAX_FIRST_ROW;
+						int		prev_row = first_row;
 
 						if (max_first_row < 0)
 							max_first_row = 0;
@@ -5325,11 +5326,14 @@ found_next_pattern:
 							first_row += 1;
 
 						first_row = first_row > max_first_row ? max_first_row : first_row;
-						usleep(30 * 1000);
+
+						if (first_row != prev_row)
+							usleep(30 * 1000);
 					}
 					else if (event.bstate & BUTTON4_PRESSED)
 					{
 						int		offset = 1;
+						int		prev_row = first_row;
 
 						if (desc.headline_transl != NULL)
 							offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
@@ -5358,7 +5362,8 @@ found_next_pattern:
 						 * terminal flickering. We can limit a number of processed events
 						 * just by sleeping.
 						 */
-						usleep(30 * 1000);
+						if (first_row != prev_row)
+							usleep(30 * 1000);
 					}
 					else
 
@@ -5435,15 +5440,33 @@ found_next_pattern:
 
 #if NCURSES_MOUSE_VERSION > 1
 
-							if (scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION)
+							if (scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION &&
+								scrdesc.scrollbar_maxy - 2 > scrdesc.slider_size)
 							{
-								int max_cursor_row = MAX_CURSOR_ROW;
+								int		max_cursor_row = MAX_CURSOR_ROW;
+								int		max_first_row = MAX_FIRST_ROW;
+								int		mouse_scrollbar_y;
+								int		slider_half_size = (scrdesc.slider_size) / 2;
+								int		cursor_page_pos = cursor_row - first_row;
 
-								cursor_row = 0;
-								first_row = cursor_row + fix_rows_offset;
+								/* set range to scrollbar border */
+								if (event.y > scrdesc.scrollbar_start_y + 1)
+									mouse_scrollbar_y = event.y - scrdesc.scrollbar_start_y - 1;
+								else
+									mouse_scrollbar_y = 0;
 
-								cursor_row = ((double)(event.y - scrdesc.scrollbar_start_y - 1)) /
-												((double)(scrdesc.scrollbar_maxy - 2 - 1)) * max_cursor_row;
+								if (mouse_scrollbar_y > scrdesc.scrollbar_maxy - slider_half_size - 1)
+									mouse_scrollbar_y = scrdesc.scrollbar_maxy - slider_half_size - 1;
+
+								/* reduce slider range about slider size */
+								if (mouse_scrollbar_y > slider_half_size)
+									mouse_scrollbar_y -= slider_half_size;
+								else
+									mouse_scrollbar_y = 0;
+
+								cursor_row = ((double) mouse_scrollbar_y) /
+											 ((double)(scrdesc.scrollbar_maxy - scrdesc.slider_size - 2))
+											 * max_cursor_row;
 
 								if (cursor_row < 0)
 									cursor_row = 0;
@@ -5451,11 +5474,13 @@ found_next_pattern:
 								if (cursor_row > max_cursor_row)
 									cursor_row = max_cursor_row;
 
-								if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
-								{
-									first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
-									first_row = adjust_first_row(first_row, &desc, &scrdesc);
-								}
+								first_row = cursor_row - cursor_page_pos;
+
+								if (first_row < 0)
+									first_row = 0;
+
+								if (first_row > MAX_FIRST_ROW)
+									first_row = MAX_FIRST_ROW;
 							}
 
 #endif
