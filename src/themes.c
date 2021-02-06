@@ -1126,6 +1126,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 				case 14:
 				case 16:
 				case 15:
+				case 8:
 				case 9:
 					t->scrollbar_use_arrows = true;
 					break;
