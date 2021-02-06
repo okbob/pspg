@@ -178,13 +178,26 @@ min_int(int a, int b)
 	return a < b ? a : b;
 }
 
-inline int
+/*
+ * The argument "b" should be >= "a" or it should be ignored
+ * and "a" is used instead "b".
+ */
+int
 trim_to_range(int v, int a, int b)
 {
-	if (v < a)
+	/*
+	 * if second parameter is below a, result should be a,
+	 * because the interval is [a, a].
+	 */
+	if (b <= a)
 		return a;
+
+	if (v <= a)
+		return a;
+
 	if (v > b)
 		return b;
+
 	return v;
 }
 
@@ -320,7 +333,6 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		scrdesc->main_maxx -= startx;
 	}
 
-
 	scrdesc->fix_cols_cols = 0;
 
 	/* search end of fixCol'th column */
@@ -371,6 +383,16 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	{
 		int		data_rows = desc->last_row + 1;
 		int		slider_rows = scrdesc->main_maxy;
+		int		saved_slider_min_y = 0;
+
+		/*
+		 * The relayout can be invoked in scrollbar mode too (when we try
+		 * to change visibility of footer window (data)). Unfortunatelly,
+		 * inside layout initialization we init slider position to. In
+		 * this case we want to preserve an slider position.
+		 */
+		if (scrdesc->scrollbar_mode)
+			saved_slider_min_y = scrdesc->slider_min_y;
 
 		/* show scrollbar only when display is less than data */
 		if (slider_rows < data_rows)
@@ -395,6 +417,10 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		}
 		else
 			scrdesc->scrollbar_x = -1;
+
+		/* restore saved slider position */
+		if (scrdesc->scrollbar_mode)
+			scrdesc->slider_min_y = saved_slider_min_y;
 	}
 	else
 		scrdesc->scrollbar_x = -1;
@@ -2025,18 +2051,17 @@ export_to_file(PspgCommand command,
 static void
 set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
 {
-	int		max_cursor_row;
 	int		max_first_row;
 	int		max_slider_min_y;
 
-	if (scrdesc->slider_has_position)
+	if (scrdesc->slider_has_position ||
+		scrdesc->scrollbar_mode)
 	{
 		scrdesc->slider_has_position = false;
 
 		return;
 	}
 
-	max_cursor_row = desc->last_row - desc->first_data_row;
 	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
 	max_slider_min_y = scrdesc->scrollbar_maxy - scrdesc->slider_size - 1;
 
@@ -2050,8 +2075,7 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
 
 		return;
 	}
-	else if (cursor_row == max_cursor_row ||
-			 first_row == max_first_row)
+	else if (first_row == max_first_row)
 	{
 		scrdesc->slider_min_y = max_slider_min_y;
 
@@ -2063,7 +2087,6 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
 	 * When we move cursor, then slider can be moved to, although first row was not
 	 * changed. So the base for calculation should be cursor_row.
 	 */
-
 	scrdesc->slider_min_y =
 			round(((double) cursor_row) / ((double) (desc->last_row - desc->first_data_row))
 				  * ((double) scrdesc->scrollbar_maxy - 2 - scrdesc->slider_size)) + 1;
@@ -5533,44 +5556,63 @@ found_next_pattern:
 								int		slider_min_y_offset;
 								int		max_cursor_row = MAX_CURSOR_ROW;
 								int		max_first_row = MAX_FIRST_ROW;
+								int		max_slider_min_y = scrdesc.scrollbar_maxy - scrdesc.slider_size - 1;
 								double	step_size;
+
+								new_slider_min_y =
+										trim_to_range(
+													  event.y - scrdesc.scrollbar_start_y
+															  - scrollbar_mode_initial_slider_mouse_offset_y,
+													  1, max_slider_min_y);
+
+								slider_min_y_offset = new_slider_min_y - scrollbar_mode_initial_slider_min_y;
 
 								step_size = ((double) max_first_row) /
 											((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size);
 
-fprintf(debug_pipe, "scrollbar mouse handling dn: %f, dt: %f, step: %f, slider_min: %d, first_row: %d\n",
-	(double) (desc.last_row - desc.title_rows - scrdesc.main_maxy + 1),
-	((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size),
-	((double) (desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)) /
-				((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size),
-	scrdesc.slider_min_y,
-	first_row);
+								if (slider_min_y_offset == 0)
+								{
+									first_row = scrollbar_mode_initial_first_row;
+									cursor_row = scrollbar_mode_initial_cursor_row;
+								}
+								else if (new_slider_min_y == 1)
+								{
+									if (first_row != 0)
+									{
+										cursor_row -= first_row;
+										first_row = 0;
+									}
 
+									cursor_row = trim_to_range(cursor_row, 0, round(step_size) - 1);
+								}
+								else if (new_slider_min_y == max_slider_min_y)
+								{
+									if (first_row < max_first_row)
+									{
+										int		d = cursor_row - first_row;
 
-								new_slider_min_y =
-									trim_to_range(
-										event.y - scrdesc.scrollbar_start_y - scrollbar_mode_initial_slider_mouse_offset_y,
-										1, scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - scrdesc.slider_size - 2);
+										first_row = max_first_row;
+										cursor_row = max_first_row + d;
+									}
 
-fprintf(debug_pipe, "scrollbar mouse handling - new slider min %d\n", new_slider_min_y);
+									cursor_row = trim_to_range(cursor_row,
+															   max_cursor_row - round(step_size),
+															   max_cursor_row);
+								}
+								else
+								{
+									cursor_row =
+										trim_to_range(
+											round(scrollbar_mode_initial_cursor_row + slider_min_y_offset * step_size),
+											0, max_cursor_row);
 
-								slider_min_y_offset = new_slider_min_y - scrollbar_mode_initial_slider_min_y;
-
-								cursor_row =
-									trim_to_range(
-										round(scrollbar_mode_initial_cursor_row + slider_min_y_offset * step_size),
-										0, max_cursor_row);
-
-								first_row =
-									trim_to_range(
-										round(scrollbar_mode_initial_first_row + slider_min_y_offset * step_size),
-										0, MAX_FIRST_ROW);
-
-fprintf(debug_pipe, "scrollbar mouse handling - new first_row %d\n", first_row);
-
+									first_row =
+										trim_to_range(
+											round(scrollbar_mode_initial_first_row + slider_min_y_offset * step_size),
+											0, MAX_FIRST_ROW);
+								}
 
 								scrdesc.slider_min_y = new_slider_min_y;
-
 								scrdesc.slider_has_position = true;
 							}
 
