@@ -57,6 +57,12 @@ typedef struct
 	attr_t pattern_vertical_cursor_line_attr;
 	attr_t error_attr;				/* colors for display error */
 	attr_t input_attr;				/* colors for input line */
+	attr_t scrollbar_arrow_attr;	/* colors for scrollbar arrows symbols */
+	attr_t scrollbar_attr;			/* colors for scrollbar background */
+	attr_t scrollbar_slider_attr;	/* colors for scrollbar slider */
+	attr_t scrollbar_active_slider_attr; /* colors for active scrollbar slider */
+	chtype scrollbar_slider_symbol;
+	bool scrollbar_use_arrows;
 } Theme;
 
 #define		WINDOW_LUC				0
@@ -68,6 +74,7 @@ typedef struct
 #define		WINDOW_BOTTOM_BAR		6
 #define		WINDOW_ROWNUM			7
 #define		WINDOW_ROWNUM_LUC		8
+#define		WINDOW_VSCROLLBAR		9
 
 extern void initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);

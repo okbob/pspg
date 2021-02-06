@@ -152,6 +152,9 @@ static bool xterm_mouse_mode_was_initialized = false;
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
 
+static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row);
+
+
 StateData *current_state = NULL;
 
 /*
@@ -173,6 +176,29 @@ inline int
 min_int(int a, int b)
 {
 	return a < b ? a : b;
+}
+
+/*
+ * The argument "b" should be >= "a" or it should be ignored
+ * and "a" is used instead "b".
+ */
+int
+trim_to_range(int v, int a, int b)
+{
+	/*
+	 * if second parameter is below a, result should be a,
+	 * because the interval is [a, a].
+	 */
+	if (b <= a)
+		return a;
+
+	if (v <= a)
+		return a;
+
+	if (v > b)
+		return b;
+
+	return v;
 }
 
 static void
@@ -352,6 +378,60 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	}
 
 	desc->fixed_rows = scrdesc->fix_rows_rows;
+
+	if (opts->show_scrollbar)
+	{
+		int		data_rows = desc->last_row + 1;
+		int		slider_rows = scrdesc->main_maxy;
+		int		saved_slider_min_y = 0;
+
+		/*
+		 * The relayout can be invoked in scrollbar mode too (when we try
+		 * to change visibility of footer window (data)). Unfortunatelly,
+		 * inside layout initialization we init slider position to. In
+		 * this case we want to preserve an slider position.
+		 */
+		if (scrdesc->scrollbar_mode)
+			saved_slider_min_y = scrdesc->slider_min_y;
+
+		/* show scrollbar only when display is less than data */
+		if (slider_rows < data_rows)
+		{
+			Theme		*t;
+
+			scrdesc->main_maxx -= 1;
+
+			t = &scrdesc->themes[WINDOW_VSCROLLBAR];
+
+			scrdesc->scrollbar_x = scrdesc->maxx - 1;
+			scrdesc->scrollbar_start_y = scrdesc->main_start_y;
+			scrdesc->scrollbar_maxy = scrdesc->main_maxy;
+
+			if (t->scrollbar_slider_symbol)
+			{
+				scrdesc->slider_size = 1;
+			}
+			else if (slider_rows > 3)
+			{
+				scrdesc->slider_size = floor((pow((double) (slider_rows - 2), 2) / (double) data_rows));
+
+				if (scrdesc->slider_size < 2)
+					scrdesc->slider_size = 2;
+			}
+			else
+				scrdesc->slider_size = 1;
+
+			scrdesc->slider_min_y = 1;
+		}
+		else
+			scrdesc->scrollbar_x = -1;
+
+		/* restore saved slider position */
+		if (scrdesc->scrollbar_mode)
+			scrdesc->slider_min_y = saved_slider_min_y;
+	}
+	else
+		scrdesc->scrollbar_x = -1;
 }
 
 static void
@@ -391,6 +471,12 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 	{
 		delwin(w_rownum_luc(scrdesc));
 		w_rownum_luc(scrdesc) = NULL;
+	}
+
+	if (w_vscrollbar(scrdesc) != NULL)
+	{
+		delwin(w_vscrollbar(scrdesc));
+		w_vscrollbar(scrdesc) = NULL;
 	}
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
@@ -497,6 +583,16 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 								   scrdesc->fix_rows_rows + scrdesc->main_start_y,
 								   0);
 	}
+
+	if (opts->show_scrollbar)
+	{
+		w_vscrollbar(scrdesc) = subwin(stdscr,
+									  scrdesc->scrollbar_maxy,
+									  1,
+									  scrdesc->scrollbar_start_y,
+									  scrdesc->scrollbar_x);
+	}
+
 }
 
 /*
@@ -1958,6 +2054,63 @@ export_to_file(PspgCommand command,
 }
 
 /*
+ * From "first_row" calculate position of slider of vertical scrollbar
+ */
+static void
+set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
+{
+	int		max_first_row;
+	int		max_slider_min_y;
+
+	if (scrdesc->slider_has_position ||
+		scrdesc->scrollbar_mode)
+	{
+		scrdesc->slider_has_position = false;
+
+		return;
+	}
+
+	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
+	max_slider_min_y = scrdesc->scrollbar_maxy - scrdesc->slider_size - 1;
+
+	/*
+	 * When we are in border positions, then we want to set slider absolutely,
+	 * to correct possible rounding errors.
+	 */
+	if (cursor_row == 0)
+	{
+		scrdesc->slider_min_y = 1;
+
+		return;
+	}
+	else if (first_row == max_first_row)
+	{
+		scrdesc->slider_min_y = max_slider_min_y;
+
+		return;
+	}
+
+	/*
+	 * When we need to calculate slider position, then we do it on cursor row base.
+	 * When we move cursor, then slider can be moved to, although first row was not
+	 * changed. So the base for calculation should be cursor_row.
+	 */
+	scrdesc->slider_min_y =
+			round(((double) cursor_row) / ((double) (desc->last_row - desc->first_data_row))
+				  * ((double) scrdesc->scrollbar_maxy - 2 - scrdesc->slider_size)) + 1;
+
+	/*
+	 * We want to move slider to border positions only when display is in
+	 * border positions too.
+	 */
+	if (scrdesc->slider_min_y == 1 && first_row > 0)
+		scrdesc->slider_min_y = 2;
+	else if (scrdesc->slider_min_y == max_slider_min_y &&
+			 first_row < max_first_row)
+		scrdesc->slider_min_y -= 1;
+}
+
+/*
  * Available modes for processing input.
  *
  *   1. read and close (default)
@@ -2034,11 +2187,14 @@ main(int argc, char *argv[])
 
 #ifdef DEBUG_PIPE
 
-	time_t		start_app_sec;
-	long		start_app_ms;
-	bool		first_doupdate = true;
+	time_t	start_app_sec;
+	long	start_app_ms;
+	bool	first_doupdate = true;
 
 #endif
+
+	time_t	last_doupdate_sec = -1;
+	long	last_doupdate_ms = -1;
 
 	struct winsize size;
 	bool		size_is_valid = false;
@@ -2052,6 +2208,11 @@ main(int argc, char *argv[])
 	struct ST_CMDBAR	*cmdbar = NULL;
 
 #endif
+
+	int		scrollbar_mode_initial_slider_min_y = -1;
+	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
+	int		scrollbar_mode_initial_cursor_row = -1;
+	int		scrollbar_mode_initial_first_row = -1;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
@@ -2073,6 +2234,7 @@ main(int argc, char *argv[])
 	opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
 	opts.empty_string_is_null = true;
 	opts.xterm_mouse_mode = true;
+	opts.show_scrollbar = true;
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 
@@ -2726,7 +2888,10 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
+	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_VSCROLLBAR]);
+
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
+	set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
@@ -2911,6 +3076,10 @@ reinit_theme:
 							-1, -1,
 							&desc, &scrdesc, &opts);
 
+				window_fill(WINDOW_VSCROLLBAR,
+							0, 0, cursor_row, -1, -1,
+							&desc, &scrdesc, &opts);
+
 				if (w_luc(&scrdesc))
 					wnoutrefresh(w_luc(&scrdesc));
 				if (w_rows(&scrdesc))
@@ -2925,6 +3094,8 @@ reinit_theme:
 					wnoutrefresh(w_rownum(&scrdesc));
 				if (w_rownum_luc(&scrdesc))
 					wnoutrefresh(w_rownum_luc(&scrdesc));
+				if (w_vscrollbar(&scrdesc))
+					wnoutrefresh(w_vscrollbar(&scrdesc));
 
 #ifdef DEBUG_PIPE
 
@@ -2951,21 +3122,44 @@ reinit_theme:
 				no_doupdate = false;
 			else if (next_command == 0 || scrdesc.fmt != NULL)
 			{
+				time_t		current_sec;
+				long		current_ms;
+
 #ifdef DEBUG_PIPE
+
+				time_t	start_draw_sec;
+				long	start_draw_ms;
 
 				current_time(&start_draw_sec, &start_draw_ms);
 
 #endif
 
+				current_time(&current_sec, &current_ms);
+
+				/* We don't want do UPDATE too quickly */
+				if (last_doupdate_sec != -1)
+				{
+					long		td = time_diff(current_sec, current_ms,
+											   last_doupdate_sec, last_doupdate_ms);
+
+					if (td < 30)
+						usleep((30 - td) * 1000);
+
+					current_time(&current_sec, &current_ms);
+				}
+
+				last_doupdate_sec = current_sec;
+				last_doupdate_ms = current_ms;
 
 				doupdate();
 
 #ifdef DEBUG_PIPE
 
-			print_duration(start_draw_sec, start_draw_ms, "doupdate");
+				print_duration(start_draw_sec, start_draw_ms, "doupdate");
 
 #endif
 
+			}
 
 #ifdef DEBUG_PIPE
 
@@ -2976,8 +3170,6 @@ reinit_theme:
 				}
 
 #endif
-
-			}
 
 			if (scrdesc.fmt != NULL)
 			{
@@ -3182,6 +3374,8 @@ force_refresh_data:
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 					if (scrdesc.wins[WINDOW_TOP_BAR])
 						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
+
+					set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 					if (force_refresh)
 					{
@@ -3493,6 +3687,11 @@ reset_search:
 					if (!opts.less_status_bar)
 					cmdbar = init_cmdbar(cmdbar, &opts);
 
+				refresh_scr = true;
+				break;
+
+			case cmd_ShowScrollbar:
+				opts.show_scrollbar = !opts.show_scrollbar;
 				refresh_scr = true;
 				break;
 
@@ -5235,6 +5434,7 @@ found_next_pattern:
 						int		max_cursor_row;
 						int		offset = 1;
 						int		max_first_row = MAX_FIRST_ROW;
+						int		prev_row = first_row;
 
 						if (max_first_row < 0)
 							max_first_row = 0;
@@ -5259,10 +5459,14 @@ found_next_pattern:
 							first_row += 1;
 
 						first_row = first_row > max_first_row ? max_first_row : first_row;
+
+						if (first_row != prev_row)
+							usleep(30 * 1000);
 					}
 					else if (event.bstate & BUTTON4_PRESSED)
 					{
 						int		offset = 1;
+						int		prev_row = first_row;
 
 						if (desc.headline_transl != NULL)
 							offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
@@ -5284,6 +5488,15 @@ found_next_pattern:
 						}
 						else
 							make_beep(&opts);
+
+						/*
+						 * Without extra sleep time, an usage of mouse wheel can generate
+						 * events peak (too much frequent doupdate(s)) with unwanted
+						 * terminal flickering. We can limit a number of processed events
+						 * just by sleeping.
+						 */
+						if (first_row != prev_row)
+							usleep(30 * 1000);
 					}
 					else
 
@@ -5305,6 +5518,141 @@ found_next_pattern:
 						long	ms;
 						time_t	sec;
 
+						/* leave scrollbar mode after mouse button is released */
+						if (scrdesc.scrollbar_mode && event.bstate & BUTTON1_RELEASED)
+						{
+							scrdesc.scrollbar_mode = false;
+							scrdesc.slider_has_position = true;
+							last_sec = 0;
+							break;;
+						}
+
+						/* scrollbar events implementation */
+						if (scrdesc.scrollbar_mode ||
+							(event.x == scrdesc.scrollbar_x &&
+							 event.y >= scrdesc.scrollbar_start_y &&
+							 event.y <= scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy))
+						{
+							if (!scrdesc.scrollbar_mode)
+							{
+								if (event.bstate & BUTTON1_PRESSED)
+								{
+									if (event.y == scrdesc.scrollbar_start_y)
+									{
+										next_command = cmd_CursorUp;
+										last_sec = 0;
+										break;
+									}
+									else if (event.y == scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - 1)
+									{
+										next_command = cmd_CursorDown;
+										last_sec = 0;
+										break;
+									}
+									else
+									{
+										if (scrdesc.slider_min_y != -1)
+										{
+											if (event.y  < scrdesc.slider_min_y + scrdesc.scrollbar_start_y)
+											{
+												next_command = cmd_PageUp;
+												last_sec = 0;
+												break;
+											}
+											else if (event.y  > scrdesc.slider_min_y + scrdesc.slider_size)
+											{
+												next_command = cmd_PageDown;
+												last_sec = 0;
+												break;
+											}
+										}
+
+										scrdesc.scrollbar_mode = true;
+										scrdesc.scrollbar_mode = true;
+										scrollbar_mode_initial_slider_mouse_offset_y =
+														  event.y - scrdesc.scrollbar_start_y - scrdesc.slider_min_y;
+
+										scrollbar_mode_initial_slider_min_y = scrdesc.slider_min_y;
+										scrollbar_mode_initial_cursor_row = cursor_row;
+										scrollbar_mode_initial_first_row = first_row;
+									}
+								}
+							}
+
+#if NCURSES_MOUSE_VERSION > 1
+
+							if (scrdesc.scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION &&
+								scrdesc.scrollbar_maxy - 2 > scrdesc.slider_size)
+							{
+								int		new_slider_min_y;
+								int		slider_min_y_offset;
+								int		max_cursor_row = MAX_CURSOR_ROW;
+								int		max_first_row = MAX_FIRST_ROW;
+								int		max_slider_min_y = scrdesc.scrollbar_maxy - scrdesc.slider_size - 1;
+								double	step_size;
+
+								new_slider_min_y =
+										trim_to_range(
+													  event.y - scrdesc.scrollbar_start_y
+															  - scrollbar_mode_initial_slider_mouse_offset_y,
+													  1, max_slider_min_y);
+
+								slider_min_y_offset = new_slider_min_y - scrollbar_mode_initial_slider_min_y;
+
+								step_size = ((double) max_first_row) /
+											((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size);
+
+								if (slider_min_y_offset == 0)
+								{
+									first_row = scrollbar_mode_initial_first_row;
+									cursor_row = scrollbar_mode_initial_cursor_row;
+								}
+								else if (new_slider_min_y == 1)
+								{
+									if (first_row != 0)
+									{
+										cursor_row -= first_row;
+										first_row = 0;
+									}
+
+									cursor_row = trim_to_range(cursor_row, 0, round(step_size) - 1);
+								}
+								else if (new_slider_min_y == max_slider_min_y)
+								{
+									if (first_row < max_first_row)
+									{
+										int		d = cursor_row - first_row;
+
+										first_row = max_first_row;
+										cursor_row = max_first_row + d;
+									}
+
+									cursor_row = trim_to_range(cursor_row,
+															   max_cursor_row - round(step_size),
+															   max_cursor_row);
+								}
+								else
+								{
+									cursor_row =
+										trim_to_range(
+											round(scrollbar_mode_initial_cursor_row + slider_min_y_offset * step_size),
+											0, max_cursor_row);
+
+									first_row =
+										trim_to_range(
+											round(scrollbar_mode_initial_first_row + slider_min_y_offset * step_size),
+											0, MAX_FIRST_ROW);
+								}
+
+								scrdesc.slider_min_y = new_slider_min_y;
+								scrdesc.slider_has_position = true;
+							}
+
+#endif
+
+							break;
+						}
+
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
 							/* Activate menu only on BUTTON1_PRESS event */
@@ -5315,8 +5663,6 @@ found_next_pattern:
 								prev_event_keycode = 0;
 								break;
 							}
-							else
-								continue;
 						}
 
 						if (event.bstate & BUTTON1_RELEASED)
@@ -5548,6 +5894,7 @@ found_next_pattern:
 		}
 
 		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
+		set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 		if (first_row != prev_first_row)
 		{
@@ -5589,6 +5936,7 @@ refresh:
 			getmaxyx(stdscr, maxy, maxx);
 
 			refresh_aux_windows(&opts, &scrdesc);
+
 			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
 
@@ -5603,6 +5951,7 @@ refresh:
 			}
 
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
+			set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 			if (cmdbar)
 				cmdbar = init_cmdbar(cmdbar, &opts);

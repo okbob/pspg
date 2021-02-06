@@ -54,6 +54,7 @@ typedef struct
 	bool	show_rownum;
 	bool	no_cursor;
 	bool	vertical_cursor;
+	bool	show_scrollbar;
 	bool	tabular_cursor;
 	bool	force_ascii_art;
 	int		theme;

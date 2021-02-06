@@ -143,7 +143,7 @@ typedef struct
 	bool	multilines_already_tested;	/* true, when we know where are multilines */
 } DataDesc;
 
-#define		PSPG_WINDOW_COUNT		9
+#define		PSPG_WINDOW_COUNT		10
 
 /*
  * This structure can be mutable - depends on displayed data
@@ -181,6 +181,18 @@ typedef struct
 	bool	applytimeout;			/* true, when saved info should be close after timeout */
 	bool	is_error;				/* true, when saved info should be displayed as error */
 	bool	refresh_scr;			/* force rewrite screen */
+
+	int		scrollbar_maxy;			/* max y of horisontal scrollbar */
+	int		scrollbar_start_y;		/* start y dim of horisontal scrollbar */
+	int		scrollbar_x;			/* x position of horisontal scrollbar */
+	int		slider_min_y;			/* position of scrollbar slider */
+	int		slider_size;			/* height of slider (vertical) */
+	bool	scrollbar_mode;			/* true, when vertical scrollbar is active */
+
+	bool	slider_has_position;	/* protection against visual defects from twice setting of *
+									 * slider position. After leaving of scrollbar mode        *
+									 * we should not to set slider position from cursor        *
+									 * position */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
@@ -192,6 +204,7 @@ typedef struct
 #define		w_bottom_bar(scrdesc)	((scrdesc)->wins[WINDOW_BOTTOM_BAR])
 #define		w_rownum(scrdesc)		((scrdesc)->wins[WINDOW_ROWNUM])
 #define		w_rownum_luc(scrdesc)	((scrdesc)->wins[WINDOW_ROWNUM_LUC])
+#define		w_vscrollbar(scrdesc)	((scrdesc)->wins[WINDOW_VSCROLLBAR])
 
 /*
  * Used for storing not yet formatted data
@@ -349,9 +362,9 @@ extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

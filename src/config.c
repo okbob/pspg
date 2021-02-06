@@ -112,6 +112,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("quit_on_f3", opts->quit_on_f3);
 	SAFE_SAVE_BOOL_OPTION("pgcli_fix", opts->pgcli_fix);
 	SAFE_SAVE_BOOL_OPTION("xterm_mouse_mode", opts->xterm_mouse_mode);
+	SAFE_SAVE_BOOL_OPTION("show_scrollbar", opts->show_scrollbar);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -213,6 +214,8 @@ load_config(char *path, Options *opts)
 			}
 			else if (strcmp(key, "xterm_mouse_mode") == 0)
 				opts->xterm_mouse_mode = bool_val;
+			else if (strcmp(key, "show_scrollbar") == 0)
+				opts->show_scrollbar = bool_val;
 
 			free(line);
 			line = NULL;

@@ -111,6 +111,7 @@ typedef enum PspgCommand
 	cmd_ShowVerticalCursor,
 	cmd_BoldLabelsToggle,
 	cmd_BoldCursorToggle,
+	cmd_ShowScrollbar,
 	cmd_SortAsc,
 	cmd_SortDesc,
 	cmd_OriginalSort,

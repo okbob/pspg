@@ -254,6 +254,9 @@ cmd_string(int cmd)
 		case cmd_BoldCursorToggle:
 			return "BoldCursorToggle";
 
+		case cmd_ShowScrollbar:
+			return "ShowScrollBar";
+
 		case cmd_SortAsc:
 			return "SortAsc";
 		case cmd_SortDesc:
