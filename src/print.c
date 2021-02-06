@@ -539,12 +539,16 @@ window_fill(int window_identifier,
 
 		werase(win);
 
-		wattron(win, COLOR_PAIR(99));
+		wattron(win, t->scrollbar_attr);
 
 		for (i = 0; i < scrdesc->scrollbar_maxy; i++)
 			waddch(win, ACS_CKBOARD);
 
-		if (opts->force8bit || opts->force_ascii_art)
+		wattroff(win, t->scrollbar_attr);
+
+		wattron(win, t->scrollbar_arrow_attr);
+
+		if (t->scrollbar_use_arrows || opts->force8bit || opts->force_ascii_art)
 		{
 			mvwaddch(win, 0, 0, ACS_UARROW);
 			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
@@ -555,23 +559,20 @@ window_fill(int window_identifier,
 			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
 		}
 
-		if (scrdesc->scrollbar_mode)
-		{
-			wattron(win, COLOR_PAIR(100) | A_REVERSE);
+		wattroff(win, t->scrollbar_arrow_attr);
 
+		wattron(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
+
+		if (!t->scrollbar_slider_symbol)
+		{
 			/* draw slider */
 			for (i = 0; i < scrdesc->slider_size; i++)
 				mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
-
-			wattroff(win, COLOR_PAIR(100) | A_REVERSE);
 		}
 		else
-		{
+			mvwaddch(win, scrdesc->slider_min_y, 0, t->scrollbar_slider_symbol);
 
-			/* draw slider */
-			for (i = 0; i < scrdesc->slider_size; i++)
-				mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
-		}
+		wattroff(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
 
 		return;
 	}

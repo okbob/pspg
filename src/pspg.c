@@ -397,13 +397,21 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		/* show scrollbar only when display is less than data */
 		if (slider_rows < data_rows)
 		{
+			Theme		*t;
+
 			scrdesc->main_maxx -= 1;
+
+			t = &scrdesc->themes[WINDOW_VSCROLLBAR];
 
 			scrdesc->scrollbar_x = scrdesc->maxx - 1;
 			scrdesc->scrollbar_start_y = scrdesc->main_start_y;
 			scrdesc->scrollbar_maxy = scrdesc->main_maxy;
 
-			if (slider_rows > 3)
+			if (t->scrollbar_slider_symbol)
+			{
+				scrdesc->slider_size = 1;
+			}
+			else if (slider_rows > 3)
 			{
 				scrdesc->slider_size = floor((pow((double) (slider_rows - 2), 2) / (double) data_rows));
 
@@ -2179,14 +2187,14 @@ main(int argc, char *argv[])
 
 #ifdef DEBUG_PIPE
 
-	time_t		start_app_sec;
-	long		start_app_ms;
-	bool		first_doupdate = true;
+	time_t	start_app_sec;
+	long	start_app_ms;
+	bool	first_doupdate = true;
 
 #endif
 
-	time_t		last_doupdate_sec = -1;
-	long		last_doupdate_ms = -1;
+	time_t	last_doupdate_sec = -1;
+	long	last_doupdate_ms = -1;
 
 	struct winsize size;
 	bool		size_is_valid = false;
@@ -2880,6 +2888,8 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
+	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_VSCROLLBAR]);
+
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
 	set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
@@ -3132,8 +3142,10 @@ reinit_theme:
 					long		td = time_diff(current_sec, current_ms,
 											   last_doupdate_sec, last_doupdate_ms);
 
-					if (td < 25)
-						usleep((25 - td) * 1000);
+					if (td < 30)
+						usleep((30 - td) * 1000);
+
+					current_time(&current_sec, &current_ms);
 				}
 
 				last_doupdate_sec = current_sec;
