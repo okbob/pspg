@@ -57,6 +57,10 @@ typedef struct
 	attr_t pattern_vertical_cursor_line_attr;
 	attr_t error_attr;				/* colors for display error */
 	attr_t input_attr;				/* colors for input line */
+	attr_t scrollbar_arrow_attr;	/* colors for scrollbar arrows symbols */
+	attr_t scrollbar_bar_attr;		/* colors for scrollbar background */
+	attr_t scrollbar_slider_attr;	/* colors for scrollbar slider */
+	attr_t scrollbar_active_slider_attr; /* colors for active scrollbar slider */
 } Theme;
 
 #define		WINDOW_LUC				0

@@ -2185,6 +2185,9 @@ main(int argc, char *argv[])
 
 #endif
 
+	time_t		last_doupdate_sec = -1;
+	long		last_doupdate_ms = -1;
+
 	struct winsize size;
 	bool		size_is_valid = false;
 	int			ioctl_result;
@@ -3109,6 +3112,8 @@ reinit_theme:
 				no_doupdate = false;
 			else if (next_command == 0 || scrdesc.fmt != NULL)
 			{
+				time_t		current_sec;
+				long		current_ms;
 
 #ifdef DEBUG_PIPE
 
@@ -3118,6 +3123,21 @@ reinit_theme:
 				current_time(&start_draw_sec, &start_draw_ms);
 
 #endif
+
+				current_time(&current_sec, &current_ms);
+
+				/* We don't want do UPDATE too quickly */
+				if (last_doupdate_sec != -1)
+				{
+					long		td = time_diff(current_sec, current_ms,
+											   last_doupdate_sec, last_doupdate_ms);
+
+					if (td < 25)
+						usleep((25 - td) * 1000);
+				}
+
+				last_doupdate_sec = current_sec;
+				last_doupdate_ms = current_ms;
 
 				doupdate();
 
