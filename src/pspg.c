@@ -152,7 +152,7 @@ static bool xterm_mouse_mode_was_initialized = false;
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
 
-static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
+static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row);
 
 
 StateData *current_state = NULL;
@@ -371,8 +371,6 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	{
 		int		data_rows = desc->last_row + 1;
 		int		slider_rows = scrdesc->main_maxy;
-
-fprintf(debug_pipe, "*********************************************************************************************\n");
 
 		/* show scrollbar only when display is less than data */
 		if (slider_rows < data_rows)
@@ -2025,14 +2023,60 @@ export_to_file(PspgCommand command,
  * From "first_row" calculate position of slider of vertical scrollbar
  */
 static void
-set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
+set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
 {
-	double	step_size;
+	int		max_cursor_row;
+	int		max_first_row;
+	int		max_slider_min_y;
 
-	step_size = ((double) (desc->last_row - desc->title_rows - scrdesc->main_maxy + 1)) /
-				((double) scrdesc->scrollbar_maxy - 2 - scrdesc->slider_size);
+	if (scrdesc->slider_has_position)
+	{
+		scrdesc->slider_has_position = false;
 
-	scrdesc->slider_min_y = (first_row) / step_size + 1;
+		return;
+	}
+
+	max_cursor_row = desc->last_row - desc->first_data_row;
+	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
+	max_slider_min_y = scrdesc->scrollbar_maxy - scrdesc->slider_size - 1;
+
+	/*
+	 * When we are in border positions, then we want to set slider absolutely,
+	 * to correct possible rounding errors.
+	 */
+	if (cursor_row == 0)
+	{
+		scrdesc->slider_min_y = 1;
+
+		return;
+	}
+	else if (cursor_row == max_cursor_row ||
+			 first_row == max_first_row)
+	{
+		scrdesc->slider_min_y = max_slider_min_y;
+
+		return;
+	}
+
+	/*
+	 * When we need to calculate slider position, then we do it on cursor row base.
+	 * When we move cursor, then slider can be moved to, although first row was not
+	 * changed. So the base for calculation should be cursor_row.
+	 */
+
+	scrdesc->slider_min_y =
+			round(((double) cursor_row) / ((double) (desc->last_row - desc->first_data_row))
+				  * ((double) scrdesc->scrollbar_maxy - 2 - scrdesc->slider_size)) + 1;
+
+	/*
+	 * We want to move slider to border positions only when display is in
+	 * border positions too.
+	 */
+	if (scrdesc->slider_min_y == 1 && first_row > 0)
+		scrdesc->slider_min_y = 2;
+	else if (scrdesc->slider_min_y == max_slider_min_y &&
+			 first_row < max_first_row)
+		scrdesc->slider_min_y -= 1;
 }
 
 /*
@@ -2811,7 +2855,7 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
-	set_scrollbar(&scrdesc, &desc, first_row);
+	set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
@@ -3276,7 +3320,7 @@ force_refresh_data:
 					if (scrdesc.wins[WINDOW_TOP_BAR])
 						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
 
-					set_scrollbar(&scrdesc, &desc, first_row);
+					set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 					if (force_refresh)
 					{
@@ -5423,6 +5467,7 @@ found_next_pattern:
 						if (scrdesc.scrollbar_mode && event.bstate & BUTTON1_RELEASED)
 						{
 							scrdesc.scrollbar_mode = false;
+							scrdesc.slider_has_position = true;
 							last_sec = 0;
 							break;;
 						}
@@ -5493,24 +5538,40 @@ found_next_pattern:
 								step_size = ((double) max_first_row) /
 											((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size);
 
+fprintf(debug_pipe, "scrollbar mouse handling dn: %f, dt: %f, step: %f, slider_min: %d, first_row: %d\n",
+	(double) (desc.last_row - desc.title_rows - scrdesc.main_maxy + 1),
+	((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size),
+	((double) (desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)) /
+				((double) scrdesc.scrollbar_maxy - 2 - scrdesc.slider_size),
+	scrdesc.slider_min_y,
+	first_row);
+
+
 								new_slider_min_y =
 									trim_to_range(
 										event.y - scrdesc.scrollbar_start_y - scrollbar_mode_initial_slider_mouse_offset_y,
 										1, scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - scrdesc.slider_size - 2);
 
+fprintf(debug_pipe, "scrollbar mouse handling - new slider min %d\n", new_slider_min_y);
+
 								slider_min_y_offset = new_slider_min_y - scrollbar_mode_initial_slider_min_y;
 
 								cursor_row =
 									trim_to_range(
-										scrollbar_mode_initial_cursor_row + slider_min_y_offset * step_size,
+										round(scrollbar_mode_initial_cursor_row + slider_min_y_offset * step_size),
 										0, max_cursor_row);
 
 								first_row =
 									trim_to_range(
-										scrollbar_mode_initial_first_row + slider_min_y_offset * step_size,
+										round(scrollbar_mode_initial_first_row + slider_min_y_offset * step_size),
 										0, MAX_FIRST_ROW);
 
+fprintf(debug_pipe, "scrollbar mouse handling - new first_row %d\n", first_row);
+
+
 								scrdesc.slider_min_y = new_slider_min_y;
+
+								scrdesc.slider_has_position = true;
 							}
 
 #endif
@@ -5759,7 +5820,7 @@ found_next_pattern:
 		}
 
 		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-		set_scrollbar(&scrdesc, &desc, first_row);
+		set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 		if (first_row != prev_first_row)
 		{
@@ -5816,7 +5877,7 @@ refresh:
 			}
 
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-			set_scrollbar(&scrdesc, &desc, first_row);
+			set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
 
 			if (cmdbar)
 				cmdbar = init_cmdbar(cmdbar, &opts);

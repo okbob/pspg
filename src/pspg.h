@@ -181,12 +181,18 @@ typedef struct
 	bool	applytimeout;			/* true, when saved info should be close after timeout */
 	bool	is_error;				/* true, when saved info should be displayed as error */
 	bool	refresh_scr;			/* force rewrite screen */
+
 	int		scrollbar_maxy;			/* max y of horisontal scrollbar */
 	int		scrollbar_start_y;		/* start y dim of horisontal scrollbar */
 	int		scrollbar_x;			/* x position of horisontal scrollbar */
 	int		slider_min_y;			/* position of scrollbar slider */
 	int		slider_size;			/* height of slider (vertical) */
 	bool	scrollbar_mode;			/* true, when vertical scrollbar is active */
+
+	bool	slider_has_position;	/* protection against visual defects from twice setting of *
+									 * slider position. After leaving of scrollbar mode        *
+									 * we should not to set slider position from cursor        *
+									 * position */
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
