@@ -287,6 +287,8 @@ print_column_names(WINDOW *win,
 		pos += chars;
 	}
 
+	wclrtoeol(win);
+
 	wattroff(win, active_attr);
 
 	/* check all column names and print that are visible */
@@ -796,6 +798,7 @@ window_fill(int window_identifier,
 			{
 				print_column_names(win, srcx, vcursor_xmin, vcursor_xmax, desc, opts, t);
 				continue;
+				//break;
 			}
 
 			/* skip first srcx chars */
