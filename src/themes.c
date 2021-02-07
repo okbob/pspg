@@ -155,7 +155,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
+			set_colour(30, COLOR_WHITE, COLOR_BLUE, false, 0);
 			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
 			set_colour(33, COLOR_WHITE, COLOR_BLUE, true, A_REVERSE);

@@ -550,10 +550,18 @@ window_fill(int window_identifier,
 
 		wattron(win, t->scrollbar_arrow_attr);
 
-		if (t->scrollbar_use_arrows || opts->force8bit || opts->force_ascii_art)
+		if (t->scrollbar_use_arrows)
 		{
-			mvwaddch(win, 0, 0, ACS_UARROW);
-			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+			if (opts->force8bit || opts->force_ascii_art)
+			{
+				mvwaddch(win, 0, 0, ACS_UARROW);
+				mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+			}
+			else
+			{
+				mvwprintw(win, 0, 0, "%lc", L'\x1F815');
+				mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x1F817');
+			}
 		}
 		else
 		{
