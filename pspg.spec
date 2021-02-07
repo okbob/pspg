@@ -44,7 +44,7 @@ CFLAGS="$RPM_OPT_FLAGS"
 
 %changelog
 * Sun Feb  7 2021 Pavel Stehule <pavel.stehule@gmail.com>
-* main window has horizontal scrollbar
+* main window has vertical scrollbar
 
 * Fri Jan 29 2021 Pavel Stehule <pavel.stehule@gmail.com>
 * enhancing mouse usage by support xterm mouse mode 1002
