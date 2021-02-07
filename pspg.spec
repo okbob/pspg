@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	4.1.0
+Version: 	4.2.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,9 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Sun Feb  7 2021 Pavel Stehule <pavel.stehule@gmail.com>
+* main window has horizontal scrollbar
+
 * Fri Jan 29 2021 Pavel Stehule <pavel.stehule@gmail.com>
 * enhancing mouse usage by support xterm mouse mode 1002
 
