@@ -2195,6 +2195,7 @@ main(int argc, char *argv[])
 
 	time_t	last_doupdate_sec = -1;
 	long	last_doupdate_ms = -1;
+	int		last_first_row = -1;
 
 	struct winsize size;
 	bool		size_is_valid = false;
@@ -3137,23 +3138,27 @@ reinit_theme:
 				current_time(&current_sec, &current_ms);
 
 				/*
-				 * We don't want do UPDATE too quickly.
-				 * Don't afraid about menu - there is small
-				 * ara for update.
+				 * We don't want do UPDATE too quickly. When first_row
+				 * same like last_first_row, then update will not be
+				 * too massive.
 				 */
 				if (!menu_is_active && last_doupdate_sec != -1)
 				{
-					long		td = time_diff(current_sec, current_ms,
-											   last_doupdate_sec, last_doupdate_ms);
+					int		limit;
+					long	td = time_diff(current_sec, current_ms,
+										   last_doupdate_sec, last_doupdate_ms);
 
-					if (td < 30)
-						usleep((30 - td) * 1000);
+					limit = last_first_row == first_row ? 20 : 30;
+
+					if (td < limit)
+						usleep((limit - td) * 1000);
 
 					current_time(&current_sec, &current_ms);
 				}
 
 				last_doupdate_sec = current_sec;
 				last_doupdate_ms = current_ms;
+				last_first_row = first_row;
 
 				doupdate();
 
