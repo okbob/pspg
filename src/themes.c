@@ -1113,8 +1113,8 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 					t->scrollbar_slider_symbol = ACS_DIAMOND;
 					break;
 
-				case 3:
-					t->scrollbar_use_arrows = true;
+				case 12:
+					t->scrollbar_slider_symbol = ACS_BLOCK;
 					break;
 
 				case 0:
@@ -1122,18 +1122,8 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 					t->scrollbar_use_arrows = true;
 					break;
 
-				case 12:
-					t->scrollbar_slider_symbol = ACS_BLOCK;
-					break;
-
-				case 13:
-				case 14:
-				case 16:
-				case 15:
-				case 8:
-				case 9:
-				case 1:
-				case 7:
+				case 1: case 3: case 7: case 8:
+				case 13: case 14: case 16: case 15:
 					t->scrollbar_use_arrows = true;
 					break;
 
