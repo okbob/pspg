@@ -3136,8 +3136,12 @@ reinit_theme:
 
 				current_time(&current_sec, &current_ms);
 
-				/* We don't want do UPDATE too quickly */
-				if (last_doupdate_sec != -1)
+				/*
+				 * We don't want do UPDATE too quickly.
+				 * Don't afraid about menu - there is small
+				 * ara for update.
+				 */
+				if (!menu_is_active && last_doupdate_sec != -1)
 				{
 					long		td = time_diff(current_sec, current_ms,
 											   last_doupdate_sec, last_doupdate_ms);
