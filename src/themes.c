@@ -155,12 +155,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-
-			set_colour(30, COLOR_BLUE, COLOR_CYAN, false, 0);
+			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
 			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
 			set_colour(33, COLOR_WHITE, COLOR_BLUE, true, A_REVERSE);
-
 			break;
 
 		case 2:
@@ -1128,6 +1126,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 				case 15:
 				case 8:
 				case 9:
+				case 1:
 					t->scrollbar_use_arrows = true;
 					break;
 
