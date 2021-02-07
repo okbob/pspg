@@ -5521,7 +5521,7 @@ found_next_pattern:
 
 						)
 					{
-						int		max_cursor_row;
+						int		max_cursor_row = MAX_CURSOR_ROW;
 						bool	is_double_click = false;
 						bool	_is_footer_cursor;
 						long	ms;
@@ -5595,7 +5595,6 @@ found_next_pattern:
 							{
 								int		new_slider_min_y;
 								int		slider_min_y_offset;
-								int		max_cursor_row = MAX_CURSOR_ROW;
 								int		max_first_row = MAX_FIRST_ROW;
 								int		max_slider_min_y = scrdesc.scrollbar_maxy - scrdesc.slider_size - 1;
 								double	step_size;
@@ -5658,7 +5657,6 @@ found_next_pattern:
 
 								/* slower processing reduce flickering */
 								usleep(10 * 1000);
-
 							}
 
 #endif
