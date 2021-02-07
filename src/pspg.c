@@ -5655,6 +5655,10 @@ found_next_pattern:
 
 								scrdesc.slider_min_y = new_slider_min_y;
 								scrdesc.slider_has_position = true;
+
+								/* slower processing reduce flickering */
+								usleep(10 * 1000);
+
 							}
 
 #endif
