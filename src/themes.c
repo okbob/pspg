@@ -358,7 +358,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_CYAN, COLOR_GREEN, true, A_REVERSE);
 			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, 0);		/* input */
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_GREEN, COLOR_BLACK, true, A_DIM);
+			set_colour(30, COLOR_GREEN, COLOR_BLACK, true, 0);
 			set_colour(31, COLOR_GREEN, COLOR_BLACK, false, 0);
 			set_colour(32, COLOR_GREEN, COLOR_BLACK, false, A_REVERSE);
 			set_colour(33, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE);
@@ -394,6 +394,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_GREEN, COLOR_CYAN, true, A_REVERSE);
 			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
+			set_colour(30, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar arrows */
+			set_colour(31, COLOR_WHITE, COLOR_BLACK, true, 0);			/* scrollbar background */
+			set_colour(32, COLOR_BLACK, COLOR_BLUE, false, A_REVERSE);	/* scrollbar slider */
+			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar active slider */
 			break;
 
 		case 9:
@@ -462,9 +466,9 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(27, COLOR_BLACK, COLOR_CYAN, false, 0);		/* input */
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(30, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(31, COLOR_CYAN, COLOR_WHITE, false, 0);
-			set_colour(32, COLOR_BLUE, COLOR_BLACK, false, A_REVERSE);
-			set_colour(33, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
+			set_colour(31, COLOR_BLACK, COLOR_CYAN, true, 0);
+			set_colour(32, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
+			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
 			break;
 
 		case 11:
@@ -564,8 +568,8 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_CYAN, COLOR_BLUE, false, A_REVERSE);
-			set_colour(33, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
+			set_colour(32, COLOR_CYAN, COLOR_BLUE, true, A_REVERSE);
+			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
 			break;
 		case 14:
 			/* DBase retro magenta */
@@ -599,7 +603,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
 			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_MAGENTA, COLOR_BLUE, false, A_REVERSE);
+			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
 			set_colour(33, COLOR_MAGENTA, COLOR_BLACK, true, A_REVERSE);
 
 			break;
@@ -633,12 +637,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_RED, COLOR_BLACK, true, A_REVERSE);
 			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
 			set_colour(28, COLOR_YELLOW, COLOR_RED, true, A_REVERSE | A_BOLD);
-
 			set_colour(30, COLOR_BLACK, COLOR_WHITE, false, 0);
 			set_colour(31, COLOR_BLACK, COLOR_WHITE, true, 0);
 			set_colour(32, COLOR_BLACK, COLOR_BLACK, true, A_REVERSE);
 			set_colour(33, COLOR_RED, COLOR_BLACK, false, A_REVERSE);
-
 			break;
 
 		case 16:
@@ -974,6 +976,10 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
 			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
 			set_colour(28, COLOR_GREEN, COLOR_RED, true, 0);
+			set_colour(30, COLOR_WHITE, COLOR_BLACK, false, A_REVERSE);
+			set_colour(31, COLOR_BLACK, COLOR_BLACK, true, 0);
+			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
+			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
 			break;
 	}
 }
@@ -1127,6 +1133,7 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 				case 8:
 				case 9:
 				case 1:
+				case 7:
 					t->scrollbar_use_arrows = true;
 					break;
 
