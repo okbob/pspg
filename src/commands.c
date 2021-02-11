@@ -324,6 +324,15 @@ cmd_string(int cmd)
 	}
 }
 
+bool
+is_cmd_RowNumToggle(int c, bool alt)
+{
+	if (alt && c == 'n')
+		return true;
+
+	return false;
+}
+
 int
 translate_event(int c, bool alt, Options *opts, int *nested_command)
 {
