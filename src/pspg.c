@@ -1733,6 +1733,11 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 
 	new->fmt = old->fmt;
 	new->par = old->par;
+
+	new->selected_first_row = old->selected_first_row;
+	new->selected_rows = old->selected_rows;
+	new->selected_first_column = old->selected_first_column;
+	new->selected_columns = old->selected_columns;
 }
 
 /*
@@ -1863,6 +1868,14 @@ export_to_file(PspgCommand command,
 
 	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
 		opts->no_cursor)
+	{
+		show_info_wait(opts, scrdesc, " There are not selected data", NULL, true, true, true, false);
+		return;
+	}
+
+	if (command == cmd_CopySelected &&
+		!(scrdesc->selected_first_row != -1 ||
+		  scrdesc->selected_first_column != -1))
 	{
 		show_info_wait(opts, scrdesc, " Cursor is not visible", NULL, true, true, true, false);
 		return;
@@ -2124,6 +2137,7 @@ main(int argc, char *argv[])
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
 	int		command = cmd_Invalid;
+	int		nested_command = cmd_Invalid;
 	int		translated_command = cmd_Invalid;
 	int		translated_command_history = cmd_Invalid;
 	long	last_ms = 0;							/* time of last mouse release in ms */
@@ -2206,6 +2220,11 @@ main(int argc, char *argv[])
 
 	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
 
+	bool	mark_mode = false;
+	bool	mark_cursor_mode = false;
+	bool	mark_mouse_mode = false;
+	int		mark_mode_start_row = 0;
+
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
@@ -2232,6 +2251,11 @@ main(int argc, char *argv[])
 
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
+
+	scrdesc.selected_first_row = -1;
+	scrdesc.selected_rows = 0;
+	scrdesc.selected_first_column = -1;
+	scrdesc.selected_columns = 0;
 
 #ifdef DEBUG_PIPE
 
@@ -2702,7 +2726,7 @@ reinit_theme:
 
 		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
 				  BUTTON4_PRESSED | BUTTON5_PRESSED |
-				  BUTTON_ALT |
+				  BUTTON_ALT | BUTTON_CTRL |
 				  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 				  NULL);
 
@@ -3013,6 +3037,23 @@ reinit_theme:
 							vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
 				}
 
+				/* Calculate selected range in mark mode */
+				if (mark_mode || mark_cursor_mode || mark_mouse_mode)
+				{
+					if (cursor_row > mark_mode_start_row)
+					{
+						scrdesc.selected_first_row = mark_mode_start_row;
+						scrdesc.selected_rows = cursor_row - mark_mode_start_row + 1;
+					}
+					else
+					{
+						scrdesc.selected_first_row = cursor_row;
+						scrdesc.selected_rows = mark_mode_start_row - cursor_row + 1;
+					}
+				}
+
+fprintf(debug_pipe, "selected first_row %d, rows: %d\n", scrdesc.selected_first_row, scrdesc.selected_rows);
+
 #ifdef DEBUG_PIPE
 
 				current_time(&start_draw_sec, &start_draw_ms);
@@ -3225,6 +3266,27 @@ reinit_theme:
 										  opts.watch_time > 0 ? 1000 : -1,
 										  state.hold_stream);
 
+				/* Disable mark cursor mode immediately */
+				if (mark_cursor_mode &&
+						!(event_keycode == KEY_SF ||
+						  event_keycode == KEY_SR ||
+						  event_keycode == KEY_SNEXT ||
+						  event_keycode == KEY_SPREVIOUS))
+					mark_cursor_mode = false;
+
+				/* Disablemark mouse mode immediately */
+				if (mark_mouse_mode &&
+						!(event_keycode == KEY_MOUSE &&
+
+#if NCURSES_MOUSE_VERSION > 1
+
+						  event.bstate & REPORT_MOUSE_POSITION &&
+
+#endif
+
+						  event.bstate & BUTTON_CTRL))
+					mark_mouse_mode = false;
+
 force_refresh_data:
 
 				if (force_refresh ||
@@ -3413,13 +3475,22 @@ force_refresh_data:
 		if (got_sigint)
 		{
 			if (!opts.no_sigint_search_reset &&
-				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
+				  (*scrdesc.searchterm || *scrdesc.searchcolterm ||
+				   scrdesc.selected_first_row != -1 ||
+				   scrdesc.selected_first_column != -1))
 			{
 				*scrdesc.searchterm = '\0';
 				*scrdesc.searchcolterm = '\0';
 
 				scrdesc.searchterm_size = 0;
 				scrdesc.searchterm_char_size = 0;
+
+				scrdesc.selected_first_row = -1;
+				scrdesc.selected_first_column = -1;
+
+				mark_mode = false;
+				mark_cursor_mode = false;
+				mark_mouse_mode = false;
 
 				reset_searching_lineinfo(&desc.rows);
 			}
@@ -3443,7 +3514,7 @@ force_refresh_data:
 		if (!redirect_mode)
 		{
 			translated_command_history = translated_command;
-			command = translate_event(event_keycode, press_alt, &opts);
+			command = translate_event(event_keycode, press_alt, &opts, &nested_command);
 			translated_command = command;
 		}
 
@@ -3510,7 +3581,7 @@ hide_menu:
 			if (!processed)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, &opts);
+				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
 				translated_command = command;
 			}
 			else
@@ -3521,7 +3592,7 @@ hide_menu:
 			if (!redirect_mode)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, &opts);
+				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
 				translated_command = command;
 			}
 		}
@@ -3545,13 +3616,22 @@ hide_menu:
 		{
 			/* same like sigterm handling */
 			if (!opts.no_sigint_search_reset &&
-				  (*scrdesc.searchterm || *scrdesc.searchcolterm))
+				  (*scrdesc.searchterm || *scrdesc.searchcolterm ||
+				   scrdesc.selected_first_row != -1 ||
+				   scrdesc.selected_first_column != -1))
 			{
 				*scrdesc.searchterm = '\0';
 				*scrdesc.searchcolterm = '\0';
 
 				scrdesc.searchterm_size = 0;
 				scrdesc.searchterm_char_size = 0;
+
+				scrdesc.selected_first_row = -1;
+				scrdesc.selected_first_column = -1;
+
+				mark_mode = false;
+				mark_cursor_mode = false;
+				mark_mouse_mode = false;
 
 				reset_searching_lineinfo(&desc.rows);
 			}
@@ -3575,7 +3655,7 @@ hide_menu:
 					{
 						st_menu_set_desktop_window(stdscr);
 						init_menu_config(&opts);
-						menu = init_menu(menu);
+						menu = init_menu(menu, &opts);
 					}
 
 					st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
@@ -3763,6 +3843,36 @@ reset_search:
 				reinit = true;
 				goto reinit_theme;
 
+			case cmd_Mark:
+				mark_mode = !mark_mode;
+				if (mark_mode)
+					mark_mode_start_row = cursor_row;
+
+				break;
+
+			case cmd_Mark_NestedCursorCommand:
+				if (!mark_cursor_mode)
+				{
+					mark_cursor_mode = true;
+					mark_mode = false;
+					mark_mode_start_row = cursor_row;
+				}
+				next_command = nested_command;
+				break;
+
+			case cmd_Unmark:
+				mark_mode = false;
+				scrdesc.selected_first_row = -1;
+				scrdesc.selected_first_column = -1;
+				break;
+
+			case cmd_MarkAll:
+				mark_mode = false;
+				scrdesc.selected_first_row = 0;
+				scrdesc.selected_first_column = -1;
+				scrdesc.selected_rows = MAX_CURSOR_ROW + 1;
+				break;
+
 			case cmd_MouseToggle:
 				{
 					if (!opts.no_mouse)
@@ -3789,7 +3899,7 @@ reset_search:
 
 							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
 									  BUTTON4_PRESSED | BUTTON5_PRESSED |
-									  BUTTON_ALT | BUTTON_SHIFT | BUTTON_CTRL |
+									  BUTTON_ALT | BUTTON_CTRL |
 									  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 									  NULL);
 
@@ -4898,6 +5008,23 @@ recheck_end:
 					break;
 				}
 
+			case cmd_CopySelected:
+				{
+					export_to_file(cmd_CopySelected,
+								   opts.clipboard_format,
+								   &next_event_keycode,
+								   &opts, &scrdesc, &desc,
+								   cursor_row, 0,
+								   &force_refresh);
+
+					if (force_refresh)
+						goto force_refresh_data;
+
+					refresh_scr = true;
+
+					break;
+				}
+
 			case cmd_CopyAllLines:
 				{
 					export_to_file(cmd_CopyAllLines,
@@ -5521,7 +5648,9 @@ found_next_pattern:
 						/* leave scrollbar mode after mouse button is released */
 						if (scrdesc.scrollbar_mode && event.bstate & BUTTON1_RELEASED)
 						{
+							mark_mouse_mode = false;
 							scrdesc.scrollbar_mode = false;
+
 							scrdesc.slider_has_position = true;
 							last_sec = 0;
 							break;;
@@ -5766,6 +5895,13 @@ found_next_pattern:
 								}
 							}
 						}
+
+						if (event.bstate & BUTTON_CTRL && event.bstate & BUTTON1_PRESSED)
+						{
+							mark_mouse_mode = true;
+							mark_mode_start_row = cursor_row;
+						}
+
 					}
 					break;
 				}

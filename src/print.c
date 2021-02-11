@@ -511,6 +511,9 @@ window_fill(int window_identifier,
 	bool		is_rownum_luc = window_identifier == WINDOW_ROWNUM_LUC;
 	bool		is_fix_rows_only = window_identifier == WINDOW_FIX_ROWS;
 	bool		is_scrollbar = window_identifier == WINDOW_VSCROLLBAR;
+	bool		is_selectable = window_identifier == WINDOW_ROWS ||
+								window_identifier == WINDOW_FIX_COLS ||
+								window_identifier == WINDOW_FOOTER;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -613,6 +616,7 @@ window_fill(int window_identifier,
 		char		buffer[10];
 		int			positions[100][2];
 		int			npositions = 0;
+		int			is_in_range = false;
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
@@ -878,6 +882,26 @@ window_fill(int window_identifier,
 					int		pos = (i != -1) ? srcx + i : -1;
 					bool	skip_char = false;
 
+					is_in_range = false;
+
+					if (is_selectable && scrdesc->selected_first_row != -1)
+					{
+						int rowno = row + srcy_bak - desc->first_data_row - 1;
+
+						if (rowno >= scrdesc->selected_first_row &&
+							rowno < scrdesc->selected_first_row + scrdesc->selected_rows)
+						{
+//							if (scrdesc->selected_first_column != -1 && pos != -1)
+//							{
+//								if (pos >= scrdesc->selected_first_column &&
+//										pos < scrdesc->selected_first_column + scrdesc->selected_columns)
+//									is_in_range = true;
+//							}
+//							else
+								is_in_range = true;
+						}
+					}
+
 					if (i != -1 && vcursor_xmin <= i && i <= vcursor_xmax)
 					{
 						is_cross_cursor = is_cursor_row;
@@ -935,7 +959,11 @@ window_fill(int window_identifier,
 							}
 						}
 
-						if (is_cross_cursor)
+						if (is_in_range)
+						{
+							new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
+						}
+						else if (is_cross_cursor)
 						{
 							new_attr = column_format == 'd' ? t->cross_cursor_attr : t->cross_cursor_line_attr;
 						}
@@ -1060,7 +1088,11 @@ window_fill(int window_identifier,
 						{
 							attr_t		new_attr;
 
-							if (is_cross_cursor)
+							if (is_in_range)
+							{
+								new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
+							}
+							else if (is_cross_cursor)
 							{
 								new_attr = t->cross_cursor_line_attr;
 							}
@@ -1173,7 +1205,11 @@ window_fill(int window_identifier,
 			/* draw cursor or bookmark line to screen end of line */
 			if (i < maxx)
 			{
-				if (is_cursor_row && !is_bookmark_row)
+				if (is_in_range && is_cursor_row)
+					mvwchgat(win, row - 1, i, -1, t->selection_cursor_attr, PAIR_NUMBER(t->selection_cursor_attr), 0);
+				else if (is_in_range && !is_cursor_row)
+					mvwchgat(win, row - 1, i, -1, t->selection_attr, PAIR_NUMBER(t->selection_attr), 0);
+				else if (is_cursor_row && !is_bookmark_row)
 					mvwchgat(win, row - 1, i, -1, t->cursor_data_attr, PAIR_NUMBER(t->cursor_data_attr), 0);
 				else if (!is_cursor_row && is_bookmark_row)
 					mvwchgat(win, row - 1, i, -1, t->bookmark_data_attr, PAIR_NUMBER(t->bookmark_data_attr), 0);

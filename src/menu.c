@@ -23,6 +23,7 @@
 
 ST_CMDBAR_ITEM _bottombar[] = {
 	{"Save", false, 2, cmd_SaveData, 0},
+	{"Mark", false, 3, cmd_Mark, 0},
 	{"Search", false, 7, cmd_ForwardSearch, 0},
 	{"Menu", false, 9, cmd_ShowMenu, 0},
 	{"Quit", false, 10, cmd_Quit, 0},
@@ -45,12 +46,13 @@ ST_MENU_ITEM _copy[] = {
 	{"Copy ~l~ine", cmd_CopyLine, NULL, 0, 0, 0, NULL},
 	{"Copy line e~x~tended", cmd_CopyLineExtended, NULL, 0, 0, 0, NULL},
 	{"Copy col~u~mn", cmd_CopyColumn, NULL, 0, 0, 0, NULL},
+	{"Copy ~s~elected", cmd_CopySelected, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Copy ~a~ll", cmd_CopyAllLines, NULL, 0, 0, 0, NULL},
 	{"Copy ~t~op lines", cmd_CopyTopLines, NULL, 0, 0, 0, NULL},
 	{"Copy ~b~ottom lines", cmd_CopyBottomLines, NULL, 0, 0, 0, NULL},
-	{"Copy ~m~arked lines", cmd_CopyMarkedLines, NULL, 0, 0, 0, NULL},
-	{"Copy ~s~earched lines", cmd_CopySearchedLines, NULL, 0, 0, 0, NULL},
+	{"Copy book~m~arked lines", cmd_CopyMarkedLines, NULL, 0, 0, 0, NULL},
+	{"Copy sea~r~ched lines", cmd_CopySearchedLines, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Copy to ~f~ile", cmd_SetCopyFile, NULL, 0, 0, 0, NULL},
 	{"Copy to cli~p~board", cmd_SetCopyClipboard, NULL, 0, 0, 0, NULL},
@@ -120,6 +122,11 @@ ST_MENU_ITEM _command[] = {
 	{"As~c~ending order", cmd_SortAsc, "a", 0, 0, 0, NULL},
 	{"~D~escending order", cmd_SortDesc, "d", 0, 0, 0, NULL},
 	{"~O~riginal order", cmd_OriginalSort, "u", 0, 0, 0, NULL},
+	{"--", 0, NULL, 0, 0, 0, NULL},
+	{"To~g~gle mark", cmd_Mark, "F3", 0, 0, 0, NULL},
+	{"~M~ark column", cmd_MarkColumn, "F13", 0, 0, 0, NULL},
+	{"Mark all", cmd_MarkAll, NULL, 0, 0, 0, NULL},
+	{"Unmar~k~", cmd_Unmark, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Refres~h~ screen", cmd_Refresh, "R, C-l", 0, 0, 0, NULL},
 	{NULL, 0, NULL, 0, 0, 0, NULL}
@@ -291,7 +298,7 @@ init_menu_config(Options *opts)
  * Prepare configuration and initialize menu
  */
 struct ST_MENU *
-init_menu(struct ST_MENU *current_menu)
+init_menu(struct ST_MENU *current_menu, Options *opts)
 {
 	struct ST_MENU		*menu = NULL;
 
@@ -309,6 +316,9 @@ init_menu(struct ST_MENU *current_menu)
 		st_menu_load(menu, positions, refvals);
 		st_menu_free(current_menu);
 	}
+
+	if (opts->quit_on_f3)
+		st_menu_set_shortcut(menu, cmd_Mark, NULL);
 
 	return menu;
 }

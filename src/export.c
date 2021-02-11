@@ -415,7 +415,7 @@ export_data(Options *opts,
 	bool	save_column_names = false;
 
 	int		min_row = desc->first_data_row;
-	int		max_row = desc->last_data_row;
+	int		max_row = desc->last_row;
 	int		xmin = -1;
 	int		xmax = -1;
 	int		colnum = 0;
@@ -507,6 +507,18 @@ export_data(Options *opts,
 		cmd == cmd_CopySearchedLines)
 	{
 		print_footer = false;
+	}
+
+	if ((cmd == cmd_Copy &&
+		((scrdesc->selected_first_row != -1 && scrdesc->selected_rows > 0 ) ||
+		 (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0))) ||
+		cmd == cmd_CopySelected)
+	{
+		min_row = scrdesc->selected_first_row + desc->first_data_row;
+		max_row = min_row + scrdesc->selected_rows - 1;
+
+		if (min_row > desc->first_data_row || max_row < desc->last_data_row)
+			print_footer = false;
 	}
 
 	if (format != CLIPBOARD_FORMAT_TEXT)

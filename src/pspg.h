@@ -193,6 +193,10 @@ typedef struct
 									 * slider position. After leaving of scrollbar mode        *
 									 * we should not to set slider position from cursor        *
 									 * position */
+	int		selected_first_row;
+	int		selected_rows;
+	int		selected_first_column;
+	int		selected_columns;
 } ScrDesc;
 
 #define		w_luc(scrdesc)			((scrdesc)->wins[WINDOW_LUC])
@@ -303,7 +307,7 @@ extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 
 /* from menu.c */
 extern void init_menu_config(Options *opts);
-extern struct ST_MENU *init_menu(struct ST_MENU *current_menu);
+extern struct ST_MENU *init_menu(struct ST_MENU *current_menu, Options *opts);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts);
 extern void post_menu(Options *opts, struct ST_MENU *current_menu);
 extern void refresh_clipboard_options(Options *opts, struct ST_MENU *menu);
@@ -362,9 +366,9 @@ extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

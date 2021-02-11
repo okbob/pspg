@@ -305,15 +305,27 @@ cmd_string(int cmd)
 			return "CopyMarkedLines";
 		case cmd_CopySearchedLines:
 			return "CopySearchedLines";
+		case cmd_CopySelected:
+			return "CopySelected";
+
+		case cmd_Mark:
+			return "Mark";
+		case cmd_MarkColumn:
+			return "MarkColumn";
+		case cmd_MarkAll:
+			return "MarkAll";
+		case cmd_Unmark:
+			return "Unmark";
+		case cmd_Mark_NestedCursorCommand:
+			return "MarkNestedCursorCommand";
 
 		default:
 			return "unknown command";
 	}
 }
 
-
 int
-translate_event(int c, bool alt, Options *opts)
+translate_event(int c, bool alt, Options *opts, int *nested_command)
 {
 	if (alt)
 	{
@@ -365,7 +377,13 @@ translate_event(int c, bool alt, Options *opts)
 			case KEY_F(3):
 				if (opts->quit_on_f3)
 					return cmd_Quit;
+				else
+					return cmd_Mark;
 				break;
+			case KEY_F(13):
+				if (!opts->quit_on_f3)
+					return cmd_MarkColumn;
+				return cmd_Invalid;
 			case KEY_IC:
 				return cmd_Copy;
 			case KEY_UP:
@@ -453,6 +471,19 @@ translate_event(int c, bool alt, Options *opts)
 			case 'R':
 			case 12:	/* CTRL L */
 				return cmd_Refresh;
+
+			case KEY_SR:
+				*nested_command = cmd_CursorUp;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SF:
+				*nested_command = cmd_CursorDown;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SNEXT:
+				*nested_command = cmd_PageDown;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SPREVIOUS:
+				*nested_command = cmd_PageUp;
+				return cmd_Mark_NestedCursorCommand;
 		}
 	}
 

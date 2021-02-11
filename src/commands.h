@@ -125,6 +125,7 @@ typedef enum PspgCommand
 	cmd_UseClipboard_INSERT,
 	cmd_UseClipboard_INSERT_with_comments,
 	cmd_TogleEmptyStringIsNULL,
+
 	cmd_Copy,
 	cmd_CopyAllLines,
 	cmd_CopyTopLines,
@@ -133,12 +134,19 @@ typedef enum PspgCommand
 	cmd_CopyLineExtended,
 	cmd_CopyColumn,
 	cmd_CopyMarkedLines,
-	cmd_CopySearchedLines
+	cmd_CopySearchedLines,
+	cmd_CopySelected,
+
+	cmd_Mark,
+	cmd_MarkColumn,
+	cmd_MarkAll,
+	cmd_Unmark,
+	cmd_Mark_NestedCursorCommand
 } PspgCommand;
 
 extern void initialize_special_keycodes();
 extern const char *cmd_string(int cmd);
-extern int translate_event(int c, bool alt, Options *opts);
+extern int translate_event(int c, bool alt, Options *opts, int *nested_command);
 
 extern int cmd_get_theme(int cmd);
 extern int theme_get_cmd(int theme);
