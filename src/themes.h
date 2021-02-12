@@ -63,6 +63,8 @@ typedef struct
 	attr_t scrollbar_active_slider_attr; /* colors for active scrollbar slider */
 	chtype scrollbar_slider_symbol;
 	bool scrollbar_use_arrows;
+	attr_t selection_attr;
+	attr_t selection_cursor_attr;
 } Theme;
 
 #define		WINDOW_LUC				0

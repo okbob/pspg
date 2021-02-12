@@ -3085,3 +3085,31 @@ st_menu_set_ref_option(struct ST_MENU *menu,
 
 	return false;
 }
+
+/*
+ * Set shortcut for option specified by code
+ */
+bool
+st_menu_set_shortcut(struct ST_MENU *menu, int code, char *shortcut)
+{
+	ST_MENU_ITEM *menu_items = menu->menu_items;
+	int		i = 0;
+
+	while (menu_items->text)
+	{
+		if (menu_items->code == code)
+		{
+			menu_items->shortcut = shortcut;
+			return true;
+		}
+
+		if (menu->submenus[i])
+			if (st_menu_set_shortcut(menu->submenus[i], code, shortcut))
+				return true;
+
+		menu_items += 1;
+		i += 1;
+	}
+
+	return false;
+}

@@ -16,6 +16,8 @@
 
 int		CTRL_HOME;
 int		CTRL_END;
+int		CTRL_SHIFT_HOME;
+int		CTRL_SHIFT_END;
 
 
 #ifdef NCURSES_EXT_FUNCS
@@ -63,6 +65,8 @@ initialize_special_keycodes()
 
 	CTRL_HOME = get_code("kHOM5", 538);
 	CTRL_END = get_code("kEND5", 533);
+	CTRL_SHIFT_HOME = get_code("kHOM6", 537);
+	CTRL_SHIFT_END = get_code("kEND6", 532);
 }
 
 /*
@@ -305,15 +309,36 @@ cmd_string(int cmd)
 			return "CopyMarkedLines";
 		case cmd_CopySearchedLines:
 			return "CopySearchedLines";
+		case cmd_CopySelected:
+			return "CopySelected";
+
+		case cmd_Mark:
+			return "Mark";
+		case cmd_MarkColumn:
+			return "MarkColumn";
+		case cmd_MarkAll:
+			return "MarkAll";
+		case cmd_Unmark:
+			return "Unmark";
+		case cmd_Mark_NestedCursorCommand:
+			return "MarkNestedCursorCommand";
 
 		default:
 			return "unknown command";
 	}
 }
 
+bool
+is_cmd_RowNumToggle(int c, bool alt)
+{
+	if (alt && c == 'n')
+		return true;
+
+	return false;
+}
 
 int
-translate_event(int c, bool alt, Options *opts)
+translate_event(int c, bool alt, Options *opts, int *nested_command)
 {
 	if (alt)
 	{
@@ -365,7 +390,13 @@ translate_event(int c, bool alt, Options *opts)
 			case KEY_F(3):
 				if (opts->quit_on_f3)
 					return cmd_Quit;
+				else
+					return cmd_Mark;
 				break;
+			case KEY_F(13):
+				if (!opts->quit_on_f3)
+					return cmd_MarkColumn;
+				return cmd_Invalid;
 			case KEY_IC:
 				return cmd_Copy;
 			case KEY_UP:
@@ -453,6 +484,19 @@ translate_event(int c, bool alt, Options *opts)
 			case 'R':
 			case 12:	/* CTRL L */
 				return cmd_Refresh;
+
+			case KEY_SR:
+				*nested_command = cmd_CursorUp;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SF:
+				*nested_command = cmd_CursorDown;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SNEXT:
+				*nested_command = cmd_PageDown;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SPREVIOUS:
+				*nested_command = cmd_PageUp;
+				return cmd_Mark_NestedCursorCommand;
 		}
 	}
 
@@ -460,6 +504,16 @@ translate_event(int c, bool alt, Options *opts)
 		return cmd_CursorFirstRow;
 	else if (c == CTRL_END)
 		return cmd_CursorLastRow;
+	else if (c == CTRL_SHIFT_END)
+	{
+		*nested_command = cmd_CursorLastRow;
+		return cmd_Mark_NestedCursorCommand;
+	}
+	else if (c == CTRL_SHIFT_HOME)
+	{
+		*nested_command = cmd_CursorFirstRow;
+		return cmd_Mark_NestedCursorCommand;
+	}
 
 	return cmd_Invalid;
 }

@@ -159,6 +159,8 @@ extern bool st_menu_reset_all_submenu_options(struct ST_MENU *menu, int menu_cod
 extern bool st_menu_reset_all_options(struct ST_MENU *menu, int option);
 extern void st_menu_set_focus(struct ST_MENU *menu, int focus);
 
+extern bool st_menu_set_shortcut(struct ST_MENU *menu, int code, char *shortcut);
+
 extern bool st_menu_set_ref_option(struct ST_MENU *menu, int code, int option, int *refvalue);
 
 extern struct ST_CMDBAR *st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items);
