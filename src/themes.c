@@ -87,7 +87,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar active slider */
 
 	set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
-	set_colour(35, COLOR_CYAN, COLOR_BLACK, false, A_REVERSE);			/* top bar colors */
+	set_colour(35, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
 
 	switch (theme)
 	{
@@ -165,7 +165,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
 			set_colour(33, COLOR_WHITE, COLOR_BLUE, true, A_REVERSE);
 			set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_CYAN, COLOR_BLACK, false, A_REVERSE);
+			set_colour(35, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
 			break;
 
 		case 2:
@@ -203,7 +203,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(32, COLOR_YELLOW, COLOR_WHITE, true, 0);
 			set_colour(33, COLOR_YELLOW, COLOR_WHITE, true, A_BOLD);
 			set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | A_DIM | cursor_attr );
+			set_colour(35, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE | cursor_attr );
 			break;
 
 		case 3:
@@ -249,7 +249,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(4, COLOR_BLACK, COLOR_WHITE, true, labels_attr);
+			set_colour(4, COLOR_BLACK, COLOR_WHITE, false, A_BOLD);
 			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
 			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
 			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
@@ -593,6 +593,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(34, COLOR_WHITE, COLOR_MAGENTA, true, 0);
 			set_colour(35, COLOR_MAGENTA, COLOR_BLACK, true, A_REVERSE | cursor_attr );
 			break;
+
 		case 14:
 			/* DBase retro magenta */
 			init_pair(1, COLOR_WHITE, COLOR_BLUE);
@@ -663,7 +664,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(32, COLOR_BLACK, COLOR_BLACK, true, A_REVERSE | A_DIM);
 			set_colour(33, COLOR_RED, COLOR_BLACK, false, A_REVERSE);
 			set_colour(34, COLOR_YELLOW, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_YELLOW, COLOR_MAGENTA, true, cursor_attr );
+			set_colour(35, COLOR_RED, COLOR_BLACK, true, A_REVERSE | cursor_attr );
 			break;
 
 		case 16:

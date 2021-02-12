@@ -2117,6 +2117,14 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
 							((double) max_slider_min_y - 3) + 2;
 }
 
+typedef enum
+{
+	MARK_MODE_NONE,
+	MARK_MODE_SPECIAL,		/* activated by F3 */
+	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
+	MARK_MODE_MOUSE			/* activated by CTRL + MOUSE */
+} MarkModeType;
+
 /*
  * Available modes for processing input.
  *
@@ -2220,9 +2228,7 @@ main(int argc, char *argv[])
 
 	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
 
-	bool	mark_mode = false;
-	bool	mark_cursor_mode = false;
-	bool	mark_mouse_mode = false;
+	MarkModeType	mark_mode = MARK_MODE_NONE;
 	int		mark_mode_start_row = 0;
 
 	memset(&opts, 0, sizeof(opts));
@@ -3038,7 +3044,7 @@ reinit_theme:
 				}
 
 				/* Calculate selected range in mark mode */
-				if (mark_mode || mark_cursor_mode || mark_mouse_mode)
+				if (mark_mode != MARK_MODE_NONE)
 				{
 					if (cursor_row > mark_mode_start_row)
 					{
@@ -3267,16 +3273,16 @@ fprintf(debug_pipe, "selected first_row %d, rows: %d\n", scrdesc.selected_first_
 										  state.hold_stream);
 
 				/* Disable mark cursor mode immediately */
-				if (mark_cursor_mode &&
+				if (mark_mode == MARK_MODE_CURSOR &&
 						!(event_keycode == KEY_SF ||
 						  event_keycode == KEY_SR ||
 						  event_keycode == KEY_SNEXT ||
 						  event_keycode == KEY_SPREVIOUS ||
 						  is_cmd_RowNumToggle(event_keycode, press_alt)))
-					mark_cursor_mode = false;
+					mark_mode = MARK_MODE_NONE;
 
 				/* Disablemark mouse mode immediately */
-				if (mark_mouse_mode &&
+				if (mark_mode == MARK_MODE_MOUSE &&
 						!(event_keycode == KEY_MOUSE &&
 
 #if NCURSES_MOUSE_VERSION > 1
@@ -3286,7 +3292,7 @@ fprintf(debug_pipe, "selected first_row %d, rows: %d\n", scrdesc.selected_first_
 #endif
 
 						  event.bstate & BUTTON_CTRL))
-					mark_mouse_mode = false;
+					mark_mode = MARK_MODE_NONE;
 
 force_refresh_data:
 
@@ -3489,9 +3495,7 @@ force_refresh_data:
 				scrdesc.selected_first_row = -1;
 				scrdesc.selected_first_column = -1;
 
-				mark_mode = false;
-				mark_cursor_mode = false;
-				mark_mouse_mode = false;
+				mark_mode = MARK_MODE_NONE;
 
 				reset_searching_lineinfo(&desc.rows);
 			}
@@ -3630,9 +3634,7 @@ hide_menu:
 				scrdesc.selected_first_row = -1;
 				scrdesc.selected_first_column = -1;
 
-				mark_mode = false;
-				mark_cursor_mode = false;
-				mark_mouse_mode = false;
+				mark_mode = MARK_MODE_NONE;
 
 				reset_searching_lineinfo(&desc.rows);
 			}
@@ -3845,33 +3847,38 @@ reset_search:
 				goto reinit_theme;
 
 			case cmd_Mark:
-				mark_mode = !mark_mode;
-				if (mark_mode)
+				if (mark_mode != MARK_MODE_SPECIAL)
+				{
+					mark_mode = MARK_MODE_SPECIAL;
 					mark_mode_start_row = cursor_row;
-
+				}
+				else
+					mark_mode = MARK_MODE_NONE;
 				break;
 
 			case cmd_Mark_NestedCursorCommand:
-				if (!mark_cursor_mode)
+				if (mark_mode != MARK_MODE_CURSOR)
 				{
-					mark_cursor_mode = true;
-					mark_mode = false;
+					mark_mode = MARK_MODE_CURSOR;
 					mark_mode_start_row = cursor_row;
 				}
 				next_command = nested_command;
 				break;
 
 			case cmd_Unmark:
-				mark_mode = false;
+				mark_mode = MARK_MODE_NONE;
 				scrdesc.selected_first_row = -1;
 				scrdesc.selected_first_column = -1;
+				scrdesc.selected_rows = 0;
+				scrdesc.selected_columns = 0;
 				break;
 
 			case cmd_MarkAll:
-				mark_mode = false;
+				mark_mode = MARK_MODE_NONE;
 				scrdesc.selected_first_row = 0;
-				scrdesc.selected_first_column = -1;
 				scrdesc.selected_rows = MAX_CURSOR_ROW + 1;
+				scrdesc.selected_first_column = -1;
+				scrdesc.selected_columns = -1;
 				break;
 
 			case cmd_MouseToggle:
@@ -5646,10 +5653,13 @@ found_next_pattern:
 						long	ms;
 						time_t	sec;
 
-						/* leave scrollbar mode after mouse button is released */
+						/*
+						 * leave modes, that needs holding mouse (scrollbar mode and 
+						 * mark mode) when mouse button is released
+						 */
 						if (scrdesc.scrollbar_mode && event.bstate & BUTTON1_RELEASED)
 						{
-							mark_mouse_mode = false;
+							mark_mode = MARK_MODE_NONE;
 							scrdesc.scrollbar_mode = false;
 
 							scrdesc.slider_has_position = true;
@@ -5899,7 +5909,7 @@ found_next_pattern:
 
 						if (event.bstate & BUTTON_CTRL && event.bstate & BUTTON1_PRESSED)
 						{
-							mark_mouse_mode = true;
+							mark_mode = MARK_MODE_MOUSE;
 							mark_mode_start_row = cursor_row;
 						}
 
