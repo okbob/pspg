@@ -3058,8 +3058,6 @@ reinit_theme:
 					}
 				}
 
-fprintf(debug_pipe, "selected first_row %d, rows: %d\n", scrdesc.selected_first_row, scrdesc.selected_rows);
-
 #ifdef DEBUG_PIPE
 
 				current_time(&start_draw_sec, &start_draw_ms);
@@ -3278,6 +3276,8 @@ fprintf(debug_pipe, "selected first_row %d, rows: %d\n", scrdesc.selected_first_
 						  event_keycode == KEY_SR ||
 						  event_keycode == KEY_SNEXT ||
 						  event_keycode == KEY_SPREVIOUS ||
+						  event_keycode == KEY_LEFT ||
+						  event_keycode == KEY_RIGHT ||
 						  is_cmd_RowNumToggle(event_keycode, press_alt)))
 					mark_mode = MARK_MODE_NONE;
 

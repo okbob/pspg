@@ -517,6 +517,17 @@ export_data(Options *opts,
 		min_row = scrdesc->selected_first_row + desc->first_data_row;
 		max_row = min_row + scrdesc->selected_rows - 1;
 
+		if (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0)
+		{
+			xmin = scrdesc->selected_first_column;
+			xmax = xmin + scrdesc->selected_columns - 1;
+		}
+		else
+		{
+			xmin = -1;
+			xmax = -1;
+		}
+
 		if (min_row > desc->first_data_row || max_row < desc->last_data_row)
 			print_footer = false;
 	}

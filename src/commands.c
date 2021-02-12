@@ -16,6 +16,8 @@
 
 int		CTRL_HOME;
 int		CTRL_END;
+int		CTRL_SHIFT_HOME;
+int		CTRL_SHIFT_END;
 
 
 #ifdef NCURSES_EXT_FUNCS
@@ -63,6 +65,8 @@ initialize_special_keycodes()
 
 	CTRL_HOME = get_code("kHOM5", 538);
 	CTRL_END = get_code("kEND5", 533);
+	CTRL_SHIFT_HOME = get_code("kHOM6", 537);
+	CTRL_SHIFT_END = get_code("kEND6", 532);
 }
 
 /*
@@ -500,6 +504,16 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 		return cmd_CursorFirstRow;
 	else if (c == CTRL_END)
 		return cmd_CursorLastRow;
+	else if (c == CTRL_SHIFT_END)
+	{
+		*nested_command = cmd_CursorLastRow;
+		return cmd_Mark_NestedCursorCommand;
+	}
+	else if (c == CTRL_SHIFT_HOME)
+	{
+		*nested_command = cmd_CursorFirstRow;
+		return cmd_Mark_NestedCursorCommand;
+	}
 
 	return cmd_Invalid;
 }
