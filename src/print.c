@@ -541,6 +541,39 @@ draw_scrollbar_win(WINDOW *win,
 	wattroff(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
 }
 
+/*
+ * Return true when pos is over some searched patterns specified by
+ * positions cache or lineinfo position. This function can be called
+ * only when the row is pattern row (linfo is valid).
+ */
+static bool
+is_in_searched_pattern(int pos,
+					   ScrDesc *scrdesc,
+					   LineInfo *linfo,
+					   int positions[100][2],
+					   int npositions)
+{
+	if (linfo && linfo->mask & LINEINFO_FOUNDSTR_MULTI)
+	{
+		int		i;
+
+		for (i = 0; i < npositions; i++)
+		{
+			if (pos >= positions[i][0] && pos < positions[i][1])
+				return true;
+		}
+	}
+	else
+	{
+		if (pos >= linfo->start_char &&
+			 pos < linfo->start_char + scrdesc->searchterm_char_size)
+			return true;
+	}
+
+	return false;
+}
+
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -821,7 +854,6 @@ window_fill(int window_identifier,
 			{
 				print_column_names(win, srcx, vcursor_xmin, vcursor_xmax, desc, opts, t);
 				continue;
-				//break;
 			}
 
 			/* skip first srcx chars */
@@ -973,6 +1005,9 @@ window_fill(int window_identifier,
 						if (is_in_range)
 						{
 							new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
+							if (is_pattern_row && !is_cursor &&
+									is_in_searched_pattern(pos, scrdesc, lineinfo, positions, npositions))
+								new_attr = new_attr ^ A_REVERSE;
 						}
 						else if (is_cross_cursor)
 						{
@@ -994,26 +1029,10 @@ window_fill(int window_identifier,
 							else if (pos < desc->headline_char_size)
 								new_attr = column_format == 'd' ? t->pattern_data_attr : t->pattern_line_attr;
 
-							if ((new_attr == t->pattern_data_attr || new_attr == t->pattern_vertical_cursor_attr) && pos >= lineinfo->start_char)
+							if (new_attr == t->pattern_data_attr || new_attr == t->pattern_vertical_cursor_attr)
 							{
-								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
-								{
-									int		j;
-
-									for (j = 0; j < npositions; j++)
-									{
-										if (pos >= positions[j][0] && pos < positions[j][1])
-										{
-											new_attr = t->found_str_attr;
-											break;
-										}
-									}
-								}
-								else
-								{
-									if (pos < lineinfo->start_char + scrdesc->searchterm_char_size)
-										new_attr = t->found_str_attr;
-								}
+								if (is_in_searched_pattern(pos, scrdesc, lineinfo, positions, npositions))
+									new_attr = t->found_str_attr;
 							}
 						}
 						else if (is_footer)
@@ -1031,26 +1050,10 @@ window_fill(int window_identifier,
 							if (is_found_row && pos >= scrdesc->found_start_x &&
 									pos < scrdesc->found_start_x + scrdesc->searchterm_char_size)
 								new_attr = new_attr ^ ( A_REVERSE | pattern_fix );
-							else if (is_pattern_row && pos >= lineinfo->start_char)
+							else if (is_pattern_row)
 							{
-								if ((lineinfo->mask & LINEINFO_FOUNDSTR_MULTI) != 0)
-								{
-									int		j;
-
-									for (j = 0; j < npositions; j++)
-									{
-										if (pos >= positions[j][0] && pos < positions[j][1])
-										{
-											new_attr = t->cursor_pattern_attr;
-											break;
-										}
-									}
-								}
-								else
-								{
-									if (pos < lineinfo->start_char + scrdesc->searchterm_char_size)
-										new_attr = t->cursor_pattern_attr;
-								}
+								if (is_in_searched_pattern(pos, scrdesc, lineinfo, positions, npositions))
+									new_attr = t->cursor_pattern_attr;
 							}
 						}
 
@@ -1100,21 +1103,16 @@ window_fill(int window_identifier,
 							attr_t		new_attr;
 
 							if (is_in_range)
-							{
 								new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
-							}
+
 							else if (is_cross_cursor)
-							{
 								new_attr = t->cross_cursor_line_attr;
-							}
+
 							else if (is_cursor)
-							{
 								new_attr = t->cursor_line_attr;
-							}
+
 							else
-							{
 								new_attr = t->line_attr;
-							}
 
 							if (new_attr != active_attr)
 							{
@@ -1216,18 +1214,23 @@ window_fill(int window_identifier,
 			/* draw cursor or bookmark line to screen end of line */
 			if (i < maxx)
 			{
+				attr_t		attr = 0;
+
 				if (is_in_range && is_cursor_row)
-					mvwchgat(win, row - 1, i, -1, t->selection_cursor_attr, PAIR_NUMBER(t->selection_cursor_attr), 0);
+					attr = t->selection_cursor_attr;
 				else if (is_in_range && !is_cursor_row)
-					mvwchgat(win, row - 1, i, -1, t->selection_attr, PAIR_NUMBER(t->selection_attr), 0);
+					attr = t->selection_attr;
 				else if (is_cursor_row && !is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, t->cursor_data_attr, PAIR_NUMBER(t->cursor_data_attr), 0);
+					attr = t->cursor_data_attr;
 				else if (!is_cursor_row && is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, t->bookmark_data_attr, PAIR_NUMBER(t->bookmark_data_attr), 0);
+					attr = t->bookmark_data_attr;
 				else if (is_cursor_row && is_bookmark_row)
-					mvwchgat(win, row - 1, i, -1, t->cursor_bookmark_attr, PAIR_NUMBER(t->cursor_bookmark_attr), 0);
+					attr = t->cursor_bookmark_attr;
 				else if (!is_cursor_row && is_pattern_row)
-					mvwchgat(win, row - 1, i, -1, t->pattern_data_attr, PAIR_NUMBER(t->pattern_data_attr), 0);
+					attr = t->pattern_data_attr;
+
+				if (attr)
+					mvwchgat(win, row - 1, i, -1, attr, PAIR_NUMBER(attr), 0);
 			}
 
 			if (free_row != NULL)
