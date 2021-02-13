@@ -484,6 +484,63 @@ set_line_info(Options *opts,
 	return linfo;
 }
 
+/*
+ * Draw scrollbar to related window.
+ */
+static void
+draw_scrollbar_win(WINDOW *win,
+				   Theme *t,
+				   ScrDesc *scrdesc,
+				   Options *opts)
+{
+	int		i;
+
+	werase(win);
+
+	wattron(win, t->scrollbar_attr);
+
+	for (i = 0; i < scrdesc->scrollbar_maxy; i++)
+		waddch(win, ACS_CKBOARD);
+
+	wattroff(win, t->scrollbar_attr);
+	wattron(win, t->scrollbar_arrow_attr);
+
+	if (t->scrollbar_use_arrows)
+	{
+		if (opts->force8bit || opts->force_ascii_art)
+		{
+			mvwaddch(win, 0, 0, ACS_UARROW);
+			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+		}
+		else
+		{
+			/* 🠕 🠗 */
+			mvwprintw(win, 0, 0, "%lc", L'\x1F815');
+			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x1F817');
+		}
+	}
+	else
+	{
+		/* ▲ ▼ */
+		mvwprintw(win, 0, 0, "%lc", L'\x25b2');
+		mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
+	}
+
+	wattroff(win, t->scrollbar_arrow_attr);
+	wattron(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
+
+	if (!t->scrollbar_slider_symbol)
+	{
+		/* draw slider */
+		for (i = 0; i < scrdesc->slider_size; i++)
+			mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
+	}
+	else
+		mvwaddch(win, scrdesc->slider_min_y, 0, t->scrollbar_slider_symbol);
+
+	wattroff(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
+}
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -540,53 +597,7 @@ window_fill(int window_identifier,
 
 	if (is_scrollbar)
 	{
-		int		i;
-
-		werase(win);
-
-		wattron(win, t->scrollbar_attr);
-
-		for (i = 0; i < scrdesc->scrollbar_maxy; i++)
-			waddch(win, ACS_CKBOARD);
-
-		wattroff(win, t->scrollbar_attr);
-
-		wattron(win, t->scrollbar_arrow_attr);
-
-		if (t->scrollbar_use_arrows)
-		{
-			if (opts->force8bit || opts->force_ascii_art)
-			{
-				mvwaddch(win, 0, 0, ACS_UARROW);
-				mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
-			}
-			else
-			{
-				mvwprintw(win, 0, 0, "%lc", L'\x1F815');
-				mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x1F817');
-			}
-		}
-		else
-		{
-			mvwprintw(win, 0, 0, "%lc", L'\x25b2');
-			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
-		}
-
-		wattroff(win, t->scrollbar_arrow_attr);
-
-		wattron(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
-
-		if (!t->scrollbar_slider_symbol)
-		{
-			/* draw slider */
-			for (i = 0; i < scrdesc->slider_size; i++)
-				mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
-		}
-		else
-			mvwaddch(win, scrdesc->slider_min_y, 0, t->scrollbar_slider_symbol);
-
-		wattroff(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
-
+		draw_scrollbar_win(win, t, scrdesc, opts);
 		return;
 	}
 
