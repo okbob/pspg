@@ -402,9 +402,10 @@ export_data(Options *opts,
 			PspgCommand cmd,
 			ClipboardFormat format)
 {
+	LineBufferIter	lbi;
+	LineBufferMark	lbm;
+
 	int		rn;
-	int		lbrn = 0;
-	LineBuffer *lnb = &desc->rows;
 	char   *rowstr;
 	int		rowstrlen;
 	bool	print_header = true;
@@ -545,7 +546,9 @@ export_data(Options *opts,
 		print_header = true;
 	}
 
-	for (rn = 0; rn <= desc->last_row; rn++)
+	init_lbi_datadesc(&lbi, desc, 0);
+
+	while (lbi_set_mark_next(&lbi, &lbm))
 	{
 		LineInfo *linfo;
 		char   *ldeco = NULL, *rdeco = NULL;
@@ -554,32 +557,7 @@ export_data(Options *opts,
 
 		colnum = 0;
 
-		if (desc->order_map)
-		{
-			MappedLine *mp = &desc->order_map[rn];
-			lnb = mp->lnb;
-			lbrn = mp->lnb_row;
-
-			rowstr = lnb->rows[lbrn];
-			linfo = lnb->lineinfo ? &lnb->lineinfo[lbrn] : NULL;
-		}
-		else
-		{
-			if (lbrn >= lnb->nrows)
-			{
-				lnb = lnb->next;
-				lbrn = 0;
-			}
-
-			if (!lnb)
-			{
-				log_row("there is not buffered row of %d line", rn);
-				leave("internal data error - missing data");
-			}
-
-			linfo = lnb->lineinfo ? &lnb->lineinfo[lbrn] : NULL;
-			rowstr = lnb->rows[lbrn++];
-		}
+		(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
 
 		/* reduce rows from export */
 		if (rn >= desc->first_data_row && rn <= desc->last_data_row)
@@ -600,7 +578,7 @@ export_data(Options *opts,
 			if (cmd == cmd_CopySearchedLines)
 			{
 				/* force lineinfo setting */
-				linfo = set_line_info(opts, scrdesc, lnb, lbrn, rowstr);
+				linfo = set_line_info(opts, scrdesc, lbm.lb, lbm.lb_rowno, rowstr);
 
 				if (!linfo || ((linfo->mask & LINEINFO_FOUNDSTR) == 0))
 					continue;

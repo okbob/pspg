@@ -6,7 +6,7 @@ all:
 # override CFLAGS += -g -Werror-implicit-function-declaration -D_POSIX_SOURCE=1 -std=c99  -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wjump-misses-init -Wdouble-promotion -Wshadow -pedantic -Wimplicit-fallthrough=0
 
 DEPS=$(wildcard *.d)
-PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o infra.o file.o table.o string.o export.o
+PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o menu.o pgclient.o args.o infra.o file.o table.o string.o export.o linebuffer.o
 OBJS=$(PSPG_OFILES)
 
 ifdef COMPILE_MENU
@@ -66,6 +66,9 @@ string.o: src/pspg.h src/string.c
 
 export.o: src/pspg.h src/export.c
 	$(CC)  -c src/export.c -o export.o $(CPPFLAGS) $(CFLAGS)
+
+linebuffer.o: src/pspg.h src/linebuffer.c
+	$(CC)  -c src/linebuffer.c -o linebuffer.o $(CPPFLAGS) $(CFLAGS)
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
 	$(CC)  -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)

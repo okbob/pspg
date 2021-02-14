@@ -573,7 +573,6 @@ is_in_searched_pattern(int pos,
 	return false;
 }
 
-
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -587,14 +586,15 @@ window_fill(int window_identifier,
 {
 	int			maxy, maxx;
 	int			row;
-	LineBuffer *lnb = &desc->rows;
-	int			lnb_row;
+	LineBufferIter lbi;
+	LineBufferMark lbm;
 	attr_t		active_attr;
 	attr_t		pattern_fix;
 	int			srcy_bak = srcy;
 	char		*free_row;
 	WINDOW		*win;
 	Theme		*t;
+
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
@@ -634,14 +634,8 @@ window_fill(int window_identifier,
 		return;
 	}
 
-	/* skip first x LineBuffers */
-	while (srcy > 1000)
-	{
-		lnb = lnb->next;
-		srcy -= 1000;
-	}
+	init_lbi_datadesc(&lbi, desc, srcy);
 
-	lnb_row = srcy;
 	row = 0;
 
 	getmaxyx(win, maxy, maxx);
@@ -664,42 +658,9 @@ window_fill(int window_identifier,
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
-		if (desc->order_map)
-		{
-			int		rowno = row + srcy_bak;
+		(void) lbi_set_mark_next(&lbi, &lbm);
 
-			if (rowno <= desc->last_row)
-			{
-				MappedLine *mp = &desc->order_map[rowno];
-
-				lnb = mp->lnb;
-				lnb_row = mp->lnb_row;
-				rowstr = lnb->rows[lnb_row];
-				lineinfo = lnb->lineinfo ? &lnb->lineinfo[lnb_row] : NULL;
-
-				line_is_valid = true;
-			}
-		}
-		else
-		{
-			if (lnb_row == 1000)
-			{
-				lnb = lnb ? lnb->next : NULL;
-				lnb_row = 0;
-			}
-
-			if (lnb != NULL && lnb_row < lnb->nrows)
-			{
-				rowstr = lnb->rows[lnb_row];
-				if (lnb->lineinfo != NULL)
-					lineinfo = &lnb->lineinfo[lnb_row];
-				else
-					lineinfo = NULL;
-				lnb_row += 1;
-
-				line_is_valid = true;
-			}
-		}
+		line_is_valid = lbm_get_line(&lbm, &rowstr, &lineinfo, NULL);
 
 		/* when rownum is printed, don't process original text */
 		if (is_rownum && line_is_valid)
@@ -713,7 +674,7 @@ window_fill(int window_identifier,
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
 		if (!is_fix_rows && *scrdesc->searchterm != '\0' && !opts->no_highlight_search)
-			lineinfo = set_line_info(opts, scrdesc, lnb, lnb_row, rowstr);
+			lineinfo = set_line_info(opts, scrdesc, lbm.lb, lbm.lb_rowno, rowstr);
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
 
@@ -1308,19 +1269,12 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			bool clreoln)					/* force clear to eoln */
 {
 	int			row;
-	LineBuffer *lnb = &desc->rows;
-	int			lnb_row;
+	LineBufferIter lbi;
 	attr_t		active_attr;
 	int			srcy_bak = srcy;
 
-	/* skip first x LineBuffers */
-	while (srcy > 1000)
-	{
-		lnb = lnb->next;
-		srcy -= 1000;
-	}
+	init_lbi_datadesc(&lbi, desc, srcy);
 
-	lnb_row = srcy;
 	row = 0;
 
 	if (offsety)
@@ -1333,33 +1287,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 		char	   *ptr;
 		char	   *rowstr = NULL;
 
-		if (desc->order_map)
-		{
-			int		rowno = row + srcy_bak;
-
-			if (rowno <= desc->last_row)
-			{
-				MappedLine *mp = &desc->order_map[rowno];
-
-				lnb = mp->lnb;
-				lnb_row = mp->lnb_row;
-				rowstr = lnb->rows[lnb_row];
-			}
-		}
-		else
-		{
-			if (lnb_row == 1000)
-			{
-				lnb = lnb ? lnb->next : NULL;
-				lnb_row = 0;
-			}
-
-			if (lnb != NULL && lnb_row < lnb->nrows)
-			{
-				rowstr = lnb->rows[lnb_row];
-				lnb_row += 1;
-			}
-		}
+		(void) lbi_get_line_next(&lbi, &rowstr, NULL, NULL);
 
 		active_attr = line_attr;
 		printf("%s", ansi_attr(active_attr));
@@ -1492,7 +1420,6 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 							{
 								if (bytes > 0)
 								{
-									//waddnstr(win, rowstr, bytes);
 									printf("%.*s", bytes, rowstr);
 									rowstr += bytes;
 									bytes = 0;

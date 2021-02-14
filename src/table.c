@@ -1595,7 +1595,10 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	sortbuf_pos = 0;
 
 	if (!desc->order_map)
+	{
 		desc->order_map = smalloc(desc->total_rows * sizeof(MappedLine));
+		desc->order_map_items = desc->total_rows;
+	}
 
 	/*
 	 * There are two possible sorting methods: numeric or string.

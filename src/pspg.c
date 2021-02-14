@@ -2423,17 +2423,18 @@ main(int argc, char *argv[])
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
 		(state.no_interactive || (!state.interactive && !isatty(STDOUT_FILENO))))
 	{
-		LineBuffer *lnb = &desc.rows;
-		int			lnb_row = 0;
+		SimpleLineBufferIter slbi, *_slbi;
+
+		_slbi = init_slbi_datadesc(&slbi, &desc);
 
 		/* write formatted data to stdout and quit */
-		while (lnb)
+		while (_slbi)
 		{
-			while (lnb_row < lnb->nrows)
-				fprintf(stdout, "%s\n", lnb->rows[lnb_row++]);
+			char	   *line;
 
-			lnb = lnb->next;
-			lnb_row = 0;
+			_slbi = slbi_get_line_next(_slbi, &line, NULL);
+
+			fprintf(stdout, "%s\n", line);
 		}
 
 		return 0;

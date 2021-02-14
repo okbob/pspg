@@ -47,11 +47,13 @@ typedef struct LineInfo
 	short int		start_char;
 } LineInfo;
 
+#define	LINEBUFFER_LINES		1000
+
 typedef struct LineBuffer
 {
 	int		first_row;
 	int		nrows;
-	char   *rows[1000];
+	char   *rows[LINEBUFFER_LINES];
 	LineInfo	   *lineinfo;
 	struct LineBuffer *next;
 	struct LineBuffer *prev;
@@ -118,7 +120,8 @@ typedef struct
 	char	filename[65];			/* filename (printed on top bar) */
 	LineBuffer rows;				/* list of rows buffers */
 	int		total_rows;				/* number of input rows */
-	MappedLine   *order_map;		/* maps sorted lines to original lines */
+	MappedLine *order_map;			/* maps sorted lines to original lines */
+	int		order_map_items;		/* number of items of order map */
 	int		maxy;					/* maxy of used pad area with data */
 	int		maxx;					/* maxx of used pad area with data */
 	int		maxbytes;				/* max length of line in bytes */
@@ -286,6 +289,30 @@ typedef struct
 
 extern StateData *current_state;
 
+typedef struct
+{
+	LineBuffer	   *start_lb;
+	MappedLine	   *order_map;
+	int				order_map_items;
+
+	LineBuffer	   *current_lb;
+	int				current_lb_rowno;
+	int				lineno;
+} LineBufferIter;
+
+typedef struct
+{
+	LineBuffer	   *lb;
+	int				lb_rowno;
+	int				lineno;
+} LineBufferMark;
+
+typedef struct
+{
+	LineBuffer	   *lb;
+	int				lb_rowno;
+} SimpleLineBufferIter;
+
 /* from pspg.c */
 void exit_ncurses(void);
 
@@ -363,12 +390,25 @@ extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						int rows, double percent, char *table_name,
 						PspgCommand cmd, ClipboardFormat format);
 
+/* from linebuffer.c */
+extern void init_lbi(LineBufferIter *lbi, LineBuffer *lb, MappedLine *order_map, int order_map_items, int init_pos);
+extern void init_lbi_datadesc(LineBufferIter *lbi, DataDesc *desc, int init_pos);
+extern bool lbi_set_lineno(LineBufferIter *lbi, int pos);
+extern void lbi_set_mark(LineBufferIter *lbi, LineBufferMark *lbm);
+extern bool lbi_set_mark_next(LineBufferIter *lbi, LineBufferMark *lbm);
+extern bool lbm_get_line(LineBufferMark *lbm, char **line, LineInfo **linfo, int *lineno);
+extern bool lbi_get_line(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
+extern bool lbi_get_line_next(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
+extern bool lbi_next(LineBufferIter *lbi);
+extern SimpleLineBufferIter *init_slbi_datadesc(SimpleLineBufferIter *slbi, DataDesc *desc);
+extern SimpleLineBufferIter *slbi_get_line_next(SimpleLineBufferIter *slbi, char **line, LineInfo **linfo);
+
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 
