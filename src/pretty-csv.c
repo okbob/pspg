@@ -73,7 +73,7 @@ pb_flush_line(PrintbufType *printbuf)
 {
 	char	   *line;
 
-	if (printbuf->linebuf->nrows == 1000)
+	if (printbuf->linebuf->nrows == LINEBUFFER_LINES)
 	{
 		LineBuffer *nb = smalloc2(sizeof(LineBuffer), "serialize csv output");
 
@@ -690,7 +690,7 @@ static inline RowBucketType *
 prepare_RowBucket(RowBucketType *rb)
 {
 	/* move row from linebuf to rowbucket */
-	if (rb->nrows >= 1000)
+	if (rb->nrows >= LINEBUFFER_LINES)
 	{
 		RowBucketType *new = smalloc2(sizeof(RowBucketType), "import csv data");
 

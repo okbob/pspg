@@ -133,6 +133,61 @@ lbi_set_mark_next(LineBufferIter *lbi, LineBufferMark *lbm)
 }
 
 /*
+ * Sets mark to line buffer specified by position. When false,
+ * when position is not valid.
+ */
+bool
+datadesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos)
+{
+	lbm->lb = NULL;
+	lbm->lineno = pos;
+
+	if (desc->order_map)
+	{
+		if (pos >= 0 && pos < desc->order_map_items)
+		{
+			lbm->lb = desc->order_map[pos].lnb;
+			lbm->lb_rowno = desc->order_map[pos].lnb_row;
+			lbm->lineno = pos;
+
+			return true;
+		}
+	}
+	else
+	{
+		LineBuffer *lb = &desc->rows;
+
+		while (lb && pos >= LINEBUFFER_LINES)
+		{
+			lb = lb->next;
+			pos -= LINEBUFFER_LINES;
+		}
+
+		if (lb && pos < lb->nrows)
+		{
+			lbm->lb = lb;
+			lbm->lb_rowno = pos;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void
+lbm_xor_mask(LineBufferMark *lbm, char mask)
+{
+	if (!lbm->lb->lineinfo)
+	{
+		/* smalloc returns zero fill memory already */
+		lbm->lb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
+	}
+
+	lbm->lb->lineinfo[lbm->lb_rowno].mask ^= mask;
+}
+
+/*
  * Working horse of lbm_get_line and lbi_get_line routines
  */
 static bool
@@ -148,7 +203,8 @@ lb_get_line(LineBuffer *lb,
 
 	if (lb && rowno >= 0 && rowno < lb->nrows)
 	{
-		*line = lb->rows[rowno];
+		if (line)
+			*line = lb->rows[rowno];
 
 		if (linfo)
 			*linfo = lb->lineinfo ? &lb->lineinfo[rowno] : NULL;
@@ -156,7 +212,8 @@ lb_get_line(LineBuffer *lb,
 		return true;
 	}
 
-	*line = NULL;
+	if (line)
+		*line = NULL;
 
 	if (linfo)
 		*linfo = NULL;
@@ -217,9 +274,80 @@ lbi_get_line_next(LineBufferIter *lbi,
 	return result;
 }
 
+
+/*
+ * Returns true, when returns valid line from line buffer.
+ * Decreases position in linebuffer.
+ */
+bool
+lbi_get_line_prev(LineBufferIter *lbi,
+				  char **line,
+				  LineInfo **linfo,
+				  int *lineno)
+{
+	bool result;
+
+	result = lbi_get_line(lbi, line, linfo, lineno);
+
+	(void) lbi_prev(lbi);
+
+	return result;
+}
+
+/*
+ * Move to prev line in line buffer. Returns false, when there
+ * is not valid line in buffer.
+ */
+bool
+lbi_prev(LineBufferIter *lbi)
+{
+	if (lbi->order_map)
+	{
+		if (lbi->lineno > 0)
+		{
+			MappedLine *mpl;
+
+			lbi->lineno -= 1;
+
+			mpl = &lbi->order_map[lbi->lineno];
+
+			lbi->current_lb = mpl->lnb;
+			lbi->current_lb_rowno = mpl->lnb_row;
+
+			return true;
+		}
+		else
+			lbi->lineno = -1;
+	}
+	else
+	{
+		if (lbi->current_lb)
+		{
+			lbi->lineno -= 1;
+
+			lbi->current_lb_rowno -= 1;
+			if (lbi->current_lb_rowno >= 0)
+				return true;
+
+			if (lbi->current_lb->prev)
+			{
+				lbi->current_lb = lbi->current_lb->prev;
+				lbi->current_lb_rowno = LINEBUFFER_LINES - 1;
+
+				return true;
+			}
+		}
+	}
+
+	lbi->current_lb = NULL;
+	lbi->current_lb_rowno = 0;
+
+	return false;
+}
+
 /*
  * Move on next line in line buffer. Returns false, when there
- * are not valid line in buffer.
+ * is not valid line in buffer.
  */
 bool
 lbi_next(LineBufferIter *lbi)
@@ -230,7 +358,7 @@ lbi_next(LineBufferIter *lbi)
 		{
 			MappedLine *mpl;
 
-			lbi->lineno +=1;
+			lbi->lineno += 1;
 
 			mpl = &lbi->order_map[lbi->lineno];
 

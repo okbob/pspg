@@ -398,10 +398,14 @@ extern void lbi_set_mark(LineBufferIter *lbi, LineBufferMark *lbm);
 extern bool lbi_set_mark_next(LineBufferIter *lbi, LineBufferMark *lbm);
 extern bool lbm_get_line(LineBufferMark *lbm, char **line, LineInfo **linfo, int *lineno);
 extern bool lbi_get_line(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
+extern bool lbi_get_line_prev(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
 extern bool lbi_get_line_next(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
+extern bool lbi_prev(LineBufferIter *lbi);
 extern bool lbi_next(LineBufferIter *lbi);
 extern SimpleLineBufferIter *init_slbi_datadesc(SimpleLineBufferIter *slbi, DataDesc *desc);
 extern SimpleLineBufferIter *slbi_get_line_next(SimpleLineBufferIter *slbi, char **line, LineInfo **linfo);
+extern bool datadesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos);
+extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

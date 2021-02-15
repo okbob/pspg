@@ -1869,14 +1869,18 @@ export_to_file(PspgCommand command,
 
 	if (command == cmd_CopyColumn && !opts->vertical_cursor)
 	{
-		show_info_wait(opts, scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
+		show_info_wait(opts, scrdesc,
+					   " Vertical cursor is not visible",
+					   NULL, true, true, true, false);
 		return;
 	}
 
 	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
 		opts->no_cursor)
 	{
-		show_info_wait(opts, scrdesc, " There are not selected data", NULL, true, true, true, false);
+		show_info_wait(opts, scrdesc,
+					   " There are not selected data",
+					   NULL, true, true, true, false);
 		return;
 	}
 
@@ -1884,7 +1888,9 @@ export_to_file(PspgCommand command,
 		!(scrdesc->selected_first_row != -1 ||
 		  scrdesc->selected_first_column != -1))
 	{
-		show_info_wait(opts, scrdesc, " Cursor is not visible", NULL, true, true, true, false);
+		show_info_wait(opts, scrdesc,
+					   " Cursor is not visible",
+					   NULL, true, true, true, false);
 		return;
 	}
 
@@ -1933,12 +1939,16 @@ export_to_file(PspgCommand command,
 
 		if (endptr == number)
 		{
-			show_info_wait(opts, scrdesc, " Cannot convert input string to number", NULL, true, true, false, true);
+			show_info_wait(opts, scrdesc,
+						   " Cannot convert input string to number",
+						   NULL, true, true, false, true);
 			return;
 		}
 		else if (errno != 0)
 		{
-			show_info_wait(opts, scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false, true);
+			show_info_wait(opts, scrdesc,
+						   " Cannot convert input string to number (%s)",
+						   strerror(errno), true, true, false, true);
 			return;
 		}
 
@@ -1973,8 +1983,7 @@ export_to_file(PspgCommand command,
 			*next_event_keycode = show_info_wait(opts,
 												 scrdesc,
 												 " Cannot find clipboard application (press any key)",
-												 NULL,
-												 true, true, false, true);
+												 NULL, true, true, false, true);
 			*force_refresh = true;
 
 			return;
@@ -2041,8 +2050,7 @@ export_to_file(PspgCommand command,
 				*next_event_keycode = show_info_wait(opts,
 													 scrdesc,
 													 " Cannot write to clipboard (press any key)",
-													 NULL,
-													 true, true, false, true);
+													 NULL, true, true, false, true);
 				*force_refresh = true;
 
 				return;
@@ -2070,8 +2078,7 @@ export_to_file(PspgCommand command,
 		*next_event_keycode = show_info_wait(opts,
 											 scrdesc,
 											 " Cannot write to %s (press any key)",
-											 buffer,
-											 true, false, false, true);
+											 buffer, true, false, false, true);
 		*force_refresh = true;
 	}
 }
@@ -2764,7 +2771,6 @@ reinit_theme:
 #endif
 
 	}
-
 
 	if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 	{
@@ -3515,7 +3521,9 @@ force_refresh_data:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
+					show_info_wait(&opts, &scrdesc,
+								   " For quit press \"q\" (or use on-sigint-exit option).",
+								   NULL, true, true, true, false);
 			}
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
@@ -3654,7 +3662,9 @@ hide_menu:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&opts, &scrdesc, " For quit press \"q\" (or use on-sigint-exit option).", NULL, true, true, true, false);
+					show_info_wait(&opts, &scrdesc,
+								   " For quit press \"q\" (or use on-sigint-exit option).",
+								   NULL, true, true, true, false);
 			}
 		}
 
@@ -3812,12 +3822,18 @@ reset_search:
 				if (!save_config(tilde(NULL, "~/.pspgconf"), &opts))
 				{
 					if (errno != 0)
-						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (%s) (press any key)", strerror(errno), true, true, false, true);
+						show_info_wait(&opts, &scrdesc,
+									   " Cannot write to ~/.pspgconf (%s) (press any key)",
+									   strerror(errno), true, true, false, true);
 					else
-						show_info_wait(&opts, &scrdesc, " Cannot write to ~/.pspgconf (press any key)", NULL, true, true, false, true);
+						show_info_wait(&opts, &scrdesc,
+									   " Cannot write to ~/.pspgconf (press any key)",
+									   NULL, true, true, false, true);
 				}
 				else
-					show_info_wait(&opts, &scrdesc, " Setup saved to ~/.pspgconf", NULL, true, true, true, false);
+					show_info_wait(&opts, &scrdesc,
+								   " Setup saved to ~/.pspgconf",
+								   NULL, true, true, true, false);
 				break;
 
 			case cmd_SetTheme_MidnightBlack:
@@ -3940,7 +3956,9 @@ reset_search:
 						opts.no_mouse= false;
 					}
 
-					show_info_wait(&opts, &scrdesc, " mouse handling: %s ", opts.no_mouse ? "off" : "on", false, true, true, false);
+					show_info_wait(&opts, &scrdesc,
+								   " mouse handling: %s ",
+								   opts.no_mouse ? "off" : "on", false, true, true, false);
 					break;
 				}
 
@@ -3953,7 +3971,9 @@ reset_search:
 				{
 					if (desc.columns == 0)
 					{
-						show_info_wait(&opts, &scrdesc, " Vertical cursor is available only for tables.", NULL, true, true, true, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Vertical cursor is available only for tables.",
+									   NULL, true, true, true, false);
 						break;
 					}
 
@@ -4025,217 +4045,96 @@ reset_search:
 
 			case cmd_FlushBookmarks:
 				{
-					LineBuffer *lnb = &desc.rows;
-					int		rownum_cursor_row;
+					SimpleLineBufferIter slbi, *_slbi;
 
-					while (lnb != NULL)
+					_slbi = init_slbi_datadesc(&slbi, &desc);
+
+					while (_slbi)
 					{
-						if (lnb->lineinfo != NULL)
-						{
-							rownum_cursor_row = 0;
+						LineInfo *linfo;
 
-							while (rownum_cursor_row < lnb->nrows)
-							{
-								if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
-									lnb->lineinfo[rownum_cursor_row].mask ^= LINEINFO_BOOKMARK;
+						_slbi = slbi_get_line_next(_slbi, NULL, &linfo);
 
-								rownum_cursor_row += 1;
-							}
-						}
-
-						lnb = lnb->next;
+						if (linfo && (linfo->mask & LINEINFO_BOOKMARK))
+							linfo->mask ^= LINEINFO_BOOKMARK;
 					}
 				}
 				break;
 
 			case cmd_ToggleBookmark:
 				{
-					LineBuffer *lnb = &desc.rows;
-					int			lnb_row;
-					int			_cursor_row = cursor_row + scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset;
+					LineBufferMark lbm;
+					int		_cursor_row;
 
-					if (desc.order_map)
-					{
-						lnb = desc.order_map[_cursor_row].lnb;
-						lnb_row = desc.order_map[_cursor_row].lnb_row;
-					}
-					else
-					{
-						/* skip first x LineBuffers */
-						while (_cursor_row > 1000)
-						{
-							lnb = lnb->next;
-							_cursor_row -= 1000;
-						}
+					_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
 
-						lnb_row = _cursor_row;
-					}
-
-					if (lnb->lineinfo == NULL)
-						lnb->lineinfo = smalloc(1000 * sizeof(LineInfo));
-
-					lnb->lineinfo[lnb_row].mask ^= LINEINFO_BOOKMARK;
+					if (datadesc_set_mark(&lbm, &desc, _cursor_row))
+						lbm_xor_mask(&lbm, LINEINFO_BOOKMARK);
 				}
 				break;
 
 			case cmd_PrevBookmark:
 				{
-					LineBuffer *lnb = &desc.rows;
-					int		rownum_cursor_row;
-					int		rownum = 0;
+					int		lineno;
 					bool	found = false;
 
 					/* start from previous line before cursor */
-					rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET - 1;
+					lineno = cursor_row + CURSOR_ROW_OFFSET - 1;
 
-					if (rownum_cursor_row >= 0)
+					if (lineno > 0)
 					{
-						if (desc.order_map)
+						LineBufferIter lbi;
+						LineInfo *linfo;
+
+						init_lbi_datadesc(&lbi, &desc, lineno);
+
+						while (lbi_get_line_prev(&lbi, NULL, &linfo, &lineno))
 						{
-							while (rownum_cursor_row >= 0)
+							if (linfo && linfo->mask & LINEINFO_BOOKMARK)
 							{
-								MappedLine *mp = &desc.order_map[rownum_cursor_row];
+								cursor_row = lineno - CURSOR_ROW_OFFSET;
+								if (cursor_row < first_row)
+									first_row = cursor_row;
 
-								if (mp->lnb->lineinfo)
-								{
-									if ((mp->lnb->lineinfo[mp->lnb_row].mask & LINEINFO_BOOKMARK) != 0)
-									{
-										found = true;
-										rownum = rownum_cursor_row;
-										goto exit_search_prev_bookmark;
-									}
-								}
-
-								rownum_cursor_row -= 1;
-							}
-						}
-						else
-						{
-							/* skip first x LineBuffers */
-							while (rownum_cursor_row >= 1000 && lnb != NULL)
-							{
-								lnb = lnb->next;
-								rownum_cursor_row -= 1000;
-								rownum += 1000;
-							}
-
-							rownum += rownum_cursor_row;
-
-							while (lnb != NULL)
-							{
-								if (lnb->lineinfo != NULL)
-								{
-									if (rownum_cursor_row < 0)
-										rownum_cursor_row = lnb->nrows - 1;
-
-									while (rownum_cursor_row >= 0)
-									{
-										if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
-										{
-											found = true;
-											goto exit_search_prev_bookmark;
-										}
-										rownum -= 1;
-										rownum_cursor_row -= 1;
-									}
-								}
-								else
-									rownum -= 1000;
-
-								lnb = lnb->prev;
+								found = true;
+								break;
 							}
 						}
 					}
 
-exit_search_prev_bookmark:
-
-					if (found)
-					{
-						cursor_row = rownum - CURSOR_ROW_OFFSET;
-						if (cursor_row < first_row)
-							first_row = cursor_row;
-					}
-					else
+					if (!found)
 						make_beep(&opts);
 				}
 				break;
 
 			case cmd_NextBookmark:
 				{
-					LineBuffer *lnb = &desc.rows;
-					int		rownum_cursor_row;
-					int		rownum = 0;
+					LineBufferIter lbi;
+					LineInfo *linfo;
+					int		lineno;
 					bool	found = false;
 
 					/* start after (next line) cursor line */
-					rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET + 1;
+					lineno = cursor_row + CURSOR_ROW_OFFSET + 1;
 
-					if (desc.order_map)
+					init_lbi_datadesc(&lbi, &desc, lineno);
+
+					while (lbi_get_line_next(&lbi, NULL, &linfo, &lineno))
 					{
-						while (rownum_cursor_row < desc.total_rows)
+						if (linfo && linfo->mask & LINEINFO_BOOKMARK)
 						{
-							MappedLine *mp = &desc.order_map[rownum_cursor_row];
+							cursor_row = lineno - CURSOR_ROW_OFFSET;
 
-							if (mp->lnb->lineinfo)
-							{
-								if ((mp->lnb->lineinfo[mp->lnb_row].mask & LINEINFO_BOOKMARK) != 0)
-								{
-									found = true;
-									rownum = rownum_cursor_row;
-									goto exit_search_next_bookmark;
-								}
-							}
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
 
-							rownum_cursor_row += 1;
-						}
-					}
-					else
-					{
-						/* skip first x LineBuffers */
-						while (rownum_cursor_row >= 1000 && lnb != NULL)
-						{
-							lnb = lnb->next;
-							rownum_cursor_row -= 1000;
-							rownum += 1000;
-						}
-
-						rownum += rownum_cursor_row;
-
-						while (lnb != NULL)
-						{
-							if (lnb->lineinfo != NULL)
-							{
-								while (rownum_cursor_row < lnb->nrows)
-								{
-									if ((lnb->lineinfo[rownum_cursor_row].mask & LINEINFO_BOOKMARK) != 0)
-									{
-										found = true;
-										goto exit_search_next_bookmark;
-									}
-									rownum += 1;
-									rownum_cursor_row += 1;
-								}
-							}
-							else
-								rownum += 1000;
-
-							rownum_cursor_row = 0;
-							lnb = lnb->next;
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
+							found = true;
+							break;
 						}
 					}
 
-exit_search_next_bookmark:
-
-					if (found)
-					{
-						cursor_row = rownum - CURSOR_ROW_OFFSET;
-
-						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
-							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
-
-						first_row = adjust_first_row(first_row, &desc, &scrdesc);
-					}
-					else
+					if (!found)
 						make_beep(&opts);
 				}
 				break;
@@ -4528,7 +4427,7 @@ recheck_left:
 							}
 							else
 							{
-								int			i;
+								int		i;
 
 								for (i = 1; i <= 30; i++)
 								{
@@ -4845,9 +4744,13 @@ recheck_end:
 						lineno = strtol(linenotxt, &endptr, 10);
 
 						if (endptr == linenotxt)
-							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number", NULL, true, true, false, true);
+							show_info_wait(&opts, &scrdesc,
+										   " Cannot convert input string to number",
+										   NULL, true, true, false, true);
 						else if (errno != 0)
-							show_info_wait(&opts, &scrdesc, " Cannot convert input string to number (%s)", strerror(errno), true, true, false, true);
+							show_info_wait(&opts, &scrdesc,
+										   " Cannot convert input string to number (%s)",
+										   strerror(errno), true, true, false, true);
 						else
 						{
 							int max_cursor_row;
@@ -4907,9 +4810,13 @@ recheck_end:
 						last_order_desc = command == cmd_SortDesc;
 					}
 					else if (desc.columns == 0)
-						show_info_wait(&opts, &scrdesc, " Sort is available only for tables.", NULL, true, true, true, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Sort is available only for tables.",
+									   NULL, true, true, true, false);
 					else 
-						show_info_wait(&opts, &scrdesc, " Vertical cursor is not visible", NULL, true, true, true, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Vertical cursor is not visible",
+									   NULL, true, true, true, false);
 
 					break;
 				}
@@ -5261,7 +5168,9 @@ found_next_pattern:
 						first_row = adjust_first_row(first_row, &desc, &scrdesc);
 					}
 					else
-						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Not found (press any key)",
+									   NULL, true, true, false, false);
 					break;
 				}
 
@@ -5422,7 +5331,9 @@ found_next_pattern:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Not found (press any key)",
+									   NULL, true, true, false, false);
 
 					break;
 				}
@@ -5524,7 +5435,9 @@ found_next_pattern:
 							if (found)
 							{
 								if (search_from_start)
-									show_info_wait(&opts, &scrdesc, " Search from first column (press any key)", NULL, true, true, true, false);
+									show_info_wait(&opts, &scrdesc,
+												   " Search from first column (press any key)",
+												   NULL, true, true, true, false);
 
 								opts.vertical_cursor = true;
 								vertical_cursor_column = colnum;
@@ -5533,13 +5446,19 @@ found_next_pattern:
 								last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 							}
 							else
-								show_info_wait(&opts, &scrdesc, " Not found (press any key)", NULL, true, true, false, false);
+								show_info_wait(&opts, &scrdesc,
+											   " Not found (press any key)",
+											   NULL, true, true, false, false);
 						}
 						else
-							show_info_wait(&opts, &scrdesc, " Search pattern is a empty string (press any key)", NULL, true, true, true, false);
+							show_info_wait(&opts, &scrdesc,
+										   " Search pattern is a empty string (press any key)",
+										   NULL, true, true, true, false);
 					}
 					else
-						show_info_wait(&opts, &scrdesc, " Columns names are not detected (press any key)", NULL, true, true, true, false);
+						show_info_wait(&opts, &scrdesc,
+									   " Columns names are not detected (press any key)",
+									   NULL, true, true, true, false);
 
 					break;
 				}

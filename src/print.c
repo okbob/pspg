@@ -415,11 +415,11 @@ set_line_info(Options *opts,
 	{
 		int		i;
 
-		lnb->lineinfo = malloc(1000 * sizeof(LineInfo));
+		lnb->lineinfo = malloc(LINEBUFFER_LINES * sizeof(LineInfo));
 		if (lnb->lineinfo == NULL)
 			leave("out of memory");
 
-		memset(lnb->lineinfo, 0, 1000 * sizeof(LineInfo));
+		memset(lnb->lineinfo, 0, LINEBUFFER_LINES * sizeof(LineInfo));
 
 		for (i = 0; i < lnb->nrows; i++)
 			lnb->lineinfo[i].mask = LINEINFO_UNKNOWN;

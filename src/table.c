@@ -641,7 +641,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 		clen = utf_string_dsplen(line, read);
 
-		if (rows->nrows == 1000)
+		if (rows->nrows == LINEBUFFER_LINES)
 		{
 			LineBuffer *newrows = smalloc(sizeof(LineBuffer));
 
@@ -1577,7 +1577,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 					if (found_continuation_symbol)
 					{
 						if (lnb->lineinfo == NULL)
-							lnb->lineinfo = smalloc(1000 * sizeof(LineInfo));
+							lnb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
 
 						lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
 						has_multilines = true;
