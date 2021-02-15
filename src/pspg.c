@@ -154,7 +154,6 @@ static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, boo
 
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row);
 
-
 StateData *current_state = NULL;
 
 /*
@@ -209,6 +208,20 @@ current_time(time_t *sec, long *ms)
 	clock_gettime(CLOCK_MONOTONIC, &spec);
 	*ms = roundl(spec.tv_nsec / 1.0e6);
 	*sec = spec.tv_sec;
+}
+
+static inline void
+enable_xterm_mouse_mode(void)
+{
+	fprintf(stdout, "\033[?1002h");
+	fflush(stdout);
+}
+
+static inline void
+disable_xterm_mouse_mode(void)
+{
+	fprintf(stdout, "\033[?1002l");
+	fflush(stdout);
 }
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
@@ -1156,9 +1169,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	if (xterm_mouse_mode_was_initialized)
 	{
-		printf("\033[?1002l");
-		fflush(stdout);
-
+		disable_xterm_mouse_mode();
 		xterm_mouse_mode_was_initialized = false;
 	}
 
@@ -1217,9 +1228,7 @@ finish_read:
 	if (opts->xterm_mouse_mode)
 	{
 		xterm_mouse_mode_was_initialized = true;
-
-		printf("\033[?1002h");
-		fflush(stdout);
+		enable_xterm_mouse_mode();
 	}
 
 	rl_callback_handler_remove();
@@ -1680,10 +1689,7 @@ exit_ncurses(void)
 		endwin();
 
 	if (xterm_mouse_mode_was_initialized)
-	{
-		printf("\033[?1002l");
-		fflush(stdout);
-	}
+		disable_xterm_mouse_mode();
 }
 
 static void
@@ -2746,9 +2752,7 @@ reinit_theme:
 		if (opts.xterm_mouse_mode)
 		{
 			xterm_mouse_mode_was_initialized = true;
-
-			printf("\033[?1002h");
-			fflush(stdout);
+			enable_xterm_mouse_mode();
 
 			log_row("xterm mouse mode 1002 activated");
 		}
@@ -3897,9 +3901,7 @@ reset_search:
 
 						if (xterm_mouse_mode_was_initialized)
 						{
-							printf("\033[?1002l");
-							fflush(stdout);
-
+							disable_xterm_mouse_mode();
 							xterm_mouse_mode_was_initialized = false;
 						}
 					}
@@ -3932,9 +3934,7 @@ reset_search:
 						if (opts.xterm_mouse_mode)
 						{
 							xterm_mouse_mode_was_initialized = true;
-
-							printf("\033[?1002h");
-							fflush(stdout);
+							enable_xterm_mouse_mode();
 						}
 
 						opts.no_mouse= false;
