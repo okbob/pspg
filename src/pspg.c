@@ -1326,21 +1326,22 @@ has_upperchr(Options *opts, char *str)
 }
 
 static void
-reset_searching_lineinfo(LineBuffer *lnb)
+reset_searching_lineinfo(DataDesc *desc)
 {
-	while (lnb != NULL)
-	{
-		if (lnb->lineinfo != NULL)
-		{
-			int		i;
+	SimpleLineBufferIter slbi, *_slbi;
+	LineInfo   *linfo;
 
-			for (i = 0; i < lnb->nrows; i++)
-			{
-				lnb->lineinfo[i].mask |= LINEINFO_UNKNOWN;
-				lnb->lineinfo[i].mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
-			}
+	_slbi = init_slbi_datadesc(&slbi, desc);
+
+	while (_slbi)
+	{
+		_slbi = slbi_get_line_next(_slbi, NULL, &linfo);
+
+		if (linfo)
+		{
+			linfo->mask |= LINEINFO_UNKNOWN;
+			linfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
 		}
-		lnb = lnb->next;
 	}
 }
 
@@ -2471,13 +2472,18 @@ main(int argc, char *argv[])
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
 		{
-			LineBuffer *lnb = &desc.rows;
-			int			lnb_row = 0;
+			SimpleLineBufferIter slbi, *_slbi;
+			char	   *line;
 
 			endwin();
 
-			while (lnb_row < lnb->nrows)
-				printf("%s\n", lnb->rows[lnb_row++]);
+			_slbi = init_slbi_datadesc(&slbi, &desc);
+
+			while (_slbi)
+			{
+				_slbi = slbi_get_line_next(_slbi, &line, NULL);
+				printf("%s\n", line);
+			}
 
 			log_row("quit due quit_if_one_screen option without ncurses init");
 
@@ -3498,7 +3504,7 @@ force_refresh_data:
 
 				mark_mode = MARK_MODE_NONE;
 
-				reset_searching_lineinfo(&desc.rows);
+				reset_searching_lineinfo(&desc);
 			}
 			else
 			{
@@ -3637,7 +3643,7 @@ hide_menu:
 
 				mark_mode = MARK_MODE_NONE;
 
-				reset_searching_lineinfo(&desc.rows);
+				reset_searching_lineinfo(&desc);
 			}
 			else
 			{
@@ -3748,7 +3754,7 @@ reset_search:
 				scrdesc.searchterm_size = 0;
 				scrdesc.searchterm_char_size = 0;
 
-				reset_searching_lineinfo(&desc.rows);
+				reset_searching_lineinfo(&desc);
 				break;
 
 			case cmd_ShowTopBar:
@@ -5127,7 +5133,7 @@ recheck_end:
 
 					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
 
-					reset_searching_lineinfo(&desc.rows);
+					reset_searching_lineinfo(&desc);
 
 					if (locsearchterm[0] != '\0')
 					{
@@ -5147,7 +5153,7 @@ recheck_end:
 						break;
 					}
 
-					reset_searching_lineinfo(&desc.rows);
+					reset_searching_lineinfo(&desc);
 
 					search_direction = SEARCH_FORWARD;
 
@@ -5267,7 +5273,7 @@ found_next_pattern:
 
 					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
 
-					reset_searching_lineinfo(&desc.rows);
+					reset_searching_lineinfo(&desc);
 
 					if (locsearchterm[0] != '\0')
 					{

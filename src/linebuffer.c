@@ -303,7 +303,10 @@ slbi_get_line_next(SimpleLineBufferIter *slbi,
 		if (linfo)
 			*linfo = lb->lineinfo ? &lb->lineinfo[slbi->lb_rowno] : NULL;
 
-		*line = lb->rows[slbi->lb_rowno++];
+		if (line)
+			*line = lb->rows[slbi->lb_rowno];
+
+		slbi->lb_rowno += 1;
 
 		/* check an possibility of next read */
 		if (slbi->lb_rowno < lb->nrows)
