@@ -152,7 +152,7 @@ static bool xterm_mouse_mode_was_initialized = false;
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
 
-static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row);
+static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 
 StateData *current_state = NULL;
 
@@ -2033,7 +2033,7 @@ export_to_file(PspgCommand command,
  * From "first_row" calculate position of slider of vertical scrollbar
  */
 static void
-set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int cursor_row, int first_row)
+set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 {
 	int		max_first_row;
 	int		max_slider_min_y;
@@ -2836,7 +2836,7 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_VSCROLLBAR]);
 
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
-	set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
+	set_scrollbar(&scrdesc, &desc, first_row);
 
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
@@ -3081,10 +3081,10 @@ reinit_theme:
 
 #ifdef DEBUG_PIPE
 
-				time_t	start_draw_sec;
-				long	start_draw_ms;
+				time_t	start_doupdate_sec;
+				long	start_doupdate_ms;
 
-				current_time(&start_draw_sec, &start_draw_ms);
+				current_time(&start_doupdate_sec, &start_doupdate_ms);
 
 #endif
 
@@ -3117,7 +3117,7 @@ reinit_theme:
 
 #ifdef DEBUG_PIPE
 
-				print_duration(start_draw_sec, start_draw_ms, "doupdate");
+				print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
 
 #endif
 
@@ -3361,7 +3361,7 @@ force_refresh_data:
 					if (scrdesc.wins[WINDOW_TOP_BAR])
 						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
 
-					set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
+					set_scrollbar(&scrdesc, &desc, first_row);
 
 					if (force_refresh)
 					{
@@ -4952,6 +4952,8 @@ recheck_end:
 					search_direction = SEARCH_FORWARD;
 
 					/* continue to find next: */
+					next_command = cmd_SearchNext;
+					break;
 				}
 
 			case cmd_SearchNext:
@@ -5049,6 +5051,8 @@ recheck_end:
 					}
 
 					/* continue to find next: */
+					next_command = cmd_SearchPrev;
+					break;
 				}
 
 			case cmd_SearchPrev:
@@ -5088,6 +5092,13 @@ recheck_end:
 					{
 						const char   *ptr;
 						const char   *most_right_pttrn = NULL;
+
+						/* inside table don't try search below first data row */
+						if (desc.headline_transl)
+						{
+							if (lineno < desc.first_data_row)
+								break;
+						}
 
 						_line = cut_bytes > 0 ? sstrndup(line, cut_bytes) : line;
 						ptr = _line;
@@ -5754,7 +5765,7 @@ recheck_end:
 		}
 
 		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-		set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
+		set_scrollbar(&scrdesc, &desc, first_row);
 
 		if (first_row != prev_first_row)
 		{
@@ -5811,7 +5822,7 @@ refresh:
 			}
 
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-			set_scrollbar(&scrdesc, &desc, cursor_row, first_row);
+			set_scrollbar(&scrdesc, &desc, first_row);
 
 			if (cmdbar)
 				cmdbar = init_cmdbar(cmdbar, &opts);

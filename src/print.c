@@ -402,30 +402,26 @@ print_column_names(WINDOW *win,
 LineInfo *
 set_line_info(Options *opts,
 			  ScrDesc *scrdesc,
-			  LineBuffer *lnb,
-			  int lbrn,
+			  LineBufferMark *lbm,
 			  char *rowstr)
 {
 	LineInfo   *linfo = NULL;
 
-	if (*scrdesc->searchterm == '\0' || !lnb || !rowstr)
+	if (*scrdesc->searchterm == '\0' || !lbm || !rowstr || !lbm->lb)
 		return linfo;
 
-	if (!lnb->lineinfo)
+	if (!lbm->lb->lineinfo)
 	{
+		LineBuffer *lb = lbm->lb;
 		int		i;
 
-		lnb->lineinfo = malloc(LINEBUFFER_LINES * sizeof(LineInfo));
-		if (lnb->lineinfo == NULL)
-			leave("out of memory");
+		lb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
 
-		memset(lnb->lineinfo, 0, LINEBUFFER_LINES * sizeof(LineInfo));
-
-		for (i = 0; i < lnb->nrows; i++)
-			lnb->lineinfo[i].mask = LINEINFO_UNKNOWN;
+		for (i = 0; i < LINEBUFFER_LINES; i++)
+			lb->lineinfo[i].mask = LINEINFO_UNKNOWN;
 	}
 
-	linfo = &lnb->lineinfo[lbrn - 1];
+	linfo = &lbm->lb->lineinfo[lbm->lb_rowno - 1];
 
 	if (linfo->mask & LINEINFO_UNKNOWN)
 	{
@@ -674,7 +670,7 @@ window_fill(int window_identifier,
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
 		if (!is_fix_rows && *scrdesc->searchterm != '\0' && !opts->no_highlight_search)
-			lineinfo = set_line_info(opts, scrdesc, lbm.lb, lbm.lb_rowno, rowstr);
+			lineinfo = set_line_info(opts, scrdesc, &lbm, rowstr);
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
 

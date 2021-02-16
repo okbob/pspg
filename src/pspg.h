@@ -320,7 +320,7 @@ void exit_ncurses(void);
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
-extern LineInfo *set_line_info(Options *opts, ScrDesc *scrdesc, LineBuffer *lnb, int lbrn, char *rowstr);
+extern LineInfo *set_line_info(Options *opts, ScrDesc *scrdesc, LineBufferMark *lbm, char *rowstr);
 
 #define PSPG_ERRSTR_BUFFER_SIZE		2048
 extern char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
@@ -413,9 +413,9 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 
