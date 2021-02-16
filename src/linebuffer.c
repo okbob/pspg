@@ -13,11 +13,12 @@
 
 #include "pspg.h"
 
+#include <stdlib.h>
 
 /*
  * Initialize line buffer iterator
  */
-void
+inline void
 init_lbi(LineBufferIter *lbi,
 		 LineBuffer *lb,
 		 MappedLine *order_map,
@@ -36,8 +37,8 @@ init_lbi(LineBufferIter *lbi,
  * Common case - initialize line buffer iterator
  * for stored data.
  */
-void
-init_lbi_datadesc(LineBufferIter *lbi,
+inline void
+init_lbi_ddesc(LineBufferIter *lbi,
 				  DataDesc *desc,
 				  int init_pos)
 {
@@ -110,7 +111,7 @@ lbi_set_lineno(LineBufferIter *lbi, int pos)
  * Initialize line buffer mark to current position in
  * line buffer.
  */
-void
+inline void
 lbi_set_mark(LineBufferIter *lbi, LineBufferMark *lbm)
 {
 	lbm->lb = lbi->current_lb;
@@ -137,7 +138,7 @@ lbi_set_mark_next(LineBufferIter *lbi, LineBufferMark *lbm)
  * when position is not valid.
  */
 bool
-datadesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos)
+ddesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos)
 {
 	lbm->lb = NULL;
 	lbm->lineno = pos;
@@ -241,7 +242,7 @@ lbm_get_line(LineBufferMark *lbm,
 /*
  * Returns true, when returns valid line from line buffer.
  */
-bool
+inline bool
 lbi_get_line(LineBufferIter *lbi,
 			  char **line,
 			  LineInfo **linfo,
@@ -259,7 +260,7 @@ lbi_get_line(LineBufferIter *lbi,
  * Returns true, when returns valid line from line buffer.
  * Increments position in linebuffer.
  */
-bool
+inline bool
 lbi_get_line_next(LineBufferIter *lbi,
 				  char **line,
 				  LineInfo **linfo,
@@ -279,7 +280,7 @@ lbi_get_line_next(LineBufferIter *lbi,
  * Returns true, when returns valid line from line buffer.
  * Decreases position in linebuffer.
  */
-bool
+inline bool
 lbi_get_line_prev(LineBufferIter *lbi,
 				  char **line,
 				  LineInfo **linfo,
@@ -405,7 +406,7 @@ lbi_next(LineBufferIter *lbi)
  * scan.
  */
 SimpleLineBufferIter *
-init_slbi_datadesc(SimpleLineBufferIter *slbi, DataDesc *desc)
+init_slbi_ddesc(SimpleLineBufferIter *slbi, DataDesc *desc)
 {
 	slbi->lb = &desc->rows;
 	slbi->lb_rowno = 0;
@@ -426,8 +427,10 @@ slbi_get_line_next(SimpleLineBufferIter *slbi,
 	{
 		LineBuffer *lb = slbi->lb;
 
-		/* one line should be every time. The possibility is checked before */
-
+		/*
+		 * one line should be available every time. The possibility
+		 * is checked before
+		 */
 		if (linfo)
 			*linfo = lb->lineinfo ? &lb->lineinfo[slbi->lb_rowno] : NULL;
 
@@ -456,4 +459,53 @@ slbi_get_line_next(SimpleLineBufferIter *slbi,
 		*line = NULL;
 
 	return slbi;
+}
+
+/*
+ * Free all lines stored in line buffer. An argument is data desc,
+ * because first chunk of line buffer is owned by data desc.
+ */
+void
+lb_free(DataDesc *desc)
+{
+	LineBuffer   *lb = &desc->rows;
+	LineBuffer   *next;
+	int		i;
+
+	while (lb)
+	{
+		for (i = 0; i < lb->nrows; i++)
+			free(lb->rows[i]);
+
+		free(lb->lineinfo);
+		next = lb->next;
+
+		if (lb != &desc->rows)
+			free(lb);
+
+		lb = next;
+	}
+}
+
+/*
+ * Print all lines to stream
+ */
+void
+lb_print_all_ddesc(DataDesc *desc, FILE *f)
+{
+	SimpleLineBufferIter slbi, *_slbi;
+	int		res;
+
+	_slbi = init_slbi_ddesc(&slbi, desc);
+
+	while (_slbi)
+	{
+		char	   *line;
+
+		_slbi = slbi_get_line_next(_slbi, &line, NULL);
+
+		res = fprintf(f, "%s\n", line);
+		if (res < 0)
+			break;
+	}
 }

@@ -634,7 +634,7 @@ window_fill(int window_identifier,
 		return;
 	}
 
-	init_lbi_datadesc(&lbi, desc, srcy);
+	init_lbi_ddesc(&lbi, desc, srcy);
 
 	row = 0;
 
@@ -1273,7 +1273,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 	attr_t		active_attr;
 	int			srcy_bak = srcy;
 
-	init_lbi_datadesc(&lbi, desc, srcy);
+	init_lbi_ddesc(&lbi, desc, srcy);
 
 	row = 0;
 

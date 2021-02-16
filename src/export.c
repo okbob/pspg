@@ -546,7 +546,7 @@ export_data(Options *opts,
 		print_header = true;
 	}
 
-	init_lbi_datadesc(&lbi, desc, 0);
+	init_lbi_ddesc(&lbi, desc, 0);
 
 	while (lbi_set_mark_next(&lbi, &lbm))
 	{

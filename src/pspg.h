@@ -190,12 +190,13 @@ typedef struct
 	int		scrollbar_x;			/* x position of horisontal scrollbar */
 	int		slider_min_y;			/* position of scrollbar slider */
 	int		slider_size;			/* height of slider (vertical) */
-	bool	scrollbar_mode;			/* true, when vertical scrollbar is active */
 
+	bool	scrollbar_mode;			/* true, when vertical scrollbar is active */
 	bool	slider_has_position;	/* protection against visual defects from twice setting of *
 									 * slider position. After leaving of scrollbar mode        *
 									 * we should not to set slider position from cursor        *
 									 * position */
+
 	int		selected_first_row;
 	int		selected_rows;
 	int		selected_first_column;
@@ -392,7 +393,7 @@ extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 /* from linebuffer.c */
 extern void init_lbi(LineBufferIter *lbi, LineBuffer *lb, MappedLine *order_map, int order_map_items, int init_pos);
-extern void init_lbi_datadesc(LineBufferIter *lbi, DataDesc *desc, int init_pos);
+extern void init_lbi_ddesc(LineBufferIter *lbi, DataDesc *desc, int init_pos);
 extern bool lbi_set_lineno(LineBufferIter *lbi, int pos);
 extern void lbi_set_mark(LineBufferIter *lbi, LineBufferMark *lbm);
 extern bool lbi_set_mark_next(LineBufferIter *lbi, LineBufferMark *lbm);
@@ -402,17 +403,19 @@ extern bool lbi_get_line_prev(LineBufferIter *lbi, char **line, LineInfo **linfo
 extern bool lbi_get_line_next(LineBufferIter *lbi, char **line, LineInfo **linfo, int *lineno);
 extern bool lbi_prev(LineBufferIter *lbi);
 extern bool lbi_next(LineBufferIter *lbi);
-extern SimpleLineBufferIter *init_slbi_datadesc(SimpleLineBufferIter *slbi, DataDesc *desc);
+extern SimpleLineBufferIter *init_slbi_ddesc(SimpleLineBufferIter *slbi, DataDesc *desc);
 extern SimpleLineBufferIter *slbi_get_line_next(SimpleLineBufferIter *slbi, char **line, LineInfo **linfo);
-extern bool datadesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos);
+extern bool ddesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos);
 extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
+extern void lb_free(DataDesc *desc);
+extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

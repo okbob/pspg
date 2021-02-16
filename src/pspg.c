@@ -261,7 +261,9 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 	}
 	else if (ignore_lower_case && has_upperchr)
 	{
-		result = opts->force8bit ? nstrstr_ignore_lower_case(str, searchterm) : utf8_nstrstr_ignore_lower_case(str, searchterm);
+		result = opts->force8bit ?
+						nstrstr_ignore_lower_case(str, searchterm) :
+						utf8_nstrstr_ignore_lower_case(str, searchterm);
 	}
 	else
 		result = strstr(str, searchterm);
@@ -277,46 +279,32 @@ trim_footer_rows(Options *opts, DataDesc *desc)
 {
 	if (desc->headline_transl != NULL && desc->footer_row != -1)
 	{
-		LineBuffer *rows = &desc->rows;
-		int			rowidx = 0;
-		int			rownum;
+		LineBufferIter lbi;
+		char   *line;
 
 		desc->footer_char_size = 0;
 
-		for (rownum = 0, rowidx = 0; rownum < desc->footer_row; rownum++, rowidx++)
-		{
-			if (rowidx == 1000)
-			{
-				rows = rows->next;
-				rowidx = 0;
-			}
-		}
+		init_lbi_ddesc(&lbi, desc, desc->footer_row);
 
-		while (rows != NULL && rowidx < rows->nrows)
+		while(lbi_get_line_next(&lbi, &line, NULL, NULL))
 		{
-			char   *line;
-			char   *endptr;
+			char   *ptr = line;
+			char   *last_nspc = NULL;
 			int		len;
 
-			if (rowidx == 1000)
+			/* search last non space char */
+			while (*ptr)
 			{
-				rows = rows->next;
-				rowidx = 0;
-				continue;
+				if (*ptr != ' ')
+					last_nspc = ptr;
+
+				ptr += 1;
 			}
 
-			line = rows->rows[rowidx++];
-			endptr = line + strlen(line) - 1;
-
-			while (endptr > line)
-			{
-				if (*endptr != ' ')
-				{
-					endptr[1] = '\0';
-					break;
-				}
-				endptr -= 1;
-			}
+			if (last_nspc)
+				*(last_nspc + 1) = '\0';
+			else
+				*line = '\0';
 
 			len = opts->force8bit ? strlen(line) : utf8len(line);
 			if (len > desc->footer_char_size)
@@ -451,48 +439,25 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 }
 
 static void
-create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row)
+create_layout(Options *opts,
+			  ScrDesc *scrdesc,
+			  DataDesc *desc,
+			  int first_data_row,
+			  int first_row)
 {
-	if (w_luc(scrdesc) != NULL)
-	{
-		delwin(w_luc(scrdesc));
-		w_luc(scrdesc) = NULL;
-	}
-	if (w_fix_rows(scrdesc) != NULL)
-	{
-		delwin(w_fix_rows(scrdesc));
-		w_fix_rows(scrdesc) = NULL;
-	}
-	if (w_fix_cols(scrdesc) != NULL)
-	{
-		delwin(w_fix_cols(scrdesc));
-		w_fix_cols(scrdesc) = NULL;
-	}
-	if (w_rows(scrdesc) != NULL)
-	{
-		delwin(w_rows(scrdesc));
-		w_rows(scrdesc) = NULL;
-	}
-	if (w_footer(scrdesc) != NULL)
-	{
-		delwin(w_footer(scrdesc));
-		w_footer(scrdesc) = NULL;
-	}
-	if (w_rownum(scrdesc) != NULL)
-	{
-		delwin(w_rownum(scrdesc));
-		w_rownum(scrdesc) = NULL;
-	}
-	if (w_rownum_luc(scrdesc) != NULL)
-	{
-		delwin(w_rownum_luc(scrdesc));
-		w_rownum_luc(scrdesc) = NULL;
-	}
+	int		i;
 
-	if (w_vscrollbar(scrdesc) != NULL)
+	for (i = 0; i < PSPG_WINDOW_COUNT; i++)
 	{
-		delwin(w_vscrollbar(scrdesc));
-		w_vscrollbar(scrdesc) = NULL;
+		if (i != WINDOW_TOP_BAR &&
+			i != WINDOW_BOTTOM_BAR)
+		{
+			if (scrdesc->wins[i])
+			{
+				delwin(scrdesc->wins[i]);
+				scrdesc->wins[i] = NULL;
+			}
+		}
 	}
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
@@ -608,7 +573,6 @@ create_layout(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_ro
 									  scrdesc->scrollbar_start_y,
 									  scrdesc->scrollbar_x);
 	}
-
 }
 
 /*
@@ -1123,7 +1087,6 @@ readline_redisplay()
 	wrefresh(g_bottom_bar);
 }
 
-
 #endif
 
 static void
@@ -1340,7 +1303,7 @@ reset_searching_lineinfo(DataDesc *desc)
 	SimpleLineBufferIter slbi, *_slbi;
 	LineInfo   *linfo;
 
-	_slbi = init_slbi_datadesc(&slbi, desc);
+	_slbi = init_slbi_ddesc(&slbi, desc);
 
 	while (_slbi)
 	{
@@ -1695,24 +1658,7 @@ exit_ncurses(void)
 static void
 DataDescFree(DataDesc *desc)
 {
-	LineBuffer	   *lb = &desc->rows;
-
-	while (lb)
-	{
-		LineBuffer   *next;
-		int		i;
-
-		for (i = 0; i < lb->nrows; i++)
-			free(lb->rows[i]);
-
-		free(lb->lineinfo);
-		next = lb->next;
-		if (lb != &desc->rows)
-			free(lb);
-
-		lb = next;
-	}
-
+	lb_free(desc);
 	free(desc->order_map);
 	free(desc->headline_transl);
 	free(desc->cranges);
@@ -2437,19 +2383,9 @@ main(int argc, char *argv[])
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
 		(state.no_interactive || (!state.interactive && !isatty(STDOUT_FILENO))))
 	{
-		SimpleLineBufferIter slbi, *_slbi;
+		lb_print_all_ddesc(&desc, stdout);
 
-		_slbi = init_slbi_datadesc(&slbi, &desc);
-
-		/* write formatted data to stdout and quit */
-		while (_slbi)
-		{
-			char	   *line;
-
-			_slbi = slbi_get_line_next(_slbi, &line, NULL);
-
-			fprintf(stdout, "%s\n", line);
-		}
+		log_row("quit due non interactive mode");
 
 		return 0;
 	}
@@ -2485,18 +2421,7 @@ main(int argc, char *argv[])
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
 		{
-			SimpleLineBufferIter slbi, *_slbi;
-			char	   *line;
-
-			endwin();
-
-			_slbi = init_slbi_datadesc(&slbi, &desc);
-
-			while (_slbi)
-			{
-				_slbi = slbi_get_line_next(_slbi, &line, NULL);
-				printf("%s\n", line);
-			}
+			lb_print_all_ddesc(&desc, stdout);
 
 			log_row("quit due quit_if_one_screen option without ncurses init");
 
@@ -2508,8 +2433,6 @@ main(int argc, char *argv[])
 	{
 		const char *pagerprog;
 		FILE	   *fout = NULL;
-		LineBuffer *lnb = &desc.rows;
-		int			lnb_row = 0;
 
 		pagerprog = getenv("PSPG_PAGER");
 		if (!pagerprog)
@@ -2539,20 +2462,7 @@ main(int argc, char *argv[])
 			signal(SIGINT, SIG_IGN);
 		}
 
-		while (lnb)
-		{
-			while (lnb_row < lnb->nrows)
-			{
-				int r;
-				r = fprintf(fout, "%s\n", lnb->rows[lnb_row++]);
-				if (r < 0)
-					goto exit_while_01;
-			}
-			lnb = lnb->next;
-			lnb_row = 0;
-		}
-
-exit_while_01:
+		lb_print_all_ddesc(&desc, fout);
 
 		if (fout != stdout)
 			pclose(fout);
@@ -2833,13 +2743,9 @@ reinit_theme:
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && maxx >= desc.maxx)
 		{
-			LineBuffer *lnb = &desc.rows;
-			int			lnb_row = 0;
-
 			endwin();
 
-			while (lnb_row < lnb->nrows)
-				printf("%s\n", lnb->rows[lnb_row++]);
+			lb_print_all_ddesc(&desc, stdout);
 
 			log_row("ncurses ended and quit due quit_if_one_screen option");
 
@@ -3023,6 +2929,7 @@ reinit_theme:
 				int		vcursor_xmax_fix = -1;
 				int		vcursor_xmin_data = -1;
 				int		vcursor_xmax_data = -1;
+				int		i;
 
 				if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
 				{
@@ -3134,22 +3041,15 @@ reinit_theme:
 							0, 0, cursor_row, -1, -1,
 							&desc, &scrdesc, &opts);
 
-				if (w_luc(&scrdesc))
-					wnoutrefresh(w_luc(&scrdesc));
-				if (w_rows(&scrdesc))
-					wnoutrefresh(w_rows(&scrdesc));
-				if (w_fix_cols(&scrdesc))
-					wnoutrefresh(w_fix_cols(&scrdesc));
-				if (w_fix_rows(&scrdesc))
-					wnoutrefresh(w_fix_rows(&scrdesc));
-				if (w_footer(&scrdesc))
-					wnoutrefresh(w_footer(&scrdesc));
-				if (w_rownum(&scrdesc))
-					wnoutrefresh(w_rownum(&scrdesc));
-				if (w_rownum_luc(&scrdesc))
-					wnoutrefresh(w_rownum_luc(&scrdesc));
-				if (w_vscrollbar(&scrdesc))
-					wnoutrefresh(w_vscrollbar(&scrdesc));
+				for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+				{
+					if (i != WINDOW_TOP_BAR &&
+						i != WINDOW_BOTTOM_BAR)
+					{
+						if (scrdesc.wins[i])
+							wnoutrefresh(scrdesc.wins[i]);
+					}
+				}
 
 #ifdef DEBUG_PIPE
 
@@ -4047,7 +3947,7 @@ reset_search:
 				{
 					SimpleLineBufferIter slbi, *_slbi;
 
-					_slbi = init_slbi_datadesc(&slbi, &desc);
+					_slbi = init_slbi_ddesc(&slbi, &desc);
 
 					while (_slbi)
 					{
@@ -4068,7 +3968,7 @@ reset_search:
 
 					_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
 
-					if (datadesc_set_mark(&lbm, &desc, _cursor_row))
+					if (ddesc_set_mark(&lbm, &desc, _cursor_row))
 						lbm_xor_mask(&lbm, LINEINFO_BOOKMARK);
 				}
 				break;
@@ -4086,7 +3986,7 @@ reset_search:
 						LineBufferIter lbi;
 						LineInfo *linfo;
 
-						init_lbi_datadesc(&lbi, &desc, lineno);
+						init_lbi_ddesc(&lbi, &desc, lineno);
 
 						while (lbi_get_line_prev(&lbi, NULL, &linfo, &lineno))
 						{
@@ -4117,7 +4017,7 @@ reset_search:
 					/* start after (next line) cursor line */
 					lineno = cursor_row + CURSOR_ROW_OFFSET + 1;
 
-					init_lbi_datadesc(&lbi, &desc, lineno);
+					init_lbi_ddesc(&lbi, &desc, lineno);
 
 					while (lbi_get_line_next(&lbi, NULL, &linfo, &lineno))
 					{
@@ -4792,7 +4692,6 @@ recheck_end:
 				 * correct solution is clean it now.
 				 */
 				scrdesc.found_row = -1;
-
 				break;
 
 			case cmd_SortAsc:
@@ -4834,7 +4733,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4851,7 +4749,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4868,7 +4765,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4885,7 +4781,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4909,7 +4804,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4926,7 +4820,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4943,7 +4836,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4960,7 +4852,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4977,7 +4868,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -4994,7 +4884,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -5011,7 +4900,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -5028,7 +4916,6 @@ recheck_end:
 						goto force_refresh_data;
 
 					refresh_scr = true;
-
 					break;
 				}
 
@@ -5069,10 +4956,10 @@ recheck_end:
 
 			case cmd_SearchNext:
 				{
-					int		rownum_cursor_row;
-					int		rownum = 0;
+					LineBufferIter lbi;
+					int		lineno;
+					char   *line;
 					int		skip_bytes = 0;
-					LineBuffer   *lnb = &desc.rows;
 
 					if (!*scrdesc.searchterm)
 						break;
@@ -5084,90 +4971,49 @@ recheck_end:
 						break;
 					}
 
-					rownum_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
-					if (scrdesc.found && rownum_cursor_row == scrdesc.found_row)
+					lineno = cursor_row + CURSOR_ROW_OFFSET;
+
+					if (scrdesc.found && lineno == scrdesc.found_row)
 						skip_bytes = scrdesc.found_start_bytes + scrdesc.searchterm_size;
 
 					scrdesc.found = false;
 
-					if (desc.order_map)
+					init_lbi_ddesc(&lbi, &desc, lineno);
+
+					while (lbi_get_line_next(&lbi, &line, NULL, &lineno))
 					{
-						rownum = rownum_cursor_row;
+						const char   *pttrn;
 
-						while (rownum < desc.total_rows)
+						pttrn = pspg_search(&opts, &scrdesc, line + skip_bytes);
+						if (pttrn)
 						{
-							MappedLine *mp = &desc.order_map[rownum];
-							const char	   *str;
-							const char	   *rowstr;
+							int		found_start_bytes = pttrn - line;
 
-							rowstr = mp->lnb->rows[mp->lnb_row];
-							str = pspg_search(&opts, &scrdesc, rowstr + skip_bytes);
-							if (str != NULL)
-							{
-								scrdesc.found_start_x = opts.force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
-								scrdesc.found_start_bytes = str - rowstr;
-								scrdesc.found = true;
-								goto found_next_pattern;
-							}
+							scrdesc.found_start_x =
+								opts.force8bit ? (size_t) (found_start_bytes) :
+												 utf8len_start_stop(line, pttrn);
 
-							rownum += 1;
-							skip_bytes = 0;
-						}
-					}
-					else
-					{
-						/* skip first x LineBuffers */
-						while (rownum_cursor_row > 1000 && lnb != NULL)
-						{
-							lnb = lnb->next;
-							rownum_cursor_row -= 1000;
-							rownum += 1000;
+							scrdesc.found_start_bytes = found_start_bytes;
+							scrdesc.found_row = lineno;
+
+							fresh_found = true;
+							fresh_found_cursor_col = -1;
+
+							cursor_row = lineno - CURSOR_ROW_OFFSET;
+
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
+
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
+
+							scrdesc.found = true;
+							break;
 						}
 
-						rownum += rownum_cursor_row;
-
-						while (lnb != NULL)
-						{
-							while (rownum_cursor_row < lnb->nrows)
-							{
-								const char	   *str;
-								const char	   *rowstr = lnb->rows[rownum_cursor_row];
-
-								str = pspg_search(&opts, &scrdesc, rowstr + skip_bytes);
-
-								if (str != NULL)
-								{
-									scrdesc.found_start_x = opts.force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
-									scrdesc.found_start_bytes = str - rowstr;
-									scrdesc.found = true;
-									goto found_next_pattern;
-								}
-
-								rownum += 1;
-								rownum_cursor_row += 1;
-								skip_bytes = 0;
-							}
-
-							rownum_cursor_row = 0;
-							lnb = lnb->next;
-						}
+						skip_bytes = 0;
 					}
 
-found_next_pattern:
-
-					if (scrdesc.found)
-					{
-						cursor_row = rownum - CURSOR_ROW_OFFSET;
-						scrdesc.found_row = rownum;
-						fresh_found = true;
-						fresh_found_cursor_col = -1;
-
-						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
-							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
-
-						first_row = adjust_first_row(first_row, &desc, &scrdesc);
-					}
-					else
+					if (!scrdesc.found)
 						show_info_wait(&opts, &scrdesc,
 									   " Not found (press any key)",
 									   NULL, true, true, false, false);
@@ -5207,9 +5053,9 @@ found_next_pattern:
 
 			case cmd_SearchPrev:
 				{
-					int		rowidx;
-					int		search_row;
-					LineBuffer   *rows = &desc.rows;
+					LineBufferIter lbi;
+					int		lineno;
+					char   *line, *_line;
 					int		cut_bytes = 0;
 
 					if (!*scrdesc.searchterm)
@@ -5222,112 +5068,71 @@ found_next_pattern:
 						break;
 					}
 
-					rowidx = cursor_row + scrdesc.fix_rows_rows + desc.title_rows;
-					search_row = cursor_row;
+					lineno = cursor_row + CURSOR_ROW_OFFSET;
 
 					/*
 					 * when we can search on found line, the use it,
 					 * else try start searching from previous row.
 					 */
-					if (scrdesc.found && rowidx == scrdesc.found_row && scrdesc.found_start_bytes > 0)
+					if (scrdesc.found && lineno == scrdesc.found_row &&
+							scrdesc.found_start_bytes > 0)
 						cut_bytes = scrdesc.found_start_bytes;
 					else
-					{
-						rowidx -= 1;
-						search_row -= 1;
-					}
+						lineno -= 1;
 
 					scrdesc.found = false;
 
-					if (desc.order_map)
+					init_lbi_ddesc(&lbi, &desc, lineno);
+
+					while (lbi_get_line_prev(&lbi, &line, NULL, &lineno))
 					{
-						if (search_row > -1)
-						{
-							MappedLine *mp = &desc.order_map[rowidx];
+						const char   *ptr;
+						const char   *most_right_pttrn = NULL;
 
-							rows = mp->lnb;
-							rowidx = mp->lnb_row;
-						}
-					}
-					else
-					{
-						/* go forward */
-						while (rowidx > 1000)
-						{
-							rows = rows->next;
-							rowidx -= 1000;
-						}
-					}
-
-					while (search_row >= 0)
-					{
-						const char *str;
-						char *row;
-						bool	free_row;
-
-						if (cut_bytes != 0)
-						{
-							row = sstrdup(rows->rows[rowidx]);
-
-							row[cut_bytes] = '\0';
-							free_row = true;
-						}
-						else
-						{
-							row = rows->rows[rowidx];
-							free_row = false;
-						}
-
-						str = row;
+						_line = cut_bytes > 0 ? sstrndup(line, cut_bytes) : line;
+						ptr = _line;
 
 						/* try to find most right pattern */
-						while (str != NULL)
+						while (ptr)
 						{
-							str = pspg_search(&opts, &scrdesc, str);
+							ptr = pspg_search(&opts, &scrdesc, ptr);
 
-							if (str != NULL)
+							if (ptr)
 							{
-								cursor_row = search_row;
-								if (first_row > cursor_row)
-									first_row = cursor_row;
-
-								scrdesc.found_start_x = opts.force8bit ? (size_t) (str - row) : utf8len_start_stop(row, str);
-								scrdesc.found_start_bytes = str - row;
-								scrdesc.found_row = cursor_row + CURSOR_ROW_OFFSET;
-								scrdesc.found = true;
-								fresh_found = true;
-								fresh_found_cursor_col = -1;
-
-								str += scrdesc.searchterm_size;
+								most_right_pttrn = ptr;
+								ptr += scrdesc.searchterm_size;
 							}
 						}
 
-						if (free_row)
-							free(row);
+						if (most_right_pttrn)
+						{
+							int		found_start_bytes = most_right_pttrn - _line;
 
-						if (scrdesc.found)
+							cursor_row = lineno - CURSOR_ROW_OFFSET;
+							if (first_row > cursor_row)
+								first_row = cursor_row;
+
+							scrdesc.found_start_x =
+								opts.force8bit ? (size_t) (found_start_bytes) :
+												 utf8len_start_stop(_line, most_right_pttrn);
+
+							scrdesc.found_start_bytes = found_start_bytes;
+							scrdesc.found_row = lineno;
+
+							fresh_found = true;
+							fresh_found_cursor_col = -1;
+
+							if (line != _line)
+								free(_line);
+
+							scrdesc.found = true;
 							break;
+						}
 
-						search_row -= 1;
+						if (line != _line)
+							free(_line);
+
 						cut_bytes = 0;
-
-						if (desc.order_map)
-						{
-							MappedLine *mp = &desc.order_map[search_row + scrdesc.fix_rows_rows + desc.title_rows];
-
-							rows = mp->lnb;
-							rowidx = mp->lnb_row;
-						}
-						else
-						{
-							rowidx -= 1;
-
-							if (rowidx < 0)
-							{
-								rows = rows->prev;
-								rowidx = 999;
-							}
-						}
 					}
 
 					if (!scrdesc.found)
@@ -6035,16 +5840,7 @@ refresh:
 
 	if (raw_output_quit)
 	{
-		LineBuffer *lnb = &desc.rows;
-
-		while (lnb)
-		{
-			int			lnb_row = 0;
-
-			while (lnb_row < lnb->nrows)
-				printf("%s\n", lnb->rows[lnb_row++]);
-			lnb = lnb->next;
-		}
+		lb_print_all_ddesc(&desc, stdout);
 	}
 	else if (state.no_alternate_screen)
 	{
@@ -6069,35 +5865,10 @@ refresh:
 	 */
 	if (0)
 	{
-		LineBuffer *lnb = &desc.rows;
-		LineBuffer *_lnb;
-		int			lnb_row;
-
-		while (lnb)
-		{
-			for (lnb_row = 0; lnb_row < lnb->nrows; lnb_row++)
-			{
-				if (lnb->rows[lnb_row])
-					free(lnb->rows[lnb_row]);
-			}
-
-			if (lnb->lineinfo)
-				free(lnb->lineinfo);
-
-			_lnb = lnb;
-			lnb = lnb->next;
-			if (_lnb != &desc.rows)
-				free(_lnb);
-		}
-
-		if (desc.cranges)
-			free(desc.cranges);
-
-		if (desc.headline_transl)
-			free(desc.headline_transl);
-
-		if (opts.pathname)
-			free(opts.pathname);
+		lb_free(&desc);
+		free(desc.cranges);
+		free(desc.headline_transl);
+		free(opts.pathname);
 	}
 
 	fclose(debug_pipe);
