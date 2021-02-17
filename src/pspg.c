@@ -97,7 +97,6 @@
 
 #endif
 
-
 #ifdef HAVE_LIBREADLINE
 
 static char		readline_buffer[1024];
@@ -156,6 +155,8 @@ static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 
 StateData *current_state = NULL;
 
+static struct sigaction old_sigsegv_handler;
+
 /*
  * Global error buffer - used for building and storing a error messages
  */
@@ -169,6 +170,36 @@ SigintHandler(int sig_num)
 	signal(SIGINT, SigintHandler);
 
 	handle_sigint = true;
+}
+
+/* Custom SIGSEGV handler. */
+void
+SigsegvHandler (int sig)
+{
+	exit_ncurses();
+
+	log_row("pspg crashed by Sig %d\n", sig);
+
+	fprintf(stderr, "pspg crashed by signal %d\n", sig);
+
+	if (current_state && current_state->logfile)
+		fclose(current_state->logfile);
+
+	/* Call old sigsegv handler; may be default exit or third party one (e.g. ASAN) */
+	sigaction (SIGSEGV, &old_sigsegv_handler, NULL);
+}
+
+/* Set up sigsegv handler. */
+static void
+setup_sigsegv_handler (void)
+{
+	struct sigaction act;
+
+	sigemptyset (&act.sa_mask);
+	act.sa_flags = (int) SA_RESETHAND;
+	act.sa_handler = SigsegvHandler;
+
+	sigaction (SIGSEGV, &act, &old_sigsegv_handler);
 }
 
 inline int
@@ -2236,6 +2267,8 @@ main(int argc, char *argv[])
 	opts.empty_string_is_null = true;
 	opts.xterm_mouse_mode = true;
 	opts.show_scrollbar = true;
+
+	setup_sigsegv_handler();
 
 	load_config(tilde(NULL, "~/.pspgconf"), &opts);
 

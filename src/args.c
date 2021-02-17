@@ -213,6 +213,59 @@ buildargv(const char *input, int *_argc, char *appname)
 	return argv;
 }
 
+static void
+print_versions(void)
+{
+	fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
+
+#ifdef HAVE_LIBREADLINE
+
+	fprintf(stdout, "with readline (version: 0x%04x)\n", RL_READLINE_VERSION);
+
+#endif
+
+#ifdef COMPILE_MENU
+
+	fprintf(stdout, "with integrated menu\n");
+
+#endif
+
+#ifdef NCURSES_VERSION
+
+	fprintf(stdout, "ncurses version: %s, patch: %ld\n",
+			NCURSES_VERSION,
+			(long) NCURSES_VERSION_PATCH);
+
+#endif
+
+#ifdef HAVE_NCURSESW
+
+	fprintf(stdout, "ncurses with wide char support\n");
+
+#endif
+
+#ifdef NCURSES_WIDECHAR
+
+	fprintf(stdout, "ncurses widechar num: %d\n", NCURSES_WIDECHAR);
+
+#endif
+
+	fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
+
+#ifdef HAVE_POSTGRESQL
+
+	fprintf(stdout, "with postgres client integration\n");
+
+#endif
+
+#ifdef HAVE_INOTIFY
+
+	fprintf(stdout, "with inotify support\n");
+
+#endif
+
+}
+
 bool
 readargs(char **argv,
 		 int argc,
@@ -483,64 +536,14 @@ readargs(char **argv,
 			case 39:
 				opts->pgcli_fix = true;
 				break;
-
 			case 40:
 				opts->xterm_mouse_mode =  false;
 				break;
-
 			case 41:
 				opts->show_scrollbar = false;
 				break;
-
 			case 'V':
-				fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
-
-#ifdef HAVE_LIBREADLINE
-
-				fprintf(stdout, "with readline (version: 0x%04x)\n", RL_READLINE_VERSION);
-
-#endif
-
-#ifdef COMPILE_MENU
-
-				fprintf(stdout, "with integrated menu\n");
-
-#endif
-
-#ifdef NCURSES_VERSION
-
-				fprintf(stdout, "ncurses version: %s, patch: %ld\n",
-						NCURSES_VERSION,
-						(long) NCURSES_VERSION_PATCH);
-
-#endif
-
-#ifdef HAVE_NCURSESW
-
-				fprintf(stdout, "ncurses with wide char support\n");
-
-#endif
-
-#ifdef NCURSES_WIDECHAR
-
-				fprintf(stdout, "ncurses widechar num: %d\n", NCURSES_WIDECHAR);
-
-#endif
-
-				fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
-
-#ifdef HAVE_POSTGRESQL
-
-				fprintf(stdout, "with postgres client integration\n");
-
-#endif
-
-#ifdef HAVE_INOTIFY
-
-				fprintf(stdout, "with inotify support\n");
-
-#endif
-
+				print_versions();
 				return false;
 			case 'X':
 				state->no_alternate_screen = true;

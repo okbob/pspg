@@ -351,7 +351,7 @@ extern bool read_and_format(Options *opts, DataDesc *desc, StateData *state);
 /* from pgclient.c */
 extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
 
-/* from buildargv.c */
+/* from args.c */
 extern char **buildargv(const char *input, int *argc, char *appname);
 extern bool readargs(char **argv, int argc, Options *opts, StateData *state);
 extern bool args_are_consistent(Options *opts, StateData *state);
