@@ -2086,6 +2086,30 @@ typedef enum
 } MarkModeType;
 
 /*
+ * Trivial functions reduce redundant code.
+ */
+static void
+throw_selection(ScrDesc *scrdesc, MarkModeType *mark_mode)
+{
+	scrdesc->selected_first_row = -1;
+	scrdesc->selected_rows = 0;
+	scrdesc->selected_first_column = -1;
+	scrdesc->selected_columns = 0;
+
+	*mark_mode = MARK_MODE_NONE;
+}
+
+static void
+throw_searching(ScrDesc *scrdesc)
+{
+	*scrdesc->searchterm = '\0';
+	*scrdesc->searchcolterm = '\0';
+
+	scrdesc->searchterm_size = 0;
+	scrdesc->searchterm_char_size = 0;
+}
+
+/*
  * Available modes for processing input.
  *
  *   1. read and close (default)
@@ -2218,10 +2242,7 @@ main(int argc, char *argv[])
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
 
-	scrdesc.selected_first_row = -1;
-	scrdesc.selected_rows = 0;
-	scrdesc.selected_first_column = -1;
-	scrdesc.selected_columns = 0;
+	throw_selection(&scrdesc, &mark_mode);
 
 #ifdef DEBUG_PIPE
 
@@ -3403,17 +3424,8 @@ force_refresh_data:
 				   scrdesc.selected_first_row != -1 ||
 				   scrdesc.selected_first_column != -1))
 			{
-				*scrdesc.searchterm = '\0';
-				*scrdesc.searchcolterm = '\0';
-
-				scrdesc.searchterm_size = 0;
-				scrdesc.searchterm_char_size = 0;
-
-				scrdesc.selected_first_row = -1;
-				scrdesc.selected_first_column = -1;
-
-				mark_mode = MARK_MODE_NONE;
-
+				throw_searching(&scrdesc);
+				throw_selection(&scrdesc, &mark_mode);
 				reset_searching_lineinfo(&desc);
 			}
 			else
@@ -3544,17 +3556,8 @@ hide_menu:
 				   scrdesc.selected_first_row != -1 ||
 				   scrdesc.selected_first_column != -1))
 			{
-				*scrdesc.searchterm = '\0';
-				*scrdesc.searchcolterm = '\0';
-
-				scrdesc.searchterm_size = 0;
-				scrdesc.searchterm_char_size = 0;
-
-				scrdesc.selected_first_row = -1;
-				scrdesc.selected_first_column = -1;
-
-				mark_mode = MARK_MODE_NONE;
-
+				throw_searching(&scrdesc);
+				throw_selection(&scrdesc, &mark_mode);
 				reset_searching_lineinfo(&desc);
 			}
 			else
@@ -3793,11 +3796,7 @@ reset_search:
 				break;
 
 			case cmd_Unmark:
-				mark_mode = MARK_MODE_NONE;
-				scrdesc.selected_first_row = -1;
-				scrdesc.selected_first_column = -1;
-				scrdesc.selected_rows = 0;
-				scrdesc.selected_columns = 0;
+				throw_selection(&scrdesc, &mark_mode);
 				break;
 
 			case cmd_MarkAll:
@@ -4683,8 +4682,9 @@ recheck_end:
 				{
 					free(desc.order_map);
 					desc.order_map = NULL;
-
 					last_ordered_column = -1;
+
+					throw_selection(&scrdesc, &mark_mode);
 				}
 
 				/*
@@ -4707,6 +4707,8 @@ recheck_end:
 
 						last_ordered_column = vertical_cursor_column;
 						last_order_desc = command == cmd_SortDesc;
+
+						throw_selection(&scrdesc, &mark_mode);
 					}
 					else if (desc.columns == 0)
 						show_info_wait(&opts, &scrdesc,
