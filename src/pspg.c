@@ -1427,6 +1427,9 @@ get_event(MEVENT *mevent,
 
 	if (0)
 	{
+
+#ifdef HAVE_MALLINFO2
+
 		struct mallinfo mi;
 
 		mi = mallinfo();
@@ -1441,6 +1444,26 @@ get_event(MEVENT *mevent,
 		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
 		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
 		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+
+#else
+
+		struct mallinfo2 mi;
+
+		mi = mallinfo2();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %ld\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %ld\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %ld\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %ld\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %ld\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %ld\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %ld\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %ld\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %ld\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %ld\n", mi.keepcost);
+
+#endif
+
 	}
 
 #endif
@@ -1511,6 +1534,7 @@ retry:
 				 */
 				while (len > 0)
 				{
+
 #ifdef HAVE_INOTIFY
 
 					const struct inotify_event *ino_event = (struct inotify_event *) buff;
@@ -2113,7 +2137,8 @@ typedef enum
 	MARK_MODE_NONE,
 	MARK_MODE_SPECIAL,		/* activated by F3 */
 	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
-	MARK_MODE_MOUSE			/* activated by CTRL + MOUSE */
+	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
+	MARK_MODE_MOUSE_COLUMN,	/* activated by ALT + MOUSE */
 } MarkModeType;
 
 /*
@@ -2195,9 +2220,6 @@ main(int argc, char *argv[])
 
 	bool	ignore_mouse_release = false;		/* after leave menu by press ignore release too */
 	bool	no_doupdate = false;				/* when we sure stdstr refresh is useless */
-	bool	prev_event_is_mouse_press = false;
-	int		prev_mouse_event_y = -1;
-	int		prev_mouse_event_x = -1;
 	bool	raw_output_quit = false;
 
 	bool	mouse_was_initialized = false;
@@ -2245,6 +2267,10 @@ main(int argc, char *argv[])
 
 	MarkModeType	mark_mode = MARK_MODE_NONE;
 	int		mark_mode_start_row = 0;
+	int		mark_mode_start_col = 0;
+
+	int		mouse_row = -1;
+	int		mouse_col = -1;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
@@ -2983,6 +3009,8 @@ reinit_theme:
 				int		vcursor_xmax_fix = -1;
 				int		vcursor_xmin_data = -1;
 				int		vcursor_xmax_data = -1;
+				int		selected_xmin = -1;
+				int		selected_xmax = -1;
 				int		i;
 
 				if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
@@ -3024,17 +3052,57 @@ reinit_theme:
 				/* Calculate selected range in mark mode */
 				if (mark_mode != MARK_MODE_NONE)
 				{
-					if (cursor_row > mark_mode_start_row)
+					if (mouse_row > mark_mode_start_row)
 					{
 						scrdesc.selected_first_row = mark_mode_start_row;
-						scrdesc.selected_rows = cursor_row - mark_mode_start_row + 1;
+						scrdesc.selected_rows = mouse_row - mark_mode_start_row + 1;
 					}
 					else
 					{
-						scrdesc.selected_first_row = cursor_row;
-						scrdesc.selected_rows = mark_mode_start_row - cursor_row + 1;
+						scrdesc.selected_first_row = mouse_row;
+						scrdesc.selected_rows = mark_mode_start_row - mouse_row + 1;
+					}
+
+					if (mark_mode == MARK_MODE_MOUSE_COLUMN)
+					{
+						int		xmin, xmax;
+
+						if (mouse_col > mark_mode_start_col)
+						{
+							xmin = desc.cranges[mark_mode_start_col - 1].xmin;
+							xmax = desc.cranges[mouse_col - 1].xmax;
+						}
+						else
+						{
+							xmax = desc.cranges[mark_mode_start_col - 1].xmax;
+							xmin = desc.cranges[mouse_col - 1].xmin;
+						}
+
+						scrdesc.selected_first_column = xmin;
+						scrdesc.selected_columns = xmax - xmin + 1;
 					}
 				}
+
+				if (scrdesc.selected_first_column != -1)
+				{
+					selected_xmin = scrdesc.selected_first_column;
+					selected_xmax = selected_xmin + scrdesc.selected_columns - 1;
+				}
+
+				/*
+				 * fix of unwanted visual artefact on an border between
+				 * fix_cols window and row window, because there are
+				 * overlap of columns on vertical column decoration.
+				 */
+				if (selected_xmin == scrdesc.fix_cols_cols - 1 &&
+						selected_xmax < scrdesc.fix_cols_cols + cursor_col)
+					selected_xmin += 1;
+
+				else if (selected_xmin >= scrdesc.fix_cols_cols && 
+						 selected_xmin < scrdesc.fix_cols_cols + cursor_col &&
+						 selected_xmax >= scrdesc.fix_cols_cols + cursor_col)
+					selected_xmin = scrdesc.fix_cols_cols - 1;
+
 
 #ifdef DEBUG_PIPE
 
@@ -3047,6 +3115,7 @@ reinit_theme:
 							0,
 							-1,
 							vcursor_xmin_fix, vcursor_xmax_fix,
+							selected_xmin, selected_xmax,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWS,
@@ -3054,6 +3123,7 @@ reinit_theme:
 							scrdesc.fix_cols_cols + cursor_col,
 							cursor_row - first_row + fix_rows_offset,
 							vcursor_xmin_data, vcursor_xmax_data,
+							selected_xmin, selected_xmax,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_COLS,
@@ -3061,6 +3131,7 @@ reinit_theme:
 							0,
 							cursor_row - first_row + fix_rows_offset,
 							vcursor_xmin_fix, vcursor_xmax_fix,
+							selected_xmin, selected_xmax,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FIX_ROWS,
@@ -3068,31 +3139,32 @@ reinit_theme:
 							scrdesc.fix_cols_cols + cursor_col,
 							-1,
 							vcursor_xmin_data, vcursor_xmax_data,
+							selected_xmin, selected_xmax,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_FOOTER,
 							first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
 							footer_cursor_col,
 							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
-							-1, -1,
+							-1, -1, -1, -1,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWNUM_LUC,
 							0,
 							0,
 							0,
-							-1, -1,
+							-1, -1, -1, -1,
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_ROWNUM,
 							first_data_row + first_row - fix_rows_offset,
 							0,
 							cursor_row - first_row + fix_rows_offset,
-							-1, -1,
+							-1, -1, -1, -1, 
 							&desc, &scrdesc, &opts);
 
 				window_fill(WINDOW_VSCROLLBAR,
-							0, 0, cursor_row, -1, -1,
+							0, 0, cursor_row, -1, -1, -1, -1,
 							&desc, &scrdesc, &opts);
 
 				for (i = 0; i < PSPG_WINDOW_COUNT; i++)
@@ -3218,20 +3290,6 @@ reinit_theme:
 				bool		handle_file_event;
 				bool		reopen_file;
 
-				/*
-				 * Store previous event, if this event is mouse press. With it we
-				 * can join following mouse release together, and reduce useless
-				 * refresh.
-				 */
-				if (event_keycode == KEY_MOUSE && event.bstate == BUTTON1_PRESSED)
-				{
-					prev_event_is_mouse_press = true;
-					prev_mouse_event_y = event.y;
-					prev_mouse_event_x = event.x;
-				}
-				else
-					prev_event_is_mouse_press = false;
-
 				event_keycode = get_event(&event,
 										  &press_alt,
 										  &got_sigint,
@@ -3240,6 +3298,16 @@ reinit_theme:
 										  &reopen_file,
 										  opts.watch_time > 0 ? 1000 : -1,
 										  state.hold_stream);
+
+				/*
+				 * Immediately clean mouse state attributes when event is not
+				 * mouse event.
+				 */
+				if (event_keycode != KEY_MOUSE)
+				{
+					mouse_row = -1;
+					mouse_col = -1;
+				}
 
 				/* Disable mark cursor mode immediately */
 				if (mark_mode == MARK_MODE_CURSOR &&
@@ -3252,17 +3320,10 @@ reinit_theme:
 						  is_cmd_RowNumToggle(event_keycode, press_alt)))
 					mark_mode = MARK_MODE_NONE;
 
-				/* Disablemark mouse mode immediately */
-				if (mark_mode == MARK_MODE_MOUSE &&
-						!(event_keycode == KEY_MOUSE &&
-
-#if NCURSES_MOUSE_VERSION > 1
-
-						  event.bstate & REPORT_MOUSE_POSITION &&
-
-#endif
-
-						  event.bstate & BUTTON_CTRL))
+				/* Disable mark mouse mode immediately */
+				if ((mark_mode == MARK_MODE_MOUSE ||
+						 mark_mode == MARK_MODE_MOUSE_COLUMN) &&
+						event_keycode != KEY_MOUSE)
 					mark_mode = MARK_MODE_NONE;
 
 force_refresh_data:
@@ -3998,7 +4059,14 @@ reset_search:
 					LineBufferMark lbm;
 					int		_cursor_row;
 
-					_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
+					if (mouse_row != -1)
+					{
+						_cursor_row = mouse_row + CURSOR_ROW_OFFSET;
+						mouse_row = -1;
+						mouse_col = -1;
+					}
+					else
+						_cursor_row = cursor_row + CURSOR_ROW_OFFSET;
 
 					if (ddesc_set_mark(&lbm, &desc, _cursor_row))
 						lbm_xor_mask(&lbm, LINEINFO_BOOKMARK);
@@ -5424,25 +5492,55 @@ recheck_end:
 
 						)
 					{
-						int		max_cursor_row = MAX_CURSOR_ROW;
 						bool	is_double_click = false;
 						bool	_is_footer_cursor;
 						long	ms;
 						time_t	sec;
 
 						/*
-						 * leave modes, that needs holding mouse (scrollbar mode and 
+						 * Own double click implentation. We need it, because we need
+						 * waster BUTTON1_PRESSED event.
+						 */
+						if (event.bstate & BUTTON1_RELEASED)
+						{
+							current_time(&sec, &ms);
+
+							if (last_sec > 0)
+							{
+								long	td;
+
+								td = time_diff(sec, ms, last_sec, last_ms);
+								if (td < 250)
+									is_double_click = true;
+							}
+
+							last_sec = sec;
+							last_ms = ms;
+						}
+
+						/*
+						 * leave modes, that needs holding mouse (scrollbar mode and
 						 * mark mode) when mouse button is released
 						 */
-						if (scrdesc.scrollbar_mode && event.bstate & BUTTON1_RELEASED)
+						if (event.bstate & BUTTON1_RELEASED &&
+							!is_double_click &&
+							(scrdesc.scrollbar_mode ||
+							 mark_mode == MARK_MODE_MOUSE ||
+							 mark_mode == MARK_MODE_MOUSE_COLUMN))
 						{
 							mark_mode = MARK_MODE_NONE;
 							scrdesc.scrollbar_mode = false;
-
 							scrdesc.slider_has_position = true;
-							last_sec = 0;
-							break;;
+							break;
 						}
+
+#if NCURSES_MOUSE_VERSION > 1
+
+						/* mouse move breaks double click cycle */
+						if (event.bstate & REPORT_MOUSE_POSITION)
+							last_sec = 0;
+
+#endif
 
 						/* scrollbar events implementation */
 						if (scrdesc.scrollbar_mode ||
@@ -5564,35 +5662,6 @@ recheck_end:
 							}
 						}
 
-						if (event.bstate & BUTTON1_RELEASED)
-						{
-							current_time(&sec, &ms);
-
-							if (last_sec > 0)
-							{
-								long	td;
-
-								td = time_diff(sec, ms, last_sec, last_ms);
-								if (td < 250)
-									is_double_click = true;
-							}
-
-							last_sec = sec;
-							last_ms = ms;
-						}
-
-						/*
-						 * When current event is MOUSE RELEASE, and prev event was MOUSE_PRESS
-						 * and it is not double click, and there are same position, then we can
-						 * ignore this event.
-						 */
-						if (prev_event_is_mouse_press && !is_double_click &&
-								prev_mouse_event_y == event.y && prev_mouse_event_x == event.x)
-						{
-							no_doupdate = true;
-							continue;
-						}
-
 						if (event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows)
 						{
 							if (is_double_click)
@@ -5604,29 +5673,24 @@ recheck_end:
 								if (mouse_event - vertical_cursor_changed_mouse_event > 3)
 								{
 									next_command = cmd_ShowVerticalCursor;
-									continue;
+									break;
 								}
 							}
 						}
 						else
-							cursor_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
+							mouse_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 
-						if (cursor_row < 0)
-							cursor_row = 0;
+						/* ignore invalid event */
+						if (mouse_row < 0 ||
+								mouse_row > MAX_CURSOR_ROW ||
+								mouse_row - first_row + 1 > VISIBLE_DATA_ROWS)
+						{
+							mouse_row = -1;
+							mouse_col = -1;
+							break;
+						}
 
-						if (cursor_row + fix_rows_offset < first_row)
-							first_row = cursor_row + fix_rows_offset;
-
-						max_cursor_row = MAX_CURSOR_ROW;
-						if (cursor_row > max_cursor_row)
-							cursor_row = max_cursor_row;
-
-						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
-							first_row += 1;
-
-						first_row = adjust_first_row(first_row, &desc, &scrdesc);
-
-						_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
+						_is_footer_cursor = is_footer_cursor(mouse_row, &scrdesc, &desc);
 
 						/*
 						 * Save last x focused point. It will be used for repeated hide/unhide
@@ -5638,8 +5702,11 @@ recheck_end:
 						if (event.bstate & BUTTON_ALT && is_double_click)
 						{
 							next_command = cmd_ToggleBookmark;
+							throw_selection(&scrdesc, &mark_mode);
+							break;
 						}
-						else if (!(event.bstate & BUTTON_ALT) && opts.vertical_cursor && !_is_footer_cursor)
+						else if (!(event.bstate & BUTTON_ALT || event.bstate & BUTTON_CTRL) &&
+								 opts.vertical_cursor && !_is_footer_cursor)
 						{
 							int		xpoint = event.x - scrdesc.main_start_x;
 							int		vertical_cursor_column_orig = vertical_cursor_column;
@@ -5652,7 +5719,7 @@ recheck_end:
 							{
 								for (i = 0; i  < desc.columns; i++)
 								{
-									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax > xpoint)
+									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax >= xpoint)
 									{
 										int		xmin = desc.cranges[i].xmin;
 										int		xmax = desc.cranges[i].xmax;
@@ -5684,12 +5751,80 @@ recheck_end:
 							}
 						}
 
-						if (event.bstate & BUTTON_CTRL && event.bstate & BUTTON1_PRESSED)
+#if NCURSES_MOUSE_VERSION > 1
+
+						if (event.bstate & BUTTON_CTRL &&
+							event.bstate & BUTTON1_PRESSED)
 						{
+							throw_selection(&scrdesc, &mark_mode);
+
 							mark_mode = MARK_MODE_MOUSE;
-							mark_mode_start_row = cursor_row;
+							mark_mode_start_row = mouse_row;
 						}
 
+						if (!_is_footer_cursor &&
+							event.bstate & BUTTON_ALT &&
+							(event.bstate & BUTTON1_PRESSED ||
+							 event.bstate & REPORT_MOUSE_POSITION))
+						{
+							int		xpoint = event.x - scrdesc.main_start_x;
+							int		colno = -1;
+
+							if (xpoint > scrdesc.fix_cols_cols - 1)
+								xpoint += cursor_col;
+
+							if (xpoint >= 0)
+							{
+								int		i;
+
+								for (i = 0; i  < desc.columns; i++)
+								{
+									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax >= xpoint)
+									{
+										int		xmin = desc.cranges[i].xmin;
+										int		xmax = desc.cranges[i].xmax;
+
+										colno = i + 1;
+
+										if (colno > (opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols))
+										{
+											if (xmax > scrdesc.main_maxx + cursor_col)
+												cursor_col = xmax - scrdesc.main_maxx;
+											else if (xmin < scrdesc.fix_cols_cols + cursor_col)
+												cursor_col = xmin - scrdesc.fix_cols_cols + 1;
+										}
+
+										break;
+									}
+								}
+							}
+
+							if (colno != -1)
+							{
+								mouse_col = colno;
+
+								if (event.bstate & BUTTON1_PRESSED)
+								{
+									throw_selection(&scrdesc, &mark_mode);
+
+									mark_mode = MARK_MODE_MOUSE_COLUMN;
+									mark_mode_start_row = mouse_row;
+									mark_mode_start_col = colno;
+								}
+
+								last_x_focus = get_x_focus(colno, cursor_col, &desc, &scrdesc);
+							}
+						}
+
+#endif
+
+						/*
+						 * Synchronize cursor with mouse point when mouse was not
+						 * used for selection.
+						 */
+						if (mark_mode != MARK_MODE_MOUSE &&
+								mark_mode != MARK_MODE_MOUSE_COLUMN)
+							cursor_row = mouse_row;
 					}
 					break;
 				}
