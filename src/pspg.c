@@ -3061,15 +3061,36 @@ reinit_theme:
 				/* Calculate selected range in mark mode */
 				if (mark_mode != MARK_MODE_NONE)
 				{
-					if (mouse_row > mark_mode_start_row)
+					int		ref_row;
+
+					switch (mark_mode)
+					{
+						case MARK_MODE_MOUSE:
+							ref_row = mouse_row;
+							break;
+						case MARK_MODE_MOUSE_COLUMN:
+							ref_row = mouse_row;
+							break;
+						case MARK_MODE_SPECIAL:
+							ref_row = cursor_row;
+							break;
+						case MARK_MODE_CURSOR:
+							ref_row = cursor_row;
+							break;
+						default:
+							ref_row = -1;
+					}
+
+
+					if (ref_row > mark_mode_start_row)
 					{
 						scrdesc.selected_first_row = mark_mode_start_row;
-						scrdesc.selected_rows = mouse_row - mark_mode_start_row + 1;
+						scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
 					}
 					else
 					{
-						scrdesc.selected_first_row = mouse_row;
-						scrdesc.selected_rows = mark_mode_start_row - mouse_row + 1;
+						scrdesc.selected_first_row = ref_row;
+						scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
 					}
 
 					if (mark_mode == MARK_MODE_MOUSE_COLUMN)
@@ -3881,6 +3902,8 @@ reset_search:
 			case cmd_Mark:
 				if (mark_mode != MARK_MODE_SPECIAL)
 				{
+					throw_selection(&scrdesc, &mark_mode);
+
 					mark_mode = MARK_MODE_SPECIAL;
 					mark_mode_start_row = cursor_row;
 				}
@@ -3891,6 +3914,8 @@ reset_search:
 			case cmd_Mark_NestedCursorCommand:
 				if (mark_mode != MARK_MODE_CURSOR)
 				{
+					throw_selection(&scrdesc, &mark_mode);
+
 					mark_mode = MARK_MODE_CURSOR;
 					mark_mode_start_row = cursor_row;
 				}
@@ -3902,6 +3927,8 @@ reset_search:
 				break;
 
 			case cmd_MarkAll:
+				throw_selection(&scrdesc, &mark_mode);
+
 				mark_mode = MARK_MODE_NONE;
 				scrdesc.selected_first_row = 0;
 				scrdesc.selected_rows = MAX_CURSOR_ROW + 1;
@@ -5684,28 +5711,33 @@ recheck_end:
 									break;
 								}
 							}
+
+							_is_footer_cursor = false;
+							last_x_focus = event.x;
 						}
 						else
+						{
 							mouse_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 
-						/* ignore invalid event */
-						if (mouse_row < 0 ||
-								mouse_row > MAX_CURSOR_ROW ||
-								mouse_row - first_row + 1 > VISIBLE_DATA_ROWS)
-						{
-							mouse_row = -1;
-							mouse_col = -1;
-							break;
+							/* ignore invalid event */
+							if (mouse_row < 0 ||
+									mouse_row > MAX_CURSOR_ROW ||
+									mouse_row - first_row + 1 > VISIBLE_DATA_ROWS)
+							{
+								mouse_row = -1;
+								mouse_col = -1;
+								break;
+							}
+
+							_is_footer_cursor = is_footer_cursor(mouse_row, &scrdesc, &desc);
+
+							/*
+							 * Save last x focused point. It will be used for repeated hide/unhide
+							 * vertical cursor. But only if cursor is not in footer area.
+							 */
+							if (!_is_footer_cursor)
+								last_x_focus = event.x;
 						}
-
-						_is_footer_cursor = is_footer_cursor(mouse_row, &scrdesc, &desc);
-
-						/*
-						 * Save last x focused point. It will be used for repeated hide/unhide
-						 * vertical cursor. But only if cursor is not in footer area.
-						 */
-						if (!_is_footer_cursor)
-							last_x_focus = event.x;
 
 						if (event.bstate & BUTTON_ALT && is_double_click)
 						{
@@ -5831,7 +5863,8 @@ recheck_end:
 						 * used for selection.
 						 */
 						if (mark_mode != MARK_MODE_MOUSE &&
-								mark_mode != MARK_MODE_MOUSE_COLUMN)
+								mark_mode != MARK_MODE_MOUSE_COLUMN &&
+								mouse_row != -1)
 							cursor_row = mouse_row;
 					}
 					break;
