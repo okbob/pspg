@@ -1428,7 +1428,31 @@ get_event(MEVENT *mevent,
 	if (0)
 	{
 
-#ifdef HAVE_MALLINFO2
+#ifdef __GNU_LIBRARY__
+
+/*
+ * This test doesn't work well. Looks so HAVE_MALLINFO2 is undefined
+ * although mallinfo2 function exists, and mallinfo is deprecated.
+ * Maybe autoconf issue.
+ */
+#if (__GLIBC__ == 2 &&  __GLIBC_MINOR__ >= 33) || __GLIBC__ > 2
+
+		struct mallinfo2 mi;
+
+		mi = mallinfo2();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %ld\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %ld\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %ld\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %ld\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %ld\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %ld\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %ld\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %ld\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %ld\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %ld\n", mi.keepcost);
+
+#else
 
 		struct mallinfo mi;
 
@@ -1445,22 +1469,7 @@ get_event(MEVENT *mevent,
 		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
 		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
 
-#else
-
-		struct mallinfo2 mi;
-
-		mi = mallinfo2();
-
-		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %ld\n", mi.arena);
-		fprintf(debug_pipe, "# of free chunks (ordblks):            %ld\n", mi.ordblks);
-		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %ld\n", mi.smblks);
-		fprintf(debug_pipe, "# of mapped regions (hblks):           %ld\n", mi.hblks);
-		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %ld\n", mi.hblkhd);
-		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %ld\n", mi.usmblks);
-		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %ld\n", mi.fsmblks);
-		fprintf(debug_pipe, "Total allocated space (uordblks):      %ld\n", mi.uordblks);
-		fprintf(debug_pipe, "Total free space (fordblks):           %ld\n", mi.fordblks);
-		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %ld\n", mi.keepcost);
+#endif
 
 #endif
 
@@ -3102,7 +3111,6 @@ reinit_theme:
 						 selected_xmin < scrdesc.fix_cols_cols + cursor_col &&
 						 selected_xmax >= scrdesc.fix_cols_cols + cursor_col)
 					selected_xmin = scrdesc.fix_cols_cols - 1;
-
 
 #ifdef DEBUG_PIPE
 
