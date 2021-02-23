@@ -165,7 +165,7 @@ char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 static void
 SigintHandler(int sig_num)
 {
-	(void) sig_num;
+	UNUSED(sig_num);
 
 	signal(SIGINT, SigintHandler);
 
@@ -191,7 +191,7 @@ SigsegvHandler (int sig)
 
 /* Set up sigsegv handler. */
 static void
-setup_sigsegv_handler (void)
+setup_sigsegv_handler(void)
 {
 	struct sigaction act;
 
@@ -728,7 +728,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		getmaxyx(top_bar, maxy, maxx);
 		getmaxyx(stdscr, smaxy, smaxx);
 
-		(void) maxy;
+		UNUSED(maxy);
 
 		wbkgd(top_bar, current_state->errstr ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
 		werase(top_bar);
@@ -1060,7 +1060,7 @@ readline_input_avail(void)
 static int
 readline_getc(FILE *dummy)
 {
-	(void) dummy;
+	UNUSED(dummy);
 
     input_avail = false;
     return input;
@@ -1596,7 +1596,7 @@ repeat:
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 		ret = get_wch(&ch);
-		(void) ret;
+		UNUSED(ret);
 
 		c = ch;
 
@@ -1774,6 +1774,8 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 static void
 check_clipboard_app()
 {
+	clipboard_application_id = 2;
+
 	if (!clipboard_application_id)
 	{
 		FILE	   *f;
@@ -1876,6 +1878,7 @@ export_to_file(PspgCommand command,
 	bool	copy_to_file = false;
 
 	*force_refresh = false;
+
 
 	if (command == cmd_CopyColumn && !opts->vertical_cursor)
 	{
@@ -2628,8 +2631,8 @@ main(int argc, char *argv[])
 	else
 		win = initscr();
 
-	(void) term;
-	(void) win;
+	UNUSED(term);
+	UNUSED(win);
 
 	state.fds[0].fd = -1;
 	state.fds[1].fd = -1;

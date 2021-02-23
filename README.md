@@ -340,6 +340,11 @@ On some old systems a compilation fails with error
 </pre>
 In this case comment line with function set_escdelay
 
+If you want to use `pspg` as Postgres client, then you need run
+`configure --with-postgres=yes`. On Fedora with own Postgres build
+I had to install `openssl-devel` package and I had to set
+`export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
+
 # Note - Installation
 
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
