@@ -3086,7 +3086,6 @@ reinit_theme:
 							ref_row = -1;
 					}
 
-
 					if (ref_row > mark_mode_start_row)
 					{
 						scrdesc.selected_first_row = mark_mode_start_row;
@@ -3255,7 +3254,9 @@ reinit_theme:
 				 * same like last_first_row, then update will not be
 				 * too massive.
 				 */
-				if (!menu_is_active && last_doupdate_sec != -1)
+				if (!menu_is_active && last_doupdate_sec != -1 &&
+					!(mark_mode == MARK_MODE_MOUSE ||
+					 mark_mode == MARK_MODE_MOUSE_COLUMN))
 				{
 					int		limit;
 					long	td = time_diff(current_sec, current_ms,

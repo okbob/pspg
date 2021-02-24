@@ -314,16 +314,19 @@ next_char(FmtLineIter *iter,
 
 typedef struct
 {
-	ClipboardFormat format;
 	FILE	   *fp;
-	int			colno;
-	bool		force8bit;
-	bool		empty_string_is_null;
+	ClipboardFormat format;
 	int			xmin;
 	int			xmax;
-	char	  **colnames;
-	int			columns;
+	bool		copy_line_extended;
 	char	   *table_name;
+	int			columns;
+
+	bool		force8bit;
+	bool		empty_string_is_null;
+
+	int			colno;
+	char	  **colnames;
 } ExportState;
 
 /*
@@ -369,8 +372,7 @@ trim_str(char *str, int *size, bool force8bit)
 static bool
 process_item(ExportState *expstate,
 			 char typ, char *field, int size,
-			 int colno, int xpos,
-			 bool is_colname)
+			 int xpos, bool is_colname)
 {
 	if (INSERT_FORMAT_TYPE(expstate->format))
 	{
@@ -398,8 +400,6 @@ process_item(ExportState *expstate,
 
 			if (is_colname)
 			{
-				char	   *_field;
-
 				if (!expstate->colnames)
 				{
 					expstate->colnames = smalloc(sizeof(char *) * expstate->columns);
@@ -500,12 +500,6 @@ process_item(ExportState *expstate,
 						fputs("   VALUES(", expstate->fp);
 				}
 
-				field = trim_str(field, &size, expstate->force8bit);
-				_field = quote_sql_literal(field,
-										   &size,
-										   expstate->force8bit,
-										   expstate->empty_string_is_null);
-
 				if (expstate->format == CLIPBOARD_FORMAT_INSERT)
 				{
 					if (expstate->colno > 0)
@@ -566,7 +560,7 @@ process_item(ExportState *expstate,
 	 */
 	else if (DSV_FORMAT_TYPE(expstate->format))
 	{
-		if (typ == 'N')
+		if (typ == 'N' && !expstate->copy_line_extended)
 		{
 			errno = 0;
 			fputc('\n', expstate->fp);
@@ -590,23 +584,53 @@ process_item(ExportState *expstate,
 									expstate->force8bit,
 									expstate->empty_string_is_null);
 
+
+				if (expstate->copy_line_extended && is_colname)
+				{
+
+					if (!expstate->colnames)
+					{
+						expstate->colnames = smalloc(sizeof(char *) * expstate->columns);
+						memset(expstate->colnames, 0, sizeof(char *) * expstate->columns);
+					}
+
+					if (!_field)
+						expstate->colnames[expstate->colno] = sstrdup("");
+					else if (_field != field)
+						expstate->colnames[expstate->colno] = _field;
+					else
+						expstate->colnames[expstate->colno] = sstrndup(field, size);
+
+					expstate->colno += 1;
+
+					return true;
+				}
+
 				errno = 0;
 
-				if (expstate->colno > 0)
+				if (!expstate->copy_line_extended)
 				{
-					if (expstate->format == CLIPBOARD_FORMAT_CSV)
-						fputc(',', expstate->fp);
-					else if (expstate->format == CLIPBOARD_FORMAT_TSVC)
-						fputc('\t', expstate->fp);
-				}
+					if (expstate->colno > 0)
+					{
 
-				if (_field && !errno)
-				{
-					errno = 0;
-					fwrite(_field, size, 1, expstate->fp);
+						if (expstate->format == CLIPBOARD_FORMAT_CSV)
+							fputc(',', expstate->fp);
+						else if (expstate->format == CLIPBOARD_FORMAT_TSVC)
+							fputc('\t', expstate->fp);
+					}
 
-					saved_errno = errno;
+					if (_field && !errno)
+					{
+						errno = 0;
+						fwrite(_field, size, 1, expstate->fp);
+					}
 				}
+				else
+					fprintf(expstate->fp, "%s,%.*s\n",
+								  expstate->colnames[expstate->colno],
+								  size, _field);
+
+				saved_errno = errno;
 
 				expstate->colno += 1;
 
@@ -672,6 +696,7 @@ export_data(Options *opts,
 	expstate.table_name = NULL;
 	expstate.colnames = NULL;
 	expstate.columns = desc->columns;
+	expstate.copy_line_extended = (cmd == cmd_CopyLineExtended);
 
 	current_state->errstr = NULL;
 
@@ -864,8 +889,7 @@ export_data(Options *opts,
 			if (field)
 			{
 				isok = process_item(&expstate, 'd',
-									field, field_size,
-									colno, field_xpos,
+									field, field_size, field_xpos,
 									is_colname);
 				if (!isok)
 					goto exit_export;
@@ -874,8 +898,7 @@ export_data(Options *opts,
 			}
 
 			isok = process_item(&expstate, typ,
-								ptr, size,
-								colno, xpos,
+								ptr, size, xpos,
 								is_colname);
 
 			if (!isok)
@@ -888,370 +911,19 @@ export_data(Options *opts,
 		if (field)
 		{
 			isok = process_item(&expstate, 'd',
-								field, field_size,
-								colno, field_xpos,
+								field, field_size, field_xpos,
 								is_colname);
 			if (!isok)
 				goto exit_export;
 		}
 
 		isok = process_item(&expstate, 'N',
-							NULL, 0,
-							colno, -1,
-							is_colname);
+							NULL, 0, -1, is_colname);
 		if (!isok)
 			goto exit_export;
 	}
 
 exit_export:
-
-
-//		if (xmin != -1)
-//		{
-//			if (print_vertical_border)
-//			{
-//				getdeco(rowstr,
-//						&ldeco, &rdeco,
-//						&ldecolen, &rdecolen);
-//
-//				rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit, false);
-//			}
-//			else
-//				rowstr = pos_substr(rowstr, xmin, xmax, &rowstrlen, opts->force8bit, false);
-//
-//fprintf(debug_pipe, "**** rowstr: %*.s ********\n", rowstrlen, rowstr);
-//
-//		}
-
-//		errno = 0;
-//
-//		if (format == CLIPBOARD_FORMAT_TEXT)
-//		{
-//			if (xmin != -1)
-//			{
-//				if (print_vertical_border)
-//					fprintf(fp, "%.*s%.*s%.*s\n", ldecolen, ldeco,
-//												rowstrlen, rowstr ? rowstr : "",
-//												rdecolen, rdeco);
-//				else
-//					fprintf(fp, "%.*s\n", rowstrlen, rowstr ? rowstr : "");
-//			}
-//			else
-//				fprintf(fp, "%s\n", rowstr ? rowstr : "");
-//		}
-//		else
-//		{
-//			char   *headline_transl = desc->headline_transl;
-//			bool	is_first = true;
-//			
-
-//fprintf(debug_pipe, "<<%s>>\n", rowstr ? rowstr : "NULL");
-
-//			while (rowstr && *rowstr && *headline_transl)
-//			{
-//				char   *fieldstr;
-//				int		fieldstrlen;
-//
-//				
-
-//				if (xmin != -1)
-//				{
-//					fieldstr = rowstr;
-//					fieldstrlen = rowstrlen;
-//					rowstr = NULL;
-//					rowstrlen = 0;
-//				}
-//				else
-//				{
-//					int		ignored_spaces = 0;
-//
-//					fieldstr = rowstr;
-//					fieldstrlen = 0;
-//
-//					while (rowstr && *rowstr && *headline_transl)
-//					{
-//						char	hlc = *headline_transl;
-//						int		size;
-//						int		width;
-//
-//						if (opts->force8bit)
-///						{
-//							size = 1;
-//							width = 1;
-//						}
-//						else
-//						{
-//							size = utf8charlen(*rowstr);
-//							width = utf_dsplen(rowstr);
-//						}
-//
-//						headline_transl += width;
-//
-//						if (hlc == 'L')
-//						{
-//							rowstr += size;
-//							fieldstr = rowstr;
-//						}
-//						else if (hlc == 'd')
-//						{
-//							if (*rowstr == ' ')
-//								ignored_spaces += 1;
-//							else
-//							{
-//								fieldstrlen += size + ignored_spaces;
-//								ignored_spaces = 0;
-//							}
-//
-//							rowstr += size;
-//						}
-//						else
-//						{
-//							rowstr += size;
-//							break;
-//						}
-//					}
-//
-//					while (*fieldstr == ' ' && fieldstrlen > 0)
-//					{
-//						fieldstr += 1;
-//						fieldstrlen -= 1;
-//					}
-//				}
-//
-//				if (save_column_name)
-//				{
-//					char   *str = NULL;
-//
-//					if (DSV_FORMAT_TYPE(format))
-//					{
-//						str = csv_format(fieldstr,
-//										 &fieldstrlen,
-//										 opts->force8bit,
-//										 opts->empty_string_is_null);
-//					}
-//					else if (INSERT_FORMAT_TYPE(format))
-//					{
-//						str = quote_sql_identifier(fieldstr, &fieldstrlen, opts->force8bit);
-//					}
-//
-//					if (str == NULL)
-//						columns[colnum++] = strdup("");
-//					else if (str != fieldstr)
-//						columns[colnum++] = str;
-//					else
-//						columns[colnum++] = sstrndup(str, fieldstrlen);
-//				}
-//				else if (DSV_FORMAT_TYPE(format))
-//				{
-//					int		saved_errno;
-//					char   *outstr = csv_format(fieldstr,
-//												&fieldstrlen,
-//												opts->force8bit,
-//												opts->empty_string_is_null);
-//
-//					if (cmd == cmd_CopyLineExtended)
-//					{
-//						if (is_first)
-//							is_first = false;
-//						else
-//							fputc('\n', fp);
-//
-//						fputs(columns[colnum++], fp);
-//
-//						if (format == CLIPBOARD_FORMAT_CSV)
-//							fputc(',', fp);
-//						else if (format == CLIPBOARD_FORMAT_TSVC)
-//							fputc('\t', fp);
-//					}
-//					else
-//					{
-//						if (is_first)
-//							is_first = false;
-//						else
-//						{
-//							if (format == CLIPBOARD_FORMAT_CSV)
-//								fputc(',', fp);
-//							else if (format == CLIPBOARD_FORMAT_TSVC)
-//								fputc('\t', fp);
-//						}
-//					}
-//
-//					if (outstr)
-//						fwrite(outstr, fieldstrlen, 1, fp);
-//
-//					saved_errno = errno;
-//
-//					if (outstr && outstr != fieldstr)
-//						free(outstr);
-//
-//					errno = saved_errno;
-//				}
-//				else if (INSERT_FORMAT_TYPE(format))
-//				{
-//					if (is_first)
-//					{
-//						int		i;
-//						char   *outstr;
-//
-//						fputs("INSERT INTO ", fp);
-//
-//						fputs(quoted_table_name, fp);
-//
-//						fputc('(', fp);
-//
-//						if (format == CLIPBOARD_FORMAT_INSERT)
-//						{
-//							for (i = 0; i < desc->columns; i++)
-//							{
-//								if (i > 0)
-//									fputs(", ", fp);
-///								fputs(columns[i], fp);
-//							}
-//
-//							fputs(") VALUES(", fp);
-//						}
-//						else
-//						{
-//							int		indent_spaces;
-//
-//							if (opts->force8bit)
-///								indent_spaces = strlen(quoted_table_name) + 1 + 12;
-//							else
-//								indent_spaces = utf_string_dsplen(quoted_table_name, SIZE_MAX) + 1 + 12;
-//
-//							for (i = 0; i < desc->columns; i++)
-//							{
-//								if (i > 0)
-//									fprintf(fp, "%*.s", indent_spaces, "");
-//
-//								fputs(columns[i], fp);
-//
-//								if (i < desc->columns - 1)
-//									fprintf(fp, ",\t\t -- %d.\n", i + 1);
-//								else
-//								{
-//									fprintf(fp, ")\t\t -- %d.\n", i + 1);
-//									fputs("   VALUES(", fp);
-//								}
-//							}
-//						}
-//
-//						outstr = quote_sql_literal(fieldstr,
-//												   &fieldstrlen,
-//												   opts->force8bit,
-//												   opts->empty_string_is_null);
-//
-//						fwrite(outstr, fieldstrlen, 1, fp);
-//
-//						colnum += 1;
-//
-//						if (outstr != fieldstr)
-//							free(outstr);
-//
-//						if (format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
-//						{
-///							if (desc->columns > 1)
-//							{
-//								fprintf(fp, ",\t\t -- %d. %s\n", 1, columns[0]);
-//							}
-//							else
-//							{
-//								fprintf(fp, ");\t\t -- %d. %s\n", 1, columns[0]);
-//							}
-//						}
-//						else
-//						{
-//							if (desc->columns == 1)
-//								fputs(");\n", fp);
-//						}
-///
-//						is_first = false;
-//					}
-//					else
-//					{
-//						char   *outstr;
-//
-//						outstr = quote_sql_literal(fieldstr,
-//												   &fieldstrlen,
-//												   opts->force8bit,
-//												   opts->empty_string_is_null);
-//
-//						if (format == CLIPBOARD_FORMAT_INSERT)
-//						{
-//							fputs(", ", fp);
-//						}
-//						else
-//							fputs("          ", fp);
-//
-//						fwrite(outstr, fieldstrlen, 1, fp);
-//						if (outstr != fieldstr)
-//							free(outstr);
-//
-//						colnum += 1;
-//
-//						if (format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
-//						{
-//							if (colnum < desc->columns)
-//							{
-//								fprintf(fp, ",\t\t -- %d. %s\n", colnum, columns[colnum - 1]);
-//							}
-//							else
-//							{
-//								fprintf(fp, ");\t\t -- %d. %s\n", colnum, columns[colnum - 1]);
-//							}
-//						}
-//						else
-//						{
-//							if (colnum >= desc->columns)
-//								fputs(");\n", fp);
-//						}
-//					}
-///				}
-///			}
-//
-//			/* end of line */
-//			if (!save_column_name &&
-//				DSV_FORMAT_TYPE(format))
-//			{
-//				fputc('\n', fp);
-//			}
-//		}
-
-//		if (errno != 0)
-//		{
-//			format_error("%s", strerror(errno));
-//			log_row("Cannot write (%s)", current_state->errstr);
-//
-//			if (columns)
-//			{
-//				int		i;
-//
-//				for (i = 0; i < desc->columns; i++)
-//					free(columns[i]);
-//
-//				free(columns);
-//			}
-//
-//			if (quoted_table_name)
-//				free(quoted_table_name);
-//
-//			return false;
-//		}
-//	}
-
-//	if (columns)
-//	{
-//		int		i;
-//
-//		for (i = 0; i < desc->columns; i++)
-//			free(columns[i]);
-//
-//		free(columns);
-//	}
-
-//	if (quoted_table_name)
-//		free(quoted_table_name);
-
 
 	if (expstate.colnames)
 	{
