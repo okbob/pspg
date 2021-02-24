@@ -79,6 +79,7 @@ This pager can be used from the following clients command line clients too:
 * `-U`, `--username`  database user name
 * `-W`, `--password`  force password prompt
 * `--pgcli-fix`  used for fixing some pgcli related issues
+* `--clipboard-app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
 
 Options can be passed inside env variable `PSPG` too.
 
@@ -177,13 +178,17 @@ some horizontal scrolling) or on first column. After last column searching start
 
 # Export & Clipboard
 
-For clipboard support the clipboard application should be installed: wl-clipboard (Wayland),
-xlip (xwindows) or pbcopy (MacOS).
+For clipboard support the clipboard application should be installed: 1. wl-clipboard (Wayland),
+2. xlip (xwindows) or 3. pbcopy (MacOS).
 
 `pspg` try to translate unicode symbol '∅' to NULL every time. If you don't use special setting
 by `\pset null ...`, then `psql` displays empty string instead NULL. `pspg` hasn't any special
 detection (in export routines) for this case. You should to check and enable or disable menu
 item `Empty string is NULL`.
+
+`pspg` has automatic detection of clipboard application. Unfortunatelly, this detection should
+not to work for same cases. You can specify the application by specify number (1,2,3) to
+`--clipboard-app` option.
 
 
 # Status line description
@@ -339,6 +344,11 @@ On some old systems a compilation fails with error
 /home/user/Src/pspg-0.6/src/pspg.c:2403: undefined reference to `set_escdelay`
 </pre>
 In this case comment line with function set_escdelay
+
+If you want to use `pspg` as Postgres client, then you need run
+`configure --with-postgres=yes`. On Fedora with own Postgres build
+I had to install `openssl-devel` package and I had to set
+`export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
 
 # Note - Installation
 

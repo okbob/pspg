@@ -576,6 +576,8 @@ window_fill(int window_identifier,
 			int cursor_row,					/* row of row cursor */
 			int vcursor_xmin,				/* xmin in display coordinates */
 			int vcursor_xmax,				/* xmax in display coordinates */
+			int selected_xmin,
+			int selected_xmax,
 			DataDesc *desc,
 			ScrDesc *scrdesc,
 			Options *opts)
@@ -891,13 +893,12 @@ window_fill(int window_identifier,
 						if (rowno >= scrdesc->selected_first_row &&
 							rowno < scrdesc->selected_first_row + scrdesc->selected_rows)
 						{
-//							if (scrdesc->selected_first_column != -1 && pos != -1)
-//							{
-//								if (pos >= scrdesc->selected_first_column &&
-//										pos < scrdesc->selected_first_column + scrdesc->selected_columns)
-//									is_in_range = true;
-//							}
-//							else
+							if (selected_xmin != -1 && pos != -1)
+							{
+								if (pos >= selected_xmin && pos <= selected_xmax)
+									is_in_range = true;
+							}
+							else
 								is_in_range = true;
 						}
 					}

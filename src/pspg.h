@@ -318,7 +318,8 @@ typedef struct
 void exit_ncurses(void);
 
 /* from print.c */
-extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
+extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax,
+	int selected_xmin, int selected_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
 extern void draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int first_data_row, int first_row, int cursor_col, int footer_cursor_col, int fix_rows_offset);
 extern LineInfo *set_line_info(Options *opts, ScrDesc *scrdesc, LineBufferMark *lbm, char *rowstr);
 
@@ -351,7 +352,7 @@ extern bool read_and_format(Options *opts, DataDesc *desc, StateData *state);
 /* from pgclient.c */
 extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
 
-/* from buildargv.c */
+/* from args.c */
 extern char **buildargv(const char *input, int *argc, char *appname);
 extern bool readargs(char **argv, int argc, Options *opts, StateData *state);
 extern bool args_are_consistent(Options *opts, StateData *state);
@@ -413,9 +414,9 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 
