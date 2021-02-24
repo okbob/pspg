@@ -100,7 +100,7 @@ static struct option long_options[] =
 	{"blackwhite", no_argument, 0, 'b'},
 	{"freezecols", required_argument, 0, 'c'},
 	{"no-xterm-mouse-mode", no_argument, 0, 40},
-	{"clipboard_app", required_argument, 0, 42},
+	{"clipboard-app", required_argument, 0, 42},
 	{0, 0, 0, 0}
 };
 
@@ -300,7 +300,7 @@ readargs(char **argv,
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
-					fprintf(stdout, "  --clipboard_app=NUM      specify app used by copy to clipboard (1, 2, 3)\n");
+					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)\n");
 					fprintf(stdout, "  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)\n");
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
