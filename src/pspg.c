@@ -1772,9 +1772,10 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 }
 
 static void
-check_clipboard_app()
+check_clipboard_app(Options *opts)
 {
-	clipboard_application_id = 2;
+	if (opts->clipboard_app)
+		clipboard_application_id = opts->clipboard_app;
 
 	if (!clipboard_application_id)
 	{
@@ -1989,7 +1990,7 @@ export_to_file(PspgCommand command,
 		char *fmt;
 		char cmdline[1024];
 
-		check_clipboard_app();
+		check_clipboard_app(opts);
 
 		if (!clipboard_application_id)
 		{
@@ -2305,6 +2306,7 @@ main(int argc, char *argv[])
 	opts.empty_string_is_null = true;
 	opts.xterm_mouse_mode = true;
 	opts.show_scrollbar = true;
+	opts.clipboard_app = 0;
 
 	setup_sigsegv_handler();
 

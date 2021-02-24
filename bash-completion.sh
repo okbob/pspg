@@ -58,6 +58,7 @@ _pspg_completion() {
                        "--no-sound"
                        "--tabular-cursor"
                        "--vertical-cursor"
+                       "--clipboard_app"
                        "--csv"
                        "--csv-separator"
                        "--csv-header"

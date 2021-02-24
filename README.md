@@ -79,6 +79,7 @@ This pager can be used from the following clients command line clients too:
 * `-U`, `--username`  database user name
 * `-W`, `--password`  force password prompt
 * `--pgcli-fix`  used for fixing some pgcli related issues
+* `--clipboard_app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
 
 Options can be passed inside env variable `PSPG` too.
 

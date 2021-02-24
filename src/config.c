@@ -126,6 +126,10 @@ save_config(char *path, Options *opts)
 	if (result < 0)
 		return false;
 
+	result = fprintf(f, "clipboard_app = %d\n", opts->clipboard_app);
+	if (result < 0)
+		return false;
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
@@ -211,6 +215,11 @@ load_config(char *path, Options *opts)
 			{
 				if (int_val > 0 && int_val <= CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
 					opts->clipboard_format = int_val;
+			}
+			else if (strcmp(key, "clipboard_app") == 0)
+			{
+				if (int_val > 0 && int_val <= 3)
+					opts->clipboard_app = int_val;
 			}
 			else if (strcmp(key, "xterm_mouse_mode") == 0)
 				opts->xterm_mouse_mode = bool_val;
