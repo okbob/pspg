@@ -2150,6 +2150,7 @@ typedef enum
 	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
 	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
 	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
+	MARK_MODE_MOUSE_COLUMNS,/* activated by CTRL + MOUSE on column headers */
 	MARK_MODE_MOUSE_BLOCK,	/* activated by ALT + MOUSE */
 } MarkModeType;
 
@@ -2202,6 +2203,49 @@ check_visible_vertical_cursor(DataDesc *desc,
 	}
 
 	return true;
+}
+
+static int
+mousex_get_colno(DataDesc *desc,
+				 ScrDesc *scrdesc,
+				 Options *opts,
+				 int *cursor_col,
+				 int default_freezed_cols,
+				 int mousex)
+{
+	int		colno = -1;
+	int		xpoint = mousex - scrdesc->main_start_x;
+
+	if (xpoint > scrdesc->fix_cols_cols - 1)
+		xpoint += *cursor_col;
+
+	if (xpoint >= 0)
+	{
+		int		i;
+
+		for (i = 0; i  < desc->columns; i++)
+		{
+			if (desc->cranges[i].xmin <= xpoint && desc->cranges[i].xmax >= xpoint)
+			{
+				int		xmin = desc->cranges[i].xmin;
+				int		xmax = desc->cranges[i].xmax;
+
+				colno = i + 1;
+
+				if (colno > (opts->freezed_cols != -1 ? opts->freezed_cols : default_freezed_cols))
+				{
+					if (xmax > scrdesc->main_maxx + *cursor_col)
+						*cursor_col = xmax - scrdesc->main_maxx;
+					else if (xmin < scrdesc->fix_cols_cols + *cursor_col)
+						*cursor_col = xmin - scrdesc->fix_cols_cols + 1;
+				}
+
+				break;
+			}
+		}
+	}
+
+	return colno;
 }
 
 /*
@@ -2302,7 +2346,11 @@ main(int argc, char *argv[])
 
 #endif
 
+#if NCURSES_MOUSE_VERSION > 1
+
 	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
+
+#endif
 
 	MarkModeType	mark_mode = MARK_MODE_NONE;
 	int		mark_mode_start_row = 0;
@@ -3111,25 +3159,29 @@ reinit_theme:
 							ref_row = -1;
 					}
 
-					if (mark_mode == MARK_MODE_MOUSE_BLOCK)
+					if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
+							mark_mode == MARK_MODE_MOUSE_COLUMNS)
 						ref_col = mouse_col;
 					else if (mark_mode == MARK_MODE_BLOCK)
 						ref_col = vertical_cursor_column;
 					else
 						ref_col = -1;
 
-					if (ref_row > mark_mode_start_row)
+					if (ref_row != -1)
 					{
-						scrdesc.selected_first_row = mark_mode_start_row;
-						scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
-					}
-					else
-					{
-						scrdesc.selected_first_row = ref_row;
-						scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
+						if (ref_row > mark_mode_start_row)
+						{
+							scrdesc.selected_first_row = mark_mode_start_row;
+							scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
+						}
+						else
+						{
+							scrdesc.selected_first_row = ref_row;
+							scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
+						}
 					}
 
-					if (ref_row != -1)
+					if (ref_col != -1)
 					{
 						int		xmin, xmax;
 
@@ -3288,7 +3340,8 @@ reinit_theme:
 				 */
 				if (!menu_is_active && last_doupdate_sec != -1 &&
 					!(mark_mode == MARK_MODE_MOUSE ||
-					 mark_mode == MARK_MODE_MOUSE_BLOCK))
+					 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+					 mark_mode == MARK_MODE_MOUSE_COLUMNS))
 				{
 					int		limit;
 					long	td = time_diff(current_sec, current_ms,
@@ -3389,7 +3442,8 @@ reinit_theme:
 
 				/* Disable mark mouse mode immediately */
 				if ((mark_mode == MARK_MODE_MOUSE ||
-						 mark_mode == MARK_MODE_MOUSE_BLOCK) &&
+						 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+						 mark_mode == MARK_MODE_MOUSE_COLUMNS) &&
 						event_keycode != KEY_MOUSE)
 					mark_mode = MARK_MODE_NONE;
 
@@ -5612,7 +5666,8 @@ recheck_end:
 							!is_double_click &&
 							(scrdesc.scrollbar_mode ||
 							 mark_mode == MARK_MODE_MOUSE ||
-							 mark_mode == MARK_MODE_MOUSE_BLOCK))
+							 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+							 mark_mode == MARK_MODE_MOUSE_COLUMNS))
 						{
 							mark_mode = MARK_MODE_NONE;
 							scrdesc.scrollbar_mode = false;
@@ -5670,13 +5725,20 @@ recheck_end:
 
 										scrdesc.scrollbar_mode = true;
 										scrdesc.scrollbar_mode = true;
+
+#if NCURSES_MOUSE_VERSION > 1
+
 										scrollbar_mode_initial_slider_mouse_offset_y =
 														  event.y - scrdesc.scrollbar_start_y - scrdesc.slider_min_y;
+
+#endif
+
 									}
 								}
 							}
 
 #if NCURSES_MOUSE_VERSION > 1
+
 
 							if (scrdesc.scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION &&
 								scrdesc.scrollbar_maxy - 2 > scrdesc.slider_size)
@@ -5736,6 +5798,20 @@ recheck_end:
 							break;
 						}
 
+#if NCURSES_MOUSE_VERSION > 1
+
+						if (mark_mode == MARK_MODE_MOUSE_COLUMNS &&
+							event.bstate & REPORT_MOUSE_POSITION &&
+							event.bstate & BUTTON_CTRL)
+						{
+							mouse_col  = mousex_get_colno(&desc, &scrdesc, &opts,
+														  &cursor_col, default_freezed_cols,
+														  event.x);
+							break;
+						}
+
+#endif
+
 						if (event.y == 0 && scrdesc.top_bar_rows > 0)
 						{
 							/* Activate menu only on BUTTON1_PRESS event */
@@ -5761,6 +5837,20 @@ recheck_end:
 									next_command = cmd_ShowVerticalCursor;
 									break;
 								}
+							}
+
+							if (event.bstate & BUTTON_CTRL && event.bstate & BUTTON1_PRESSED)
+							{
+								mouse_col  = mousex_get_colno(&desc, &scrdesc, &opts,
+															  &cursor_col, default_freezed_cols,
+															  event.x);
+
+								throw_selection(&scrdesc, &mark_mode);
+
+								mark_mode = MARK_MODE_MOUSE_COLUMNS;
+								mark_mode_start_col = mouse_col;
+
+								break;
 							}
 
 							_is_footer_cursor = false;
@@ -5858,37 +5948,11 @@ recheck_end:
 							(event.bstate & BUTTON1_PRESSED ||
 							 event.bstate & REPORT_MOUSE_POSITION))
 						{
-							int		xpoint = event.x - scrdesc.main_start_x;
-							int		colno = -1;
+							int		colno;
 
-							if (xpoint > scrdesc.fix_cols_cols - 1)
-								xpoint += cursor_col;
-
-							if (xpoint >= 0)
-							{
-								int		i;
-
-								for (i = 0; i  < desc.columns; i++)
-								{
-									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax >= xpoint)
-									{
-										int		xmin = desc.cranges[i].xmin;
-										int		xmax = desc.cranges[i].xmax;
-
-										colno = i + 1;
-
-										if (colno > (opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols))
-										{
-											if (xmax > scrdesc.main_maxx + cursor_col)
-												cursor_col = xmax - scrdesc.main_maxx;
-											else if (xmin < scrdesc.fix_cols_cols + cursor_col)
-												cursor_col = xmin - scrdesc.fix_cols_cols + 1;
-										}
-
-										break;
-									}
-								}
-							}
+							colno  = mousex_get_colno(&desc, &scrdesc, &opts,
+													  &cursor_col, default_freezed_cols,
+													  event.x);
 
 							if (colno != -1)
 							{
@@ -5915,6 +5979,7 @@ recheck_end:
 						 */
 						if (mark_mode != MARK_MODE_MOUSE &&
 								mark_mode != MARK_MODE_MOUSE_BLOCK &&
+								mark_mode != MARK_MODE_MOUSE_COLUMNS &&
 								mouse_row != -1)
 							cursor_row = mouse_row;
 					}

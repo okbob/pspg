@@ -181,6 +181,8 @@ print_column_names(WINDOW *win,
 				   int srcx,						/* offset to displayed data */
 				   int vcursor_xmin,				/* xmin in display coordinates */
 				   int vcursor_xmax,				/* xmax in display coordinates */
+				   int selected_xmin,
+				   int selected_xmax,
 				   DataDesc *desc,
 				   Options *opts,
 				   Theme *t)
@@ -239,11 +241,24 @@ print_column_names(WINDOW *win,
 	/* position starts from zero again to be comparable with maxx */
 	pos -= srcx;
 
+	if (selected_xmin != -1)
+	{
+		selected_xmin -= srcx;
+		selected_xmax -= srcx;
+
+		if (selected_xmin < 0)
+			selected_xmin = 0;
+	}
+
 	/* for each visible column (position) and defined colum */
 	while (pos < maxx && headline_ptr < headline_end_ptr)
 	{
 		char	column_format = *headline_ptr;
 		bool	is_cursor = vcursor_xmin <= pos && pos <= vcursor_xmax;
+		bool	is_in_range = false;
+
+		is_in_range = selected_xmin != -1 && pos != -1 &&
+						  pos >= selected_xmin && pos <= selected_xmax;
 
 		if (!force8bit)
 		{
@@ -256,7 +271,9 @@ print_column_names(WINDOW *win,
 			chars = 1;
 		}
 
-		if (is_cursor )
+		if (is_in_range)
+			new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
+		else if (is_cursor)
 			new_attr = column_format == 'd' ? t->cursor_data_attr : t->cursor_line_attr;
 		else
 			new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
@@ -304,6 +321,9 @@ print_column_names(WINDOW *win,
 		int		act_xmin, act_xmax, act_width;
 		int		overlap_left = 0, overlap_right = 0;
 
+		bool	is_cursor;
+		bool	is_in_range;
+
 		get_column_data_dim(desc, i, &data_x, &data_width);
 
 		if (data_x + data_width < srcx)
@@ -332,7 +352,14 @@ print_column_names(WINDOW *win,
 
 		act_width = act_xmax - act_xmin + 1;
 
-		new_attr = (vcursor_xmin <= act_xmin && act_xmin <= vcursor_xmax) ? t->cursor_data_attr : t->data_attr;
+		is_cursor = vcursor_xmin <= act_xmin && act_xmin <= vcursor_xmax;
+		is_in_range = selected_xmin != -1 &&
+						  act_xmin >= selected_xmin && act_xmin <= selected_xmax;
+
+		if (is_in_range)
+			new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
+		else
+			new_attr = is_cursor ? t->cursor_data_attr : t->data_attr;
 
 		if (colname_width <= act_width)
 		{
@@ -600,7 +627,9 @@ window_fill(int window_identifier,
 	bool		is_fix_rows_only = window_identifier == WINDOW_FIX_ROWS;
 	bool		is_scrollbar = window_identifier == WINDOW_VSCROLLBAR;
 	bool		is_selectable = window_identifier == WINDOW_ROWS ||
+								window_identifier == WINDOW_LUC ||
 								window_identifier == WINDOW_FIX_COLS ||
+								window_identifier == WINDOW_FIX_ROWS ||
 								window_identifier == WINDOW_FOOTER;
 
 	win = scrdesc->wins[window_identifier];
@@ -811,7 +840,20 @@ window_fill(int window_identifier,
 			 */
 			if (is_fix_rows_only && rowstr == desc->namesline )
 			{
-				print_column_names(win, srcx, vcursor_xmin, vcursor_xmax, desc, opts, t);
+				int		loc_selected_xmin = -1;
+				int		loc_selected_xmax = -1;
+
+				/* mark columns names only when columns are selected */
+				if (selected_xmin != -1 && scrdesc->selected_first_row == -1)
+				{
+					loc_selected_xmin = selected_xmin;
+					loc_selected_xmax = selected_xmax;
+				}
+
+				print_column_names(win, srcx,
+								   vcursor_xmin, vcursor_xmax,
+								   loc_selected_xmin, loc_selected_xmax,
+								   desc, opts, t);
 				continue;
 			}
 
@@ -901,6 +943,11 @@ window_fill(int window_identifier,
 							else
 								is_in_range = true;
 						}
+					}
+					else if (is_selectable && selected_xmin != -1 && pos != -1)
+					{
+						if (pos >= selected_xmin && pos <= selected_xmax)
+							is_in_range = true;
 					}
 
 					if (i != -1 && vcursor_xmin <= i && i <= vcursor_xmax)

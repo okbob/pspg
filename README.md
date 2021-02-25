@@ -13,10 +13,13 @@ This pager can be used from the following clients command line clients too:
 - `monetdb`
 - [`Trino (formerly Presto SQL)`](https://trino.io/)
 
+
 ## Main target
 * possibility to freeze first few rows, first few columns
 * possibility to sort data by specified numeric column
 * possibility to use fancy colors - like `mcview` or `FoxPro` - http://okbob.blogspot.com/2019/12/pspg-themes-what-you-use-it.html
+* mouse is supported and used
+* possibility to copy selected range to clipboard
 
 
 ## Screenshots
@@ -82,6 +85,7 @@ This pager can be used from the following clients command line clients too:
 * `--clipboard-app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
 
 Options can be passed inside env variable `PSPG` too.
+
 
 ## Themes
 0. black & white
@@ -159,7 +163,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>shift</kbd>+<kbd>cursor...</kbd> - define range
 * <kbd>F3</kbd> - start/finish of selection rows
 * <kbd>shift</kbd>+<kbd>F3</kbd> - start/finish of selection block
-* <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd> - define range
+* <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd> - defines rows selection, on column header defines column selection
 
 
 ## Ending

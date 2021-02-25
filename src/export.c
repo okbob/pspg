@@ -680,6 +680,7 @@ export_data(Options *opts,
 	bool	print_border = true;
 	bool	print_header_line = true;
 	bool	save_column_names = false;
+	bool	has_selection;
 
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_row;
@@ -699,6 +700,10 @@ export_data(Options *opts,
 	expstate.copy_line_extended = (cmd == cmd_CopyLineExtended);
 
 	current_state->errstr = NULL;
+
+	has_selection =
+		((scrdesc->selected_first_row != -1 && scrdesc->selected_rows > 0 ) ||
+		 (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0));
 
 	if (cmd == cmd_CopyLineExtended && !DSV_FORMAT_TYPE(format))
 		format = CLIPBOARD_FORMAT_CSV;
@@ -720,7 +725,7 @@ export_data(Options *opts,
 
 	if (cmd == cmd_CopyLine ||
 		cmd == cmd_CopyLineExtended ||
-		(cmd == cmd_Copy && !opts->no_cursor))
+		(cmd == cmd_Copy && !opts->no_cursor && !has_selection))
 	{
 		min_row = max_row = cursor_row + desc->first_data_row;
 		print_footer = false;
@@ -771,13 +776,14 @@ export_data(Options *opts,
 	if (cmd == cmd_CopyMarkedLines || cmd == cmd_CopySearchedLines)
 		print_footer = false;
 
-	if ((cmd == cmd_Copy &&
-		((scrdesc->selected_first_row != -1 && scrdesc->selected_rows > 0 ) ||
-		 (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0))) ||
+	if ((cmd == cmd_Copy && has_selection) ||
 		cmd == cmd_CopySelected)
 	{
-		min_row = scrdesc->selected_first_row + desc->first_data_row;
-		max_row = min_row + scrdesc->selected_rows - 1;
+		if (scrdesc->selected_first_row != -1)
+		{
+			min_row = scrdesc->selected_first_row + desc->first_data_row;
+			max_row = min_row + scrdesc->selected_rows - 1;
+		}
 
 		if (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0)
 		{
