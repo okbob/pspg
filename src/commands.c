@@ -393,10 +393,8 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 				else
 					return cmd_Mark;
 				break;
-			case KEY_F(13):
-				if (!opts->quit_on_f3)
-					return cmd_MarkColumn;
-				return cmd_Invalid;
+			case KEY_F(15):
+				return cmd_MarkColumn;
 			case KEY_IC:
 				return cmd_Copy;
 			case KEY_UP:

@@ -150,8 +150,8 @@ static bool xterm_mouse_mode_was_initialized = false;
 
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
-
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
+static bool check_visible_vertical_cursor(DataDesc *desc, ScrDesc *scrdesc, Options *opts, int vertical_cursor_column);
 
 StateData *current_state = NULL;
 
@@ -1880,13 +1880,11 @@ export_to_file(PspgCommand command,
 
 	*force_refresh = false;
 
-
-	if (command == cmd_CopyColumn && !opts->vertical_cursor)
+	if (command == cmd_CopyColumn)
 	{
-		show_info_wait(opts, scrdesc,
-					   " Vertical cursor is not visible",
-					   NULL, true, true, true, false);
-		return;
+		if (!check_visible_vertical_cursor(desc, scrdesc, opts,
+										   cursor_column))
+			return;
 	}
 
 	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
@@ -2148,10 +2146,11 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 typedef enum
 {
 	MARK_MODE_NONE,
-	MARK_MODE_SPECIAL,		/* activated by F3 */
+	MARK_MODE_ROWS,			/* activated by F3 */
+	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
 	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
 	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
-	MARK_MODE_MOUSE_COLUMN,	/* activated by ALT + MOUSE */
+	MARK_MODE_MOUSE_BLOCK,	/* activated by ALT + MOUSE */
 } MarkModeType;
 
 /*
@@ -2176,6 +2175,33 @@ throw_searching(ScrDesc *scrdesc)
 
 	scrdesc->searchterm_size = 0;
 	scrdesc->searchterm_char_size = 0;
+}
+
+static bool
+check_visible_vertical_cursor(DataDesc *desc,
+							  ScrDesc *scrdesc,
+							  Options *opts,
+							  int vertical_cursor_column)
+{
+	if (desc->columns == 0)
+	{
+		show_info_wait(opts, scrdesc,
+					   " Sort is available only for tables.",
+					   NULL, true, true, true, false);
+
+		return false;
+	}
+
+	if (!opts->vertical_cursor || vertical_cursor_column == 0)
+	{
+		show_info_wait(opts, scrdesc,
+					   " Vertical cursor is not visible",
+					   NULL, true, true, true, false);
+
+		return false;
+	}
+
+	return true;
 }
 
 /*
@@ -3067,24 +3093,30 @@ reinit_theme:
 				if (mark_mode != MARK_MODE_NONE)
 				{
 					int		ref_row;
+					int		ref_col;
 
 					switch (mark_mode)
 					{
 						case MARK_MODE_MOUSE:
+						case MARK_MODE_MOUSE_BLOCK:
 							ref_row = mouse_row;
 							break;
-						case MARK_MODE_MOUSE_COLUMN:
-							ref_row = mouse_row;
-							break;
-						case MARK_MODE_SPECIAL:
-							ref_row = cursor_row;
-							break;
+						case MARK_MODE_ROWS:
+						case MARK_MODE_BLOCK:
 						case MARK_MODE_CURSOR:
 							ref_row = cursor_row;
 							break;
+
 						default:
 							ref_row = -1;
 					}
+
+					if (mark_mode == MARK_MODE_MOUSE_BLOCK)
+						ref_col = mouse_col;
+					else if (mark_mode == MARK_MODE_BLOCK)
+						ref_col = vertical_cursor_column;
+					else
+						ref_col = -1;
 
 					if (ref_row > mark_mode_start_row)
 					{
@@ -3097,19 +3129,19 @@ reinit_theme:
 						scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
 					}
 
-					if (mark_mode == MARK_MODE_MOUSE_COLUMN)
+					if (ref_row != -1)
 					{
 						int		xmin, xmax;
 
-						if (mouse_col > mark_mode_start_col)
+						if (ref_col > mark_mode_start_col)
 						{
 							xmin = desc.cranges[mark_mode_start_col - 1].xmin;
-							xmax = desc.cranges[mouse_col - 1].xmax;
+							xmax = desc.cranges[ref_col - 1].xmax;
 						}
 						else
 						{
 							xmax = desc.cranges[mark_mode_start_col - 1].xmax;
-							xmin = desc.cranges[mouse_col - 1].xmin;
+							xmin = desc.cranges[ref_col - 1].xmin;
 						}
 
 						scrdesc.selected_first_column = xmin;
@@ -3256,7 +3288,7 @@ reinit_theme:
 				 */
 				if (!menu_is_active && last_doupdate_sec != -1 &&
 					!(mark_mode == MARK_MODE_MOUSE ||
-					 mark_mode == MARK_MODE_MOUSE_COLUMN))
+					 mark_mode == MARK_MODE_MOUSE_BLOCK))
 				{
 					int		limit;
 					long	td = time_diff(current_sec, current_ms,
@@ -3357,7 +3389,7 @@ reinit_theme:
 
 				/* Disable mark mouse mode immediately */
 				if ((mark_mode == MARK_MODE_MOUSE ||
-						 mark_mode == MARK_MODE_MOUSE_COLUMN) &&
+						 mark_mode == MARK_MODE_MOUSE_BLOCK) &&
 						event_keycode != KEY_MOUSE)
 					mark_mode = MARK_MODE_NONE;
 
@@ -3906,15 +3938,35 @@ reset_search:
 				goto reinit_theme;
 
 			case cmd_Mark:
-				if (mark_mode != MARK_MODE_SPECIAL)
+				if (mark_mode != MARK_MODE_ROWS)
 				{
 					throw_selection(&scrdesc, &mark_mode);
 
-					mark_mode = MARK_MODE_SPECIAL;
+					mark_mode = MARK_MODE_ROWS;
 					mark_mode_start_row = cursor_row;
 				}
 				else
 					mark_mode = MARK_MODE_NONE;
+				break;
+
+			case cmd_MarkColumn:
+				{
+					if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
+													   vertical_cursor_column))
+						break;
+
+					if (mark_mode != MARK_MODE_BLOCK)
+					{
+						throw_selection(&scrdesc, &mark_mode);
+
+						mark_mode = MARK_MODE_BLOCK;
+						mark_mode_start_row = cursor_row;
+						mark_mode_start_col = vertical_cursor_column;
+					}
+					else
+						mark_mode = MARK_MODE_NONE;
+				}
+
 				break;
 
 			case cmd_Mark_NestedCursorCommand:
@@ -4839,27 +4891,20 @@ recheck_end:
 			case cmd_SortAsc:
 			case cmd_SortDesc:
 				{
-					if (opts.vertical_cursor && vertical_cursor_column > 0 && desc.columns > 0)
-					{
-						update_order_map(&opts,
-										 &scrdesc,
-										 &desc,
-										 vertical_cursor_column,
-										 command == cmd_SortDesc);
+					if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
+													   vertical_cursor_column))
+						break;
 
-						last_ordered_column = vertical_cursor_column;
-						last_order_desc = command == cmd_SortDesc;
+					update_order_map(&opts,
+									 &scrdesc,
+									 &desc,
+									 vertical_cursor_column,
+									 command == cmd_SortDesc);
 
-						throw_selection(&scrdesc, &mark_mode);
-					}
-					else if (desc.columns == 0)
-						show_info_wait(&opts, &scrdesc,
-									   " Sort is available only for tables.",
-									   NULL, true, true, true, false);
-					else 
-						show_info_wait(&opts, &scrdesc,
-									   " Vertical cursor is not visible",
-									   NULL, true, true, true, false);
+					last_ordered_column = vertical_cursor_column;
+					last_order_desc = command == cmd_SortDesc;
+
+					throw_selection(&scrdesc, &mark_mode);
 
 					break;
 				}
@@ -5567,7 +5612,7 @@ recheck_end:
 							!is_double_click &&
 							(scrdesc.scrollbar_mode ||
 							 mark_mode == MARK_MODE_MOUSE ||
-							 mark_mode == MARK_MODE_MOUSE_COLUMN))
+							 mark_mode == MARK_MODE_MOUSE_BLOCK))
 						{
 							mark_mode = MARK_MODE_NONE;
 							scrdesc.scrollbar_mode = false;
@@ -5853,7 +5898,7 @@ recheck_end:
 								{
 									throw_selection(&scrdesc, &mark_mode);
 
-									mark_mode = MARK_MODE_MOUSE_COLUMN;
+									mark_mode = MARK_MODE_MOUSE_BLOCK;
 									mark_mode_start_row = mouse_row;
 									mark_mode_start_col = colno;
 								}
@@ -5869,7 +5914,7 @@ recheck_end:
 						 * used for selection.
 						 */
 						if (mark_mode != MARK_MODE_MOUSE &&
-								mark_mode != MARK_MODE_MOUSE_COLUMN &&
+								mark_mode != MARK_MODE_MOUSE_BLOCK &&
 								mouse_row != -1)
 							cursor_row = mouse_row;
 					}
