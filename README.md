@@ -157,7 +157,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 * <kbd>R</kbd> - Repaint screen and refresh input file
 * <kbd>Ins</kbd> - export row, column or cell to default target
 * <kbd>shift</kbd>+<kbd>cursor...</kbd> - define range
-* <kbd>F3</kbd> - start/finish select range specification
+* <kbd>F3</kbd> - start/finish of selection rows
+* <kbd>shift</kbd>+<kbd>F3</kbd> - start/finish of selection block
 * <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd> - define range
 
 
