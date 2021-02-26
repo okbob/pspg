@@ -23,12 +23,12 @@ This pager can be used from the following clients command line clients too:
 
 
 ## Screenshots
-![Screenshot](screenshots/pspg-4.3.0.png)
-![Screenshot](screenshots/pspg-modern.png)
-![Screenshot](screenshots/vc-mc.png)
-![Screenshot](screenshots/vc-tao.png)
-![Screenshot](screenshots/theme1.gif)
+![Screenshot](screenshots/pspg-4.3.0-mc-export-111x34.png)
+![Screenshot](screenshots/pspg-4.3.0-mc-111x34.png)
+![Screenshot](screenshots/pspg-4.3.0-foxpro-111x34.png)
+![Screenshot](screenshots/pspg-4.3.0-tao-111x34.png)
 
+![Screenshot](screenshots/theme1.gif)
 ![Screenshot](screenshots/theme3.gif)
 
 
