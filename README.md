@@ -23,6 +23,7 @@ This pager can be used from the following clients command line clients too:
 
 
 ## Screenshots
+![Screenshot](screenshots/pspg-4.3.0.png)
 ![Screenshot](screenshots/pspg-modern.png)
 ![Screenshot](screenshots/vc-mc.png)
 ![Screenshot](screenshots/vc-tao.png)
