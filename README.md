@@ -27,7 +27,7 @@ This pager can be used from the following clients command line clients too:
 ![Screenshot](screenshots/pspg-4.3.0-mc-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-foxpro-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-tao-111x34.png)
-
+![Screenshot](screenshots/pspg-4.3.0-green-search-111x34.png)
 ![Screenshot](screenshots/theme1.gif)
 ![Screenshot](screenshots/theme3.gif)
 
