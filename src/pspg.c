@@ -35,8 +35,11 @@
 #include <locale.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <poll.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
 #include <termios.h>
@@ -1771,9 +1774,14 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 	return first_row > max_first_row ? max_first_row : first_row;
 }
 
+/*
+ * When error is detected, then better to clean screen
+ */
 static void
-check_clipboard_app(Options *opts)
+check_clipboard_app(Options *opts, bool *force_refresh)
 {
+	*force_refresh = false;
+
 	if (opts->clipboard_app)
 		clipboard_application_id = opts->clipboard_app;
 
@@ -1808,6 +1816,8 @@ check_clipboard_app(Options *opts)
 				return;
 			}
 		}
+
+		*force_refresh = true;
 
 		errno = 0;
 		f = popen("xclip -version 2>&1", "r");
@@ -1857,6 +1867,90 @@ check_clipboard_app(Options *opts)
 	}
 }
 
+/*
+ * read write stderr poopen function
+ */
+static int
+rwe_popen(char *command, int *fin, int *fout, int *ferr)
+{
+	int		in[2];
+	int		out[2];
+	int		err[2];
+	int		rc;
+	int		saved_errno;
+
+	errno = 0;
+	saved_errno = 0;
+
+	rc = pipe(in);
+	if (rc == 0)
+	{
+		rc = pipe(out);
+		if (rc == 0)
+		{
+			rc = pipe(err);
+			if (rc == 0)
+			{
+				int		pid = fork();
+
+				if (pid > 0)
+				{
+					/* parent */
+					close(in[0]);
+					close(out[1]);
+					close(err[1]);
+
+					*fin = in[1];
+					*fout = out[0];
+					*ferr = err[0];
+
+					return pid;
+				}
+				else if (pid == 0)
+				{
+					/* child */
+					close(in[1]);
+					close(out[0]);
+					close(err[0]);
+
+					dup2(in[0], 0);
+					dup2(out[1], 1);
+					dup2(err[1], 2);
+
+					close(in[0]);
+					close(out[1]);
+					close(err[1]);
+
+					execl("/bin/sh", "sh", "-c", command, NULL);
+					exit(127);
+				}
+				else
+					saved_errno = errno;
+
+				close(err[0]);
+				close(err[1]);
+			}
+			else
+				saved_errno = errno;
+
+			close(out[0]);
+			close(out[1]);
+		}
+		else
+			saved_errno = errno;
+
+		close(in[0]);
+		close(out[1]);
+	}
+	else
+		saved_errno = errno;
+
+	errno = saved_errno;
+
+	return -1;
+}
+
+
 static void
 export_to_file(PspgCommand command,
 			  ClipboardFormat format,
@@ -1873,10 +1967,12 @@ export_to_file(PspgCommand command,
 	char	table_name[255];
 	int		rows = 0;
 	double  percent = 0.0;
-	FILE   *fp;
+	FILE   *fp = NULL;
 	char   *path = NULL;
 	bool	isok = false;
 	bool	copy_to_file = false;
+	int		fin = -1, fout = -1, ferr = -1;
+	pid_t	pid;
 
 	*force_refresh = false;
 
@@ -1985,10 +2081,10 @@ export_to_file(PspgCommand command,
 	}
 	else
 	{
-		char *fmt;
-		char cmdline[1024];
+		char   *fmt;
+		char	cmdline[1024];
 
-		check_clipboard_app(opts);
+		check_clipboard_app(opts, force_refresh);
 
 		if (!clipboard_application_id)
 		{
@@ -1996,9 +2092,8 @@ export_to_file(PspgCommand command,
 												 scrdesc,
 												 " Cannot find clipboard application (press any key)",
 												 NULL, true, true, false, true);
-			*force_refresh = true;
 
-			return;
+				return;
 		}
 
 		if (format == CLIPBOARD_FORMAT_TEXT ||
@@ -2035,7 +2130,26 @@ export_to_file(PspgCommand command,
 		else if (clipboard_application_id == 3)
 			snprintf(cmdline, 1024, "pbcopy");
 
-		fp = popen(cmdline, "w");
+		if ((pid = rwe_popen(cmdline, &fin, &fout, &ferr)) == -1)
+		{
+			format_error("%s", strerror(errno));
+			log_row("open error (%s)", current_state->errstr);
+
+			*next_event_keycode = show_info_wait(opts,
+												 scrdesc,
+												 " Cannot to start clipboard application (press any key)",
+												 NULL, true, true, false, true);
+
+			/* err string is saved already, because refresh_first is used */
+			current_state->errstr = NULL;
+			*force_refresh = true;
+
+			return;
+		}
+
+		fcntl(ferr, F_SETFL, O_NONBLOCK);
+
+		fp = fdopen(fin, "w");
 	}
 
 	if (fp)
@@ -2050,19 +2164,34 @@ export_to_file(PspgCommand command,
 			fclose(fp);
 		else
 		{
+			char	err_buffer[2048];
+			int		errsz;
 			int		status;
 
-			/*
-			 * The status check is working well only a) when mode is read or
-			 * when LANG=C. In other cases an error is ignored.
-			 */
-			status = pclose(fp);
-			if (status != 0)
+			memset(buffer, 0, sizeof(err_buffer));
+
+			fclose(fp);
+			fp = NULL;
+
+			waitpid(pid, &status, 0);
+			errsz = read(ferr, err_buffer, 1000);
+
+			close(fin);
+			close(fout);
+			close(ferr);
+
+			if (errsz != -1)
 			{
+				format_error("%s", err_buffer);
+				log_row("write error (%s)", current_state->errstr);
+
 				*next_event_keycode = show_info_wait(opts,
 													 scrdesc,
-													 " Cannot write to clipboard (press any key)",
-													 NULL, true, true, false, true);
+													 " Cannot write to clipboard (%s) (press any key)",
+													(char *) current_state->errstr, true, true, false, true);
+
+				/* err string is saved already, because refresh_first is used */
+				current_state->errstr = NULL;
 				*force_refresh = true;
 
 				return;
@@ -3050,6 +3179,7 @@ reinit_theme:
 	while (true)
 	{
 		bool	refresh_scr = false;
+		bool	refresh_clear = false;
 		bool	resize_scr = false;
 		bool	after_freeze_signal = false;
 		bool	recheck_vertical_cursor_visibility = false;
@@ -3447,8 +3577,6 @@ reinit_theme:
 						event_keycode != KEY_MOUSE)
 					mark_mode = MARK_MODE_NONE;
 
-force_refresh_data:
-
 				if (force_refresh ||
 					opts.watch_time ||
 					((opts.watch_file || state.stream_mode) && handle_file_event))
@@ -3550,6 +3678,8 @@ force_refresh_data:
 
 							/* we should to save searching related data from scrdesc */
 							memcpy(&aux, &scrdesc, sizeof(ScrDesc));
+
+							refresh_aux_windows(&opts, &scrdesc);
 
 							create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 
@@ -4970,12 +5100,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -4986,12 +5111,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5002,12 +5122,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, vertical_cursor_column,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5018,12 +5133,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5041,12 +5151,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5057,12 +5162,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, vertical_cursor_column,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5073,12 +5173,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5089,12 +5184,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5105,12 +5195,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5121,12 +5206,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5137,12 +5217,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5153,12 +5228,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0,
-								   &force_refresh);
-
-					if (force_refresh)
-						goto force_refresh_data;
-
-					refresh_scr = true;
+								   &refresh_clear);
 					break;
 				}
 
@@ -5527,8 +5597,8 @@ recheck_end:
 				break;
 
 			case cmd_Refresh:
-				reinit = true;
-				goto reinit_theme;
+				refresh_clear = true;
+				break;
 
 			case cmd_MOUSE_EVENT:
 				{
@@ -6111,7 +6181,9 @@ recheck_end:
 			}
 		}
 
-		if (refresh_scr || scrdesc.refresh_scr)
+		if (refresh_scr ||
+			scrdesc.refresh_scr ||
+			refresh_clear)
 		{
 			if (resize_scr)
 			{
@@ -6131,6 +6203,13 @@ recheck_end:
 refresh:
 
 			getmaxyx(stdscr, maxy, maxx);
+
+			if (refresh_clear)
+			{
+				log_row("clear screen");
+				clear();
+				refresh_clear = false;
+			}
 
 			refresh_aux_windows(&opts, &scrdesc);
 

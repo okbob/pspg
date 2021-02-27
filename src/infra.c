@@ -117,6 +117,7 @@ void
 format_error(const char *fmt, ...)
 {
 	va_list		args;
+	char	   *ptr;
 
 	if (!current_state)
 		leave("current_state is not initialized");
@@ -126,6 +127,16 @@ format_error(const char *fmt, ...)
 	va_end(args);
 
 	current_state->errstr = pspg_errstr_buffer;
+
+	/* throw multilines strings */
+	for (ptr = pspg_errstr_buffer; *ptr; ptr++)
+	{
+		if (*ptr == '\n')
+		{
+			*ptr = '\0';
+			break;
+		}
+	}
 }
 
 /*
