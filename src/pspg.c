@@ -5527,9 +5527,8 @@ recheck_end:
 				break;
 
 			case cmd_Refresh:
-				force_refresh = true;
-				goto force_refresh_data;
-				break;
+				reinit = true;
+				goto reinit_theme;
 
 			case cmd_MOUSE_EVENT:
 				{
