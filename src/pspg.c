@@ -647,13 +647,32 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		w_bottom_bar(scrdesc) = NULL;
 	}
 
-	bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
-	w_bottom_bar(scrdesc) = bottom_bar;
-	werase(bottom_bar);
+#ifdef COMPILE_MENU
 
-	/* data colours are better than default */
-	wbkgd(bottom_bar, COLOR_PAIR(3));
-	wnoutrefresh(bottom_bar);
+	if (!opts->no_commandbar)
+	{
+		bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
+		w_bottom_bar(scrdesc) = bottom_bar;
+		werase(bottom_bar);
+	}
+
+#else
+
+	if (opts->less_status_bar)
+	{
+		bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
+		w_bottom_bar(scrdesc) = bottom_bar;
+		werase(bottom_bar);
+	}
+
+#endif
+
+	if (bottom_bar)
+	{
+		/* data colours are better than default */
+		wbkgd(bottom_bar, COLOR_PAIR(3));
+		wnoutrefresh(bottom_bar);
+	}
 
 	scrdesc->main_maxy = maxy;
 
@@ -3468,7 +3487,15 @@ reinit_theme:
 				 * same like last_first_row, then update will not be
 				 * too massive.
 				 */
-				if (!menu_is_active && last_doupdate_sec != -1 &&
+				if (
+
+#ifdef COMPILE_MENU
+
+				!menu_is_active &&
+
+#endif
+
+					last_doupdate_sec != -1 &&
 					!(mark_mode == MARK_MODE_MOUSE ||
 					 mark_mode == MARK_MODE_MOUSE_BLOCK ||
 					 mark_mode == MARK_MODE_MOUSE_COLUMNS))
@@ -3937,49 +3964,102 @@ hide_menu:
 					continue;
 				}
 
+#else
+
+			case cmd_ShowMenu:
+				reuse_event = false;
+				break;
+
 #endif
 
 			case cmd_TogleEmptyStringIsNULL:
 				opts.empty_string_is_null = !opts.empty_string_is_null;
+
+#ifdef COMPILE_MENU
+
 				st_menu_set_option(menu,
 								   cmd_TogleEmptyStringIsNULL,
 								   ST_MENU_OPTION_MARKED,
 								   opts.empty_string_is_null);
+
+#endif
+
 				break;
 
 			case cmd_SetCopyFile:
 				opts.copy_target = COPY_TARGET_FILE;
+
+#ifdef COMPILE_MENU
+
 				refresh_copy_target_options(&opts, menu);
+
+#endif
 				break;
 
 			case cmd_SetCopyClipboard:
 				opts.copy_target = COPY_TARGET_CLIPBOARD;
+
+#ifdef COMPILE_MENU
+
 				refresh_copy_target_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_UseClipboard_CSV:
 				opts.clipboard_format = CLIPBOARD_FORMAT_CSV;
+
+#ifdef COMPILE_MENU
+
 				refresh_clipboard_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_UseClipboard_TSVC:
 				opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
+
+#ifdef COMPILE_MENU
+
 				refresh_clipboard_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_UseClipboard_text:
 				opts.clipboard_format = CLIPBOARD_FORMAT_TEXT;
+
+#ifdef COMPILE_MENU
+
 				refresh_clipboard_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_UseClipboard_INSERT:
 				opts.clipboard_format = CLIPBOARD_FORMAT_INSERT;
+
+#ifdef COMPILE_MENU
+
 				refresh_clipboard_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_UseClipboard_INSERT_with_comments:
 				opts.clipboard_format = CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS;
+
+#ifdef COMPILE_MENU
+
 				refresh_clipboard_options(&opts, menu);
+
+#endif
+
 				break;
 
 			case cmd_NoHighlight:
@@ -4024,6 +4104,8 @@ reset_search:
 				refresh_scr = true;
 				break;
 
+#ifdef COMPILE_MENU
+
 			case cmd_ShowBottomBar:
 				opts.no_commandbar = !opts.no_commandbar;
 				if (opts.no_commandbar)
@@ -4037,10 +4119,12 @@ reset_search:
 				}
 				else
 					if (!opts.less_status_bar)
-					cmdbar = init_cmdbar(cmdbar, &opts);
+						cmdbar = init_cmdbar(cmdbar, &opts);
 
 				refresh_scr = true;
 				break;
+
+#endif
 
 			case cmd_ShowScrollbar:
 				opts.show_scrollbar = !opts.show_scrollbar;
@@ -6200,7 +6284,11 @@ recheck_end:
 				resize_scr = false;
 			}
 
+#ifdef COMPILE_MENU
+
 refresh:
+
+#endif
 
 			getmaxyx(stdscr, maxy, maxx);
 
@@ -6229,8 +6317,12 @@ refresh:
 			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 			set_scrollbar(&scrdesc, &desc, first_row);
 
+#ifdef COMPILE_MENU
+
 			if (cmdbar)
 				cmdbar = init_cmdbar(cmdbar, &opts);
+
+#endif
 
 			refresh_scr = false;
 			scrdesc.refresh_scr = false;
@@ -6243,10 +6335,14 @@ refresh:
 			delwin(scrdesc.wins[pspg_win_iter]);
 	}
 
+#ifdef COMPILE_MENU
+
 	if (cmdbar)
 		st_cmdbar_free(cmdbar);
 	if (menu)
 		st_menu_free(menu);
+
+#endif
 
 	endwin();
 
