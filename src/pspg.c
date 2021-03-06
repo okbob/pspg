@@ -4844,6 +4844,7 @@ recheck_right:
 						int		move_right = 30;
 						int		max_cursor_col;
 						int		new_cursor_col = cursor_col;
+						int		prev_vertical_cursor_column = vertical_cursor_column;
 
 						if (desc.headline_transl != NULL)
 						{
@@ -4921,7 +4922,8 @@ recheck_right:
 						{
 							int fixed_columns = opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols;
 
-							if (vertical_cursor_column - 1 == fixed_columns)
+							if (prev_vertical_cursor_column == fixed_columns &&
+								vertical_cursor_column == fixed_columns + 1)
 								cursor_col = 0;
 						}
 					}
