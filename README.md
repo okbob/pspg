@@ -21,6 +21,11 @@ This pager can be used from the following clients command line clients too:
 * mouse is supported and used
 * possibility to copy selected range to clipboard
 
+## Video presentation
+
+[![Video presentation](https://img.youtube.com/vi/JyxuEkoYDQk/0.jpg)](https://www.youtube.com/watch?v=JyxuEkoYDQk)
+
+
 
 ## Screenshots
 ![Screenshot](screenshots/pspg-4.3.0-mc-export-111x34.png)
