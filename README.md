@@ -89,6 +89,7 @@ This pager can be used from the following clients command line clients too:
 * `-W`, `--password`  force password prompt
 * `--pgcli-fix`  used for fixing some pgcli related issues
 * `--clipboard-app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
+* `--no-sleep`  disable waits used for reduction of terminal flickering
 
 Options can be passed inside env variable `PSPG` too.
 
@@ -236,6 +237,10 @@ regex/\.csv
 
 * restart <code>mc</code>
 
+# Know issues
+
+* When you use `pspg` on Cygwin, then some temporary freezing of scrolling was reported
+  In this case, please, use an option `--no-sleep`.
 
 # Usage in watch mode
 
