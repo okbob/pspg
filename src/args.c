@@ -101,6 +101,7 @@ static struct option long_options[] =
 	{"freezecols", required_argument, 0, 'c'},
 	{"no-xterm-mouse-mode", no_argument, 0, 40},
 	{"clipboard-app", required_argument, 0, 42},
+	{"no-sleep", no_argument, 0, 43},
 	{0, 0, 0, 0}
 };
 
@@ -622,6 +623,9 @@ readargs(char **argv,
 				break;
 			case 'd':
 				opts->dbname = sstrdup(optarg);
+				break;
+			case 43:
+				opts->no_sleep = true;
 				break;
 
 			default:

@@ -2529,6 +2529,7 @@ main(int argc, char *argv[])
 	opts.xterm_mouse_mode = true;
 	opts.show_scrollbar = true;
 	opts.clipboard_app = 0;
+	opts.no_sleep = false;
 
 	setup_sigsegv_handler();
 
@@ -3480,41 +3481,44 @@ reinit_theme:
 
 #endif
 
-				current_time(&current_sec, &current_ms);
+				if (!opts.no_sleep)
+				{
+					current_time(&current_sec, &current_ms);
 
-				/*
-				 * We don't want do UPDATE too quickly. When first_row
-				 * same like last_first_row, then update will not be
-				 * too massive.
-				 */
-				if (
+					/*
+					 * We don't want do UPDATE too quickly. When first_row
+					 * same like last_first_row, then update will not be
+					 * too massive.
+					 */
+					if (
 
 #ifdef COMPILE_MENU
 
-				!menu_is_active &&
+					!menu_is_active &&
 
 #endif
 
-					last_doupdate_sec != -1 &&
-					!(mark_mode == MARK_MODE_MOUSE ||
-					 mark_mode == MARK_MODE_MOUSE_BLOCK ||
-					 mark_mode == MARK_MODE_MOUSE_COLUMNS))
-				{
-					int		limit;
-					long	td = time_diff(current_sec, current_ms,
-										   last_doupdate_sec, last_doupdate_ms);
+						last_doupdate_sec != -1 &&
+						!(mark_mode == MARK_MODE_MOUSE ||
+						 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+						 mark_mode == MARK_MODE_MOUSE_COLUMNS))
+					{
+						int		limit;
+						long	td = time_diff(current_sec, current_ms,
+											   last_doupdate_sec, last_doupdate_ms);
 
-					limit = last_first_row == first_row ? 20 : 30;
+						limit = last_first_row == first_row ? 20 : 30;
 
-					if (td < limit)
-						usleep((limit - td) * 1000);
+						if (td < limit)
+							usleep((limit - td) * 1000);
 
-					current_time(&current_sec, &current_ms);
+						current_time(&current_sec, &current_ms);
+					}
+
+					last_doupdate_sec = current_sec;
+					last_doupdate_ms = current_ms;
+					last_first_row = first_row;
 				}
-
-				last_doupdate_sec = current_sec;
-				last_doupdate_ms = current_ms;
-				last_first_row = first_row;
 
 				doupdate();
 
@@ -5736,7 +5740,8 @@ recheck_end:
 						first_row = first_row > max_first_row ? max_first_row : first_row;
 
 						if (first_row != prev_row)
-							usleep(30 * 1000);
+							if (!opts.no_sleep)
+								usleep(30 * 1000);
 					}
 					else if (event.bstate & BUTTON4_PRESSED)
 					{
@@ -5771,7 +5776,8 @@ recheck_end:
 						 * just by sleeping.
 						 */
 						if (first_row != prev_row)
-							usleep(30 * 1000);
+							if (!opts.no_sleep)
+								usleep(30 * 1000);
 					}
 					else
 
@@ -5945,7 +5951,8 @@ recheck_end:
 								scrdesc.slider_min_y = new_slider_min_y;
 
 								/* slower processing reduce flickering */
-								usleep(10 * 1000);
+								if (!opts.no_sleep)
+									usleep(10 * 1000);
 							}
 
 #endif

@@ -88,6 +88,7 @@ typedef struct
 	bool	empty_string_is_null;
 	bool	xterm_mouse_mode;
 	int		clipboard_app;
+	bool	no_sleep;
 } Options;
 
 extern bool save_config(char *path, Options *opts);
