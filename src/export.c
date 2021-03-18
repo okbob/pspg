@@ -681,6 +681,9 @@ export_data(Options *opts,
 	bool	print_header_line = true;
 	bool	save_column_names = false;
 	bool	has_selection;
+	bool	join_multilines = false;
+
+	int	   *multiline_map = NULL;
 
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_row;
@@ -704,6 +707,16 @@ export_data(Options *opts,
 	has_selection =
 		((scrdesc->selected_first_row != -1 && scrdesc->selected_rows > 0 ) ||
 		 (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0));
+
+	/*
+	 * only when we export data in raw format and we export complete result, then
+	 * we don't need to know multilines.
+	 */
+	if (!(format == CLIPBOARD_FORMAT_TEXT && !has_selection))
+	{
+		multilines_detection(opts, desc);
+		join_multilines = desc->has_multilines;
+	}
 
 	if (cmd == cmd_CopyLineExtended && !DSV_FORMAT_TYPE(format))
 		format = CLIPBOARD_FORMAT_CSV;
@@ -804,6 +817,66 @@ export_data(Options *opts,
 
 	if (save_column_names)
 		print_header = true;
+
+	/*
+	 * we need multiline_map for detection of first row of multiline
+	 * field.
+	 */
+	if (join_multilines)
+	{
+		bool	prevline_continuation_mark = false;
+		int		multiline_first_rn = 0;
+
+		multiline_map = smalloc(desc->total_rows * sizeof(int));
+
+		init_lbi_ddesc(&lbi, desc, 0);
+
+		while (lbi_set_mark_next(&lbi, &lbm))
+		{
+			LineInfo *linfo;
+			bool		continuation_mark;
+
+			(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
+
+			continuation_mark = linfo && linfo->mask & LINEINFO_CONTINUATION;
+
+			if (!prevline_continuation_mark && continuation_mark)
+			{
+				multiline_first_rn = rn;
+				multiline_map[rn] = rn;
+			}
+			else
+				multiline_map[rn] = prevline_continuation_mark ? multiline_first_rn : 0;
+
+			prevline_continuation_mark = continuation_mark;
+		}
+	}
+
+	/* check min_row and max_row against multiline_map */
+	if (multiline_map && min_row != desc->first_data_row)
+	{
+		int		new_min_row = multiline_map[min_row];
+
+		if (new_min_row != 0)
+			min_row = new_min_row;
+	}
+
+	if (multiline_map && max_row != desc->last_row)
+	{
+		int		first_rn = multiline_map[max_row];
+		int		i;
+
+		if (first_rn !=0)
+		{
+			for (i = max_row; i <= desc->last_row; i++)
+			{
+				if (multiline_map[i] == first_rn)
+					max_row = i;
+				else
+					break;
+			}
+		}
+	}
 
 	init_lbi_ddesc(&lbi, desc, 0);
 

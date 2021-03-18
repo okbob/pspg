@@ -144,6 +144,7 @@ typedef struct
 	int		footer_rows;			/* number of footer rows */
 	bool	oid_name_table;			/* detected system table with first oid column */
 	bool	multilines_already_tested;	/* true, when we know where are multilines */
+	bool	has_multilines;			/* true, when some field contains more lines */
 } DataDesc;
 
 #define		PSPG_WINDOW_COUNT		10
@@ -375,6 +376,7 @@ extern char *tilde(char *dest, char *path);
 /* from table.c */
 extern bool readfile(Options *opts, DataDesc *desc, StateData *state);
 extern bool translate_headline(Options *opts, DataDesc *desc);
+extern void multilines_detection(Options *opts, DataDesc *desc);
 
 extern void update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort);
 
@@ -414,9 +416,9 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

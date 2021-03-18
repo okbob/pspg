@@ -1492,6 +1492,86 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 	return false;
 }
 
+/*
+ * Try to detect multiline rows.
+ */
+void
+multilines_detection(Options *opts, DataDesc *desc)
+{
+	LineBufferIter	lbi;
+	LineBufferMark	lbm;
+
+	bool		force8bit = opts->force8bit;
+
+	bool		border0 = (desc->border_type == 0);
+	bool		border1 = (desc->border_type == 1);
+	bool		border2 = (desc->border_type == 2);
+
+	bool		has_multilines = false;
+
+	if (desc->multilines_already_tested)
+		return;
+
+	init_lbi_ddesc(&lbi, desc, 0);
+
+	while (lbi_set_mark_next(&lbi, &lbm))
+	{
+		char	   *str;
+		int			lineno;
+		int			pos = 0;
+		bool		found_continuation_symbol = false;
+
+		(void) lbm_get_line(&lbm, &str, NULL, &lineno);
+
+		if (lineno < desc->first_data_row || lineno > desc->last_data_row)
+			continue;
+
+		/*
+		 * This implementation doesn't support old-ascii format
+		 */
+		while (pos < desc->headline_char_size)
+		{
+			if (border0)
+			{
+				if (pos + 1 == desc->headline_char_size)
+				{
+					char	*sym;
+
+					sym = str + (force8bit ? 1 : utf8charlen(*str));
+					if (*sym != '\0')
+						found_continuation_symbol = is_line_continuation_char(sym, desc);
+				}
+				else if (desc->headline_transl[pos] == 'I')
+					found_continuation_symbol = is_line_continuation_char(str, desc);
+			}
+			else if (border1)
+			{
+				if ((pos + 1 < desc->headline_char_size && desc->headline_transl[pos + 1] == 'I') ||
+					  (pos + 1 == desc->headline_char_size))
+					found_continuation_symbol = is_line_continuation_char(str, desc);
+			}
+			else if (border2)
+			{
+				if ((pos + 1 < desc->headline_char_size) &&
+					  (desc->headline_transl[pos + 1] == 'I' || desc->headline_transl[pos + 1] == 'R'))
+					found_continuation_symbol = is_line_continuation_char(str, desc);
+			}
+
+			if (found_continuation_symbol)
+			{
+				lbm_xor_mask(&lbm, LINEINFO_CONTINUATION);
+				has_multilines = true;
+				break;
+			}
+
+			pos += force8bit ? 1 : utf_dsplen(str);
+			str += force8bit ? 1 : utf8charlen(*str);
+		}
+	}
+
+	desc->multilines_already_tested = true;
+	desc->has_multilines = has_multilines;
+}
 
 /*
  * Prepare order map - it is used for printing data in different than
@@ -1505,12 +1585,9 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	int				xmin, xmax;
 	int				lineno = 0;
 	bool			continual_line = false;
-	bool			has_multilines = false;
 	bool			isnull;
 	bool			detect_string_column = false;
 	bool			border0 = (desc->border_type == 0);
-	bool			border1 = (desc->border_type == 1);
-	bool			border2 = (desc->border_type == 2);
 	SortData	   *sortbuf;
 	int				sortbuf_pos = 0;
 	int			i;
@@ -1520,75 +1597,8 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 
 	sortbuf = smalloc(desc->total_rows * sizeof(SortData));
 
-	/* first time we should to detect multilines */
-	if (!desc->multilines_already_tested)
-	{
-		desc->multilines_already_tested = true;
-
-		lnb = &desc->rows;
-		lineno = 0;
-
-		while (lnb)
-		{
-			for (i = 0; i < lnb->nrows; i++)
-			{
-				if (lineno >= desc->first_data_row && lineno <= desc->last_data_row)
-				{
-					char   *str = lnb->rows[i];
-					bool	found_continuation_symbol = false;
-					int		j = 0;
-
-					while (j < desc->headline_char_size)
-					{
-						if (border0)
-						{
-							/* border 0, last continuation symbol is after headline */
-							if (j + 1 == desc->headline_char_size)
-							{
-								char	*sym;
-
-								sym = str + (opts->force8bit ? 1 : utf8charlen(*str));
-								if (*sym != '\0')
-									found_continuation_symbol = is_line_continuation_char(sym, desc);
-							}
-							else if (desc->headline_transl[j] == 'I')
-								found_continuation_symbol = is_line_continuation_char(str, desc);
-						}
-						else if (border1)
-						{
-							if ((j + 1 < desc->headline_char_size && desc->headline_transl[j + 1] == 'I') ||
-									  (j + 1 == desc->headline_char_size))
-								found_continuation_symbol = is_line_continuation_char(str, desc);
-						}
-						else if (border2)
-						{
-							if ((j + 1 < desc->headline_char_size) &&
-									(desc->headline_transl[j + 1] == 'I' || desc->headline_transl[j + 1] == 'R'))
-								found_continuation_symbol = is_line_continuation_char(str, desc);
-						}
-
-						if (found_continuation_symbol)
-							break;
-
-						j += opts->force8bit ? 1 : utf_dsplen(str);
-						str += opts->force8bit ? 1 : utf8charlen(*str);
-					}
-
-					if (found_continuation_symbol)
-					{
-						if (lnb->lineinfo == NULL)
-							lnb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
-
-						lnb->lineinfo[i].mask ^= LINEINFO_CONTINUATION;
-						has_multilines = true;
-					}
-				}
-
-				lineno += 1;
-			}
-			lnb = lnb->next;
-		}
-	}
+	/* multilines should be detected first */
+	multilines_detection(opts, desc);
 
 	lnb = &desc->rows;
 	lineno = 0;
@@ -1642,7 +1652,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 					}
 				}
 
-				if (has_multilines)
+				if (desc->has_multilines)
 				{
 					continual_line = (lnb->lineinfo &&
 									  (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
@@ -1686,7 +1696,7 @@ sort_by_string:
 							sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;		/* empty string */
 					}
 
-					if (has_multilines)
+					if (desc->has_multilines)
 					{
 						continual_line =  (lnb->lineinfo &&
 										   (lnb->lineinfo[i].mask & LINEINFO_CONTINUATION));
@@ -1716,7 +1726,7 @@ sort_by_string:
 		lineno += 1;
 
 		/* assign other continual lines */
-		if (has_multilines)
+		if (desc->has_multilines)
 		{
 			int		lnb_row;
 			bool	continual = false;
