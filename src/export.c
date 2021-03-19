@@ -19,6 +19,143 @@
 #include "commands.h"
 #include "unicode.h"
 
+typedef struct
+{
+	int		len;
+	int		maxlen;
+	char   *data;
+} ExtStr;
+
+static char *trim_str(char *str, int *size, bool force8bit);
+
+/*
+ * Few simple functions for string concatetion
+ */
+static void
+InitExtStr(ExtStr *estr)
+{
+	estr->len = 0;
+	estr->maxlen = 1024;
+	estr->data = smalloc(estr->maxlen);
+	*estr->data = '\0';
+}
+
+static void
+ResetExtStr(ExtStr *estr)
+{
+	estr->len = 0;
+
+	/*
+	 * Because the content self is still used, we should not to push
+	 * ending zero there.
+	 * DONT DO THIS *estr->data = '\0';
+	 */
+}
+
+static void
+ExtStrAppendLine(ExtStr *estr,
+				 char *str,
+				 int size,
+				 bool force8bit,
+				 char linestyle,
+				 bool continuation_mark)
+{
+	bool	insert_nl = false;
+
+	str = trim_str(str, &size, force8bit);
+
+	if (size == 0)
+		return;
+
+	if (continuation_mark)
+	{
+		int		continuation_mark_size = 0;
+
+		/* try to detect continuation marks at end of line */
+		if (linestyle == 'a')
+		{
+			if (str[size - 1] == '+')
+			{
+				continuation_mark_size = 1;
+				insert_nl = true;
+			}
+			else if (str[size - 1] == '.')
+				continuation_mark_size = 1;
+		}
+		else
+		{
+			const char *u1 = "\342\206\265";	/* ↵ */
+			const char *u2 = "\342\200\246";	/* … */
+
+			if (size > 3)
+			{
+				char	   *ptr = str + size - 3;
+
+				if (strncmp(ptr, u1, 3) == 0)
+				{
+					continuation_mark_size = 3;
+					insert_nl = true;
+				}
+				else if (strncmp(ptr, u2, 3) == 0)
+					continuation_mark_size = 3;
+			}
+		}
+
+		if (continuation_mark_size > 0)
+		{
+			size -= continuation_mark_size;
+
+			str = trim_str(str, &size, force8bit);
+		}
+	}
+
+	if (estr->len + size + 2 > estr->maxlen)
+	{
+		while (estr->len + size + 2 > estr->maxlen)
+			estr->maxlen += 1024;
+
+		estr->data = srealloc(estr->data, estr->maxlen);
+	}
+
+	strncpy(&estr->data[estr->len], str, size);
+	estr->len += size;
+
+	if (insert_nl)
+		estr->data[estr->len++] = '\n';
+
+	estr->data[estr->len] = '\0';
+}
+
+static int
+ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit)
+{
+	char	   *ptr;
+	char	   *last_nonwhite = NULL;
+
+	ptr = estr->data;
+
+	while (*ptr)
+	{
+		if (*ptr != ' ' && *ptr != '\n')
+			last_nonwhite = ptr;
+
+		if (*ptr == '\n' && replace_nl)
+			*ptr = ' ';
+
+		ptr += force8bit ? 1 : utf8charlen(*ptr);
+	}
+
+	if (last_nonwhite)
+	{
+		estr->len = last_nonwhite - estr->data + 1;
+		estr->data[estr->len] = '\0';
+	}
+	else
+		ResetExtStr(estr);
+
+	return estr->len;
+}
+
 /*
  * Ensure correct formatting of CSV value. Can returns
  * malloc ed string when value should be quoted.
@@ -327,6 +464,8 @@ typedef struct
 
 	int			colno;
 	char	  **colnames;
+	ExtStr	   *lines;
+	char		linestyle;
 } ExportState;
 
 /*
@@ -372,13 +511,59 @@ trim_str(char *str, int *size, bool force8bit)
 static bool
 process_item(ExportState *expstate,
 			 char typ, char *field, int size,
-			 int xpos, bool is_colname)
+			 int xpos, bool is_colname,
+			 bool has_continue_mark)
 {
+	if (typ == 'd')
+	{
+		/* Ignore items outer to selected range */
+		if (expstate->xmin != -1 &&
+			  (xpos <= expstate->xmin || expstate->xmax <= xpos))
+		return true;
+
+		if (has_continue_mark)
+		{
+			ExtStr *estr = &expstate->lines[expstate->colno];
+
+			if (!estr->data)
+				InitExtStr(estr);
+
+			ExtStrAppendLine(estr, field, size,
+							 expstate->force8bit,
+							 expstate->linestyle,
+							 has_continue_mark);
+
+			expstate->colno += 1;
+
+			return true;
+		}
+		else if (expstate->lines)
+		{
+			ExtStr *estr = &expstate->lines[expstate->colno];
+
+			if (estr->len > 0)
+			{
+				ExtStrAppendLine(estr, field, size,
+								 expstate->force8bit,
+								 expstate->linestyle,
+								 has_continue_mark);
+
+				size = ExtStrTrimEnd(estr,
+									 expstate->format == CLIPBOARD_FORMAT_TSVC,
+									 expstate->force8bit);
+				field = estr->data;
+
+				/* Reset doesn't release memory */
+				ResetExtStr(estr);
+			}
+		}
+	}
+
 	if (INSERT_FORMAT_TYPE(expstate->format))
 	{
 		errno = 0;
 
-		if (typ == 'N' && !is_colname)
+		if (typ == 'N' && !is_colname && !has_continue_mark)
 		{
 			if (expstate->format == CLIPBOARD_FORMAT_INSERT)
 				fputs(");\n", expstate->fp);
@@ -391,12 +576,6 @@ process_item(ExportState *expstate,
 		else if (typ == 'd')
 		{
 			char   *_field;
-
-			/* Ignore items outer to selected range */
-			if (expstate->xmin != -1 &&
-				(xpos <= expstate->xmin ||
-				 expstate->xmax <= xpos))
-			return true;
 
 			if (is_colname)
 			{
@@ -560,7 +739,9 @@ process_item(ExportState *expstate,
 	 */
 	else if (DSV_FORMAT_TYPE(expstate->format))
 	{
-		if (typ == 'N' && !expstate->copy_line_extended)
+		if (typ == 'N' &&
+			!expstate->copy_line_extended && 
+			!has_continue_mark)
 		{
 			errno = 0;
 			fputc('\n', expstate->fp);
@@ -571,12 +752,6 @@ process_item(ExportState *expstate,
 			{
 				int saved_errno = 0;
 				char   *_field;
-
-				/* Ignore items outer to selected range */
-				if (expstate->xmin != -1 &&
-					(xpos <= expstate->xmin ||
-					 expstate->xmax <= xpos))
-				return true;
 
 				field = trim_str(field, &size, expstate->force8bit);
 
@@ -681,14 +856,12 @@ export_data(Options *opts,
 	bool	print_header_line = true;
 	bool	save_column_names = false;
 	bool	has_selection;
-	bool	join_multilines = false;
-
-	int	   *multiline_map = NULL;
 
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_row;
 
 	bool	isok = true;
+
 	ExportState expstate;
 
 	expstate.format = format;
@@ -699,24 +872,16 @@ export_data(Options *opts,
 	expstate.xmax = -1;
 	expstate.table_name = NULL;
 	expstate.colnames = NULL;
+	expstate.lines = NULL;
 	expstate.columns = desc->columns;
 	expstate.copy_line_extended = (cmd == cmd_CopyLineExtended);
+	expstate.linestyle = desc->linestyle;
 
 	current_state->errstr = NULL;
 
 	has_selection =
 		((scrdesc->selected_first_row != -1 && scrdesc->selected_rows > 0 ) ||
 		 (scrdesc->selected_first_column != -1 && scrdesc->selected_columns > 0));
-
-	/*
-	 * only when we export data in raw format and we export complete result, then
-	 * we don't need to know multilines.
-	 */
-	if (!(format == CLIPBOARD_FORMAT_TEXT && !has_selection))
-	{
-		multilines_detection(opts, desc);
-		join_multilines = desc->has_multilines;
-	}
 
 	if (cmd == cmd_CopyLineExtended && !DSV_FORMAT_TYPE(format))
 		format = CLIPBOARD_FORMAT_CSV;
@@ -819,62 +984,73 @@ export_data(Options *opts,
 		print_header = true;
 
 	/*
-	 * we need multiline_map for detection of first row of multiline
-	 * field.
+	 * only when we export data in raw format and we export complete result, then
+	 * we don't need to know multilines. Copy searched or marked lines doesn't support 
+	 * multiline grouping too.
 	 */
-	if (join_multilines)
+	if (!((format == CLIPBOARD_FORMAT_TEXT && cmd == cmd_CopyAllLines) ||
+		  cmd == cmd_CopySearchedLines || cmd == cmd_CopyMarkedLines))
 	{
-		bool	prevline_continuation_mark = false;
-		int		multiline_first_rn = 0;
-
-		multiline_map = smalloc(desc->total_rows * sizeof(int));
-
-		init_lbi_ddesc(&lbi, desc, 0);
-
-		while (lbi_set_mark_next(&lbi, &lbm))
+		multilines_detection(opts, desc);
+		if (desc->has_multilines)
 		{
-			LineInfo *linfo;
-			bool		continuation_mark;
+			bool	prevline_continuation_mark = false;
+			int		multiline_first_rn = 0;
+			int	   *multiline_map = NULL;
 
-			(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
+			multiline_map = smalloc(desc->total_rows * sizeof(int));
 
-			continuation_mark = linfo && linfo->mask & LINEINFO_CONTINUATION;
+			init_lbi_ddesc(&lbi, desc, 0);
 
-			if (!prevline_continuation_mark && continuation_mark)
+			while (lbi_set_mark_next(&lbi, &lbm))
 			{
-				multiline_first_rn = rn;
-				multiline_map[rn] = rn;
-			}
-			else
-				multiline_map[rn] = prevline_continuation_mark ? multiline_first_rn : 0;
+				LineInfo *linfo;
+				bool		continuation_mark;
 
-			prevline_continuation_mark = continuation_mark;
-		}
-	}
+				(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
 
-	/* check min_row and max_row against multiline_map */
-	if (multiline_map && min_row != desc->first_data_row)
-	{
-		int		new_min_row = multiline_map[min_row];
+				continuation_mark = linfo && linfo->mask & LINEINFO_CONTINUATION;
 
-		if (new_min_row != 0)
-			min_row = new_min_row;
-	}
-
-	if (multiline_map && max_row != desc->last_row)
-	{
-		int		first_rn = multiline_map[max_row];
-		int		i;
-
-		if (first_rn !=0)
-		{
-			for (i = max_row; i <= desc->last_row; i++)
-			{
-				if (multiline_map[i] == first_rn)
-					max_row = i;
+				if (!prevline_continuation_mark && continuation_mark)
+				{
+					multiline_first_rn = rn;
+					multiline_map[rn] = rn;
+				}
 				else
-					break;
+					multiline_map[rn] = prevline_continuation_mark ? multiline_first_rn : 0;
+
+				prevline_continuation_mark = continuation_mark;
 			}
+
+			/* check min_row and max_row against multiline_map */
+			if (min_row != desc->first_data_row)
+			{
+				int		new_min_row = multiline_map[min_row];
+
+				if (new_min_row != 0)
+				min_row = new_min_row;
+			}
+
+			if (max_row != desc->last_row)
+			{
+				int		first_rn = multiline_map[max_row];
+				int		i;
+
+				if (first_rn !=0)
+				{
+					for (i = max_row; i <= desc->last_row; i++)
+					{
+						if (multiline_map[i] == first_rn)
+							max_row = i;
+						else
+							break;
+					}
+				}
+			}
+
+			free(multiline_map);
+
+			expstate.lines = smalloc(desc->columns * sizeof(ExtStr));
 		}
 	}
 
@@ -892,6 +1068,7 @@ export_data(Options *opts,
 		char   *field, *ptr, typ;
 		FmtLineIter iter;
 		bool	is_colname = false;
+		bool	continuation_mark = false;
 
 		(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
 
@@ -904,11 +1081,6 @@ export_data(Options *opts,
 			if (cmd == cmd_CopyMarkedLines)
 			{
 				if (!linfo || ((linfo->mask & LINEINFO_BOOKMARK) == 0))
-					continue;
-			}
-			else if (cmd == cmd_CopyLine)
-			{
-				if (rn - desc->first_data_row != cursor_row)
 					continue;
 			}
 			if (cmd == cmd_CopySearchedLines)
@@ -950,6 +1122,10 @@ export_data(Options *opts,
 		colno = 0;
 		expstate.colno = 0;
 
+		/* for text format we have not concate lines of multiline field */
+		if (format != CLIPBOARD_FORMAT_TEXT)
+			continuation_mark = linfo && linfo->mask & LINEINFO_CONTINUATION;
+
 		/*
 		 * line parser - separates fields on line
 		 */
@@ -969,7 +1145,8 @@ export_data(Options *opts,
 			{
 				isok = process_item(&expstate, 'd',
 									field, field_size, field_xpos,
-									is_colname);
+									is_colname,
+									continuation_mark);
 				if (!isok)
 					goto exit_export;
 
@@ -978,7 +1155,8 @@ export_data(Options *opts,
 
 			isok = process_item(&expstate, typ,
 								ptr, size, xpos,
-								is_colname);
+								is_colname,
+								continuation_mark);
 
 			if (!isok)
 				goto exit_export;
@@ -991,13 +1169,15 @@ export_data(Options *opts,
 		{
 			isok = process_item(&expstate, 'd',
 								field, field_size, field_xpos,
-								is_colname);
+								is_colname,
+								continuation_mark);
 			if (!isok)
 				goto exit_export;
 		}
 
 		isok = process_item(&expstate, 'N',
-							NULL, 0, -1, is_colname);
+							NULL, 0, -1, is_colname,
+							continuation_mark);
 		if (!isok)
 			goto exit_export;
 	}
@@ -1016,6 +1196,16 @@ exit_export:
 
 	if (expstate.table_name && expstate.table_name != table_name)
 		free(expstate.table_name);
+
+	if (expstate.lines)
+	{
+		int		i;
+
+		for (i = 0; i < expstate.columns; i++)
+			free(expstate.lines[i].data);
+
+		free(expstate.lines);
+	}
 
 	return isok;
 }

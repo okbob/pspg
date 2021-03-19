@@ -365,6 +365,7 @@ extern void format_error(const char *fmt, ...);
 
 extern void *smalloc(int size);
 extern void *smalloc2(int size, char *debugstr);
+extern void *srealloc(void *ptr, int size);
 extern char *sstrdup(char *str);
 extern char *sstrdup2(char *str, char *debugstr);
 extern char *sstrndup(char *str, int bytes);
@@ -416,9 +417,9 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- */
+ *
 #define DEBUG_PIPE				"/home/pavel/debug"
- //*/
+ */
 
 #ifdef DEBUG_PIPE
 

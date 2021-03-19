@@ -145,7 +145,7 @@ format_error(const char *fmt, ...)
 void *
 smalloc(int size)
 {
-	void *result;
+	void	   *result;
 
 	result = malloc(size);
 
@@ -153,6 +153,19 @@ smalloc(int size)
 		leave("out of memory");
 
 	memset(result, 0, size);
+
+	return result;
+}
+
+void *
+srealloc(void *ptr, int size)
+{
+	void	   *result;
+
+	result = realloc(ptr, size);
+
+	if (!result)
+		leave("out of memory");
 
 	return result;
 }

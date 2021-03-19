@@ -2045,7 +2045,7 @@ export_to_file(PspgCommand command,
 	if (INSERT_FORMAT_TYPE(format))
 	{
 		get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name);
-		if (buffer[0] == '\0')
+		if (table_name[0] == '\0')
 			return;
 
 		strncpy(last_table_name, table_name, sizeof(last_table_name) - 1);
