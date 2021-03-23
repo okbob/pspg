@@ -2814,7 +2814,14 @@ main(int argc, char *argv[])
 		 * want to stream mode. In this case try to open new tty stream
 		 * and start new ncurses terminal with specified input stream.
 		 */
+
+#ifndef __APPLE__
+
+		/* macOS can't use poll() on /dev/tty */
 		state.tty = fopen("/dev/tty", "r+");
+
+#endif
+
 		if (!state.tty)
 			state.tty = fopen(ttyname(fileno(stdout)), "r");
 
