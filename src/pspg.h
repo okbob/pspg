@@ -315,6 +315,13 @@ typedef struct
 	int				lb_rowno;
 } SimpleLineBufferIter;
 
+typedef struct
+{
+	int		len;
+	int		maxlen;
+	char   *data;
+} ExtStr;
+
 /* from pspg.c */
 void exit_ncurses(void);
 
@@ -351,7 +358,7 @@ extern void sort_column_text(SortData *sortbuf, int rows, bool desc);
 extern bool read_and_format(Options *opts, DataDesc *desc, StateData *state);
 
 /* from pgclient.c */
-extern bool pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
+extern bool pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdesc, const char **err);
 
 /* from args.c */
 extern char **buildargv(const char *input, int *argc, char *appname);
@@ -369,6 +376,13 @@ extern void *srealloc(void *ptr, int size);
 extern char *sstrdup(char *str);
 extern char *sstrdup2(char *str, char *debugstr);
 extern char *sstrndup(char *str, int bytes);
+
+extern char *trim_str(char *str, int *size, bool force8bit);
+extern void InitExtStr(ExtStr *estr);
+extern void ResetExtStr(ExtStr *estr);
+extern void ExtStrAppendNewLine(ExtStr *estr, char *str);
+extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, bool force8bit, char linestyle, bool continuation_mark);
+extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit);
 
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);

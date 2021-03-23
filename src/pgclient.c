@@ -217,10 +217,10 @@ mark_hidden_columns(PGresult *result,
  * exit on fatal error, or return error
  */
 bool
-pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char **err)
+pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdesc, const char **err)
 {
 
-	log_row("execute query \"%s\"", opts->query);
+	log_row("execute query \"%s\"", query);
 
 #ifdef HAVE_POSTGRESQL
 
@@ -289,7 +289,7 @@ pg_exec_query(Options *opts, RowBucketType *rb, PrintDataDesc *pdesc, const char
 	 * ToDo: Because data are copied to local memory, the result can be fetched.
 	 * It can save 1/2 memory.
 	 */
-	result = PQexec(conn, opts->query);
+	result = PQexec(conn, query);
 	if (PQresultStatus(result) != PGRES_TUPLES_OK)
 	{
 		sprintf(errmsg, "Query doesn't return data: %s", PQerrorMessage(conn));

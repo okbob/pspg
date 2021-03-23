@@ -102,6 +102,7 @@ static struct option long_options[] =
 	{"no-xterm-mouse-mode", no_argument, 0, 40},
 	{"clipboard-app", required_argument, 0, 42},
 	{"no-sleep", no_argument, 0, 43},
+	{"querystream", no_argument, 0, 44},
 	{0, 0, 0, 0}
 };
 
@@ -315,6 +316,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
 					fprintf(stdout, "  --no-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
 					fprintf(stdout, "  --pgcli-fix              try to fix some pgcli related issues\n");
+					fprintf(stdout,  "  --querystream            read queries from stream forever\n");
 					fprintf(stdout, "  --quit-on-f3             exit on F3 like mc viewers\n");
 					fprintf(stdout, "  --rr=ROWNUM              rows reserved for specific purposes\n");
 					fprintf(stdout, "  --stream                 read input forever\n");
@@ -628,6 +630,10 @@ readargs(char **argv,
 			case 43:
 				opts->no_sleep = true;
 				break;
+			case 44:
+				opts->querystream = true;
+				state->stream_mode = true;
+				break;
 
 			default:
 				{
@@ -702,6 +708,12 @@ args_are_consistent(Options *opts, StateData *state)
 	if (opts->query && opts->pathname)
 	{
 		state->errstr = "option --query and --file cannot be used together";
+		return false;
+	}
+
+	if (opts->query && opts->querystream)
+	{
+		state->errstr = "option --query and --querystream cannot be used together";
 		return false;
 	}
 

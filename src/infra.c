@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include "pspg.h"
+#include "unicode.h"
 
 /*
  * Print entry to log file
@@ -219,4 +220,189 @@ sstrndup(char *str, int bytes)
 	*ptr = '\0';
 
 	return result;
+}
+
+/*
+ * truncate spaces from both ends
+ */
+char *
+trim_str(char *str, int *size, bool force8bit)
+{
+	char   *result = NULL;
+
+	while (*str == ' ' && *size > 0)
+	{
+		str += 1;
+		*size -= 1;
+	}
+
+	if (*size > 0)
+	{
+		char   *after_nspc_chr = NULL;
+
+		result = str;
+
+		while (*size > 0)
+		{
+			int		charlen = force8bit ? 1 : utf8charlen(*str);
+
+			if (*str != ' ')
+				after_nspc_chr = str + charlen;
+
+			str = str + charlen;
+			*size -= charlen;
+		}
+
+		*size = after_nspc_chr - result;
+	}
+
+	return result;
+}
+
+/*
+ * Few simple functions for string concatetion
+ */
+void
+InitExtStr(ExtStr *estr)
+{
+	estr->len = 0;
+	estr->maxlen = 1024;
+	estr->data = smalloc(estr->maxlen);
+	*estr->data = '\0';
+}
+
+void
+ResetExtStr(ExtStr *estr)
+{
+	estr->len = 0;
+
+	/*
+	 * Because the content self is still used, we should not to push
+	 * ending zero there.
+	 * DONT DO THIS *estr->data = '\0';
+	 */
+}
+
+void
+ExtStrAppendNewLine(ExtStr *estr, char *str)
+{
+	int		size = strlen(str);
+
+	if (estr->len + size + 2 > estr->maxlen)
+	{
+		while (estr->len + size + 2 > estr->maxlen)
+			estr->maxlen += 1024;
+
+		estr->data = srealloc(estr->data, estr->maxlen);
+	}
+
+	if (estr->len > 0)
+		estr->data[estr->len++] = '\n';
+
+	strncpy(&estr->data[estr->len], str, size + 1);
+	estr->len += size;
+}
+
+void
+ExtStrAppendLine(ExtStr *estr,
+				 char *str,
+				 int size,
+				 bool force8bit,
+				 char linestyle,
+				 bool continuation_mark)
+{
+	bool	insert_nl = false;
+
+	str = trim_str(str, &size, force8bit);
+
+	if (size == 0)
+		return;
+
+	if (continuation_mark)
+	{
+		int		continuation_mark_size = 0;
+
+		/* try to detect continuation marks at end of line */
+		if (linestyle == 'a')
+		{
+			if (str[size - 1] == '+')
+			{
+				continuation_mark_size = 1;
+				insert_nl = true;
+			}
+			else if (str[size - 1] == '.')
+				continuation_mark_size = 1;
+		}
+		else
+		{
+			const char *u1 = "\342\206\265";	/* ↵ */
+			const char *u2 = "\342\200\246";	/* … */
+
+			if (size > 3)
+			{
+				char	   *ptr = str + size - 3;
+
+				if (strncmp(ptr, u1, 3) == 0)
+				{
+					continuation_mark_size = 3;
+					insert_nl = true;
+				}
+				else if (strncmp(ptr, u2, 3) == 0)
+					continuation_mark_size = 3;
+			}
+		}
+
+		if (continuation_mark_size > 0)
+		{
+			size -= continuation_mark_size;
+
+			str = trim_str(str, &size, force8bit);
+		}
+	}
+
+	if (estr->len + size + 2 > estr->maxlen)
+	{
+		while (estr->len + size + 2 > estr->maxlen)
+			estr->maxlen += 1024;
+
+		estr->data = srealloc(estr->data, estr->maxlen);
+	}
+
+	strncpy(&estr->data[estr->len], str, size);
+	estr->len += size;
+
+	if (insert_nl)
+		estr->data[estr->len++] = '\n';
+
+	estr->data[estr->len] = '\0';
+}
+
+int
+ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit)
+{
+	char	   *ptr;
+	char	   *last_nonwhite = NULL;
+
+	ptr = estr->data;
+
+	while (*ptr)
+	{
+		if (*ptr != ' ' && *ptr != '\n')
+			last_nonwhite = ptr;
+
+		if (*ptr == '\n' && replace_nl)
+			*ptr = ' ';
+
+		ptr += force8bit ? 1 : utf8charlen(*ptr);
+	}
+
+	if (last_nonwhite)
+	{
+		estr->len = last_nonwhite - estr->data + 1;
+		estr->data[estr->len] = '\0';
+	}
+	else
+		ResetExtStr(estr);
+
+	return estr->len;
 }

@@ -755,7 +755,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		wbkgd(top_bar, current_state->errstr ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
 		werase(top_bar);
 
-		if (desc->title[0] != '\0' || desc->filename[0] != '\0')
+		if ((desc->title[0] != '\0' || desc->filename[0] != '\0') && !current_state->errstr)
 		{
 			wattron(top_bar, top_bar_theme->title_attr);
 			if (desc->title[0] != '\0' && desc->title_rows > 0)
@@ -765,7 +765,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			wattroff(top_bar, top_bar_theme->title_attr);
 		}
 
-		if (opts->watch_time > 0)
+		if (opts->watch_time > 0 || current_state->errstr)
 		{
 			if (last_watch_sec > 0)
 			{
@@ -807,6 +807,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						*ptr++ = current_state->errstr[i];
 
 				wprintw(top_bar, "   %s", buffer);
+
+				return;
 			}
 		}
 
@@ -2670,6 +2672,13 @@ main(int argc, char *argv[])
 
 	if (opts.csv_format || opts.tsv_format || opts.query)
 		result = read_and_format(&opts, &desc, &state);
+	else if (opts.querystream)
+	{
+		result = readfile(&opts, &desc, &state);
+
+		if (result)
+			result = read_and_format(&opts, &desc, &state);
+	}
 	else
 		result = readfile(&opts, &desc, &state);
 
@@ -3679,6 +3688,12 @@ reinit_theme:
 							if (opts.csv_format || opts.tsv_format || opts.query)
 								/* returns false when format is broken */
 								fresh_data = read_and_format(&opts, &desc2, &state);
+							else if (opts.querystream)
+							{
+								fresh_data = readfile(&opts, &desc2, &state);
+								if (fresh_data)
+									fresh_data = read_and_format(&opts, &desc2, &state);
+							}
 							else
 								fresh_data = readfile(&opts, &desc2, &state);
 

@@ -89,6 +89,7 @@ typedef struct
 	bool	xterm_mouse_mode;
 	int		clipboard_app;
 	bool	no_sleep;
+	bool	querystream;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

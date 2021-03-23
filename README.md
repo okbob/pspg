@@ -264,6 +264,17 @@ changed by option `--hold-stream`. Default value is 0. When `--hold-stream=1` th
 writing. `--hold-stream=2` is different strategy. The `pspg` reopen FIFO in write
 mode, and then FIFO will be opened until `pspg` is running.
 
+# Streaming modes
+
+`pspg` can read a stream of tabular data from pipe or from file (with an option
+`--stream` or it can read a stream of queries from pipe or from file (with an
+option `--querystream`). It is good to use these option with option `--hold-stream`.
+
+Without this option, there are possible unwanted issues when pipe will be closed.
+
+The query stream mode is an sequence of SQL statements separated by char GS (Group
+separator - 0x1D on separated line.
+
 
 # Recommended psql configuration
 

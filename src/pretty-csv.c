@@ -1369,11 +1369,39 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	PrintConfigType	pconfig;
 	PrintbufType	printbuf;
 	PrintDataDesc	pdesc;
-
-	memset(desc, 0, sizeof(DataDesc));
+	char	   *query = opts->query;
 
 	state->errstr = NULL;
 	state->_errno = 0;
+
+	if (opts->querystream)
+	{
+		SimpleLineBufferIter slbi, *_slbi;
+		char	   *str;
+		ExtStr		estr;
+
+		/* We need to make an query from stored lines */
+		_slbi = init_slbi_ddesc(&slbi, desc);
+		InitExtStr(&estr);
+
+		while (_slbi)
+		{
+			_slbi = slbi_get_line_next(_slbi, &str, NULL);
+			ExtStrAppendNewLine(&estr, str);
+		}
+
+		if (estr.len > 0)
+			query = estr.data;
+		else
+			free(estr.data);
+
+		lb_free(desc);
+
+		if (!query)
+			return false;
+	}
+
+	memset(desc, 0, sizeof(DataDesc));
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1414,10 +1442,21 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 	rowbuckets.allocated = false;
 
-	if (opts->query)
+	if (query)
 	{
-		if (!pg_exec_query(opts, &rowbuckets, &pdesc, &state->errstr))
+		if (!pg_exec_query(opts,
+						   query,
+						   &rowbuckets,
+						   &pdesc,
+						   &state->errstr))
+		{
+			log_row("pgclient error: %s\n", state->errstr);
+
+			if (query != opts->query)
+				free(query);
+
 			return false;
+		}
 	}
 	else if (opts->csv_format)
 	{

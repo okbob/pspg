@@ -639,6 +639,13 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			break;
 		}
 
+		/* In query stream node exit when you find row with only GS - Group Separator */
+		if (opts->querystream && read == 1)
+		{
+			if (*line == 0x1D)
+				break;
+		}
+
 		clen = utf_string_dsplen(line, read);
 
 		if (rows->nrows == LINEBUFFER_LINES)
@@ -651,6 +658,16 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		}
 
 		rows->rows[rows->nrows++] = line;
+
+		/*
+		 * The input file is not an table
+		 */
+		if (opts->querystream)
+		{
+			nrows += 1;
+			desc->last_row = nrows - 1;
+			goto next_row;
+		}
 
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
