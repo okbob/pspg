@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	4.4.0
+Version: 	4.5.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,14 +43,18 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Tue Mar 23 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- fix stream mode on apple (/dev/tty dosn't work with poll function)
+- new query stream mode - queries for pg client are read from stream
+
 * Fri Mar 19 2021 Pavel Stehule <pavel.stehule@gmail.com>
-* for some cases the multiline values are exported as one value
+- for some cases the multiline values are exported as one value
 
 * Sun Feb  7 2021 Pavel Stehule <pavel.stehule@gmail.com>
-* main window has vertical scrollbar
+- main window has vertical scrollbar
 
 * Fri Jan 29 2021 Pavel Stehule <pavel.stehule@gmail.com>
-* enhancing mouse usage by support xterm mouse mode 1002
+- enhancing mouse usage by support xterm mouse mode 1002
 
 * Sat Jan 16 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - possibility to export to clipboard or file in CSV, TSVC, formatted text and INSERT formats
