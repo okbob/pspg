@@ -419,7 +419,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(6, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
 			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
 			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
+			set_colour(9, COLOR_GREEN, COLOR_BLUE, true, 0);
 			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
 			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
 			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
