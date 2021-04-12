@@ -2984,6 +2984,8 @@ reinit_theme:
 	curs_set(0);
 	noecho();
 
+leaveok(stdscr, TRUE);
+
 	wbkgdset(stdscr, COLOR_PAIR(1));
 
 #ifdef NCURSES_EXT_FUNCS
@@ -3126,14 +3128,28 @@ reinit_theme:
 			{
 				if (desc.border_bottom_row == -1 && desc.footer_row == -1)
 				{
-					if (desc.alt_footer_row != -1 && desc.border_type == 1)
+					/*
+					 * It is hard to detect end of table and start of footer
+					 * when border_type != 2. But for border_type = 1 it is
+					 * possible. First footer line starting with nonspace.
+					 * But some data should not to have footer.
+					 */
+					if (desc.border_type == 1)
 					{
-						desc.footer_row = desc.alt_footer_row;
-						desc.last_data_row = desc.footer_row - 1;
+						if (desc.alt_footer_row != -1)
+						{
+							desc.footer_row = desc.alt_footer_row;
+							desc.last_data_row = desc.footer_row - 1;
+						}
+						else
+							desc.last_data_row = desc.last_row;
 					}
 					else
 					{
-						/* fallback */
+						/*
+						 * fallback - we cannot to distingush tabular data
+						 * and footer data in border 0
+						 */
 						desc.last_data_row = desc.last_row - 1;
 						desc.footer_row = desc.last_row;
 					}

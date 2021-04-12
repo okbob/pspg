@@ -778,6 +778,10 @@ next_row:
 		desc->headline = desc->rows.rows[desc->border_head_row];
 		desc->headline_size = strlen(desc->headline);
 
+		/*
+		 * fallback, but can be fixed later, when border_type
+		 * will be known.
+		 */
 		if (desc->last_data_row == -1)
 			desc->last_data_row = desc->last_row - 1;
 
