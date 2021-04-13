@@ -1563,6 +1563,12 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		(menu->focus == ST_MENU_FOCUS_NONE))
 		goto post_process;
 
+	/* use mouse wheel only with FULL FOCUS */
+	if (c == KEY_MOUSE &&
+		(mevent->bstate & BUTTON4_PRESSED || mevent->bstate & BUTTON5_PRESSED) &&
+		menu->focus != ST_MENU_FOCUS_FULL)
+		goto post_process;
+
 	/*
 	 * Propagate event to nested active object first. When nested object would be
 	 * closed, close it. When nested object read event, go to end
@@ -3112,4 +3118,13 @@ st_menu_set_shortcut(struct ST_MENU *menu, int code, char *shortcut)
 	}
 
 	return false;
+}
+
+/*
+ * Returns type of focus of menu
+ */
+int
+st_menu_get_focus(struct ST_MENU *menu)
+{
+	return menu->focus;
 }

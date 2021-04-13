@@ -90,6 +90,7 @@ typedef struct
 	int		clipboard_app;
 	bool	no_sleep;
 	bool	querystream;
+	bool	menu_always;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

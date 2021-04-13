@@ -103,6 +103,7 @@ static struct option long_options[] =
 	{"clipboard-app", required_argument, 0, 42},
 	{"no-sleep", no_argument, 0, 43},
 	{"querystream", no_argument, 0, 44},
+	{"menu-always", no_argument, 0, 45},
 	{0, 0, 0, 0}
 };
 
@@ -341,6 +342,7 @@ readargs(char **argv,
 					fprintf(stdout, "  -c, --freezecols=N       freeze N columns (0..9)\n");
 					fprintf(stdout, "  --less-status-bar        status bar like less pager\n");
 					fprintf(stdout, "  --line-numbers           show line number column\n");
+					fprintf(stdout, "  --menu-always            show top bar menu every time\n");
 					fprintf(stdout, "  --no-bars, --no-commandbar, --no-topbar\n");
 					fprintf(stdout, "                           don't show bottom, top bar or both\n");
 					fprintf(stdout, "  --no-cursor              row cursor will be hidden\n");
@@ -634,6 +636,19 @@ readargs(char **argv,
 				opts->querystream = true;
 				state->stream_mode = true;
 				break;
+			case 45:
+
+#ifndef COMPILE_MENU
+
+				state->errstr = "only one file can be browsed";
+				return false;
+
+#else
+
+				opts->menu_always = true;
+				break;
+
+#endif
 
 			default:
 				{

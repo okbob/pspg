@@ -629,7 +629,9 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		w_top_bar(scrdesc) = NULL;
 	}
 
-	if (opts->no_topbar)
+	if (opts->menu_always)
+		scrdesc->top_bar_rows = 1;
+	else if (opts->no_topbar)
 		scrdesc->top_bar_rows = 0;
 	else
 	{
@@ -680,10 +682,10 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	scrdesc->main_start_y = 0;
 	scrdesc->main_start_x = 0;
 
-	if (top_bar != NULL)
+	if (scrdesc->top_bar_rows > 0)
 	{
-		scrdesc->main_maxy -= 1;
-		scrdesc->main_start_y = 1;
+		scrdesc->main_maxy -= scrdesc->top_bar_rows;
+		scrdesc->main_start_y = scrdesc->top_bar_rows;
 	}
 
 	if (bottom_bar != NULL)
@@ -2532,6 +2534,7 @@ main(int argc, char *argv[])
 	opts.show_scrollbar = true;
 	opts.clipboard_app = 0;
 	opts.no_sleep = false;
+	opts.menu_always = false;
 
 	setup_sigsegv_handler();
 
@@ -3232,7 +3235,30 @@ leaveok(stdscr, TRUE);
 
 	init_menu_config(&opts);
 	if (!opts.less_status_bar && !opts.no_commandbar)
+	{
+		if (cmdbar)
+		{
+			st_cmdbar_free(cmdbar);
+			log_row("releasing cmd bar");
+		}
+
 		cmdbar = init_cmdbar(cmdbar, &opts);
+		log_row("init cmd bar");
+	}
+
+	if (opts.menu_always)
+	{
+		if (menu)
+		{
+			st_menu_free(menu);
+			log_row("releasing menu bar");
+		}
+
+		st_menu_set_desktop_window(stdscr);
+		menu = init_menu(menu, &opts);
+		st_menu_set_focus(menu, ST_MENU_FOCUS_MOUSE_ONLY);
+		log_row("init menu bar");
+	}
 
 #endif
 
@@ -3486,7 +3512,7 @@ leaveok(stdscr, TRUE);
 
 #ifdef DEBUG_PIPE
 
-			print_duration(start_draw_sec, start_draw_ms, "draw time");
+				print_duration(start_draw_sec, start_draw_ms, "draw time");
 
 #endif
 
@@ -3499,9 +3525,11 @@ leaveok(stdscr, TRUE);
 
 			if (menu != NULL && menu_is_active)
 			{
-				st_menu_post(menu);
 				st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
+				st_menu_post(menu);
 			}
+			else if (opts.menu_always)
+				st_menu_post(menu);
 
 #endif
 
@@ -3917,13 +3945,28 @@ leaveok(stdscr, TRUE);
 				}
 			}
 
+			if (processed &&
+					opts.menu_always &&
+					st_menu_get_focus(menu) == ST_MENU_FOCUS_FULL)
+				menu_is_active = true;
+
 			if (menu_is_active && !processed &&
 					(event_keycode == ST_MENU_ESCAPE || event_keycode == KEY_MOUSE))
 			{
 hide_menu:
+
 				st_menu_unpost(menu, true);
 				menu_is_active = false;
-				st_menu_set_focus(menu, ST_MENU_FOCUS_NONE);
+
+				if (!opts.menu_always)
+				{
+					st_menu_set_focus(menu, ST_MENU_FOCUS_NONE);
+				}
+				else
+				{
+					st_menu_set_focus(menu, ST_MENU_FOCUS_MOUSE_ONLY);
+					st_menu_post(menu);
+				}
 
 				/*
 				 * When we leave menu due mouse action, and this mouse action
@@ -4005,6 +4048,7 @@ hide_menu:
 						st_menu_set_desktop_window(stdscr);
 						init_menu_config(&opts);
 						menu = init_menu(menu, &opts);
+						log_row("init menu");
 					}
 
 					st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
@@ -6393,9 +6437,16 @@ refresh:
 #ifdef COMPILE_MENU
 
 	if (cmdbar)
+	{
 		st_cmdbar_free(cmdbar);
+		log_row("releasing cmd bar");
+	}
+
 	if (menu)
+	{
 		st_menu_free(menu);
+		log_row("releasing menu bar");
+	}
 
 #endif
 

@@ -90,6 +90,7 @@ This pager can be used from the following clients command line clients too:
 * `--pgcli-fix`  used for fixing some pgcli related issues
 * `--clipboard-app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
 * `--no-sleep`  disable waits used for reduction of terminal flickering
+* `--menu-always`  show menu bar all time (top bar with status will be invisible)
 
 Options can be passed inside env variable `PSPG` too.
 
