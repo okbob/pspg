@@ -3802,7 +3802,7 @@ leaveok(stdscr, TRUE);
 
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 					if (scrdesc.wins[WINDOW_TOP_BAR])
-						wrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
+						wnoutrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
 
 					set_scrollbar(&scrdesc, &desc, first_row);
 
