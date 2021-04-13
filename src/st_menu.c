@@ -1563,11 +1563,15 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		(menu->focus == ST_MENU_FOCUS_NONE))
 		goto post_process;
 
+#if NCURSES_MOUSE_VERSION > 1
+
 	/* use mouse wheel only with FULL FOCUS */
 	if (c == KEY_MOUSE &&
 		(mevent->bstate & BUTTON4_PRESSED || mevent->bstate & BUTTON5_PRESSED) &&
 		menu->focus != ST_MENU_FOCUS_FULL)
 		goto post_process;
+
+#endif
 
 	/*
 	 * Propagate event to nested active object first. When nested object would be
