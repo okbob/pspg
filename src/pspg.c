@@ -649,28 +649,25 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		w_bottom_bar(scrdesc) = NULL;
 	}
 
+	/*
+	 * bottom_bar should be created every time - it can be used
+	 * for an alerts, but sometimes, it should not be visible.
+	 */
+	bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
+	w_bottom_bar(scrdesc) = bottom_bar;
+
+	/* When it is visible, clean content and set background */
+	if (opts->less_status_bar
+
 #ifdef COMPILE_MENU
-
-	if (!opts->no_commandbar)
-	{
-		bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
-		w_bottom_bar(scrdesc) = bottom_bar;
-		werase(bottom_bar);
-	}
-
-#else
-
-	if (opts->less_status_bar)
-	{
-		bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
-		w_bottom_bar(scrdesc) = bottom_bar;
-		werase(bottom_bar);
-	}
+		|| !opts->no_commandbar
 
 #endif
 
-	if (bottom_bar)
+		)
 	{
+		werase(bottom_bar);
+
 		/* data colours are better than default */
 		wbkgd(bottom_bar, COLOR_PAIR(3));
 		wnoutrefresh(bottom_bar);
@@ -688,11 +685,17 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		scrdesc->main_start_y = scrdesc->top_bar_rows;
 	}
 
-	if (bottom_bar != NULL)
-	{
-		if (!opts->no_commandbar)
-			scrdesc->main_maxy -= 1;
-	}
+	if (opts->less_status_bar
+
+#ifdef COMPILE_MENU
+
+		|| !opts->no_commandbar
+
+#endif
+
+		)
+		scrdesc->main_maxy -= 1;
+
 }
 
 /*
