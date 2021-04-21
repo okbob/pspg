@@ -3235,25 +3235,10 @@ leaveok(stdscr, TRUE);
 
 	init_menu_config(&opts);
 	if (!opts.less_status_bar && !opts.no_commandbar)
-	{
-		if (cmdbar)
-		{
-			st_cmdbar_free(cmdbar);
-			log_row("releasing cmd bar");
-		}
-
 		cmdbar = init_cmdbar(cmdbar, &opts);
-		log_row("init cmd bar");
-	}
 
 	if (opts.menu_always)
 	{
-		if (menu)
-		{
-			st_menu_free(menu);
-			log_row("releasing menu bar");
-		}
-
 		st_menu_set_desktop_window(stdscr);
 		menu = init_menu(menu, &opts);
 		st_menu_set_focus(menu, ST_MENU_FOCUS_MOUSE_ONLY);
@@ -6439,13 +6424,13 @@ refresh:
 	if (cmdbar)
 	{
 		st_cmdbar_free(cmdbar);
-		log_row("releasing cmd bar");
+		log_row("releasing cmd bar before end");
 	}
 
 	if (menu)
 	{
 		st_menu_free(menu);
-		log_row("releasing menu bar");
+		log_row("releasing menu bar before end");
 	}
 
 #endif

@@ -312,9 +312,11 @@ init_menu(struct ST_MENU *current_menu, Options *opts)
 		int		positions[1024];
 		int		*refvals[1024];
 
+		/* Save state of old menu, and load it to new menu */
 		st_menu_save(current_menu, positions, refvals, 1023);
 		st_menu_load(menu, positions, refvals);
 		st_menu_free(current_menu);
+		log_row("releasing menu");
 	}
 
 	if (opts->quit_on_f3)
@@ -333,10 +335,16 @@ init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts)
 	else
 		cmdbar = st_cmdbar_new(&menu_config, _bottombar);
 
+	/*
+	 * It looks obscure - it uses same pattern like init_menu
+	 * although the cmdbar has not state, so old cmdbar can
+	 * be released fully before creating new cmdbar.
+	 */
 	if (current_cmdbar)
 	{
 		st_cmdbar_unpost(current_cmdbar);
 		st_cmdbar_free(current_cmdbar);
+		log_row("releasing cmd bar");
 	}
 
 	return cmdbar;
