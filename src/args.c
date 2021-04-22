@@ -68,7 +68,7 @@ static struct option long_options[] =
 	{"double-header", no_argument, 0, 24},
 	{"csv-separator", required_argument, 0, 18},
 	{"border", required_argument, 0, 19},
-	{"no-sigint-exit", no_argument, 0, 21},
+	{"on-sigint-exit", no_argument, 0, 21},
 	{"no-sigint-search-reset", no_argument, 0, 22},
 	{"ni", no_argument, 0, 23},
 	{"log", required_argument, 0, 25},
@@ -315,7 +315,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-sleep               without waits against flickering\n");
 					fprintf(stdout, "  --no_xterm_mouse_mode    don't use optional xterm mouse mode\n");
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
-					fprintf(stdout, "  --no-sigint-exit         without exit on sigint(CTRL C or Escape)\n");
+					fprintf(stdout, "  --on-sigint-exit         exit on sigint(CTRL C or Escape)\n");
 					fprintf(stdout, "  --pgcli-fix              try to fix some pgcli related issues\n");
 					fprintf(stdout,  "  --querystream            read queries from stream forever\n");
 					fprintf(stdout, "  --quit-on-f3             exit on F3 like mc viewers\n");

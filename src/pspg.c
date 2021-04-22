@@ -1534,6 +1534,15 @@ retry:
 		poll_num = poll(current_state->fds, 2, timeoutval);
 		if (poll_num == -1)
 		{
+			/* pool error is expected after sigint */
+			if (handle_sigint)
+			{
+				*sigint = true;
+				handle_sigint = false;
+
+				return 0;
+			}
+
 			log_row("poll error (%s)", strerror(errno));
 		}
 		else if (poll_num > 0)
@@ -2546,8 +2555,6 @@ main(int argc, char *argv[])
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
 
-	throw_selection(&scrdesc, &mark_mode);
-
 #ifdef DEBUG_PIPE
 
 	debug_pipe = fopen(DEBUG_PIPE, "w");
@@ -3066,7 +3073,13 @@ leaveok(stdscr, TRUE);
 		MergeScrDesc(&scrdesc, &aux);
 	}
 	else
+	{
 		memset(&scrdesc, 0, sizeof(ScrDesc));
+
+		throw_searching(&scrdesc);
+		throw_selection(&scrdesc, &mark_mode);
+		reset_searching_lineinfo(&desc);
+	}
 
 	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
 	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
