@@ -165,6 +165,9 @@ static struct sigaction old_sigsegv_handler;
  */
 char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
+/*
+ * Own signal handlers
+ */
 static void
 SigintHandler(int sig_num)
 {
@@ -173,6 +176,17 @@ SigintHandler(int sig_num)
 	signal(SIGINT, SigintHandler);
 
 	handle_sigint = true;
+}
+
+static void
+SigtermHandler(int sig_num)
+{
+	UNUSED(sig_num);
+
+	signal(SIGTERM, SigtermHandler);
+
+	/* force own exit_ncurses routine */
+	exit(EXIT_FAILURE);
 }
 
 /* Custom SIGSEGV handler. */
@@ -2882,6 +2896,8 @@ main(int argc, char *argv[])
 		noatty = false;
 
 	signal(SIGINT, SigintHandler);
+	signal(SIGTERM, SigtermHandler);
+
 	atexit(exit_ncurses);
 
 	if (state.tty)
@@ -4018,7 +4034,7 @@ hide_menu:
 		}
 		else if (command == cmd_Escape)
 		{
-			/* same like sigterm handling */
+			/* same like sigint handling */
 			if (!opts.no_sigint_search_reset &&
 				  (*scrdesc.searchterm || *scrdesc.searchcolterm ||
 				   scrdesc.selected_first_row != -1 ||
