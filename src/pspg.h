@@ -34,7 +34,7 @@
 #define			FILE_TSV			2
 #define			FILE_MATRIX			3
 
-#define PSPG_VERSION "4.6.0"
+#define PSPG_VERSION "4.6.1"
 
 /* GNU Hurd does not define MAXPATHLEN */
 #ifndef MAXPATHLEN
