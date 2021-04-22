@@ -3576,7 +3576,7 @@ leaveok(stdscr, TRUE);
 						long	td = time_diff(current_sec, current_ms,
 											   last_doupdate_sec, last_doupdate_ms);
 
-						limit = last_first_row == first_row ? 20 : 30;
+						limit = last_first_row == first_row ? 15 : 30;
 
 						if (td < limit)
 							usleep((limit - td) * 1000);
@@ -3584,12 +3584,14 @@ leaveok(stdscr, TRUE);
 						current_time(&current_sec, &current_ms);
 					}
 
-					last_doupdate_sec = current_sec;
-					last_doupdate_ms = current_ms;
 					last_first_row = first_row;
 				}
 
 				doupdate();
+
+				last_doupdate_sec = current_sec;
+				last_doupdate_ms = current_ms;
+
 
 #ifdef DEBUG_PIPE
 
