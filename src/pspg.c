@@ -3928,9 +3928,15 @@ leaveok(stdscr, TRUE);
 		/*
 		 * Don't send RESIZE to menu. It cannot to handle this event, and it
 		 * cannot to translate this event. This event is lost in menu.
-		 * So, don't do it.
+		 * So, don't do it. Don't send mouse event to menu, if mouse is
+		 * actively used for scrollbar or range marking.
 		 */
-		if (!redirect_mode && event_keycode != KEY_RESIZE)
+		if (!redirect_mode && event_keycode != KEY_RESIZE &&
+			!(event_keycode == KEY_MOUSE &&
+			  (scrdesc.scrollbar_mode ||
+							 mark_mode == MARK_MODE_MOUSE ||
+							 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+							 mark_mode == MARK_MODE_MOUSE_COLUMNS)))
 		{
 			bool	processed = false;
 			bool	activated = false;
