@@ -5809,6 +5809,14 @@ recheck_end:
 				{
 					mouse_event += 1;
 
+					/*
+					 * ensure, so transformated mouse position is explicitly marked as
+					 * unknown. So transformated position will be from frash mouse event
+					 * always.
+					 */
+					mouse_row = -1;
+					mouse_col = -1;
+
 #if NCURSES_MOUSE_VERSION > 1
 
 					if (event.bstate & BUTTON_ALT && event.bstate & BUTTON5_PRESSED)
