@@ -3425,8 +3425,13 @@ leaveok(stdscr, TRUE);
 		{
 			bool	skip_update_after_mouse_event =
 						buffered_mouse_events_count > 0 &&
-						buffered_mouse_events_count > buffered_mouse_events_read &&
-						!menu_is_active;
+						buffered_mouse_events_count > buffered_mouse_events_read
+
+#ifdef COMPILE_MENU
+
+						&& !menu_is_active
+#endif
+						;
 
 			if (!no_doupdate &&
 				!handle_timeout &&
