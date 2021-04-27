@@ -166,6 +166,15 @@ static struct sigaction old_sigsegv_handler;
 char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
 /*
+ * Buffer for mouse events, allows to skip too frequently mouse events.
+ */
+#define		MOUSE_EVENTS_BUFFER_SIZE		10
+
+MEVENT mouse_events_buffer[MOUSE_EVENTS_BUFFER_SIZE];
+int buffered_mouse_events_count = 0;
+int buffered_mouse_events_read = 0;
+
+/*
  * Own signal handlers
  */
 static void
@@ -1463,6 +1472,14 @@ get_event(MEVENT *mevent,
 	int		c;
 	int		loops = -1;
 	int		retry_count = 0;
+	bool	hungry_mouse_mode = false;
+
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
+
+	wint_t	ch;
+	int		ret;
+
+#endif
 
 #ifdef DEBUG_PIPE
 
@@ -1520,12 +1537,22 @@ get_event(MEVENT *mevent,
 
 #endif
 
-#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
+	/* returns buffered mouse events */
+	if (buffered_mouse_events_count > 0 &&
+		buffered_mouse_events_count > buffered_mouse_events_read)
+	{
+		*alt = false;
+		*sigint = false;
+		*timeout = false;
+		*file_event = false;
+		*reopen_file = false;
 
-	wint_t	ch;
-	int		ret;
+		memcpy(mevent,
+			   &mouse_events_buffer[buffered_mouse_events_read++],
+			   sizeof(MEVENT));
 
-#endif
+		return KEY_MOUSE;
+	}
 
 retry:
 
@@ -1657,6 +1684,79 @@ repeat:
 		c = getch();
 
 #endif
+
+		/*
+		 * Mouse events can come too fast. The result of too frequent
+		 * updates can be unwanted flickering (the terminal is not
+		 * synchronized with screen refreshing). If we store too frequent
+		 * mouse events to own buffer, and we can skip screen refreshing
+		 * when we know so next event will come immediately.
+		 */
+		if (c == KEY_MOUSE)
+		{
+			int		ok;
+
+			/* activate unblocking mode */
+			if (!hungry_mouse_mode)
+			{
+				timeout(0);
+				hungry_mouse_mode = true;
+				buffered_mouse_events_count = 0;
+			}
+
+			ok = getmouse(&mouse_events_buffer[buffered_mouse_events_count]);
+			if (ok == OK)
+				buffered_mouse_events_count += 1;
+
+			/*
+			 * You can continue in hungry mode until buffer is full */
+			if (buffered_mouse_events_count < MOUSE_EVENTS_BUFFER_SIZE)
+				continue;
+			else
+				goto return_first_mouse_event;
+		}
+		else
+		{
+			if (hungry_mouse_mode)
+			{
+				/* disable unblocking mode */
+				timeout(-1);
+				hungry_mouse_mode = false;
+
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
+
+				if (c != ERR && c != 0)
+					unget_wch(ch);
+
+#else
+
+				if (c != ERR && c != 0)
+					ungetch(c);
+
+#endif
+
+				*alt = false;
+				*sigint = false;
+				*timeout = false;
+				*file_event = false;
+				*reopen_file = false;
+
+return_first_mouse_event:
+
+				if (buffered_mouse_events_count > 0)
+				{
+					buffered_mouse_events_read = 0;
+
+					memcpy(mevent,
+						   &mouse_events_buffer[buffered_mouse_events_read++],
+						   sizeof(MEVENT));
+
+					return KEY_MOUSE;
+				}
+
+				return 0;
+			}
+		}
 
 		if ((c == ERR && errno == EINTR) || handle_sigint)
 		{
@@ -2509,7 +2609,6 @@ main(int argc, char *argv[])
 
 	time_t	last_doupdate_sec = -1;
 	long	last_doupdate_ms = -1;
-	int		last_first_row = -1;
 
 	struct winsize size;
 	bool		size_is_valid = false;
@@ -3324,7 +3423,14 @@ leaveok(stdscr, TRUE);
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			if (!no_doupdate && !handle_timeout)
+			bool	skip_update_after_mouse_event =
+						buffered_mouse_events_count > 0 &&
+						buffered_mouse_events_count > buffered_mouse_events_read &&
+						!menu_is_active;
+
+			if (!no_doupdate &&
+				!handle_timeout &&
+				!skip_update_after_mouse_event)
 			{
 				int		vcursor_xmin_fix = -1;
 				int		vcursor_xmax_fix = -1;
@@ -3566,14 +3672,12 @@ leaveok(stdscr, TRUE);
 
 #endif
 
-				if (!opts.no_sleep)
+				if (!opts.no_sleep && !skip_update_after_mouse_event)
 				{
 					current_time(&current_sec, &current_ms);
 
 					/*
-					 * We don't want do UPDATE too quickly. When first_row
-					 * same like last_first_row, then update will not be
-					 * too massive.
+					 * We don't want do UPDATE too quickly.
 					 */
 					if (
 
@@ -3588,32 +3692,39 @@ leaveok(stdscr, TRUE);
 						 mark_mode == MARK_MODE_MOUSE_BLOCK ||
 						 mark_mode == MARK_MODE_MOUSE_COLUMNS))
 					{
-						int		limit;
 						long	td = time_diff(current_sec, current_ms,
 											   last_doupdate_sec, last_doupdate_ms);
 
-						limit = last_first_row == first_row ? 15 : 30;
-
-						if (td < limit)
-							usleep((limit - td) * 1000);
-
-						current_time(&current_sec, &current_ms);
+						if (td < 15)
+							usleep((15 - td) * 1000);
 					}
-
-					last_first_row = first_row;
 				}
 
-				doupdate();
+				if (!skip_update_after_mouse_event)
+				{
+					doupdate();
 
-				last_doupdate_sec = current_sec;
-				last_doupdate_ms = current_ms;
+					current_time(&current_sec, &current_ms);
+
+					last_doupdate_sec = current_sec;
+					last_doupdate_ms = current_ms;
 
 
 #ifdef DEBUG_PIPE
 
-				print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
+					print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
 
 #endif
+
+				}
+				else
+					usleep(2 * 1000);
+
+				current_time(&current_sec, &current_ms);
+
+				last_doupdate_sec = current_sec;
+				last_doupdate_ms = current_ms;
+
 
 			}
 
