@@ -2701,7 +2701,7 @@ main(int argc, char *argv[])
 
 	PSPG_HISTORY = getenv("PSPG_HISTORY");
 	if (!PSPG_HISTORY)
-		PSPG_CONF = "~/.pspg_history";
+		PSPG_HISTORY = "~/.pspg_history";
 
 #endif
 
