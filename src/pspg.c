@@ -1473,6 +1473,7 @@ get_event(MEVENT *mevent,
 	int		loops = -1;
 	int		retry_count = 0;
 	bool	hungry_mouse_mode = false;
+	int		stdscr_delay = -1;
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
@@ -1543,9 +1544,15 @@ get_event(MEVENT *mevent,
 	{
 		*alt = false;
 		*sigint = false;
-		*timeout = false;
-		*file_event = false;
-		*reopen_file = false;
+
+		if (timeout)
+			*timeout = false;
+
+		if (file_event)
+			*file_event = false;
+
+		if (reopen_file)
+			*reopen_file = false;
 
 		memcpy(mevent,
 			   &mouse_events_buffer[buffered_mouse_events_read++],
@@ -1699,7 +1706,10 @@ repeat:
 			/* activate unblocking mode */
 			if (!hungry_mouse_mode)
 			{
+				stdscr_delay = wgetdelay(stdscr);
+
 				timeout(0);
+
 				hungry_mouse_mode = true;
 				buffered_mouse_events_count = 0;
 			}
@@ -1720,7 +1730,7 @@ repeat:
 			if (hungry_mouse_mode)
 			{
 				/* disable unblocking mode */
-				timeout(-1);
+				timeout(stdscr_delay);
 				hungry_mouse_mode = false;
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
@@ -1737,9 +1747,14 @@ repeat:
 
 				*alt = false;
 				*sigint = false;
-				*timeout = false;
-				*file_event = false;
-				*reopen_file = false;
+				if (timeout)
+					*timeout = false;
+
+				if (file_event)
+					*file_event = false;
+
+				if (reopen_file)
+					*reopen_file = false;
 
 return_first_mouse_event:
 
@@ -3677,7 +3692,8 @@ leaveok(stdscr, TRUE);
 
 #endif
 
-				if (!opts.no_sleep && !skip_update_after_mouse_event)
+				if (!opts.no_sleep &&
+					!skip_update_after_mouse_event)
 				{
 					current_time(&current_sec, &current_ms);
 
@@ -3693,6 +3709,7 @@ leaveok(stdscr, TRUE);
 #endif
 
 						last_doupdate_sec != -1 &&
+						!opts.no_mouse &&
 						!(mark_mode == MARK_MODE_MOUSE ||
 						 mark_mode == MARK_MODE_MOUSE_BLOCK ||
 						 mark_mode == MARK_MODE_MOUSE_COLUMNS))

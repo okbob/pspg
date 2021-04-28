@@ -366,6 +366,16 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 				return cmd_RawOutputQuit;
 			case 'v':
 				return cmd_ShowVerticalCursor;
+			case '2':
+				return cmd_SaveData;
+			case '3':
+				if (opts->quit_on_f3)
+					return cmd_Quit;
+				else
+					return cmd_Mark;
+				break;
+			case '7':
+				return cmd_ForwardSearch;
 			case '9':
 				return cmd_ShowMenu;
 			case 27:
