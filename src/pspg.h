@@ -373,9 +373,9 @@ extern void format_error(const char *fmt, ...);
 extern void *smalloc(int size);
 extern void *smalloc2(int size, char *debugstr);
 extern void *srealloc(void *ptr, int size);
-extern char *sstrdup(char *str);
-extern char *sstrdup2(char *str, char *debugstr);
-extern char *sstrndup(char *str, int bytes);
+extern char *sstrdup(const char *str);
+extern char *sstrdup2(const char *str, char *debugstr);
+extern char *sstrndup(const char *str, int bytes);
 
 extern char *trim_str(char *str, int *size, bool force8bit);
 extern void InitExtStr(ExtStr *estr);
@@ -386,7 +386,7 @@ extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit);
 
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);
-extern char *tilde(char *dest, char *path);
+extern char *tilde(char *dest, const char *path);
 
 /* from table.c */
 extern bool readfile(Options *opts, DataDesc *desc, StateData *state);

@@ -26,7 +26,7 @@
  * Replace tilde by HOME dir
  */
 char *
-tilde(char *dest, char *path)
+tilde(char *dest, const char *path)
 {
 	static char buffer[MAXPATHLEN];
 

@@ -186,7 +186,7 @@ smalloc2(int size, char *debugstr)
 }
 
 char *
-sstrdup(char *str)
+sstrdup(const char *str)
 {
 	char *result = strdup(str);
 
@@ -197,7 +197,7 @@ sstrdup(char *str)
 }
 
 char *
-sstrdup2(char *str, char *debugstr)
+sstrdup2(const char *str, char *debugstr)
 {
 	char *result = strdup(str);
 
@@ -208,7 +208,7 @@ sstrdup2(char *str, char *debugstr)
 }
 
 char *
-sstrndup(char *str, int bytes)
+sstrndup(const char *str, int bytes)
 {
 	char   *result, *ptr;
 

@@ -1022,7 +1022,7 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static int
-show_info_wait(Options *opts, ScrDesc *scrdesc, char *fmt, char *par, bool beep, bool refresh_first, bool applytimeout, bool is_error)
+show_info_wait(Options *opts, ScrDesc *scrdesc, const char *fmt, const char *par, bool beep, bool refresh_first, bool applytimeout, bool is_error)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
@@ -2651,6 +2651,14 @@ main(int argc, char *argv[])
 	int		mouse_row = -1;
 	int		mouse_col = -1;
 
+	const char *PSPG_CONF;
+
+#ifdef HAVE_LIBREADLINE
+
+	const char *PSPG_HISTORY;
+
+#endif
+
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
@@ -2678,7 +2686,25 @@ main(int argc, char *argv[])
 
 	setup_sigsegv_handler();
 
-	load_config(tilde(NULL, "~/.pspgconf"), &opts);
+
+	PSPG_CONF = getenv("PSPG_CONF");
+	if (!PSPG_CONF)
+		PSPG_CONF = "~/.pspgconf";
+
+	load_config(tilde(NULL, PSPG_CONF), &opts);
+	if (errno && strcmp(PSPG_CONF, "~/.pspgconf") != 0)
+		fprintf(stderr, "cannot to read from config file \"%s\" specified by PSPG_CONF (%s), ignored\n",
+				PSPG_CONF,
+				strerror(errno));
+
+#ifdef HAVE_LIBREADLINE
+
+	PSPG_HISTORY = getenv("PSPG_HISTORY");
+	if (!PSPG_HISTORY)
+		PSPG_CONF = "~/.pspg_history";
+
+#endif
+
 
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
@@ -3369,7 +3395,7 @@ leaveok(stdscr, TRUE);
 #ifdef HAVE_READLINE_HISTORY
 
 	if (!reinit)
-		read_history(tilde(NULL, "~/.pspg_history"));
+		read_history(tilde(NULL, PSPG_HISTORY));
 
 	last_history[0] = '\0';
 
@@ -4403,21 +4429,28 @@ reset_search:
 				break;
 
 			case cmd_SaveSetup:
-				if (!save_config(tilde(NULL, "~/.pspgconf"), &opts))
+				if (!save_config(tilde(NULL, PSPG_CONF), &opts))
 				{
 					if (errno != 0)
+					{
+						char	buffer1[1000];
+
+						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s) (press any key)",
+								PSPG_CONF, strerror(errno));
+
 						show_info_wait(&opts, &scrdesc,
-									   " Cannot write to ~/.pspgconf (%s) (press any key)",
+									   buffer1,
 									   strerror(errno), true, true, false, true);
+					}
 					else
 						show_info_wait(&opts, &scrdesc,
-									   " Cannot write to ~/.pspgconf (press any key)",
-									   NULL, true, true, false, true);
+									   " Cannot write to \"%s\" (press any key)",
+									   PSPG_CONF, true, true, false, true);
 				}
 				else
 					show_info_wait(&opts, &scrdesc,
-								   " Setup saved to ~/.pspgconf",
-								   NULL, true, true, true, false);
+								   " Setup saved to \"%s\"",
+								   PSPG_CONF, true, true, true, false);
 				break;
 
 			case cmd_SetTheme_MidnightBlack:
@@ -6634,7 +6667,7 @@ refresh:
 
 #ifdef HAVE_READLINE_HISTORY
 
-	write_history(tilde(NULL, "~/.pspg_history"));
+	write_history(tilde(NULL, PSPG_HISTORY));
 
 #endif
 

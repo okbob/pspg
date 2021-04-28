@@ -94,6 +94,11 @@ This pager can be used from the following clients command line clients too:
 
 Options can be passed inside env variable `PSPG` too.
 
+## Environment variables
+
+* `PSPG` - can holds same options like command line
+* `PSPG_CONF` - path to configuration file
+* `PSPG_HISTORY` - path to file pspg's readline history file
 
 ## Themes
 0. black & white
