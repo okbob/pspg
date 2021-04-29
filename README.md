@@ -12,6 +12,7 @@ This pager can be used from the following clients command line clients too:
 - [`pgcli`](https://github.com/dbcli/pgcli/)
 - `monetdb`
 - [`Trino (formerly Presto SQL)`](https://trino.io/)
+- [`usql`](https://github.com/xo/usql/)
 
 
 ## Main target
