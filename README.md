@@ -170,55 +170,56 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 
 ## Keyboard commands
-* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, .., <kbd>9</kbd> - freeze first N columns
-* <kbd>KEY_UP</kbd>, <kbd>k</kbd> - navigate backward by one line
-* <kbd>KEY_DOWN</kbd>, <kbd>j</kbd> - navigate forward by one line
-* <kbd>KEY_LEFT</kbd>, <kbd>h</kbd> - scroll to left
-* <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd> - scroll to right
-* <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd> - go to the start of file
-* <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd> - go to the end of file
-* <kbd>Alt</kbd>+<kbd>l</kbd> - go to line number
-* <kbd>H</kbd> - go to first line of current window
-* <kbd>M</kbd> - go to half of current window
-* <kbd>L</kbd> - go to end of current window
-* <kbd>PPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>b</kbd> - backward one window
-* <kbd>NPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>f</kbd>, <kbd>space</kbd> - forward one window
-* <kbd>HOME</kbd>, <kbd>^</kbd> - go to begin of line, first column
-* <kbd>END</kbd>, <kbd>$</kbd> - go to end of line, last column
-* <kbd>Ctrl</kbd>+<kbd>e</kbd> - scroll a window down
-* <kbd>Ctrl</kbd>+<kbd>y</kbd> - scroll a window up
-* <kbd>Ctrl</kbd>+<kbd>d</kbd> - forward a half window
-* <kbd>Ctrl</kbd>+<kbd>u</kbd> - backward a half window
-* <kbd>s</kbd> - save content to file
-* <kbd>/</kbd> - search for a pattern which will take you to the next occurrence
-* <kbd>?</kbd> - search for a pattern which will take you to the previous occurrence
-* <kbd>n</kbd> - for next match
-* <kbd>N</kbd> - for next match in reverse direction
-* <kbd>c</kbd> - column search
-* <kbd>Alt</kbd>+<kbd>c</kbd> - switch (on, off) drawing line cursor
-* <kbd>Alt</kbd>+<kbd>m</kbd> - switch (on, off) own mouse handler
-* <kbd>Alt</kbd>+<kbd>n</kbd> - switch (on, off) drawing line numbers
-* <kbd>Alt</kbd>+<kbd>v</kbd>, <kbd>double click</kbd> on column header - switch (on, off) drawing column cursor
-* Mouse button wheel - scroll vertical
-* <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd> - scroll horizontal
-* <kbd>F9</kbd> - show menu
-* <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> - quit
-* <kbd>Alt</kbd>+<kbd>q</kbd> - quit wit raw (unformatted) output
-* <kbd>Alt</kbd>+<kbd>k</kbd>, <kbd>Alt</kbd>+<kbd>double click</kbd> - switch bookmark
-* <kbd>Alt</kbd>+<kbd>j</kbd> - go to next bookmark
-* <kbd>Alt</kbd>+<kbd>i</kbd> - go to previous bookmark
-* <kbd>Alt</kbd>+<kbd>o</kbd> - flush bookmarks
-* <kbd>a</kbd> - sort ascendent
-* <kbd>d</kbd> - sort descendent
-* <kbd>u</kbd> - unsorted (sorted in origin order)
-* <kbd>space</kbd> - stop/continue in watch mode
-* <kbd>R</kbd> - Repaint screen and refresh input file
-* <kbd>Ins</kbd> - export row, column or cell to default target
-* <kbd>shift</kbd>+<kbd>cursor...</kbd> - define range
-* <kbd>F3</kbd> - start/finish of selection rows
-* <kbd>shift</kbd>+<kbd>F3</kbd> - start/finish of selection block
-* <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd> - defines rows selection, on column header defines column selection
-
+| Key(s)                                                                   | Command                                                             |
+|--------------------------------------------------------------------------|---------------------------------------------------------------------|
+| <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, .., <kbd>9</kbd> | freeze first N columns                                              |
+| <kbd>KEY_UP</kbd>, <kbd>k</kbd>                                          | navigate backward by one line                                       |
+| <kbd>KEY_DOWN</kbd>, <kbd>j</kbd>                                        | navigate forward by one line                                        |
+| <kbd>KEY_LEFT</kbd>, <kbd>h</kbd>                                        | scroll to left                                                      |
+| <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd>                                       | scroll to right                                                     |
+| <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd>                            | go to the start of file                                             |
+| <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd>                             | go to the end of file                                               |
+| <kbd>Alt</kbd>+<kbd>l</kbd>                                              | go to line number                                                   |
+| <kbd>H</kbd>                                                             | go to first line of current window                                  |
+| <kbd>M</kbd>                                                             | go to half of current window                                        |
+| <kbd>L</kbd>                                                             | go to end of current window                                         |
+| <kbd>PPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>b</kbd>                           | backward one window                                                 |
+| <kbd>NPAGE</kbd>, <kbd>Ctrl</kbd>+<kbd>f</kbd>, <kbd>space</kbd>         | forward one window                                                  |
+| <kbd>HOME</kbd>, <kbd>^</kbd>                                            | go to begin of line, first column                                   |
+| <kbd>END</kbd>, <kbd>$</kbd>                                             | go to end of line, last column                                      |
+| <kbd>Ctrl</kbd>+<kbd>e</kbd>                                             | scroll a window down                                                |
+| <kbd>Ctrl</kbd>+<kbd>y</kbd>                                             | scroll a window up                                                  |
+| <kbd>Ctrl</kbd>+<kbd>d</kbd>                                             | forward a half window                                               |                                                                                                                                                                                                                                                                                                            
+| <kbd>Ctrl</kbd>+<kbd>u</kbd>                                             | backward a half window                                              |
+| <kbd>s</kbd>                                                             | save content to file                                                |
+| <kbd>/</kbd>                                                             | search for a pattern which will take you to the next occurrence     |
+| <kbd>?</kbd>                                                             | search for a pattern which will take you to the previous occurrence |
+| <kbd>n</kbd>                                                             | for next match                                                      |
+| <kbd>N</kbd>                                                             | for next match in reverse direction                                 |
+| <kbd>c</kbd>                                                             | column search                                                       |
+| <kbd>Alt</kbd>+<kbd>c</kbd>                                              | switch (on, off) drawing line cursor                                |
+| <kbd>Alt</kbd>+<kbd>m</kbd>                                              | switch (on, off) own mouse handler                                  |
+| <kbd>Alt</kbd>+<kbd>n</kbd>                                              | switch (on, off) drawing line numbers                               |
+| <kbd>Alt</kbd>+<kbd>v</kbd>, <kbd>double click</kbd> on column header    | switch (on, off) drawing column cursor                              |
+| <kbd>Mouse button wheel</kbd>                                            | scroll vertical                                                     |
+| <kbd>Alt</kbd>+<kbd>Mouse button wheel</kbd>                             | scroll horizontal                                                   |
+| <kbd>F9</kbd>                                                            | show menu                                                           |
+| <kbd>q</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd> <kbd>0</kbd>                | quit                                                                |
+| <kbd>Alt</kbd>+<kbd>q</kbd>                                              | quit and print raw (unformatted) content                            |
+| <kbd>Alt</kbd>+<kbd>k</kbd>, <kbd>Alt</kbd>+<kbd>double click</kbd>      | switch bookmark                                                     |
+| <kbd>Alt</kbd>+<kbd>j</kbd>                                              | go to next bookmark                                                 |
+| <kbd>Alt</kbd>+<kbd>i</kbd>                                              | go to previous bookmark                                             |
+| <kbd>Alt</kbd>+<kbd>o</kbd>                                              | flush bookmarks                                                     |
+| <kbd>a</kbd>                                                             | sort ascendent                                                      |
+| <kbd>d</kbd>                                                             | sort descendent                                                     |
+| <kbd>u</kbd>                                                             | unsorted (sorted in origin order)                                   |
+| <kbd>space</kbd>                                                         | stop/continue in watch mode                                         |
+| <kbd>R</kbd>                                                             | Repaint screen and refresh input file                               |
+| <kbd>Ins</kbd>                                                           | export row, column or cell to default target                        |
+| <kbd>shift</kbd>+<kbd>cursor...</kbd>                                    | define range                                                        |
+| <kbd>F3</kbd>                                                            | start/finish of selection rows                                      |
+| <kbd>shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
+| <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd>                                  | defines rows selection, on column header defines column selection   |
 
 ## Ending
 
