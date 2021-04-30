@@ -39,67 +39,103 @@ This pager can be used from the following clients command line clients too:
 
 
 ## Options
-* `-a`       menu will use ascii borders
-* `-b`       black/white theme
-* `-X`       doesn't clean screen on the end
-* `-s N`     use theme (default theme is mc theme)
-* `-c N`     freeze first N columns
-* `-f file`  open file (default stdin)
-* `--no-watch-file`  don't watch changes of file
-* `--force-uniborder`  replace ascii border by unicode borders
-* `-g --hilite-search`  don't highlight lines for searches
-* `-G --HILITE-SEARCH`  don't highlight lines for searches ever
-* `--help`   show this help
-* `-i --ignore-case`  ignore case in searches that do not contain uppercase
-* `-I --IGNORE-CASE`  ignore case in all searches
-* `--less-status-bar`  status bar like less pager
-* `--line-numbers`  show line number column
-* `--no-mouse`  without own mouse handling (cannot be changed in app)
-* `--no-sound`  without sound effect
-* `-F`, `--quit-if-one-screen`  quit if content is one screen
-* `-V`, `--version`  show version
-* `--about`  show info about authors
-* `--csv`  input format is csv
-* `--tsv`  input format is tsv
-* `--double-header`  header line is doubled
-* `--border`  border used for formatted csv
-* `--csv-separator`  special char used as separator inside csv documents
-* `--null striing`  null string (default "")
-* `--ni`  not interactive mode (format csv to table and quit)
-* `--no-cursor`  the line cursor will be hidden
-* `--no-commandbar`  the bottom bar will be hidden
-* `--no-topbar`  the top bar will be hidden
-* `--no-bars`  both bars will be hidden
-* `--no-scrollbar`  scrollbar will be hidden
-* `--no-sigint-search-reset`  sigint is not used to reset searching
-* `--no-xterm-mouse-mode` don't use extended mouse protocol
-* `--tabular-cursor`  cursor is displayed only for table
-* `--only-for-tables`  use std pager when content is not a table
-* `--bold-labels`  bold font for row, column labels
-* `--bold-cursor`  bold font for cursor
-* `--vertical-cursor`  show column cursor
-* `--on-sigint-exit`  double escape or ctrl c ending pager
-* `--quit-on-f3`  exit on press F3 (like mc viewer)
-* `--skip-colums-like`  space separated list of ignored columns (only for csv and tsv format)
-* `-q`, `--query`  execute query
-* `-w`, `--watch n`  repeat query execution every time sec
-* `-d`, `--dbname`  database name
-* `-h`, `--host`  database host name
-* `-p`, `--port`  database port
-* `-U`, `--username`  database user name
-* `-W`, `--password`  force password prompt
-* `--pgcli-fix`  used for fixing some pgcli related issues
-* `--clipboard-app=[1,2,3]`  specify clipboard application (1 wl-clipboard, 2 xclip, 3 pbcopy)
-* `--no-sleep`  disable waits used for reduction of terminal flickering
-* `--menu-always`  show menu bar all time (top bar with status will be invisible)
+```
+[pavel@localhost ~]$ pspg --help
+pspg is a Unix pager designed for table browsing.
 
+Usage:
+  pspg [OPTION] [file]
+
+General options:
+  --about                  about authors
+  --help                   show this help
+  -V, --version            show version
+  -f, --file=FILE          open file
+  -F, --quit-if-one-screen
+                           quit if content is one screen
+  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)
+  --interactive            force interactive mode
+  --ignore_file_suffix     don't try to deduce format from file suffix
+  --ni                     not interactive mode (only for csv and query)
+  --no-watch-file          don't watch inotify event of file
+  --no-mouse               don't use own mouse handling
+  --no-sigint-search-reset
+                           without reset searching on sigint (CTRL C)
+  --no-sleep               without waits against flickering
+  --no_xterm_mouse_mode    don't use optional xterm mouse mode
+  --only-for-tables        use std pager when content is not table
+  --on-sigint-exit         exit on sigint(CTRL C or Escape)
+  --pgcli-fix              try to fix some pgcli related issues
+  --querystream            read queries from stream forever
+  --quit-on-f3             exit on F3 like mc viewers
+  --rr=ROWNUM              rows reserved for specific purposes
+  --stream                 read input forever
+  -X, --reprint-on-exit    preserve content after exit
+
+Output format options:
+  -a, --ascii              force ascii
+  -b, --blackwhite         black-white style
+  -s, --style=N            set color style number (0..22)
+  --bold-labels            row, column labels use bold font
+  --bold-cursor            cursor use bold font
+  --border                 type of borders (0..2)
+  --double-header          header separator uses double lines
+  --force-uniborder        replace ascii borders by unicode borders
+  --ignore-bad-rows        rows with wrong column numbers are ignored
+  --null=STRING            STRING used instead NULL
+
+Searching options
+  -g --hlite-search, -G --HILITE-SEARCH
+                           don't highlight lines for searches
+  -i --ignore-case         ignore case in searches that do not contain uppercase
+  -I --IGNORE-CASE         ignore case in all searches
+
+Interface options:
+  -c, --freezecols=N       freeze N columns (0..9)
+  --less-status-bar        status bar like less pager
+  --line-numbers           show line number column
+  --menu-always            show top bar menu every time
+  --no-bars, --no-commandbar, --no-topbar
+                           don't show bottom, top bar or both
+  --no-cursor              row cursor will be hidden
+  --no-scrollbar           don't show scrollbar
+  --no-sound               don't use beep when scroll is not possible
+  --tabular-cursor         cursor is visible only when data has table format
+  --vertical-cursor        show vertical column cursor
+
+Input format options:
+  --csv                    input stream has csv format
+  --csv-separator          char used as field separator
+  --csv-header [on/off]    specify header line usage
+  --skip-columns-like="SPACE SEPARATED STRING LIST"
+                           columns with substr in name are ignored
+  --tsv                    input stream has tsv format
+
+Watch mode options:
+  -q, --query=QUERY        execute query
+  -w, --watch time         the query (or read file) is repeated every time (sec)
+
+Connection options
+  -d, --dbname=DBNAME      database name
+  -h, --host=HOSTNAME      database server host (default: "local socket")
+  -p, --port=PORT          database server port (default: "5432")
+  -U, --username=USERNAME  database user name
+  -W, --password           force password prompt
+
+Debug options:
+  --log=FILE               log debug info to file
+  --wait=NUM               wait NUM seconds to allow attach from a debugger
+
+pspg shares lot of key commands with less pager or vi editor.
+```
 Options can be passed inside env variable `PSPG` too.
 
 ## Environment variables
 
-* `PSPG` - can holds same options like command line
-* `PSPG_CONF` - path to configuration file
-* `PSPG_HISTORY` - path to file pspg's readline history file
+|`PSPG` | can holds same options like command line |
+|`PSPG_CONF` | path to configuration file |
+|`PSPG_HISTORY` | path to file pspg's readline history file |
 
 ## Themes
 0. black & white
