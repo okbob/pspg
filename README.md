@@ -133,34 +133,38 @@ Options can be passed inside env variable `PSPG` too.
 
 ## Environment variables
 
-|`PSPG` | can holds same options like command line |
-|`PSPG_CONF` | path to configuration file |
+| Name          | Usage                                     |
+|---------------|-------------------------------------------|
+|`PSPG`         | can holds same options like command line  |
+|`PSPG_CONF`    | path to configuration file                |
 |`PSPG_HISTORY` | path to file pspg's readline history file |
 
 ## Themes
-0. black & white
-1. Midnight Commander like
-2. FoxPro like
-3. Pdmenu like
-4. White theme
-5. Mutt like
-6. PCFand like
-7. Green theme
-8. Blue theme
-9. Word Perfect like
-10. Low contrast blue theme
-11. Dark cyan/black mode
-12. Paradox like
-13. dBase IV retro style
-14. dBase IV retro style (Magenta labels)
-15. Red white theme
-16. Simple theme
-17. Solarized dark theme 
-18. Solarized light theme
-19. Gruvbox light theme
-20. Tao Light theme
-21. FlatWhite theme
-22. Relational pipes theme
+|Code| Name                                  |
+|---:|---------------------------------------|
+|  0 | black & white                         |
+|  1 | Midnight Commander like               |
+|  2 | FoxPro like                           |
+|  3 | Pdmenu like                           |
+|  4 | White theme                           |
+|  5 | Mutt like                             |
+|  6 | PCFand like                           |
+|  7 | Green theme                           |
+|  8 | Blue theme                            |
+|  9 | Word Perfect like                     |
+| 10 | Low contrast blue theme               |
+| 11 | Dark cyan/black mode                  |
+| 12 | Paradox like                          |
+| 13 | dBase IV retro style                  |
+| 14 | dBase IV retro style (Magenta labels) |
+| 15 | Red white theme                       |
+| 16 | Simple theme                          |
+| 17 | Solarized dark theme                  | 
+| 18 | Solarized light theme                 |
+| 19 | Gruvbox light theme                   |
+| 20 | Tao Light theme                       |
+| 21 | FlatWhite theme                       |
+| 22 | Relational pipes theme                |
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
