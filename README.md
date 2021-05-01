@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/okbob/pspg.svg?branch=master)](https://travis-ci.org/okbob/pspg)
 
 # pspg - Postgres Pager
+
 Everybody who uses `psql` uses `less` pager. It is working well, but there is not any special
 support for tabular data. I found few projects, but no one was completed for this purpose.
 I decided to write some small specialized pager for usage as `psql` pager.
@@ -16,19 +17,21 @@ This pager can be used from the following clients command line clients too:
 
 
 ## Main target
+
 * possibility to freeze first few rows, first few columns
 * possibility to sort data by specified numeric column
 * possibility to use fancy colors - like `mcview` or `FoxPro` - http://okbob.blogspot.com/2019/12/pspg-themes-what-you-use-it.html
 * mouse is supported and used
 * possibility to copy selected range to clipboard
 
+
 ## Video presentation
 
 [![Video presentation](https://img.youtube.com/vi/JyxuEkoYDQk/0.jpg)](https://www.youtube.com/watch?v=JyxuEkoYDQk)
 
 
-
 ## Screenshots
+
 ![Screenshot](screenshots/pspg-4.3.0-mc-export-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-mc-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-foxpro-111x34.png)
@@ -131,6 +134,7 @@ pspg shares lot of key commands with less pager or vi editor.
 ```
 Options can be passed inside env variable `PSPG` too.
 
+
 ## Environment variables
 
 | Name          | Usage                                     |
@@ -139,7 +143,9 @@ Options can be passed inside env variable `PSPG` too.
 |`PSPG_CONF`    | path to configuration file                |
 |`PSPG_HISTORY` | path to file pspg's readline history file |
 
+
 ## Themes
+
 |Code| Name                                  |
 |---:|---------------------------------------|
 |  0 | black & white                         |
@@ -170,6 +176,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 
 ## Keyboard commands
+
 | Key(s)                                                                   | Command                                                             |
 |--------------------------------------------------------------------------|---------------------------------------------------------------------|
 | <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, .., <kbd>9</kbd> | freeze first N columns                                              |
@@ -220,6 +227,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | <kbd>F3</kbd>                                                            | start/finish of selection rows                                      |
 | <kbd>shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
 | <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd>                                  | defines rows selection, on column header defines column selection   |
+
 
 ## Ending
 
@@ -285,10 +293,13 @@ regex/\.csv
 
 * restart <code>mc</code>
 
+
 # Know issues
 
 * When you use `pspg` on Cygwin, then some temporary freezing of scrolling was reported
-  In this case, please, use an option `--no-sleep`.
+  In this case, please, use an option `--no-sleep`. I see slow scrolling (via scrollbar)
+  inside konsole (KDE terminal). The option `--no-sleep` helps too.
+
 
 # Usage in watch mode
 
@@ -311,6 +322,7 @@ changed by option `--hold-stream`. Default value is 0. When `--hold-stream=1` th
 `pspg` will try to reopen FIFO and will hang until the FIFO will be opened for
 writing. `--hold-stream=2` is different strategy. The `pspg` reopen FIFO in write
 mode, and then FIFO will be opened until `pspg` is running.
+
 
 # Streaming modes
 
@@ -425,6 +437,7 @@ If you want to use `pspg` as Postgres client, then you need run
 I had to install `openssl-devel` package and I had to set
 `export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
 
+
 # Note - Installation
 
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
@@ -437,29 +450,36 @@ You can check wide chars support by `pspg --version`. Row `ncurses with wide cha
 is expected. Re-run `configure` with `--with-ncursesw` option. When this command fails check
 if development package for ncuresesw library is installed.
 
+
 ## Homebrew (for Linux & MacOS)
 
     # brew install pspg
+
 
 ## Debian
 
     # apt-cache search pspg
     # apt-get install pspg
 
+
 ## Fedora (28 and later)
 
     # dnf install pspg
     
+
 ## RPM (CentOS/openSUSE/…)
 The pspg is available from community repository https://yum.postgresql.org/packages.php
+
 
 ## Alpine Linux
 
     # apk add pspg
 
+
 ## Gentoo
 
     # emerge -av dev-db/pspg
+
 
 ## Arch Linux
 
@@ -469,6 +489,7 @@ The Arch User Repository contains two versions:
 * [pspg-git](https://aur.archlinux.org/packages/pspg-git/) tracks the `master` branch.
 
 Use the AUR helper of your choice or git and `makepkg` to install pspg.
+
 
 ## FreeBSD
 
@@ -498,11 +519,13 @@ option.
   produced by `readline` automake script. Combination with `ncurses` libraries makes some
   linking issues.
 
+
 ### builtin libraries
 
     export CURSES_CFLAGS="-I/usr/include/ncurses/"
     export PANEL_LIBS="-lpanelw"
     ./configure
+
 
 ### OpenCSW development
 
