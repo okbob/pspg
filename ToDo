@@ -1,5 +1,11 @@
 ToDo
 ====
+* command line implementation for commands \gf go first, \gl go last, \g N go to line number
+  \guN go up N times, \gd go down N times
+* \ssf search in selection forward, \ssb search in selection backward
+* \exc all csv export to clipboard
+* \exf all csv export to file
+
 
 Known bugs
 ==========
