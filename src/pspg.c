@@ -1942,6 +1942,9 @@ adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
 {
 	int		max_first_row;
 
+	if (first_row < 0)
+		first_row = 0;
+
 	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
 	max_first_row = max_first_row < 0 ? 0 : max_first_row;
 
