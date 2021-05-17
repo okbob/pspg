@@ -4528,7 +4528,8 @@ reset_search:
 				goto reinit_theme;
 
 			case cmd_Mark:
-				if (mark_mode != MARK_MODE_ROWS)
+				if (mark_mode != MARK_MODE_ROWS &&
+					mark_mode != MARK_MODE_BLOCK)
 				{
 					throw_selection(&scrdesc, &mark_mode);
 
@@ -6024,6 +6025,8 @@ recheck_end:
 
 			case cmd_BsCommand:
 				{
+					char	   *endptr;
+
 					if (*cmdline_ptr == '\0')
 					{
 						/*
@@ -6049,7 +6052,6 @@ recheck_end:
 
 						if (isdigit(*cmdline_ptr))
 						{
-							char	   *endptr;
 
 							long_argument = strtol(cmdline_ptr, &endptr, 10);
 
@@ -6098,6 +6100,28 @@ recheck_end:
 						{
 							next_command = cmd_Quit;
 							continue;
+						}
+						else if ((n == 5 && strncmp(cmdline_ptr, "theme", 5) == 0) ||
+								 (n == 3 && strncmp(cmdline_ptr, "the", 3) == 0))
+						{
+							cmdline_ptr += n;
+							long_argument = strtol(cmdline_ptr, &endptr, 10);
+
+							if (cmdline_ptr != endptr)
+							{
+								opts.theme = long_argument;
+								reinit = true;
+								cmdline_ptr = endptr;
+								goto reinit_theme;
+							}
+							else
+							{
+								show_info_wait(&opts, &scrdesc,
+									   " expected number",
+									   NULL, true, true, true, true);
+								cmdline[0] = '\0';
+								break;
+							}
 						}
 
 						show_info_wait(&opts, &scrdesc,
