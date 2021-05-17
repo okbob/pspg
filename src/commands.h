@@ -141,7 +141,9 @@ typedef enum PspgCommand
 	cmd_MarkColumn,
 	cmd_MarkAll,
 	cmd_Unmark,
-	cmd_Mark_NestedCursorCommand
+	cmd_Mark_NestedCursorCommand,
+
+	cmd_BsCommand
 } PspgCommand;
 
 extern void initialize_special_keycodes();

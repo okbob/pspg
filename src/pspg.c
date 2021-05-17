@@ -121,6 +121,9 @@ static char		last_path[1025];
 static char		last_rows_number[256];
 static char		last_table_name[256];
 
+static char		cmdline[1024];
+static char    *cmdline_ptr = 0;
+
 int		clipboard_application_id = 0;
 
 #ifdef HAVE_READLINE_HISTORY
@@ -1022,7 +1025,14 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static int
-show_info_wait(Options *opts, ScrDesc *scrdesc, const char *fmt, const char *par, bool beep, bool refresh_first, bool applytimeout, bool is_error)
+show_info_wait(Options *opts,
+			   ScrDesc *scrdesc,
+			   const char *fmt,
+			   const char *par,
+			   bool beep,
+			   bool refresh_first,
+			   bool applytimeout,
+			   bool is_error)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
@@ -2651,6 +2661,9 @@ main(int argc, char *argv[])
 	int		mouse_row = -1;
 	int		mouse_col = -1;
 
+	long	long_argument = 1;
+	bool	long_argument_is_valid = false;
+
 	const char *PSPG_CONF;
 
 #ifdef HAVE_LIBREADLINE
@@ -3384,6 +3397,9 @@ leaveok(stdscr, TRUE);
 	last_path[0] = '\0';
 	last_rows_number[0] = '\0';
 
+	cmdline[0] = '\0';
+	cmdline_ptr = cmdline;
+
 #if RL_READLINE_VERSION > 0x0603
 
 	rl_change_environment = 0;
@@ -3455,6 +3471,24 @@ leaveok(stdscr, TRUE);
 				next_event_keycode = prev_event_keycode;
 				reuse_event = false;
 				prev_event_keycode = 0;
+			}
+		}
+
+		/*
+		 * Try to read command from commandline buffer first
+		 */
+		if (next_command == cmd_Invalid && *cmdline_ptr)
+		{
+			while (*cmdline_ptr)
+			{
+				if (*cmdline_ptr == '\\')
+				{
+					next_command = cmd_BsCommand;
+					cmdline_ptr += 1;
+					break;
+				}
+
+				cmdline_ptr += 1;
 			}
 		}
 
@@ -5380,49 +5414,63 @@ recheck_end:
 
 			case cmd_GotoLine:
 				{
-					char	linenotxt[256];
+					int max_cursor_row;
+					long lineno;
 
-					get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line);
-					if (linenotxt[0] != '\0')
+					if (long_argument_is_valid)
 					{
-						char   *endptr;
-						long lineno;
-
-						errno = 0;
-						lineno = strtol(linenotxt, &endptr, 10);
-
-						if (endptr == linenotxt)
-							show_info_wait(&opts, &scrdesc,
-										   " Cannot convert input string to number",
-										   NULL, true, true, false, true);
-						else if (errno != 0)
-							show_info_wait(&opts, &scrdesc,
-										   " Cannot convert input string to number (%s)",
-										   strerror(errno), true, true, false, true);
-						else
-						{
-							int max_cursor_row;
-
-							cursor_row = lineno - 1;
-							if (cursor_row < 0)
-								cursor_row = 0;
-
-							max_cursor_row = MAX_CURSOR_ROW;
-		  					if (cursor_row > max_cursor_row)
-							{
-								cursor_row = max_cursor_row;
-								make_beep(&opts);
-							}
-
-							if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
-							{
-								first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
-								first_row = adjust_first_row(first_row, &desc, &scrdesc);
-							}
-
-							snprintf(last_line, sizeof(last_line), "%ld", lineno);
-						}
+						lineno = long_argument;
+						long_argument_is_valid = false;
 					}
+					else
+					{
+						char	linenotxt[256];
+
+						get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line);
+						if (linenotxt[0] != '\0')
+						{
+							char   *endptr;
+
+							errno = 0;
+							lineno = strtol(linenotxt, &endptr, 10);
+
+							if (endptr == linenotxt)
+							{
+								show_info_wait(&opts, &scrdesc,
+											   " Cannot convert input string to number",
+											   NULL, true, true, false, true);
+								break;
+							}
+							else if (errno != 0)
+							{
+								show_info_wait(&opts, &scrdesc,
+											   " Cannot convert input string to number (%s)",
+											   strerror(errno), true, true, false, true);
+								break;
+							}
+						}
+						else
+							break;
+					}
+
+					cursor_row = lineno - 1;
+					if (cursor_row < 0)
+						cursor_row = 0;
+
+					max_cursor_row = MAX_CURSOR_ROW;
+  					if (cursor_row > max_cursor_row)
+					{
+						cursor_row = max_cursor_row;
+						make_beep(&opts);
+					}
+
+					if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
+					{
+						first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+						first_row = adjust_first_row(first_row, &desc, &scrdesc);
+					}
+
+					snprintf(last_line, sizeof(last_line), "%ld", lineno);
 					break;
 				}
 
@@ -5970,6 +6018,95 @@ recheck_end:
 			case cmd_Refresh:
 				refresh_clear = true;
 				break;
+
+			case cmd_BsCommand:
+				{
+					if (*cmdline_ptr == '\0')
+					{
+						/*
+						 * When previous command batch is processed, read new
+						 */
+						get_string(&opts, &scrdesc, "\\", cmdline, sizeof(cmdline) - 1, NULL);
+						cmdline_ptr = cmdline;
+					}
+
+					if (*cmdline_ptr)
+					{
+						bool	next_is_num = false;
+						bool	sign_minus = false;
+						int		n;
+						char   *ptr;
+
+						if (*cmdline_ptr == '-')
+						{
+							next_is_num = true;
+							sign_minus = true;
+							cmdline_ptr += 1;
+						}
+
+						if (isdigit(*cmdline_ptr))
+						{
+							char	   *endptr;
+
+							long_argument = strtol(cmdline_ptr, &endptr, 10);
+
+							if (sign_minus)
+								long_argument = MAX_CURSOR_ROW - long_argument + 2;
+							else if (*endptr == '+')
+							{
+								long_argument = cursor_row + 1 + long_argument;
+								endptr += 1;
+							}
+							else if (*endptr == '-')
+							{
+								long_argument = cursor_row + 1 - long_argument;
+								endptr += 1;
+							}
+
+							cmdline_ptr = endptr;
+
+							long_argument_is_valid = true;
+
+							next_command = cmd_GotoLine;
+							continue;
+						}
+						else if (next_is_num)
+						{
+							show_info_wait(&opts, &scrdesc,
+										   " Syntax error (expected number)",
+										   NULL, true, true, true, true);
+
+							cmdline[0] = '\0';
+							cmdline_ptr = cmdline;
+							break;
+						}
+
+						n = 0;
+						ptr = cmdline_ptr;
+
+						while (isalpha(*ptr))
+						{
+							ptr += 1;
+							n += 1;
+						}
+
+						if ((n == 1 && strncmp(cmdline_ptr, "q", 1) == 0) ||
+							(n == 4 && strncmp(cmdline_ptr, "quit", 4) == 0))
+						{
+							next_command = cmd_Quit;
+							continue;
+						}
+
+						show_info_wait(&opts, &scrdesc,
+									   " Unknown command",
+									   NULL, true, true, true, true);
+
+						cmdline[0] = '\0';
+						cmdline_ptr = cmdline;
+					}
+
+					break;
+				}
 
 			case cmd_MOUSE_EVENT:
 				{

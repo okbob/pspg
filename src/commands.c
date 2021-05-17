@@ -323,6 +323,9 @@ cmd_string(int cmd)
 		case cmd_Mark_NestedCursorCommand:
 			return "MarkNestedCursorCommand";
 
+		case cmd_BsCommand:
+			return "BsCommand";
+
 		default:
 			return "unknown command";
 	}
@@ -492,6 +495,9 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 			case 'R':
 			case 12:	/* CTRL L */
 				return cmd_Refresh;
+
+			case '\\':
+				return cmd_BsCommand;
 
 			case KEY_SR:
 				*nested_command = cmd_CursorUp;
