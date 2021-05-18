@@ -156,6 +156,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_t_Tao Light theme", cmd_SetTheme_TaoLight, NULL, 0, 0, 0, NULL},
 	{"_f_Flatwhite theme", cmd_SetTheme_Flatwhite, NULL, 0, 0, 0, NULL},
 	{"_a_Relational Pipes theme", cmd_SetTheme_RelationalPipes, NULL, 0, 0, 0, NULL},
+	{"_h_PaperColor theme", cmd_SetTheme_PaperColor, NULL, 0, 0, 0, NULL},
 	{NULL},
 };
 
@@ -248,6 +249,8 @@ get_menu_style(int main_theme)
 			return ST_MENU_STYLE_FLATWHITE;
 		case 22:
 			return ST_MENU_STYLE_DBASE;
+		case 23:
+			return ST_MENU_STYLE_PERFECT;
 		default:
 			return ST_MENU_STYLE_VISION;
 	}

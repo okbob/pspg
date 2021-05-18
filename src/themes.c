@@ -1013,6 +1013,73 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
 			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
 			break;
+
+		case 23:
+			/* PaperColour theme */
+			init_color_rgb_ff(200, 0xee, 0xee, 0xee); /* background */
+			init_color_rgb_ff(201, 0x09, 0x09, 0x09); /* foreground */
+			init_color_rgb_ff(202, 0xd0, 0xd0, 0xd0); /* modeline bg */
+			init_color_rgb_ff(203, 0x09, 0x09, 0x09); /* modeline fg */
+			init_color_rgb_ff(204, 0x00, 0x87, 0xaf); /* table decor */
+			init_color_rgb_ff(205, 0x00, 0x5f, 0x87); /* cursor bg */
+			init_color_rgb_ff(213, 0xee, 0xee, 0xee); /* cursor fg */
+			init_color_rgb_ff(206, 0x44, 0x44, 0x44); /* footer */
+			init_color_rgb_ff(207, 0xee, 0xee, 0xee); /* lineno bg */
+
+			init_color_rgb_ff(210, 0xd7, 0x00, 0x87); /* labels */
+			init_color_rgb_ff(211, 0Xdf, 0x00, 0x00); /* bookmark - bg */
+			init_color_rgb_ff(212, 0xff, 0xff, 0xf0); /* bookmark - fg */
+			init_color_rgb_ff(215, 0xff, 0xff, 0x87); /* mark bg */
+			init_color_rgb_ff(214, 0xff, 0xff, 0x87); /* marked line bg */
+			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+
+			init_color_rgb_ff(217, 0x00, 0x5f, 0x40); /* vertical marked cursor bg */
+			init_color_rgb_ff(218, 0xff, 0xff, 0xff);
+			init_color_rgb_ff(219, 0x5f, 0x45, 0xe5); 
+			init_color_rgb_ff(199, 0x00, 0x5f, 0xd0); /* cross cursor */
+
+			init_color(240, 40, 50, 200);
+
+			init_pair(1, 204, 200);
+			init_pair(2, 203, 202);
+			init_pair(3, 201, 200);
+			init_pair(4, 210, 200);
+			init_pair(5, 213, 205);
+			init_pair(6, 213, 205);
+			init_pair(7, 203, 202);
+			init_pair(8, 17, 200);
+			init_pair(9, 206, 200);
+			init_pair(10, 213, 205);
+			init_pair(11, 204, 205);
+			init_pair(13, 203, 202);
+			init_pair(14, 212, 211);
+			init_pair(15, 216, 214);
+			init_pair(16, 201, 214);
+			init_pair(17, 204, 214);
+			init_pair(18, -1, -1);
+			init_pair(19, 201, 205);
+			set_colour(20, 218, 205, false, A_BOLD);
+			init_pair(21, 204, 207);
+			init_pair(28, 204, 211);
+
+			set_colour(22, COLOR_WHITE, 199, true, cursor_attr);
+			set_colour(23, 204, 199, false, 0);
+			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
+
+			init_pair(24, 213, 217);
+			init_pair(25, 204, 217);
+
+			theme_attrs[4] = labels_attr;
+			theme_attrs[5] = cursor_attr;
+			theme_attrs[6] = cursor_attr;
+			theme_attrs[10] = cursor_attr;
+
+			set_colour(31, 200, 206, false, 0);						/* scrollbar background */
+			set_colour(32, 200, 205, false, 0);							/* scrollbar slider */
+
+			set_colour(34, 201, 202, false, 0);
+			set_colour(35, 213, 203, false, cursor_attr);
+			break;
 	}
 }
 

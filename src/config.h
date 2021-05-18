@@ -16,7 +16,7 @@
 
 #include <stdbool.h>
 
-#define MAX_STYLE					22
+#define MAX_STYLE					23
 
 typedef enum
 {

@@ -69,6 +69,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_TaoLight,
 	cmd_SetTheme_Flatwhite,
 	cmd_SetTheme_RelationalPipes,
+	cmd_SetTheme_PaperColor,
 	cmd_SaveSetup,
 
 	cmd_Escape,

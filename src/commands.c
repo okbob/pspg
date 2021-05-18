@@ -171,6 +171,8 @@ cmd_string(int cmd)
 			return "SetTheme_Flatwhite";
 		case cmd_SetTheme_RelationalPipes:
 			return "SetThemeRelationalPipes";
+		case cmd_SetTheme_PaperColor:
+			return "SetTheme_PaperColor";
 
 		case cmd_SaveSetup:
 			return "SaveSetup";
@@ -587,6 +589,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_Flatwhite;
 		case 22:
 			return cmd_SetTheme_RelationalPipes;
+		case 23:
+			return cmd_SetTheme_PaperColor;
 	};
 
 	return cmd_Invalid;
@@ -647,6 +651,8 @@ cmd_get_theme(int cmd)
 			return 21;
 		case cmd_SetTheme_RelationalPipes:
 			return 22;
+		case cmd_SetTheme_PaperColor:
+			return 23;
 	};
 
 	return 1;
