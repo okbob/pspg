@@ -313,7 +313,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-sigint-search-reset\n");
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
 					fprintf(stdout, "  --no-sleep               without waits against flickering\n");
-					fprintf(stdout, "  --no_xterm_mouse_mode    don't use optional xterm mouse mode\n");
+					fprintf(stdout, "  --no-xterm-mouse-mode    don't use optional xterm mouse mode\n");
 					fprintf(stdout, "  --only-for-tables        use std pager when content is not table\n");
 					fprintf(stdout, "  --on-sigint-exit         exit on sigint(CTRL C or Escape)\n");
 					fprintf(stdout, "  --pgcli-fix              try to fix some pgcli related issues\n");

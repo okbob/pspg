@@ -25,6 +25,7 @@
 #include <ncurses/ncurses.h>
 #endif
 
+#include <ctype.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -48,13 +49,11 @@
 #include <time.h>
 #include <unistd.h>
 
-
 #ifdef HAVE_INOTIFY
 
 #include <sys/inotify.h>
 
 #endif
-
 
 #ifdef HAVE_LIBREADLINE
 
@@ -1188,14 +1187,14 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	log_row("input string prompt - \"%s\"", prompt);
-
 #ifdef HAVE_LIBREADLINE
 
 	int		c;
 	int		prev_c = 0;
 	mmask_t		prev_mousemask = 0;
 	bool	input_is_valid = true;
+
+	log_row("input string prompt - \"%s\"", prompt);
 
 	g_bottom_bar = bottom_bar;
 	got_readline_string = false;
@@ -1337,6 +1336,8 @@ finish_read:
 
 #else
 
+	log_row("input string prompt - \"%s\"", prompt);
+
 	wbkgd(bottom_bar, t->input_attr);
 	werase(bottom_bar);
 	mvwprintw(bottom_bar, 0, 0, "%s", prompt);
@@ -1358,6 +1359,17 @@ finish_read:
 	scrdesc->refresh_scr = true;
 
 	log_row("input string - \"%s\"", buffer);
+
+
+	/*
+	 * Keypad is an feature of an screen, not of an window. In this routine
+	 * I read from window without keypad flag, because I redirect events to
+	 * readline. But next reading from stdin looks partialy broken (like
+	 * without keypad flag), although the reading is related to stdscr with
+	 * keypad flag. I found dirty workaround - call keypad(stdscr, TRUE)
+	 * again.
+	 */
+	keypad(stdscr, TRUE);
 }
 
 #define SEARCH_FORWARD			1
@@ -3386,6 +3398,9 @@ leaveok(stdscr, TRUE);
 	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
 	set_scrollbar(&scrdesc, &desc, first_row);
 
+	cmdline[0] = '\0';
+	cmdline_ptr = cmdline;
+
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
 
@@ -3400,8 +3415,6 @@ leaveok(stdscr, TRUE);
 	last_path[0] = '\0';
 	last_rows_number[0] = '\0';
 
-	cmdline[0] = '\0';
-	cmdline_ptr = cmdline;
 
 #if RL_READLINE_VERSION > 0x0603
 
@@ -6044,7 +6057,13 @@ recheck_end:
 						int		n;
 						char   *ptr;
 
-						if (*cmdline_ptr == '-')
+						if (*cmdline_ptr == '+')
+						{
+							/* ignore initial + */
+							next_is_num = true;
+							cmdline_ptr += 1;
+						}
+						else if (*cmdline_ptr == '-')
 						{
 							next_is_num = true;
 							sign_minus = true;
@@ -6053,7 +6072,6 @@ recheck_end:
 
 						if (isdigit(*cmdline_ptr))
 						{
-
 							long_argument = strtol(cmdline_ptr, &endptr, 10);
 
 							if (sign_minus)
