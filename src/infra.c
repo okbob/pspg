@@ -226,7 +226,7 @@ sstrndup(const char *str, int bytes)
  * truncate spaces from both ends
  */
 char *
-trim_str(char *str, int *size, bool force8bit)
+trim_str(const char *str, int *size, bool force8bit)
 {
 	char   *result = NULL;
 
@@ -238,9 +238,9 @@ trim_str(char *str, int *size, bool force8bit)
 
 	if (*size > 0)
 	{
-		char   *after_nspc_chr = NULL;
+		const char   *after_nspc_chr = NULL;
 
-		result = str;
+		result = (char *) str;
 
 		while (*size > 0)
 		{
@@ -254,6 +254,32 @@ trim_str(char *str, int *size, bool force8bit)
 		}
 
 		*size = after_nspc_chr - result;
+	}
+
+	return result;
+}
+
+/*
+ * truncate spaces from both ends, support quotes and double quotes
+ */
+char *
+trim_quoted_str(const char *str, int *size, bool force8bit)
+{
+	char	   *result;
+
+	result = trim_str(str, size, force8bit);
+
+	/* check first and last char */
+	if (*size > 0)
+	{
+		if (*result == '"' || *result == '\'')
+		{
+			if (*result == *(result + *size - 1))
+			{
+				result += 1;
+				*size -= 2;
+			}
+		}
 	}
 
 	return result;

@@ -126,6 +126,7 @@ typedef enum PspgCommand
 	cmd_UseClipboard_INSERT,
 	cmd_UseClipboard_INSERT_with_comments,
 	cmd_TogleEmptyStringIsNULL,
+	cmd_SetOwnNULLString,
 
 	cmd_Copy,
 	cmd_CopyAllLines,

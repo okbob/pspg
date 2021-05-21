@@ -377,7 +377,8 @@ extern char *sstrdup(const char *str);
 extern char *sstrdup2(const char *str, char *debugstr);
 extern char *sstrndup(const char *str, int bytes);
 
-extern char *trim_str(char *str, int *size, bool force8bit);
+extern char *trim_str(const char *str, int *size, bool force8bit);
+extern char *trim_quoted_str(const char *str, int *size, bool force8bit);
 extern void InitExtStr(ExtStr *estr);
 extern void ResetExtStr(ExtStr *estr);
 extern void ExtStrAppendNewLine(ExtStr *estr, char *str);

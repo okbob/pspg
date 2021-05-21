@@ -2137,8 +2137,11 @@ st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent)
 	 * is pressed, we don't know a related object, but
 	 * we can reset selected_command variable.
 	 */
-	if (mevent->bstate & BUTTON1_PRESSED)
+	if (c != KEY_MOUSE || mevent->bstate & BUTTON1_PRESSED)
+	{
 		selected_command = NULL;
+		command_was_activated = false;
+	}
 
 	/*
 	 * We would to close pulldown menus on F10 key - similar behave

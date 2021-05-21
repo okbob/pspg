@@ -119,7 +119,7 @@ static char		last_line[256];
 static char		last_path[1025];
 static char		last_rows_number[256];
 static char		last_table_name[256];
-
+static char		last_nullstr[256];
 static char		cmdline[1024];
 static char    *cmdline_ptr = 0;
 
@@ -1181,7 +1181,7 @@ readline_redisplay()
 
 #endif
 
-static void
+static bool
 get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize, char *defstr)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
@@ -1370,6 +1370,8 @@ finish_read:
 	 * again.
 	 */
 	keypad(stdscr, TRUE);
+
+	return input_is_valid;
 }
 
 #define SEARCH_FORWARD			1
@@ -2202,7 +2204,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path);
+		(void) get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path);
 		if (buffer[0] == '\0')
 			return;
 
@@ -2214,7 +2216,7 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name);
+		(void) get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name);
 		if (table_name[0] == '\0')
 			return;
 
@@ -2227,7 +2229,7 @@ export_to_file(PspgCommand command,
 	{
 		char	   *endptr;
 
-		get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number);
+		(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number);
 		if (number[0] == '\0')
 			return;
 
@@ -2271,7 +2273,7 @@ export_to_file(PspgCommand command,
 	else
 	{
 		char   *fmt;
-		char	cmdline[1024];
+		char	cmdline_clipboard_app[1024];
 
 		check_clipboard_app(opts, force_refresh);
 
@@ -2313,13 +2315,13 @@ export_to_file(PspgCommand command,
 		}
 
 		if (clipboard_application_id == 1)
-			snprintf(cmdline, 1024, "wl-copy -t %s", fmt);
+			snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
 		else if (clipboard_application_id == 2)
-			snprintf(cmdline, 1024, "xclip -sel clip");
+			snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
 		else if (clipboard_application_id == 3)
-			snprintf(cmdline, 1024, "pbcopy");
+			snprintf(cmdline_clipboard_app, 1024, "pbcopy");
 
-		if ((pid = rwe_popen(cmdline, &fin, &fout, &ferr)) == -1)
+		if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
 		{
 			format_error("%s", strerror(errno));
 			log_row("open error (%s)", current_state->errstr);
@@ -2711,9 +2713,9 @@ main(int argc, char *argv[])
 	opts.clipboard_app = 0;
 	opts.no_sleep = false;
 	opts.menu_always = false;
+	opts.nullstr = NULL;
 
 	setup_sigsegv_handler();
-
 
 	PSPG_CONF = getenv("PSPG_CONF");
 	if (!PSPG_CONF)
@@ -3401,6 +3403,13 @@ leaveok(stdscr, TRUE);
 	cmdline[0] = '\0';
 	cmdline_ptr = cmdline;
 
+	last_row_search[0] = '\0';
+	last_col_search[0] = '\0';
+	last_line[0] = '\0';
+	last_path[0] = '\0';
+	last_rows_number[0] = '\0';
+	last_nullstr[0] = '\0';
+
 	/* initialize readline if it is active */
 #ifdef HAVE_LIBREADLINE
 
@@ -3408,13 +3417,6 @@ leaveok(stdscr, TRUE);
 	rl_catch_sigwinch = 0;
 	rl_deprep_term_function = NULL;
 	rl_prep_term_function = NULL;
-
-	last_row_search[0] = '\0';
-	last_col_search[0] = '\0';
-	last_line[0] = '\0';
-	last_path[0] = '\0';
-	last_rows_number[0] = '\0';
-
 
 #if RL_READLINE_VERSION > 0x0603
 
@@ -4155,6 +4157,9 @@ leaveok(stdscr, TRUE);
 			processed = st_menu_driver(menu, event_keycode, press_alt, &event);
 			if (processed)
 			{
+				/*
+				 * Read info from pull down menu
+				 */
 				ami = st_menu_selected_item(&activated);
 				if (activated)
 				{
@@ -4167,10 +4172,14 @@ leaveok(stdscr, TRUE);
 						next_command != cmd_UseClipboard_INSERT_with_comments &&
 						next_command != cmd_SetCopyFile &&
 						next_command != cmd_SetCopyClipboard &&
-						next_command != cmd_TogleEmptyStringIsNULL)
+						next_command != cmd_TogleEmptyStringIsNULL &&
+						next_command != cmd_SetOwnNULLString)
 						goto hide_menu;
 				}
 
+				/*
+				 * Read info from bottom command bar
+				 */
 				aci = st_menu_selected_command(&activated);
 				if (activated)
 				{
@@ -4310,9 +4319,68 @@ hide_menu:
 								   ST_MENU_OPTION_MARKED,
 								   opts.empty_string_is_null);
 
+				if (opts.empty_string_is_null)
+						st_menu_set_option(menu,
+								   cmd_SetOwnNULLString,
+								   ST_MENU_OPTION_MARKED,
+								   false);
+
 #endif
 
 				break;
+
+			case cmd_SetOwnNULLString:
+				{
+					char	nullstr[256];
+					bool	is_valid;
+
+					if (last_nullstr[0] == '\0')
+					{
+						if (opts.nullstr)
+							strncpy(last_nullstr, opts.nullstr, sizeof(256));
+					}
+
+					is_valid = get_string(&opts, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr);
+					if (nullstr[0] != '\0')
+					{
+						free(opts.nullstr);
+						opts.nullstr = sstrdup(nullstr);
+						opts.empty_string_is_null = false;
+					}
+					else if (is_valid)
+						opts.empty_string_is_null = true;
+
+#ifdef COMPILE_MENU
+
+					if (nullstr[0] != '\0')
+					{
+						st_menu_set_option(menu,
+								   cmd_SetOwnNULLString,
+								   ST_MENU_OPTION_MARKED,
+								   true);
+
+						st_menu_set_option(menu,
+								   cmd_TogleEmptyStringIsNULL,
+								   ST_MENU_OPTION_MARKED,
+								   false);
+					}
+					else
+					{
+						st_menu_set_option(menu,
+								   cmd_SetOwnNULLString,
+								   ST_MENU_OPTION_MARKED,
+								   false);
+
+						st_menu_set_option(menu,
+								   cmd_TogleEmptyStringIsNULL,
+								   ST_MENU_OPTION_MARKED,
+								   opts.empty_string_is_null);
+					}
+
+#endif
+
+					break;
+				}
 
 			case cmd_SetCopyFile:
 				opts.copy_target = COPY_TARGET_FILE;

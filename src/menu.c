@@ -58,6 +58,7 @@ ST_MENU_ITEM _copy[] = {
 	{"Copy to cli~p~board", cmd_SetCopyClipboard, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Empty string is NULL", cmd_TogleEmptyStringIsNULL, NULL, 0, 0, 0, NULL},
+	{"Set own ~N~ULL string", cmd_SetOwnNULLString, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"_0_Use CSV format", cmd_UseClipboard_CSV, NULL, 0, 0, 0, NULL},
 	{"_1_Use LibreOffice TSVC format", cmd_UseClipboard_TSVC, NULL, 0, 0, 0, NULL},
@@ -397,6 +398,9 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	refresh_clipboard_options(opts, menu);
 
 	st_menu_set_option(menu, cmd_TogleEmptyStringIsNULL, ST_MENU_OPTION_MARKED, opts->empty_string_is_null);
+
+	st_menu_set_option(menu, cmd_SetOwnNULLString, ST_MENU_OPTION_MARKED,
+			  !opts->empty_string_is_null && opts->nullstr && *opts->nullstr);
 }
 
 void

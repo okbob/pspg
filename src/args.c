@@ -499,8 +499,9 @@ readargs(char **argv,
 						state->errstr = "csv_header option can be on \"or\" \"off\"";
 						return false;
 					}
+
+					break;
 				}
-				break;
 			case 29:
 				opts->ignore_short_rows = true;
 				break;
@@ -508,8 +509,21 @@ readargs(char **argv,
 				opts->tsv_format = true;
 				break;
 			case 31:
-				opts->nullstr = sstrdup(optarg);
-				break;
+				{
+					char   *nullstr;
+					int		size;
+
+					nullstr = trim_quoted_str(optarg, &size, opts->force8bit);
+					if (size > 255)
+					{
+						state->errstr = "nullstr is too long (only 255 bytes are allowed)";
+						return false;
+					}
+					else
+						opts->nullstr = sstrndup(nullstr, size);
+
+					break;
+				}
 			case 32:
 				state->ignore_file_suffix = true;
 				break;

@@ -24,7 +24,10 @@
  * malloc ed string when value should be quoted.
  */
 static char *
-csv_format(char *str, int *slen, bool force8bit, bool empty_string_is_null)
+csv_format(char *str, int *slen,
+		   bool force8bit,
+		   bool empty_string_is_null,
+		   char *nullstr, int nullstrlen)
 {
 	char   *ptr = str;
 	char   *result;
@@ -32,6 +35,15 @@ csv_format(char *str, int *slen, bool force8bit, bool empty_string_is_null)
 	int		_slen;
 
 	/* Detect NULL symbol ∅ */
+	if (nullstrlen > 0 &&
+		*slen == nullstrlen &&
+		strncmp(str, nullstr, nullstrlen) == 0)
+	{
+		*slen = 0;
+		return NULL;
+	}
+
+
 	if (!force8bit &&
 		*slen == 3 && strncmp(str, "\342\210\205", 3) == 0)
 	{
@@ -174,7 +186,9 @@ static char *
 quote_sql_literal(char *str,
 				  int *slen,
 				  bool force8bit,
-				  bool empty_string_is_null)
+				  bool empty_string_is_null,
+				  char *nullstr,
+				  int nullstrlen)
 {
 	char   *ptr = str;
 	char   *result;
@@ -207,6 +221,15 @@ quote_sql_literal(char *str,
 	{
 		*slen = 4;
 		return sstrdup("NULL");
+	}
+
+	if (nullstrlen > 0 &&
+		*slen == nullstrlen &&
+		strncmp(str, nullstr, *slen) == 0)
+	{
+		*slen = 4;
+		return sstrdup("NULL");
+
 	}
 
 	while (*ptr && _slen > 0)
@@ -324,6 +347,9 @@ typedef struct
 
 	bool		force8bit;
 	bool		empty_string_is_null;
+
+	char	   *nullstr;
+	int			nullstrlen;
 
 	int			colno;
 	char	  **colnames;
@@ -524,7 +550,9 @@ process_item(ExportState *expstate,
 				_field = quote_sql_literal(field,
 										   &size,
 										   expstate->force8bit,
-										   expstate->empty_string_is_null);
+										   expstate->empty_string_is_null,
+										   expstate->nullstr,
+										   expstate->nullstrlen);
 
 				fwrite(_field, size, 1, expstate->fp);
 
@@ -583,7 +611,9 @@ process_item(ExportState *expstate,
 
 				_field = csv_format(field, &size,
 									expstate->force8bit,
-									expstate->empty_string_is_null);
+									expstate->empty_string_is_null,
+									expstate->nullstr,
+									expstate->nullstrlen);
 
 
 				if (expstate->copy_line_extended && is_colname)
@@ -694,6 +724,8 @@ export_data(Options *opts,
 	expstate.fp = fp;
 	expstate.force8bit = opts->force8bit;
 	expstate.empty_string_is_null = opts->empty_string_is_null;
+	expstate.nullstr = opts->nullstr;
+	expstate.nullstrlen = opts->nullstr ? strlen(opts->nullstr) : 0;
 	expstate.xmin = -1;
 	expstate.xmax = -1;
 	expstate.table_name = NULL;

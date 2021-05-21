@@ -10,6 +10,7 @@
  *
  *-------------------------------------------------------------------------
  */
+#include "pspg.h"
 #include "config.h"
 
 #include <errno.h>
@@ -18,14 +19,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool
-parse_cfg(char *line, char *key, bool *bool_val, int *int_val)
+static int
+parse_cfg(char *line, char *key, bool *bool_val, int *int_val, char **str_val)
 {
 	int		key_length = 0;
+	int		len = strlen(line);
+
+	if (len > 0 && line[len - 1] == '\n')
+		line[len-1] = '\0';
 
 	/* skip initial spaces */
 	while (*line == ' ')
 		line++;
+
+	/* skip comments */
+	if (*line == '#')
+		return 0;
 
 	/* copy key to key array */
 	while (*line != ' ' && *line != '=' && *line != '\0')
@@ -55,21 +64,35 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val)
 		if (*line >= '0' && *line <= '9')
 		{
 			*int_val = atoi(line);
-			return true;
+			return 1;
 		}
 		else if (strncmp(line, "true", 4) == 0)
 		{
 			*bool_val = true;
-			return true;
+			return 2;
 		}
 		else if (strncmp(line, "false", 5) == 0)
 		{
 			*bool_val = false;
-			return true;
+			return 2;
+		}
+		else
+		{
+			int		size;
+			char   *str;
+
+			size = strlen(line);
+			str = trim_quoted_str(line, &size, true);
+
+			*str_val = sstrndup(str, size);
+			return 3;
 		}
 	}
 
-	return false;
+	if (key_length > 0)
+		return -1;
+
+	return 0;
 }
 
 #define SAFE_SAVE_BOOL_OPTION(name, opt)		\
@@ -114,6 +137,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("xterm_mouse_mode", opts->xterm_mouse_mode);
 	SAFE_SAVE_BOOL_OPTION("show_scrollbar", opts->show_scrollbar);
 	SAFE_SAVE_BOOL_OPTION("menu_always", opts->menu_always);
+	SAFE_SAVE_BOOL_OPTION("empty_string_is_null", opts->empty_string_is_null);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -131,9 +155,64 @@ save_config(char *path, Options *opts)
 	if (result < 0)
 		return false;
 
+	if (opts->nullstr)
+	{
+		result = fprintf(f, "nullstr = \"%s\"\n", opts->nullstr);
+		if (result < 0)
+			return false;
+	}
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
+
+	return true;
+}
+
+static bool
+assign_bool(char *key, bool *target, bool value, int type)
+{
+	if (type != 2)
+	{
+		log_row("The value of key \"%s\" is not boolean value", key);
+		return false;
+	}
+
+	*target = value;
+
+	return true;
+}
+
+static bool
+assign_int(char *key, int *target, int value, int type, int min, int max)
+{
+	if (type != 1)
+	{
+		log_row("The value of key \"%s\" is not integer value", key);
+		return false;
+	}
+
+	if (value < min && value > max)
+	{
+		log_row("value of key \"%s\" is out of range [%d, %d]", key, min, max);
+		return false;
+	}
+
+	*target = value;
+
+	return true;
+}
+
+static bool
+assign_str(char *key, char **target, char *value, int type)
+{
+	if (type != 3)
+	{
+		log_row("The value of key \"%s\" is not string value", key);
+		return false;
+	}
+
+	*target = value;
 
 	return true;
 }
@@ -149,6 +228,7 @@ load_config(char *path, Options *opts)
 	char 		*line = NULL;
 	ssize_t		read;
 	size_t		len;
+	bool		is_valid = true;
 
 	errno = 0;
 	f = fopen(path, "r");
@@ -160,81 +240,81 @@ load_config(char *path, Options *opts)
 		char	key[100];
 		bool	bool_val = false;
 		int		int_val = -1;
+		char   *str_val = NULL;
+		int		res;
 
-		if (parse_cfg(line, key, &bool_val, &int_val))
+		if ((res = parse_cfg(line, key, &bool_val, &int_val, &str_val)) > 0)
 		{
 			if (strcmp(key, "ascii_menu") == 0)
-				opts->force_ascii_art = bool_val;
+				is_valid = assign_bool(key, &opts->force_ascii_art, bool_val, res);
 			else if (strcmp(key, "bold_labels") == 0)
-				opts->bold_labels = bool_val;
+				is_valid = assign_bool(key, &opts->bold_labels, bool_val, res);
 			else if (strcmp(key, "bold_cursor") == 0)
-				opts->bold_cursor = bool_val;
+				is_valid = assign_bool(key, &opts->bold_cursor, bool_val, res);
 			else if (strcmp(key, "ignore_case") == 0)
-				opts->ignore_case = bool_val;
+				is_valid = assign_bool(key, &opts->ignore_case, bool_val, res);
 			else if (strcmp(key, "ignore_lower_case") == 0)
-				opts->ignore_lower_case = bool_val;
+				is_valid = assign_bool(key, &opts->ignore_lower_case, bool_val, res);
 			else if (strcmp(key, "no_sound") == 0)
-				opts->no_sound = bool_val;
+				is_valid = assign_bool(key, &opts->no_sound, bool_val, res);
 			else if (strcmp(key, "no_cursor") == 0)
-				opts->no_cursor = bool_val;
+				is_valid = assign_bool(key, &opts->no_cursor, bool_val, res);
 			else if (strcmp(key, "no_mouse") == 0)
-				opts->no_mouse = bool_val;
+				is_valid = assign_bool(key, &opts->no_mouse, bool_val, res);
 			else if (strcmp(key, "less_status_bar") == 0)
-				opts->less_status_bar = bool_val;
+				is_valid = assign_bool(key, &opts->less_status_bar, bool_val, res);
 			else if (strcmp(key, "no_highlight_search") == 0)
-				opts->no_highlight_search = bool_val;
+				is_valid = assign_bool(key, &opts->no_highlight_search, bool_val, res);
 			else if (strcmp(key, "no_highlight_lines") == 0)
-				opts->no_highlight_lines = bool_val;
+				is_valid = assign_bool(key, &opts->no_highlight_lines, bool_val, res);
 			else if (strcmp(key, "force_uniborder") == 0)
-				opts->force_uniborder = bool_val;
+				is_valid = assign_bool(key, &opts->force_uniborder, bool_val, res);
 			else if (strcmp(key, "show_rownum") == 0)
-				opts->show_rownum = bool_val;
+				is_valid = assign_bool(key, &opts->show_rownum, bool_val, res);
 			else if (strcmp(key, "theme") == 0)
-			{
-				if (int_val >= 0 && int_val <= MAX_STYLE)
-					opts->theme = int_val;
-			}
+				is_valid = assign_int(key, &opts->theme, int_val, res, 0, MAX_STYLE);
 			else if (strcmp(key, "without_commandbar") == 0)
-				opts->no_commandbar = bool_val;
+				is_valid = assign_bool(key, &opts->no_commandbar, bool_val, res);
 			else if (strcmp(key, "without_topbar") == 0)
-				opts->no_topbar = bool_val;
+				is_valid = assign_bool(key, &opts->no_topbar, bool_val, res);
 			else if (strcmp(key, "vertical_cursor") == 0)
-				opts->vertical_cursor = bool_val;
+				is_valid = assign_bool(key, &opts->vertical_cursor, bool_val, res);
 			else if (strcmp(key, "border_type") == 0)
-				opts->border_type = int_val;
+				is_valid = assign_int(key, &opts->border_type, int_val, res, 0, 2);
 			else if (strcmp(key, "double_header") == 0)
-				opts->double_header = bool_val;
+				is_valid = assign_bool(key, &opts->double_header, bool_val, res);
 			else if (strcmp(key, "on_sigint_exit") == 0)
-				opts->on_sigint_exit = bool_val;
+				is_valid = assign_bool(key, &opts->on_sigint_exit, bool_val, res);
 			else if (strcmp(key, "no_sigint_search_reset") == 0)
-				opts->no_sigint_search_reset = bool_val;
+				is_valid = assign_bool(key, &opts->no_sigint_search_reset, bool_val, res);
 			else if (strcmp(key, "quit_on_f3") == 0)
-				opts->quit_on_f3 = bool_val;
+				is_valid = assign_bool(key, &opts->quit_on_f3, bool_val, res);
 			else if (strcmp(key, "pgcli_fix") == 0)
-				opts->pgcli_fix = bool_val;
+				is_valid = assign_bool(key, &opts->pgcli_fix, bool_val, res);
 			else if (strcmp(key, "default_clipboard_format") == 0)
-			{
-				if (int_val > 0 && int_val <= CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS)
-					opts->clipboard_format = int_val;
-			}
+				is_valid = assign_int(key, (int *) &opts->clipboard_format, int_val, res, 0, CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
 			else if (strcmp(key, "clipboard_app") == 0)
-			{
-				if (int_val > 0 && int_val <= 3)
-					opts->clipboard_app = int_val;
-			}
+				is_valid = assign_int(key, &opts->clipboard_app, int_val, res, 0, 3);
 			else if (strcmp(key, "xterm_mouse_mode") == 0)
-				opts->xterm_mouse_mode = bool_val;
+				is_valid = assign_bool(key, &opts->xterm_mouse_mode, bool_val, res);
 			else if (strcmp(key, "show_scrollbar") == 0)
-				opts->show_scrollbar = bool_val;
+				is_valid = assign_bool(key, &opts->show_scrollbar, bool_val, res);
 			else if (strcmp(key, "menu_always") == 0)
-				opts->menu_always = bool_val;
+				is_valid = assign_bool(key, &opts->menu_always, bool_val, res);
+			else if (strcmp(key, "nullstr") == 0)
+				is_valid = assign_str(key, &opts->nullstr, str_val, res);
+			else if (strcmp(key, "empty_string_is_null") == 0)
+				is_valid = assign_bool(key, &opts->empty_string_is_null, bool_val, res);
 
 			free(line);
 			line = NULL;
+
+			if (!is_valid || res == -1)
+				break;
 		}
 	}
 
 	fclose(f);
 
-	return true;
+	return is_valid;
 }

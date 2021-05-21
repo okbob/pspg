@@ -229,7 +229,7 @@ pb_print_vertical_header(PrintbufType *printbuf, PrintDataDesc *pdesc, PrintConf
 
 	if (linestyle == 'a')
 	{
-		if (pos == 'm' &&double_header)
+		if (pos == 'm' && double_header)
 		{
 			lhchr = ":";
 			mhchr = ":";
