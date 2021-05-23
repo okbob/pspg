@@ -110,6 +110,10 @@ static bool		input_avail = false;
 static WINDOW  *g_bottom_bar;
 static attr_t	input_attr;
 
+static bool		forward_complete;
+static char	   *readline_prompt;
+static int		g_tabcomplete_mode;
+
 #endif
 
 static bool		handle_sigint = false;
@@ -1182,17 +1186,23 @@ readline_redisplay()
 #endif
 
 static bool
-get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize, char *defstr)
+get_string(Options *opts,
+		   ScrDesc *scrdesc,
+		   char *prompt,
+		   char *buffer,
+		   int maxsize,
+		   char *defstr,
+		   char tabcomplete_mode)
 {
 	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
 	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+	bool	input_is_valid = true;
 
 #ifdef HAVE_LIBREADLINE
 
 	int		c;
 	int		prev_c = 0;
 	mmask_t		prev_mousemask = 0;
-	bool	input_is_valid = true;
 
 	log_row("input string prompt - \"%s\"", prompt);
 
@@ -1200,6 +1210,7 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	got_readline_string = false;
 	force8bit = opts->force8bit;
 	input_attr = t->input_attr;
+	g_tabcomplete_mode = tabcomplete_mode;
 
 	wattron(bottom_bar, t->input_attr);
 	mvwprintw(bottom_bar, 0, 0, "");
@@ -1207,6 +1218,8 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 
 	curs_set(1);
 	echo();
+
+	readline_prompt = prompt;
 
 	rl_getc_function = readline_getc;
 
@@ -1219,6 +1232,8 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	rl_redisplay_function = readline_redisplay;
 
 	rl_callback_handler_install(prompt, got_string);
+
+
 
 	mousemask(0, &prev_mousemask);
 
@@ -1242,7 +1257,14 @@ get_string(Options *opts, ScrDesc *scrdesc, char *prompt, char *buffer, int maxs
 	{
 		do
 		{
-			c = wgetch(bottom_bar);
+			if (forward_complete)
+			{
+				c = 9;
+				forward_complete = false;
+			}
+			else
+				c = wgetch(bottom_bar);
+
 			if (c == ERR && errno == EINTR)
 				goto finish_read;
 
@@ -1326,6 +1348,8 @@ finish_read:
 
 #endif
 
+		if (defstr)
+			strcpy(defstr, buffer);
 	}
 	else
 	{
@@ -2204,7 +2228,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		(void) get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path);
+		(void) get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
 		if (buffer[0] == '\0')
 			return;
 
@@ -2216,12 +2240,9 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		(void) get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name);
+		(void) get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
 		if (table_name[0] == '\0')
 			return;
-
-		strncpy(last_table_name, table_name, sizeof(last_table_name) - 1);
-		last_path[sizeof(last_table_name) - 1] = '\0';
 	}
 
 	if (command == cmd_CopyTopLines ||
@@ -2229,7 +2250,7 @@ export_to_file(PspgCommand command,
 	{
 		char	   *endptr;
 
-		(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number);
+		(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
 		if (number[0] == '\0')
 			return;
 
@@ -2567,6 +2588,104 @@ mousex_get_colno(DataDesc *desc,
 
 	return colno;
 }
+
+#ifdef HAVE_LIBREADLINE
+
+static char **
+pspg_complete(const char *text, int start, int end)
+{
+	if (g_tabcomplete_mode == 'f')
+	{
+		rl_completion_suppress_append = 1;
+		rl_attempted_completion_over = 0;
+	}
+	else
+	{
+		rl_completion_suppress_append = 0;
+		rl_attempted_completion_over = 1;
+	}
+
+	return (char**) NULL;
+}
+
+static void
+pspg_display_match(char **matches, int num_matches, int max_length)
+{
+	int		common_length;
+	int		pos = 1;
+	char	c = 0;
+
+	forward_complete = false;
+
+	common_length = strlen(matches[0]);
+
+	wbkgd(g_bottom_bar, input_attr);
+	werase(g_bottom_bar);
+
+	while (1)
+	{
+		if (handle_sigint)
+			break;
+
+		werase(g_bottom_bar);
+		wmove(g_bottom_bar, 0, 0);
+		wprintw(g_bottom_bar, "%s%s", readline_prompt, matches[0]);
+
+		wattron(g_bottom_bar, A_BOLD);
+		wprintw(g_bottom_bar, "%s", matches[pos] + common_length);
+		wattroff(g_bottom_bar, A_BOLD);
+
+		wrefresh(g_bottom_bar);
+
+		noecho();
+		c = getch();
+		echo();
+
+		if (c == 10)
+		{
+			got_string(matches[pos]);
+			break;
+		}
+		else if (c == 7)
+		{
+			rl_insert_text(matches[pos] + common_length);
+			ungetch(127);
+			break;
+		}
+		else if (c == 3)
+			pos -= 1;
+		else if (c == 2 || c == 9)
+			pos += 1;
+		else if (c == 4 || c == 27)
+			break;
+		else if (c == 5)
+		{
+			rl_insert_text(matches[pos] + common_length);
+			break;
+		}
+		else
+		{
+			if (c != 9 && c != -1)
+			{
+				char	   str[2];
+				str[0] = c;
+				str[1] = '\0';
+
+				rl_insert_text(str);
+				forward_complete = true;
+				break;
+			}
+		}
+
+		if (pos > num_matches)
+			pos = 1;
+		if (pos < 1)
+			pos = num_matches;
+
+	}
+}
+
+#endif
 
 /*
  * Available modes for processing input.
@@ -3424,7 +3543,10 @@ leaveok(stdscr, TRUE);
 
 #endif
 
-	rl_inhibit_completion = 1;
+	rl_inhibit_completion = 0;
+
+	rl_completion_display_matches_hook = pspg_display_match;
+	rl_attempted_completion_function = pspg_complete;
 
 #ifdef HAVE_READLINE_HISTORY
 
@@ -4340,7 +4462,7 @@ hide_menu:
 							strncpy(last_nullstr, opts.nullstr, sizeof(256));
 					}
 
-					is_valid = get_string(&opts, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr);
+					is_valid = get_string(&opts, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
 					if (nullstr[0] != '\0')
 					{
 						free(opts.nullstr);
@@ -5512,7 +5634,7 @@ recheck_end:
 					{
 						char	linenotxt[256];
 
-						get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line);
+						get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
 						if (linenotxt[0] != '\0')
 						{
 							char   *endptr;
@@ -5743,7 +5865,7 @@ recheck_end:
 
 					search_direction = SEARCH_FORWARD;
 
-					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
+					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
 
 					reset_searching_lineinfo(&desc);
 
@@ -5846,7 +5968,7 @@ recheck_end:
 
 					search_direction = SEARCH_BACKWARD;
 
-					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search);
+					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
 
 					reset_searching_lineinfo(&desc);
 
@@ -5982,7 +6104,7 @@ recheck_end:
 						bool	found = false;
 						bool	search_from_start = false;
 
-						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search);
+						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
 
 						if (locsearchterm[0] != '\0')
 						{
@@ -6114,7 +6236,7 @@ recheck_end:
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string(&opts, &scrdesc, "\\", cmdline, sizeof(cmdline) - 1, NULL);
+						get_string(&opts, &scrdesc, "\\", cmdline, sizeof(cmdline) - 1, NULL, 'c');
 						cmdline_ptr = cmdline;
 					}
 
