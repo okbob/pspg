@@ -55,6 +55,13 @@
 
 #endif
 
+/*
+ * Uncomment for test without readline
+ *
+#undef HAVE_LIBREADLINE
+#undef HAVE_READLINE_HISTORY
+ */
+
 #ifdef HAVE_LIBREADLINE
 
 #if defined(HAVE_READLINE_READLINE_H)
@@ -1143,7 +1150,10 @@ static void
 got_string(char *line)
 {
 	if (line)
-		strcpy(readline_buffer, line);
+	{
+		strncpy(readline_buffer, line, sizeof(readline_buffer) - 1);
+		*(readline_buffer + sizeof(readline_buffer) - 1) = '\0';
+	}
 	else
 		readline_buffer[0] = '\0';
 
@@ -1328,8 +1338,23 @@ finish_read:
 
 	if (input_is_valid)
 	{
-		strncpy(buffer, readline_buffer, maxsize - 1);
-		buffer[maxsize] = '\0';
+		if (tabcomplete_mode == 'f')
+		{
+			char	*tstr;
+			int		bytes;
+
+			bytes = strlen(readline_buffer);
+			tstr = trim_quoted_str(readline_buffer, &bytes, opts->force8bit);
+
+			bytes = bytes < (maxsize - 1) ? bytes : (maxsize - 1);
+			memcpy(buffer, tstr, bytes);
+			buffer[bytes] = '\0';
+		}
+		else
+		{
+			strncpy(buffer, readline_buffer, maxsize - 1);
+			buffer[maxsize] = '\0';
+		}
 
 #ifdef HAVE_READLINE_HISTORY
 
@@ -1369,6 +1394,18 @@ finish_read:
 	echo();
 	wgetnstr(bottom_bar, buffer, maxsize);
 
+	if (tabcomplete_mode == 'f')
+	{
+		char	*tstr;
+		int		bytes;
+
+		bytes = strlen(buffer);
+		tstr = trim_quoted_str(buffer, &bytes, opts->force8bit);
+
+		memcpy(buffer, tstr, bytes);
+		buffer[bytes] = '\0';
+	}
+
 	/* reset ctrlc, wgetnstr doesn't handle this signal now */
 	handle_sigint = false;
 
@@ -1376,6 +1413,7 @@ finish_read:
 	noecho();
 
 #endif
+
 
 	/*
 	 * Screen should be refreshed after show any info.
