@@ -6481,9 +6481,9 @@ recheck_end:
 						}
 						else if (next_is_num)
 						{
-							show_info_wait(&opts, &scrdesc,
-										   " Syntax error (expected number)",
-										   NULL, true, true, true, true);
+							next_event_keycode = show_info_wait(&opts, &scrdesc,
+																" Syntax error (expected number)",
+																NULL, true, true, false, true);
 
 							cmdline[0] = '\0';
 							cmdline_ptr = cmdline;
@@ -6520,9 +6520,9 @@ recheck_end:
 							}
 							else
 							{
-								show_info_wait(&opts, &scrdesc,
-									   " expected number",
-									   NULL, true, true, true, true);
+								next_event_keycode = show_info_wait(&opts, &scrdesc,
+																	" expected number",
+																	NULL, true, true, false, true);
 								cmdline[0] = '\0';
 								break;
 							}
@@ -6566,9 +6566,10 @@ recheck_end:
 						}
 						else
 						{
-							show_info_wait(&opts, &scrdesc,
-										   " Unknown command",
-										   NULL, true, true, true, true);
+							cmdline_ptr[n] = '\0';
+							next_event_keycode = show_info_wait(&opts, &scrdesc,
+															   " Unknown command \"%s\"",
+															   cmdline_ptr, true, true, false, true);
 
 							cmdline[0] = '\0';
 							cmdline_ptr = cmdline;
