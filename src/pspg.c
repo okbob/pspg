@@ -1384,7 +1384,6 @@ finish_read:
 
 	log_row("input string - \"%s\"", buffer);
 
-
 	/*
 	 * Keypad is an feature of an screen, not of an window. In this routine
 	 * I read from window without keypad flag, because I redirect events to
@@ -2687,6 +2686,202 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 #endif
 
+#define IS_TOKEN(str, n, token)		((n == strlen(token)) && (strncmp(str, token, n) == 0))
+
+/*
+ * Returns pointer to first non token char. When token is valid, then
+ * output n is higher than 0 and token pointer is non null.
+ */
+static char *
+get_token(char *instr, char **token, int *n)
+{
+	*token = NULL;
+	*n = 0;
+
+	/* skip initial spaces */
+	while (*instr == ' ')
+		instr += 1;
+
+	if (*instr == '\0')
+		return NULL;
+
+	if (isalpha(*instr))
+	{
+		*token = instr++;
+		while (isalpha(*instr))
+			instr += 1;
+
+		*n = instr - *token;
+	}
+
+	return instr;
+}
+
+typedef enum
+{
+	EXPORT_ALL,
+	EXPORT_TOP,
+	EXPORT_BOTTOM,
+	EXPORT_SELECTED
+} ExportedRange;
+
+typedef struct
+{
+	ExportedRange range;
+	ClipboardFormat format;
+	long		n;
+} ExportedSpec;
+
+static char *
+parse_exported_spec(Options *opts,
+				    ScrDesc *scrdesc,
+					char *instr,
+					ExportedSpec *spec,
+					bool *is_valid,
+					int *next_event_keycode)
+{
+	bool	format_is_specified_already = false;
+	bool	format_specified = false;
+	bool	range_is_specified_already = false;
+	bool	range_specified = false;
+
+	bool	next_token_shouldbe_number = false;
+	char   *token;
+	int		n;
+
+	spec->n = -1;
+	spec->range = EXPORT_ALL;
+	spec->format = CLIPBOARD_FORMAT_TEXT;
+
+	*is_valid = false;
+
+	if (instr)
+	{
+		instr = get_token(instr, &token, &n);
+
+		while (token)
+		{
+			range_specified = false;
+			format_specified = false;
+			next_token_shouldbe_number = false;
+
+			if (n > 20)
+			{
+				*next_event_keycode = show_info_wait(opts, scrdesc,
+													 " Syntax error (too long token)",
+													 NULL, NULL, true, false, true);
+				return NULL;
+			}
+
+			if (IS_TOKEN(token, n, "top"))
+			{
+				spec->range = EXPORT_TOP;
+				range_specified = true;
+				next_token_shouldbe_number = true;
+			}
+			else if (IS_TOKEN(token, n, "bottom"))
+			{
+				spec->range = EXPORT_BOTTOM;
+				range_specified = true;
+				next_token_shouldbe_number = true;
+			}
+			else if (IS_TOKEN(token, n, "all"))
+			{
+				spec->range = EXPORT_ALL;
+				range_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "sel") ||
+					 IS_TOKEN(token, n, "selected"))
+			{
+				spec->range = EXPORT_SELECTED;
+				range_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "csv"))
+			{
+				spec->format = CLIPBOARD_FORMAT_CSV;
+				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "tsv"))
+			{
+				spec->format = CLIPBOARD_FORMAT_TSVC;
+				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "text"))
+			{
+				spec->format = CLIPBOARD_FORMAT_TEXT;
+				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "insert"))
+			{
+				spec->format = CLIPBOARD_FORMAT_INSERT;
+				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "cinsert"))
+			{
+				spec->format = CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS;
+				format_specified = true;
+			}
+			else
+			{
+				char buffer[255];
+
+				snprintf(buffer, 255, " Syntax error (unknown token \"%.*s\")", n, token);
+
+				*next_event_keycode = show_info_wait(opts, scrdesc,
+													 buffer,
+													 NULL, NULL, true, false, true);
+				return NULL;
+			}
+
+			if (format_is_specified_already && format_specified)
+			{
+				*next_event_keycode = show_info_wait(opts, scrdesc,
+													 " Syntax error (format specification is redundant)",
+													 NULL, NULL, true, false, true);
+				return NULL;
+			}
+
+			if (range_is_specified_already && range_specified)
+			{
+				*next_event_keycode = show_info_wait(opts, scrdesc,
+													 " Syntax error (range specification is redundant)",
+													 NULL, NULL, true, false, true);
+				return NULL;
+			}
+
+			if (format_specified)
+				format_is_specified_already = true;
+			if (range_specified)
+				range_is_specified_already = true;
+
+			if (next_token_shouldbe_number)
+			{
+				char	   *endptr = NULL;
+
+				if (instr)
+					spec->n = strtol(instr, &endptr, 10);
+
+				if (!instr || instr == endptr)
+				{
+					*next_event_keycode = show_info_wait(opts, scrdesc,
+														 " Syntax error (expected number)",
+														 NULL, NULL, true, false, true);
+					return NULL;
+				}
+
+				instr = endptr;
+			}
+
+			instr = get_token(instr, &token, &n);
+		}
+	}
+
+	*is_valid = true;
+
+	return instr;
+}
+
+
 /*
  * Available modes for processing input.
  *
@@ -3520,7 +3715,7 @@ leaveok(stdscr, TRUE);
 	set_scrollbar(&scrdesc, &desc, first_row);
 
 	cmdline[0] = '\0';
-	cmdline_ptr = cmdline;
+	cmdline_ptr = NULL;
 
 	last_row_search[0] = '\0';
 	last_col_search[0] = '\0';
@@ -3617,9 +3812,9 @@ leaveok(stdscr, TRUE);
 		/*
 		 * Try to read command from commandline buffer first
 		 */
-		if (next_command == cmd_Invalid && *cmdline_ptr)
+		if (next_command == cmd_Invalid && cmdline_ptr && *cmdline_ptr)
 		{
-			while (*cmdline_ptr)
+			while (cmdline_ptr && *cmdline_ptr)
 			{
 				if (*cmdline_ptr == '\\')
 				{
@@ -6231,7 +6426,7 @@ recheck_end:
 				{
 					char	   *endptr;
 
-					if (*cmdline_ptr == '\0')
+					if (!cmdline_ptr || *cmdline_ptr == '\0')
 					{
 						/*
 						 * When previous command batch is processed, read new
@@ -6240,7 +6435,7 @@ recheck_end:
 						cmdline_ptr = cmdline;
 					}
 
-					if (*cmdline_ptr)
+					if (cmdline_ptr && *cmdline_ptr)
 					{
 						bool	next_is_num = false;
 						bool	sign_minus = false;
@@ -6304,14 +6499,14 @@ recheck_end:
 							n += 1;
 						}
 
-						if ((n == 1 && strncmp(cmdline_ptr, "q", 1) == 0) ||
-							(n == 4 && strncmp(cmdline_ptr, "quit", 4) == 0))
+						if (IS_TOKEN(cmdline_ptr, n, "q") ||
+							IS_TOKEN(cmdline_ptr, n, "quit"))
 						{
 							next_command = cmd_Quit;
 							continue;
 						}
-						else if ((n == 5 && strncmp(cmdline_ptr, "theme", 5) == 0) ||
-								 (n == 3 && strncmp(cmdline_ptr, "the", 3) == 0))
+						else if (IS_TOKEN(cmdline_ptr, n, "the") ||
+								 IS_TOKEN(cmdline_ptr, n, "theme"))
 						{
 							cmdline_ptr += n;
 							long_argument = strtol(cmdline_ptr, &endptr, 10);
@@ -6332,13 +6527,52 @@ recheck_end:
 								break;
 							}
 						}
+						else if (IS_TOKEN(cmdline_ptr, n, "save"))
+						{
+							ExportedSpec expspec;
+							bool	is_valid;
 
-						show_info_wait(&opts, &scrdesc,
-									   " Unknown command",
-									   NULL, true, true, true, true);
+							cmdline_ptr = parse_exported_spec(&opts,
+															  &scrdesc,
+															  cmdline_ptr + n,
+															  &expspec,
+															  &is_valid,
+															  &next_event_keycode);
+							if (is_valid)
+							{
 
-						cmdline[0] = '\0';
-						cmdline_ptr = cmdline;
+							}
+							else
+								break;
+						}
+						else if (IS_TOKEN(cmdline_ptr, n, "copy"))
+						{
+							ExportedSpec expspec;
+							bool	is_valid;
+
+							cmdline_ptr = parse_exported_spec(&opts,
+															  &scrdesc,
+															  cmdline_ptr + n,
+															  &expspec,
+															  &is_valid,
+															  &next_event_keycode);
+							if (is_valid)
+							{
+
+								
+							}
+							else
+								break;
+						}
+						else
+						{
+							show_info_wait(&opts, &scrdesc,
+										   " Unknown command",
+										   NULL, true, true, true, true);
+
+							cmdline[0] = '\0';
+							cmdline_ptr = cmdline;
+						}
 					}
 
 					break;
