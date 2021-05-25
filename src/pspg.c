@@ -2219,13 +2219,13 @@ export_to_file(PspgCommand command,
 			  DataDesc *desc,
 			  int cursor_row,
 			  int cursor_column,
+			  int rows,
+			  double percent,
 			  bool *force_refresh)
 {
 	char	buffer[MAXPATHLEN + 1024];
 	char	number[100];
 	char	table_name[255];
-	int		rows = 0;
-	double  percent = 0.0;
 	FILE   *fp = NULL;
 	char   *path = NULL;
 	bool	isok = false;
@@ -2292,34 +2292,37 @@ export_to_file(PspgCommand command,
 	if (command == cmd_CopyTopLines ||
 		command == cmd_CopyBottomLines)
 	{
-		char	   *endptr;
-
-		(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
-		if (number[0] == '\0')
-			return;
-
-		errno = 0;
-		percent = strtod(number, &endptr);
-
-		if (endptr == number)
+		if (rows == 0 && percent == 0.0)
 		{
-			show_info_wait(opts, scrdesc,
-						   " Cannot convert input string to number",
-						   NULL, true, true, false, true);
-			return;
-		}
-		else if (errno != 0)
-		{
-			show_info_wait(opts, scrdesc,
-						   " Cannot convert input string to number (%s)",
-						   strerror(errno), true, true, false, true);
-			return;
-		}
+			char	   *endptr;
 
-		if (*endptr != '%')
-		{
-			rows = (int) percent;
-			percent = 0.0;
+			(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
+			if (number[0] == '\0')
+				return;
+
+			errno = 0;
+			percent = strtod(number, &endptr);
+
+			if (endptr == number)
+			{
+				show_info_wait(opts, scrdesc,
+							   " Cannot convert input string to number",
+							   NULL, true, true, false, true);
+				return;
+			}
+			else if (errno != 0)
+			{
+				show_info_wait(opts, scrdesc,
+							   " Cannot convert input string to number (%s)",
+							   strerror(errno), true, true, false, true);
+				return;
+			}
+
+			if (*endptr != '%')
+			{
+				rows = (int) percent;
+				percent = 0.0;
+			}
 		}
 
 		strncpy(last_rows_number, number, sizeof(last_rows_number) - 1);
@@ -2648,6 +2651,8 @@ const char *export_opts[] = {
 	"top",
 	"bottom",
 	"selected",
+	"searched",
+	"marked",
 	"csv",
 	"tsvc",
 	"text",
@@ -2727,7 +2732,6 @@ pspg_complete(const char *text, int start, int end)
 		{
 			if (start > 0)
 			{
-
 				if (rl_line_buffer[start - 1] == '\\')
 				{
 					g_possible_tokens = bscommands;
@@ -2772,6 +2776,11 @@ pspg_complete(const char *text, int start, int end)
 	return (char**) NULL;
 }
 
+/*
+ * Default readline rutine for printing list of possible matches breaks ncurses output.
+ * More we have only one row for editing. I don't want to implement dynamic window for
+ * completion. So pspg implements own method for printing completion menu.
+ */
 static void
 pspg_display_match(char **matches, int num_matches, int max_length)
 {
@@ -2809,7 +2818,8 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 		if (c == 10)
 		{
-			got_string(matches[pos]);
+			rl_insert_text(matches[pos] + common_length);
+			ungetch(10);
 			break;
 		}
 		else if (c == 7)
@@ -2858,20 +2868,12 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 #endif
 
-
-typedef enum
-{
-	EXPORT_ALL,
-	EXPORT_TOP,
-	EXPORT_BOTTOM,
-	EXPORT_SELECTED
-} ExportedRange;
-
 typedef struct
 {
-	ExportedRange range;
+	PspgCommand command;
 	ClipboardFormat format;
-	long		n;
+	int		rows;
+	double	percent;
 } ExportedSpec;
 
 static char *
@@ -2891,9 +2893,10 @@ parse_exported_spec(Options *opts,
 	char   *token;
 	int		n;
 
-	spec->n = -1;
-	spec->range = EXPORT_ALL;
+	spec->command = cmd_CopyAllLines;
 	spec->format = CLIPBOARD_FORMAT_TEXT;
+	spec->rows = 0;
+	spec->percent = 0.0;
 
 	*is_valid = false;
 
@@ -2917,25 +2920,37 @@ parse_exported_spec(Options *opts,
 
 			if (IS_TOKEN(token, n, "top"))
 			{
-				spec->range = EXPORT_TOP;
+				spec->command = cmd_CopyTopLines;
 				range_specified = true;
 				next_token_shouldbe_number = true;
 			}
 			else if (IS_TOKEN(token, n, "bottom"))
 			{
-				spec->range = EXPORT_BOTTOM;
+				spec->command = cmd_CopyBottomLines;
 				range_specified = true;
 				next_token_shouldbe_number = true;
 			}
 			else if (IS_TOKEN(token, n, "all"))
 			{
-				spec->range = EXPORT_ALL;
+				spec->command = cmd_CopyAllLines;
 				range_specified = true;
 			}
 			else if (IS_TOKEN(token, n, "sel") ||
 					 IS_TOKEN(token, n, "selected"))
 			{
-				spec->range = EXPORT_SELECTED;
+				spec->command = cmd_CopySelected;
+				range_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "search") ||
+					 IS_TOKEN(token, n, "searched"))
+			{
+				spec->command = cmd_CopySearchedLines;
+				range_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "mark") ||
+					 IS_TOKEN(token, n, "marked"))
+			{
+				spec->command = cmd_CopyMarkedLines;
 				range_specified = true;
 			}
 			else if (IS_TOKEN(token, n, "csv"))
@@ -3000,15 +3015,24 @@ parse_exported_spec(Options *opts,
 			{
 				char	   *endptr = NULL;
 
-				if (instr)
-					spec->n = strtol(instr, &endptr, 10);
+				errno = 0;
 
-				if (!instr || instr == endptr)
+				if (instr)
+					spec->percent = strtod(instr, &endptr);
+
+				if (!instr || instr == endptr || errno != 0)
 				{
 					*next_event_keycode = show_info_wait(opts, scrdesc,
 														 " Syntax error (expected number)",
 														 NULL, NULL, true, false, true);
 					return NULL;
+				}
+
+				if (endptr && *endptr != '%')
+				{
+					spec->rows = (int) spec->percent;
+					spec->percent = 0.0;
+					endptr += 1;
 				}
 
 				instr = endptr;
@@ -6062,7 +6086,7 @@ recheck_end:
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6073,7 +6097,7 @@ recheck_end:
 								   CLIPBOARD_FORMAT_CSV,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6085,6 +6109,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, vertical_cursor_column,
+								   0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6096,6 +6121,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
+								   0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6114,6 +6140,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
+								   0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6125,6 +6152,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, vertical_cursor_column,
+								   0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6136,6 +6164,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
+								   0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6146,7 +6175,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6157,7 +6186,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6168,7 +6197,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6179,7 +6208,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6190,7 +6219,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0,
+								   0, 0, 0, 0.0,
 								   &refresh_clear);
 					break;
 				}
@@ -6704,7 +6733,20 @@ recheck_end:
 															  &next_event_keycode);
 							if (is_valid)
 							{
+								Options loc_opts;
 
+								memcpy(&loc_opts, &opts, sizeof(Options));
+
+								loc_opts.copy_target = COPY_TARGET_FILE;
+
+								export_to_file(expspec.command,
+											   expspec.format,
+											   &next_event_keycode,
+											   &loc_opts, &scrdesc, &desc,
+											   0, 0,
+											   expspec.rows,
+											   expspec.percent,
+											   &refresh_clear);
 							}
 							else
 								break;
@@ -6722,11 +6764,22 @@ recheck_end:
 															  &next_event_keycode);
 							if (is_valid)
 							{
+								Options loc_opts;
 
-								
+								memcpy(&loc_opts, &opts, sizeof(Options));
+
+								loc_opts.copy_target = COPY_TARGET_CLIPBOARD;
+
+								export_to_file(expspec.command,
+											   expspec.format,
+											   &next_event_keycode,
+											   &loc_opts, &scrdesc, &desc,
+											   0, 0,
+											   expspec.rows,
+											   expspec.percent,
+											   &refresh_clear);
 							}
-							else
-								break;
+							break;
 						}
 						else
 						{

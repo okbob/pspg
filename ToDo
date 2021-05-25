@@ -1,9 +1,5 @@
 ToDo
 ====
-* tab complete for reading files from readline
-* \ssf search in selection forward, \ssb search in selection backward
-* \exc all csv export to clipboard
-* \exf all csv export to file
 
 
 Known bugs

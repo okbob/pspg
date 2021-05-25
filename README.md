@@ -229,6 +229,18 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd>                                  | defines rows selection, on column header defines column selection   |
 
 
+## Backslash commands
+| Command                                      | Description                |
+|----------------------------------------------|----------------------------|
+| `\[+]N`                                      | go to line number          |
+| `\-N`                                        | go to line number from end |
+| `\N+`                                        | go to N lines forward      |
+| `\N-`                                        | go to N lines backward     |
+| `\theme N`                                   | set theme number           |
+| `\copy [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
+| `\save [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
+
+
 ## Ending
 
 The pager can be ended by pressing keys <kbd>q</kbd> or <kbd>F10</kbd> or <kbd>Esc</kbd> <kbd>0</kbd>.
