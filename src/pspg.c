@@ -120,6 +120,7 @@ static attr_t	input_attr;
 static bool		forward_complete;
 static char	   *readline_prompt;
 static int		g_tabcomplete_mode;
+static const char **g_possible_tokens = NULL;
 
 #endif
 
@@ -1244,13 +1245,19 @@ get_string(Options *opts,
 	rl_callback_handler_install(prompt, got_string);
 
 
-
 	mousemask(0, &prev_mousemask);
 
 	if (xterm_mouse_mode_was_initialized)
 	{
 		disable_xterm_mouse_mode();
 		xterm_mouse_mode_was_initialized = false;
+	}
+
+	if (tabcomplete_mode == 'c')
+	{
+		rl_insert_text("\\");
+		rl_forced_update_display();
+		wrefresh(bottom_bar);
 	}
 
 	/* use default value from buffer */
@@ -2628,11 +2635,82 @@ mousex_get_colno(DataDesc *desc,
 
 #ifdef HAVE_LIBREADLINE
 
+const char *bscommands[] = {
+	"save",
+	"copy",
+	"theme",
+	"quit",
+	NULL
+};
+
+const char *export_opts[] = {
+	"all",
+	"top",
+	"bottom",
+	"selected",
+	"csv",
+	"tsvc",
+	"text",
+	"insert",
+	"cinsert",
+	NULL
+};
+
+#define IS_TOKEN(str, n, token)		((n == strlen(token)) && (strncmp(str, token, n) == 0))
+
+/*
+ * Returns pointer to first non token char. When token is valid, then
+ * output n is higher than 0 and token pointer is non null.
+ */
+static char *
+get_token(char *instr, char **token, int *n)
+{
+	*token = NULL;
+	*n = 0;
+
+	/* skip initial spaces */
+	while (*instr == ' ')
+		instr += 1;
+
+	if (*instr == '\0')
+		return NULL;
+
+	if (isalpha(*instr))
+	{
+		*token = instr++;
+		while (isalpha(*instr))
+			instr += 1;
+
+		*n = instr - *token;
+	}
+
+	return instr;
+}
+
+static char *
+completion_generator(const char *text, int state)
+{
+	static int list_index, len;
+	const char *name;
+
+	if (!state)
+	{
+		list_index = 0;
+		len = strlen(text);
+	}
+
+	while ((name = g_possible_tokens[list_index++]))
+	{
+		if (strncmp(name, text, len) == 0)
+		  return strdup(name);
+	}
+
+	return NULL;
+}
+
 static char **
 pspg_complete(const char *text, int start, int end)
 {
-	UNUSED(text);
-	UNUSED(start);
 	UNUSED(end);
 
 	if (g_tabcomplete_mode == 'f')
@@ -2644,6 +2722,51 @@ pspg_complete(const char *text, int start, int end)
 	{
 		rl_completion_suppress_append = 0;
 		rl_attempted_completion_over = 1;
+
+		if (g_tabcomplete_mode == 'c')
+		{
+			if (start > 0)
+			{
+
+				if (rl_line_buffer[start - 1] == '\\')
+				{
+					g_possible_tokens = bscommands;
+					return rl_completion_matches(text, completion_generator);
+				}
+				else if (rl_line_buffer[start - 1] == ' ')
+				{
+					int		i;
+					char   *bscommand = NULL;
+
+					for (i = start - 1; i >= 0; i--)
+					{
+						if (rl_line_buffer[i] == '\\')
+						{
+							bscommand = &rl_line_buffer[i+1];
+							break;
+						}
+					}
+
+					if (bscommand)
+					{
+						char   *token;
+						int		n;
+
+						get_token(bscommand, &token, &n);
+						if (n > 0)
+						{
+							if (IS_TOKEN(token, n, "save") ||
+								IS_TOKEN(token, n, "copy"))
+							{
+								g_possible_tokens = export_opts;
+								return rl_completion_matches(text, completion_generator);
+							}
+						}
+					}
+				}
+			}
+		}
+
 	}
 
 	return (char**) NULL;
@@ -2672,7 +2795,7 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 		werase(g_bottom_bar);
 		wmove(g_bottom_bar, 0, 0);
-		wprintw(g_bottom_bar, "%s%s", readline_prompt, matches[0]);
+		wprintw(g_bottom_bar, "%s%s", readline_prompt, rl_line_buffer);
 
 		wattron(g_bottom_bar, A_BOLD);
 		wprintw(g_bottom_bar, "%s", matches[pos] + common_length);
@@ -2706,6 +2829,12 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 			rl_insert_text(matches[pos] + common_length);
 			break;
 		}
+		else if (g_tabcomplete_mode == 'c' && c == ' ')
+		{
+			rl_insert_text(matches[pos] + common_length);
+			rl_insert_text(" ");
+			break;
+		}
 		else
 		{
 			if (c != 9 && c != -1)
@@ -2724,42 +2853,11 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 			pos = 1;
 		if (pos < 1)
 			pos = num_matches;
-
 	}
 }
 
 #endif
 
-#define IS_TOKEN(str, n, token)		((n == strlen(token)) && (strncmp(str, token, n) == 0))
-
-/*
- * Returns pointer to first non token char. When token is valid, then
- * output n is higher than 0 and token pointer is non null.
- */
-static char *
-get_token(char *instr, char **token, int *n)
-{
-	*token = NULL;
-	*n = 0;
-
-	/* skip initial spaces */
-	while (*instr == ' ')
-		instr += 1;
-
-	if (*instr == '\0')
-		return NULL;
-
-	if (isalpha(*instr))
-	{
-		*token = instr++;
-		while (isalpha(*instr))
-			instr += 1;
-
-		*n = instr - *token;
-	}
-
-	return instr;
-}
 
 typedef enum
 {
@@ -2845,7 +2943,7 @@ parse_exported_spec(Options *opts,
 				spec->format = CLIPBOARD_FORMAT_CSV;
 				format_specified = true;
 			}
-			else if (IS_TOKEN(token, n, "tsv"))
+			else if (IS_TOKEN(token, n, "tsvc"))
 			{
 				spec->format = CLIPBOARD_FORMAT_TSVC;
 				format_specified = true;
@@ -3863,7 +3961,6 @@ leaveok(stdscr, TRUE);
 				if (*cmdline_ptr == '\\')
 				{
 					next_command = cmd_BsCommand;
-					cmdline_ptr += 1;
 					break;
 				}
 
@@ -6475,8 +6572,31 @@ recheck_end:
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string(&opts, &scrdesc, "\\", cmdline, sizeof(cmdline) - 1, NULL, 'c');
+						get_string(&opts, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
 						cmdline_ptr = cmdline;
+					}
+
+					while (*cmdline_ptr == ' ')
+						cmdline_ptr++;
+
+					/*
+					 * Leave when line is empty. This code can be duplicited, because the command
+					 * can start here, or we can continue in command line processing.
+					 */
+					if (*cmdline_ptr == '\0')
+					{
+						cmdline_ptr = NULL;
+						break;
+					}
+
+					if (*cmdline_ptr++ != '\\')
+					{
+						next_event_keycode = show_info_wait(&opts, &scrdesc,
+														   " Syntax error (expected \\)",
+														   NULL, true, true, false, true);
+
+						cmdline_ptr = NULL;
+						break;
 					}
 
 					if (cmdline_ptr && *cmdline_ptr)
