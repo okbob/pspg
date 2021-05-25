@@ -2631,6 +2631,10 @@ mousex_get_colno(DataDesc *desc,
 static char **
 pspg_complete(const char *text, int start, int end)
 {
+	UNUSED(text);
+	UNUSED(start);
+	UNUSED(end);
+
 	if (g_tabcomplete_mode == 'f')
 	{
 		rl_completion_suppress_append = 1;
@@ -2651,6 +2655,8 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 	int		common_length;
 	int		pos = 1;
 	char	c = 0;
+
+	UNUSED(max_length);
 
 	forward_complete = false;
 
