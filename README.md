@@ -239,6 +239,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | `\theme N`                                   | set theme number           |
 | `\copy [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
 | `\save [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
+| `\order [N|colum name]`                      | sort by colum              |
+| `\orderd [N|colum name]`                     | desc sort by column        |
 
 
 ## Ending
