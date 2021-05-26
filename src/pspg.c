@@ -121,6 +121,7 @@ static bool		forward_complete;
 static char	   *readline_prompt;
 static int		g_tabcomplete_mode;
 static const char **g_possible_tokens = NULL;
+static DataDesc *g_desc = NULL;
 
 #endif
 
@@ -1198,6 +1199,7 @@ readline_redisplay()
 
 static bool
 get_string(Options *opts,
+		   DataDesc *desc,
 		   ScrDesc *scrdesc,
 		   char *prompt,
 		   char *buffer,
@@ -1222,6 +1224,7 @@ get_string(Options *opts,
 	force8bit = opts->force8bit;
 	input_attr = t->input_attr;
 	g_tabcomplete_mode = tabcomplete_mode;
+	g_desc = desc;
 
 	wattron(bottom_bar, t->input_attr);
 	mvwprintw(bottom_bar, 0, 0, "");
@@ -1244,6 +1247,16 @@ get_string(Options *opts,
 
 	rl_callback_handler_install(prompt, got_string);
 
+	if (tabcomplete_mode == 'c')
+	{
+		rl_completer_word_break_characters = "\\ ";
+		rl_completer_quote_characters = "\"'";
+	}
+	else
+	{
+		rl_completer_word_break_characters = NULL;
+		rl_completer_quote_characters = NULL;
+	}
 
 	mousemask(0, &prev_mousemask);
 
@@ -2272,7 +2285,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		(void) get_string(opts, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
+		(void) get_string(opts, desc, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
 		if (buffer[0] == '\0')
 			return;
 
@@ -2284,7 +2297,7 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		(void) get_string(opts, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
+		(void) get_string(opts, desc, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
 		if (table_name[0] == '\0')
 			return;
 	}
@@ -2296,7 +2309,7 @@ export_to_file(PspgCommand command,
 		{
 			char	   *endptr;
 
-			(void) get_string(opts, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
+			(void) get_string(opts, desc, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
 			if (number[0] == '\0')
 				return;
 
@@ -2643,6 +2656,8 @@ const char *bscommands[] = {
 	"copy",
 	"theme",
 	"quit",
+	"order",
+	"orderd",
 	NULL
 };
 
@@ -2693,6 +2708,57 @@ get_token(char *instr, char **token, int *n)
 }
 
 static char *
+get_identifier(char *instr, char **ident, int *n)
+{
+	char		ending_symbol = -1;
+
+	*ident = NULL;
+	*n = 0;
+
+	if (!instr)
+		return NULL;
+
+	/* skip initial spaces */
+	while (*instr == ' ')
+		instr += 1;
+
+	if (*instr == '\0')
+		return NULL;
+
+	if (*instr == '\'' || *instr == '"')
+	{
+		ending_symbol = *instr;
+		*ident = ++instr;
+
+		while (*instr)
+		{
+			if (instr[0] == '\\' &&
+				(instr[1] == '\'' || instr[1] == '"'))
+			{
+				instr += 2;
+			}
+			else if (*instr == ending_symbol)
+			{
+				*n = instr - *ident;
+				break;
+			}
+			else
+				instr += 1;
+		}
+	}
+	else if (isalnum(*instr))
+	{
+		*ident = instr++;
+		while (isalnum(*instr))
+			instr += 1;
+
+		*n = instr - *ident;
+	}
+
+	return *instr ? instr : NULL;
+}
+
+static char *
 completion_generator(const char *text, int state)
 {
 	static int list_index, len;
@@ -2707,7 +2773,37 @@ completion_generator(const char *text, int state)
 	while ((name = g_possible_tokens[list_index++]))
 	{
 		if (strncmp(name, text, len) == 0)
-		  return strdup(name);
+			return strdup(name);
+	}
+
+	return NULL;
+}
+
+static char *
+tablename_generator(const char *text, int state)
+{
+	static int list_index, len;
+	const char *name;
+	int		name_len;
+
+	if (!g_desc->namesline)
+		return NULL;
+
+	if (!state)
+	{
+		list_index = 0;
+		len = strlen(text);
+	}
+
+	while (list_index < g_desc->columns)
+	{
+		name = g_desc->namesline + g_desc->cranges[list_index].name_offset;
+		name_len = g_desc->cranges[list_index].name_size;
+
+		list_index += 1;
+
+		if (len <= name_len && strncmp(name, text, len) == 0)
+			return sstrndup(name, name_len);
 	}
 
 	return NULL;
@@ -2737,7 +2833,7 @@ pspg_complete(const char *text, int start, int end)
 					g_possible_tokens = bscommands;
 					return rl_completion_matches(text, completion_generator);
 				}
-				else if (rl_line_buffer[start - 1] == ' ')
+				else
 				{
 					int		i;
 					char   *bscommand = NULL;
@@ -2765,12 +2861,18 @@ pspg_complete(const char *text, int start, int end)
 								g_possible_tokens = export_opts;
 								return rl_completion_matches(text, completion_generator);
 							}
+							else if (IS_TOKEN(token, n, "ordd") ||
+									 IS_TOKEN(token, n, "orderd") ||
+									 IS_TOKEN(token, n, "ord") ||
+									 IS_TOKEN(token, n, "order"))
+							{
+								return rl_completion_matches(text, tablename_generator);
+							}
 						}
 					}
 				}
 			}
 		}
-
 	}
 
 	return (char**) NULL;
@@ -2843,6 +2945,12 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 		{
 			rl_insert_text(matches[pos] + common_length);
 			rl_insert_text(" ");
+			break;
+		}
+		else if (g_tabcomplete_mode == 'c' && c == '"')
+		{
+			rl_insert_text(matches[pos] + common_length);
+			rl_insert_text("\" ");
 			break;
 		}
 		else
@@ -4822,7 +4930,7 @@ hide_menu:
 							strncpy(last_nullstr, opts.nullstr, sizeof(256));
 					}
 
-					is_valid = get_string(&opts, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
+					is_valid = get_string(&opts, &desc, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
 					if (nullstr[0] != '\0')
 					{
 						free(opts.nullstr);
@@ -5994,7 +6102,7 @@ recheck_end:
 					{
 						char	linenotxt[256];
 
-						get_string(&opts, &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
+						get_string(&opts, &desc,  &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
 						if (linenotxt[0] != '\0')
 						{
 							char   *endptr;
@@ -6062,17 +6170,29 @@ recheck_end:
 			case cmd_SortAsc:
 			case cmd_SortDesc:
 				{
-					if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
-													   vertical_cursor_column))
-						break;
+					int		sortedby_colno;
+
+					if (long_argument_is_valid)
+					{
+						sortedby_colno = (int) long_argument;
+						long_argument_is_valid = false;
+					}
+					else
+					{
+						if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
+														   vertical_cursor_column))
+							break;
+
+						sortedby_colno = vertical_cursor_column;
+					}
 
 					update_order_map(&opts,
 									 &scrdesc,
 									 &desc,
-									 vertical_cursor_column,
+									 sortedby_colno,
 									 command == cmd_SortDesc);
 
-					last_ordered_column = vertical_cursor_column;
+					last_ordered_column = sortedby_colno;
 					last_order_desc = command == cmd_SortDesc;
 
 					throw_selection(&scrdesc, &mark_mode);
@@ -6230,7 +6350,7 @@ recheck_end:
 
 					search_direction = SEARCH_FORWARD;
 
-					get_string(&opts, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
+					get_string(&opts, &desc, &scrdesc, "/", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
 
 					reset_searching_lineinfo(&desc);
 
@@ -6333,7 +6453,7 @@ recheck_end:
 
 					search_direction = SEARCH_BACKWARD;
 
-					get_string(&opts, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
+					get_string(&opts, &desc, &scrdesc, "?", locsearchterm, sizeof(locsearchterm) - 1, last_row_search, 'u');
 
 					reset_searching_lineinfo(&desc);
 
@@ -6469,7 +6589,7 @@ recheck_end:
 						bool	found = false;
 						bool	search_from_start = false;
 
-						get_string(&opts, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
+						get_string(&opts, &desc, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
 
 						if (locsearchterm[0] != '\0')
 						{
@@ -6601,7 +6721,7 @@ recheck_end:
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string(&opts, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
+						get_string(&opts, &desc, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
 						cmdline_ptr = cmdline;
 					}
 
@@ -6719,6 +6839,88 @@ recheck_end:
 								cmdline[0] = '\0';
 								break;
 							}
+						}
+						else if (IS_TOKEN(cmdline_ptr, n, "ord") ||
+								 IS_TOKEN(cmdline_ptr, n, "order") ||
+								 IS_TOKEN(cmdline_ptr, n, "ordd") ||
+								 IS_TOKEN(cmdline_ptr, n, "orderd"))
+						{
+							char   *ident;
+							int		len;
+							bool	is_desc;
+							PspgCommand command;
+
+							is_desc = IS_TOKEN(cmdline_ptr, n, "ordd") ||
+									  IS_TOKEN(cmdline_ptr, n, "orderd");
+
+							command = is_desc ? cmd_SortDesc : cmd_SortAsc;
+							cmdline_ptr = get_identifier(cmdline_ptr + n, &ident, &len);
+
+							if (len > 0)
+							{
+								if (isdigit(*ident))
+								{
+									/* entered column number */
+									long_argument = strtol(ident, NULL, 10);
+									long_argument_is_valid = true;
+
+									if (long_argument >= 1 && long_argument <= desc.columns)
+										next_command = command;
+									else
+										next_event_keycode = show_info_wait(&opts, &scrdesc,
+																		   " Column number is out of range",
+																		   NULL, true, true, false, true);
+								}
+								else
+								{
+									int		i;
+									bool	found = false;
+
+									ident = trim_quoted_str(ident, &len, opts.force8bit);
+
+									for (i = 1; i <= desc.columns; i++)
+									{
+										if (opts.force8bit)
+										{
+											if (nstrstr_with_sizes(desc.namesline + desc.cranges[i - 1].name_offset,
+																   desc.cranges[i - 1].name_size,
+																   ident, len))
+											{
+												found = true;
+												break;
+											}
+										}
+										else
+										{
+											if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[i - 1].name_offset,
+																	   desc.cranges[i - 1].name_size,
+																	   ident, len))
+											{
+												found = true;
+												break;
+											}
+										}
+									}
+
+									if (found)
+									{
+										long_argument = i;
+										long_argument_is_valid = true;
+
+										next_command = command;
+									}
+									else
+										next_event_keycode = show_info_wait(&opts, &scrdesc,
+																		   " Cannot to identify column",
+																		   NULL, true, true, false, true);
+								}
+							}
+							else
+								next_event_keycode = show_info_wait(&opts, &scrdesc,
+																   " Invalid identifier (expected column name)",
+																   NULL, true, true, false, true);
+
+							break;
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "save"))
 						{
