@@ -1272,10 +1272,16 @@ get_string(Options *opts,
 
 	if (tabcomplete_mode == 'c')
 	{
+		rl_inhibit_completion = 0;
+
 		rl_insert_text("\\");
 		rl_forced_update_display();
 		wrefresh(bottom_bar);
 	}
+	else if (tabcomplete_mode == 'f')
+		rl_inhibit_completion = 0;
+	else if (tabcomplete_mode == 'u')
+		rl_inhibit_completion = 1;
 
 	/* use default value from buffer */
 	if (defstr && *defstr)
@@ -2015,6 +2021,12 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 	new->searchterm_char_size = old->searchterm_char_size;
 	new->searchterm_size = old->searchterm_size;
 
+	new->search_first_row = old->search_first_row;
+	new->search_rows = old->search_rows;
+	new->search_first_column = old->search_first_column;
+	new->search_columns = old->search_columns;
+	new->search_selected_mode = old->search_selected_mode;
+
 	memcpy(new->searchcolterm, old->searchcolterm, 255);
 	new->searchcolterm_size = old->searchcolterm_size;
 
@@ -2263,7 +2275,7 @@ export_to_file(PspgCommand command,
 		opts->no_cursor)
 	{
 		show_info_wait(opts, scrdesc,
-					   " There are not selected data",
+					   " Cursor is not visible",
 					   NULL, true, true, true, false);
 		return;
 	}
@@ -2273,7 +2285,7 @@ export_to_file(PspgCommand command,
 		  scrdesc->selected_first_column != -1))
 	{
 		show_info_wait(opts, scrdesc,
-					   " Cursor is not visible",
+					   " There are not selected data",
 					   NULL, true, true, true, false);
 		return;
 	}
@@ -2563,6 +2575,22 @@ typedef enum
  * Trivial functions reduce redundant code.
  */
 static void
+throw_searching(ScrDesc *scrdesc)
+{
+	*scrdesc->searchterm = '\0';
+	*scrdesc->searchcolterm = '\0';
+
+	scrdesc->searchterm_size = 0;
+	scrdesc->searchterm_char_size = 0;
+
+	scrdesc->search_first_row = -1;
+	scrdesc->search_rows = 0;
+	scrdesc->search_first_column = -1;
+	scrdesc->search_columns = 0;
+	scrdesc->search_selected_mode = false;
+}
+
+static void
 throw_selection(ScrDesc *scrdesc, MarkModeType *mark_mode)
 {
 	scrdesc->selected_first_row = -1;
@@ -2571,16 +2599,9 @@ throw_selection(ScrDesc *scrdesc, MarkModeType *mark_mode)
 	scrdesc->selected_columns = 0;
 
 	*mark_mode = MARK_MODE_NONE;
-}
 
-static void
-throw_searching(ScrDesc *scrdesc)
-{
-	*scrdesc->searchterm = '\0';
-	*scrdesc->searchcolterm = '\0';
-
-	scrdesc->searchterm_size = 0;
-	scrdesc->searchterm_char_size = 0;
+	if (scrdesc->search_selected_mode)
+		throw_searching(scrdesc);
 }
 
 static bool
@@ -3424,15 +3445,20 @@ parse_search_spec(Options *opts,
 				pattern_len = strlen(pattern);
 				pattern = trim_quoted_str(pattern, &pattern_len, opts->force8bit);
 				free(string_argument);
-				string_argument = sstrndup(pattern, pattern_len);
-				string_argument_is_valid = true;
+				string_argument_is_valid = false;
 
-				if (pattern_is_specified_already)
+				if (pattern_len > 0)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (pattern is specified already)",
-														 NULL, NULL, true, false, true);
-					return NULL;
+					string_argument = sstrndup(pattern, pattern_len);
+					string_argument_is_valid = true;
+
+					if (pattern_is_specified_already)
+					{
+						*next_event_keycode = show_info_wait(opts, scrdesc,
+															 " Syntax error (pattern is specified already)",
+															 NULL, NULL, true, false, true);
+						return NULL;
+					}
 				}
 
 				*is_valid = true;
@@ -6894,6 +6920,34 @@ recheck_end:
 					break;
 				}
 
+			case cmd_ForwardSearchInSelection:
+				{
+					if (scrdesc.selected_first_row == -1 &&
+						scrdesc.selected_first_column == -1)
+					{
+						next_event_keycode = show_info_wait(&opts, &scrdesc,
+														   " There are not selected area",
+														   NULL, true, true, true, false);
+						break;
+					}
+
+					next_command = cmd_ForwardSearch;
+
+					scrdesc.search_first_row = -1;
+					scrdesc.search_rows = 0;
+					scrdesc.search_first_column = -1;
+					scrdesc.search_columns = 0;
+					scrdesc.search_selected_mode = false;
+
+					scrdesc.search_first_row = scrdesc.selected_first_row;
+					scrdesc.search_rows = scrdesc.selected_rows;
+					scrdesc.search_first_column = scrdesc.selected_first_column;
+					scrdesc.search_columns = scrdesc.selected_columns;
+					scrdesc.search_selected_mode = true;
+
+					break;
+				}
+
 			case cmd_SearchColumn:
 				{
 					if (desc.namesline)
@@ -7056,7 +7110,7 @@ recheck_end:
 					if (*cmdline_ptr++ != '\\')
 					{
 						next_event_keycode = show_info_wait(&opts, &scrdesc,
-														   " Syntax error (expected \\)",
+														   " Syntax error (expected \"\\\")",
 														   NULL, true, true, false, true);
 
 						cmdline_ptr = NULL;
@@ -7167,6 +7221,36 @@ recheck_end:
 
 							if (is_valid)
 							{
+								scrdesc.search_first_row = -1;
+								scrdesc.search_rows = 0;
+								scrdesc.search_first_column = -1;
+								scrdesc.search_columns = 0;
+								scrdesc.search_selected_mode = false;
+
+								if (spec.colno > 0)
+								{
+									scrdesc.search_first_column = desc.cranges[spec.colno - 1].xmin;
+									scrdesc.search_columns = desc.cranges[spec.colno - 1].xmax - scrdesc.search_first_column + 1;
+									scrdesc.search_selected_mode = true;
+								}
+								else if (spec.selected)
+								{
+									if (scrdesc.selected_first_row == -1 &&
+										  scrdesc.selected_first_column == -1)
+									{
+										next_event_keycode = show_info_wait(&opts, &scrdesc,
+																			" There are not selected area",
+																			NULL, true, true, true, false);
+										break;
+									}
+
+									scrdesc.search_first_row = scrdesc.selected_first_row;
+									scrdesc.search_rows = scrdesc.selected_rows;
+									scrdesc.search_first_column = scrdesc.selected_first_column;
+									scrdesc.search_columns = scrdesc.selected_columns;
+									scrdesc.search_selected_mode = true;
+								}
+
 								if (spec.backward)
 									next_command = cmd_BackwardSearch;
 								else

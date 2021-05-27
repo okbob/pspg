@@ -235,6 +235,8 @@ cmd_string(int cmd)
 			return "ForwardSearch";
 		case cmd_BackwardSearch:
 			return "BackwardSearch";
+		case cmd_ForwardSearchInSelection:
+			return "ForwardSearchInSelection";
 		case cmd_SearchNext:
 			return "SearchNext";
 		case cmd_SearchPrev:
@@ -389,6 +391,8 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 				return cmd_Escape;
 			case '0':
 				return cmd_Quit;
+			case '/':
+				return cmd_ForwardSearchInSelection;
 		}
 	}
 	else

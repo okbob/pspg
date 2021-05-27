@@ -86,6 +86,7 @@ ST_MENU_ITEM _file[] = {
 ST_MENU_ITEM _search[] = {
 	{"~S~earch", cmd_ForwardSearch, "/", 0, 0, 0, NULL},
 	{"Search ~b~ackward", cmd_BackwardSearch, "?", 0, 0, 0, NULL},
+	{"Search in selection", cmd_ForwardSearchInSelection, "M-/", 0, 0, 0, NULL},
 	{"Search ~a~gain", cmd_SearchNext, "n", 0, 0, 0, NULL},
 	{"Search p~r~evious", cmd_SearchPrev, "N", 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},

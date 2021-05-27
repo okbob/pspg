@@ -170,6 +170,13 @@ typedef struct
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */
+
+	int		search_first_row;
+	int		search_rows;
+	int		search_first_column;
+	int		search_columns;
+	bool	search_selected_mode;	/* true, when searching is limitted by selected area */
+
 	bool	has_upperchr;			/* true, when search term has upper char */
 	bool	found;					/* true, when last search was successfull */
 	int		found_start_x;			/* x position of found pattern */
