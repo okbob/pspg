@@ -633,6 +633,44 @@ utf8_nstrstr_with_sizes(const char *haystack,
 	return haystack;
 }
 
+bool
+utf8_nstarts_with_with_sizes(const char *str,
+							 int str_size,
+							 const char *pattern,
+							 int pattern_size)
+{
+	while (pattern_size > 0)
+	{
+		int		bytes_c;
+		int		bytes_p;
+
+		if (str_size <= 0)
+			return false;
+
+		bytes_c = utf8charlen(*str);
+		bytes_p = utf8charlen(*pattern);
+
+		if (bytes_c != bytes_p ||
+			memcmp(str, pattern, bytes_c) != 0)
+		{
+			int		f1, f2;
+
+			f1 = utf8_tofold(str);
+			f2 = utf8_tofold(pattern);
+
+			if (f1 != f2)
+				return false;
+		}
+
+		str += bytes_c;
+		str_size -= bytes_c;
+
+		pattern += bytes_p;
+		pattern_size -= bytes_p;
+	}
+
+	return true;
+}
 
 const char *
 utf8_nstrstr(const char *haystack, const char *needle)

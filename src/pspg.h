@@ -402,6 +402,7 @@ extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *n
 extern bool nstreq(const char *str1, const char *str2);
 extern const char *nstrstr_with_sizes(const char *haystack, const int haystack_size,
 				   const char *needle, int needle_size);
+extern bool nstarts_with_with_sizes(const char *str, int str_size, const char *pattern, int pattern_size);
 
 /* from export.c */
 extern bool export_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,

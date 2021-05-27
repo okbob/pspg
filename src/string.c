@@ -118,6 +118,29 @@ nstrstr_with_sizes(const char *haystack,
 }
 
 /*
+ * Returns true, when string str starts with pattern
+ */
+bool
+nstarts_with_with_sizes(const char *str,
+					  int str_size,
+					  const char *pattern,
+					  int pattern_size)
+{
+	if (pattern_size > str_size)
+		return false;
+
+	while (pattern_size > 0)
+	{
+		if (toupper(*str++) != toupper(*pattern++))
+			return false;
+
+		pattern_size -= 1;
+	}
+
+	return true;
+}
+
+/*
  * Special string searching, lower chars are case insensitive,
  * upper chars are case sensitive.
  */

@@ -230,17 +230,18 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 
 ## Backslash commands
-| Command                                      | Description                |
-|----------------------------------------------|----------------------------|
-| `\[+]N`                                      | go to line number          |
-| `\-N`                                        | go to line number from end |
-| `\N+`                                        | go to N lines forward      |
-| `\N-`                                        | go to N lines backward     |
-| `\theme N`                                   | set theme number           |
-| `\copy [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
-| `\save [all|selected] [csv|tsv|insert|text]` | copy data to clipboard     |
-| `\order [N|colum name]`                      | sort by colum              |
-| `\orderd [N|colum name]`                     | desc sort by column        |
+| Command                                                    | Description                |
+|------------------------------------------------------------|----------------------------|
+| `\[+]N`                                                    | go to line number          |
+| `\-N`                                                      | go to line number from end |
+| `\N+`                                                      | go to N lines forward      |
+| `\N-`                                                      | go to N lines backward     |
+| `\theme N`                                                 | set theme number           |
+| `\copy [all|selected] [csv|tsv|insert|text]`               | copy data to clipboard     |
+| `\save [all|selected] [csv|tsv|insert|text]`               | copy data to clipboard     |
+| `\order [N|colum name]`                                    | sort by colum              |
+| `\orderd [N|colum name]`                                   | desc sort by column        |
+| `\search [back] [selected] [colum name] [string|"string"]` | search string in data      |
 
 
 ## Ending
