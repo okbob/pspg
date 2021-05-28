@@ -19,7 +19,6 @@ int		CTRL_END;
 int		CTRL_SHIFT_HOME;
 int		CTRL_SHIFT_END;
 
-
 #ifdef NCURSES_EXT_FUNCS
 
 static int

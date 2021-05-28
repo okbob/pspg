@@ -429,6 +429,7 @@ print_column_names(WINDOW *win,
 LineInfo *
 set_line_info(Options *opts,
 			  ScrDesc *scrdesc,
+			  DataDesc *desc,
 			  LineBufferMark *lbm,
 			  char *rowstr)
 {
@@ -456,6 +457,15 @@ set_line_info(Options *opts,
 
 		linfo->mask ^= LINEINFO_UNKNOWN;
 		linfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
+
+		if (scrdesc->search_rows > 0)
+		{
+			int		rowno = lbm->lineno - desc->first_data_row;
+
+			if (rowno < scrdesc->search_first_row ||
+				rowno > scrdesc->search_first_row + scrdesc->search_rows - 1)
+				return linfo;
+		}
 
 		while (str != NULL)
 		{
@@ -682,6 +692,7 @@ window_fill(int window_identifier,
 		int			positions[100][2];
 		int			npositions = 0;
 		int			is_in_range = false;
+		int			rowno = row + srcy_bak + 1 - desc->first_data_row;
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
@@ -692,8 +703,6 @@ window_fill(int window_identifier,
 		/* when rownum is printed, don't process original text */
 		if (is_rownum && line_is_valid)
 		{
-			int rowno = row + srcy_bak + 1 - desc->first_data_row;
-
 			snprintf(buffer, sizeof(buffer), "%*d ", maxx - 1, rowno);
 			rowstr = buffer;
 		}
@@ -701,7 +710,7 @@ window_fill(int window_identifier,
 		is_bookmark_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_BOOKMARK) != 0) ? true : false;
 
 		if (!is_fix_rows && *scrdesc->searchterm != '\0' && !opts->no_highlight_search)
-			lineinfo = set_line_info(opts, scrdesc, &lbm, rowstr);
+			lineinfo = set_line_info(opts, scrdesc, desc, &lbm, rowstr);
 
 		is_pattern_row = (lineinfo != NULL && (lineinfo->mask & LINEINFO_FOUNDSTR) != 0) ? true : false;
 
@@ -930,10 +939,8 @@ window_fill(int window_identifier,
 
 					if (is_selectable && scrdesc->selected_first_row != -1)
 					{
-						int rowno = row + srcy_bak - desc->first_data_row - 1;
-
-						if (rowno >= scrdesc->selected_first_row &&
-							rowno < scrdesc->selected_first_row + scrdesc->selected_rows)
+						if (rowno >= scrdesc->selected_first_row + 1 &&
+							rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows)
 						{
 							if (selected_xmin != -1 && pos != -1)
 							{

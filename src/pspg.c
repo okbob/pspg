@@ -2575,7 +2575,7 @@ typedef enum
  * Trivial functions reduce redundant code.
  */
 static void
-throw_searching(ScrDesc *scrdesc)
+throw_searching(ScrDesc *scrdesc, DataDesc *desc)
 {
 	*scrdesc->searchterm = '\0';
 	*scrdesc->searchcolterm = '\0';
@@ -2588,10 +2588,12 @@ throw_searching(ScrDesc *scrdesc)
 	scrdesc->search_first_column = -1;
 	scrdesc->search_columns = 0;
 	scrdesc->search_selected_mode = false;
+
+	reset_searching_lineinfo(desc);
 }
 
 static void
-throw_selection(ScrDesc *scrdesc, MarkModeType *mark_mode)
+throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *mark_mode)
 {
 	scrdesc->selected_first_row = -1;
 	scrdesc->selected_rows = 0;
@@ -2601,7 +2603,7 @@ throw_selection(ScrDesc *scrdesc, MarkModeType *mark_mode)
 	*mark_mode = MARK_MODE_NONE;
 
 	if (scrdesc->search_selected_mode)
-		throw_searching(scrdesc);
+		throw_searching(scrdesc, desc);
 }
 
 static bool
@@ -4166,9 +4168,8 @@ reinit_theme:
 	{
 		memset(&scrdesc, 0, sizeof(ScrDesc));
 
-		throw_searching(&scrdesc);
-		throw_selection(&scrdesc, &mark_mode);
-		reset_searching_lineinfo(&desc);
+		throw_searching(&scrdesc, &desc);
+		throw_selection(&scrdesc, &desc, &mark_mode);
 	}
 
 	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
@@ -5010,9 +5011,8 @@ reinit_theme:
 				   scrdesc.selected_first_row != -1 ||
 				   scrdesc.selected_first_column != -1))
 			{
-				throw_searching(&scrdesc);
-				throw_selection(&scrdesc, &mark_mode);
-				reset_searching_lineinfo(&desc);
+				throw_searching(&scrdesc, &desc);
+				throw_selection(&scrdesc, &desc, &mark_mode);
 			}
 			else
 			{
@@ -5170,9 +5170,8 @@ hide_menu:
 				   scrdesc.selected_first_row != -1 ||
 				   scrdesc.selected_first_column != -1))
 			{
-				throw_searching(&scrdesc);
-				throw_selection(&scrdesc, &mark_mode);
-				reset_searching_lineinfo(&desc);
+				throw_searching(&scrdesc, &desc);
+				throw_selection(&scrdesc, &desc, &mark_mode);
 			}
 			else
 			{
@@ -5394,11 +5393,7 @@ hide_menu:
 				opts.ignore_case = false;
 
 reset_search:
-				scrdesc.searchterm[0] = '\0';
-				scrdesc.searchterm_size = 0;
-				scrdesc.searchterm_char_size = 0;
-
-				reset_searching_lineinfo(&desc);
+				throw_searching(&scrdesc, &desc);
 				break;
 
 			case cmd_ShowTopBar:
@@ -5519,7 +5514,7 @@ reset_search:
 				if (mark_mode != MARK_MODE_ROWS &&
 					mark_mode != MARK_MODE_BLOCK)
 				{
-					throw_selection(&scrdesc, &mark_mode);
+					throw_selection(&scrdesc, &desc, &mark_mode);
 
 					mark_mode = MARK_MODE_ROWS;
 					mark_mode_start_row = cursor_row;
@@ -5536,7 +5531,7 @@ reset_search:
 
 					if (mark_mode != MARK_MODE_BLOCK)
 					{
-						throw_selection(&scrdesc, &mark_mode);
+						throw_selection(&scrdesc, &desc, &mark_mode);
 
 						mark_mode = MARK_MODE_BLOCK;
 						mark_mode_start_row = cursor_row;
@@ -5551,7 +5546,7 @@ reset_search:
 			case cmd_Mark_NestedCursorCommand:
 				if (mark_mode != MARK_MODE_CURSOR)
 				{
-					throw_selection(&scrdesc, &mark_mode);
+					throw_selection(&scrdesc, &desc, &mark_mode);
 
 					mark_mode = MARK_MODE_CURSOR;
 					mark_mode_start_row = cursor_row;
@@ -5560,11 +5555,11 @@ reset_search:
 				break;
 
 			case cmd_Unmark:
-				throw_selection(&scrdesc, &mark_mode);
+				throw_selection(&scrdesc, &desc, &mark_mode);
 				break;
 
 			case cmd_MarkAll:
-				throw_selection(&scrdesc, &mark_mode);
+				throw_selection(&scrdesc, &desc, &mark_mode);
 
 				mark_mode = MARK_MODE_NONE;
 				scrdesc.selected_first_row = 0;
@@ -6473,7 +6468,7 @@ recheck_end:
 					desc.order_map = NULL;
 					last_ordered_column = -1;
 
-					throw_selection(&scrdesc, &mark_mode);
+					throw_selection(&scrdesc, &desc, &mark_mode);
 				}
 
 				/*
@@ -6511,7 +6506,7 @@ recheck_end:
 					last_ordered_column = sortedby_colno;
 					last_order_desc = command == cmd_SortDesc;
 
-					throw_selection(&scrdesc, &mark_mode);
+					throw_selection(&scrdesc, &desc, &mark_mode);
 
 					break;
 				}
@@ -6663,8 +6658,10 @@ recheck_end:
 			case cmd_ForwardSearch:
 				{
 					char	locsearchterm[256];
+					bool	isSelSearch;
 
 					search_direction = SEARCH_FORWARD;
+					isSelSearch = scrdesc.search_rows > 0 || scrdesc.search_columns > 0;
 
 					if (string_argument_is_valid)
 					{
@@ -6677,12 +6674,10 @@ recheck_end:
 					}
 					else
 						get_string(&opts, &desc, &scrdesc,
-								   "/",
+								   isSelSearch ? "^/" : "/",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
 								   'u');
-
-					reset_searching_lineinfo(&desc);
 
 					if (locsearchterm[0] != '\0')
 					{
@@ -6690,22 +6685,17 @@ recheck_end:
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = opts.force8bit ? strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
+
+						search_direction = SEARCH_FORWARD;
+
+						reset_searching_lineinfo(&desc);
+
+						/* continue to find next: */
+						next_command = cmd_SearchNext;
 					}
 					else
-					{
-						scrdesc.searchterm[0] = '\0';
-						scrdesc.searchterm_size = 0;
-						scrdesc.searchterm_char_size = 0;
+						throw_searching(&scrdesc, &desc);
 
-						break;
-					}
-
-					reset_searching_lineinfo(&desc);
-
-					search_direction = SEARCH_FORWARD;
-
-					/* continue to find next: */
-					next_command = cmd_SearchNext;
 					break;
 				}
 
@@ -6738,6 +6728,17 @@ recheck_end:
 					while (lbi_get_line_next(&lbi, &line, NULL, &lineno))
 					{
 						const char   *pttrn;
+
+fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_ROW_OFFSET);
+
+						if (scrdesc.search_rows > 0)
+						{
+							if (lineno - CURSOR_ROW_OFFSET < scrdesc.search_first_row ||
+								lineno - CURSOR_ROW_OFFSET >= scrdesc.search_first_row + scrdesc.search_rows)
+							{
+								continue;
+							}
+						}
 
 						pttrn = pspg_search(&opts, &scrdesc, line + skip_bytes);
 						if (pttrn)
@@ -6778,8 +6779,10 @@ recheck_end:
 			case cmd_BackwardSearch:
 				{
 					char	locsearchterm[256];
+					bool	isSelSearch;
 
 					search_direction = SEARCH_BACKWARD;
+					isSelSearch = scrdesc.search_rows > 0 || scrdesc.search_columns > 0;
 
 					if (string_argument_is_valid)
 					{
@@ -6792,7 +6795,7 @@ recheck_end:
 					}
 					else
 						get_string(&opts, &desc, &scrdesc,
-								   "?",
+								   isSelSearch ? "^?" : "?",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
 								   'u');
@@ -6806,18 +6809,15 @@ recheck_end:
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
+
+						reset_searching_lineinfo(&desc);
+
+						/* continue to find next: */
+						next_command = cmd_SearchPrev;
 					}
 					else
-					{
-						scrdesc.searchterm[0] = '\0';
-						scrdesc.searchterm_size = 0;
-						scrdesc.searchterm_char_size = 0;
+						throw_searching(&scrdesc, &desc);
 
-						break;
-					}
-
-					/* continue to find next: */
-					next_command = cmd_SearchPrev;
 					break;
 				}
 
@@ -6864,6 +6864,15 @@ recheck_end:
 						{
 							if (lineno < desc.first_data_row)
 								break;
+						}
+
+						if (scrdesc.search_rows > 0)
+						{
+							if (lineno - CURSOR_ROW_OFFSET < scrdesc.search_first_row ||
+								lineno - CURSOR_ROW_OFFSET >= scrdesc.search_first_row + scrdesc.search_rows)
+							{
+								continue;
+							}
 						}
 
 						_line = cut_bytes > 0 ? sstrndup(line, cut_bytes) : line;
@@ -7719,7 +7728,7 @@ recheck_end:
 															  &cursor_col, default_freezed_cols,
 															  event.x);
 
-								throw_selection(&scrdesc, &mark_mode);
+								throw_selection(&scrdesc, &desc, &mark_mode);
 
 								mark_mode = MARK_MODE_MOUSE_COLUMNS;
 								mark_mode_start_col = mouse_col;
@@ -7757,7 +7766,7 @@ recheck_end:
 						if (event.bstate & BUTTON_ALT && is_double_click)
 						{
 							next_command = cmd_ToggleBookmark;
-							throw_selection(&scrdesc, &mark_mode);
+							throw_selection(&scrdesc, &desc, &mark_mode);
 							break;
 						}
 						else if (!(event.bstate & BUTTON_ALT || event.bstate & BUTTON_CTRL) &&
@@ -7811,7 +7820,7 @@ recheck_end:
 						if (event.bstate & BUTTON_CTRL &&
 							event.bstate & BUTTON1_PRESSED)
 						{
-							throw_selection(&scrdesc, &mark_mode);
+							throw_selection(&scrdesc, &desc, &mark_mode);
 
 							mark_mode = MARK_MODE_MOUSE;
 							mark_mode_start_row = mouse_row;
@@ -7834,7 +7843,7 @@ recheck_end:
 
 								if (event.bstate & BUTTON1_PRESSED)
 								{
-									throw_selection(&scrdesc, &mark_mode);
+									throw_selection(&scrdesc, &desc, &mark_mode);
 
 									mark_mode = MARK_MODE_MOUSE_BLOCK;
 									mark_mode_start_row = mouse_row;

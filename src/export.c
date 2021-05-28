@@ -944,7 +944,7 @@ export_data(Options *opts,
 			if (cmd == cmd_CopySearchedLines)
 			{
 				/* force lineinfo setting */
-				linfo = set_line_info(opts, scrdesc, &lbm, rowstr);
+				linfo = set_line_info(opts, scrdesc, desc, &lbm, rowstr);
 
 				if (!linfo || ((linfo->mask & LINEINFO_FOUNDSTR) == 0))
 					continue;
