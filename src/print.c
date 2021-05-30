@@ -458,6 +458,7 @@ set_line_info(Options *opts,
 		linfo->mask ^= LINEINFO_UNKNOWN;
 		linfo->mask &= ~(LINEINFO_FOUNDSTR | LINEINFO_FOUNDSTR_MULTI);
 
+		/* apply row selection filtr */
 		if (scrdesc->search_rows > 0)
 		{
 			int		rowno = lbm->lineno - desc->first_data_row;
@@ -494,6 +495,27 @@ set_line_info(Options *opts,
 
 			if (str != NULL)
 			{
+				/* apply column selection filtr */
+				if (scrdesc->search_columns > 0)
+				{
+					int		bytes = str - rowstr;
+					int		pos;
+
+					if (opts->force8bit)
+						pos = bytes;
+					else
+						pos = utf_string_dsplen(rowstr, bytes);
+
+					if (pos < scrdesc->search_first_column)
+					{
+						str += opts->force8bit ? 1 : utf8charlen(*str);
+						continue;
+					}
+
+					if (pos > scrdesc->search_first_column + scrdesc->search_columns - 1)
+						return linfo;
+				}
+
 				if (linfo->mask & LINEINFO_FOUNDSTR)
 				{
 					/* When we detect multi occurrence, then stop searching */
@@ -506,7 +528,7 @@ set_line_info(Options *opts,
 					if (opts->force8bit)
 						linfo->start_char = str - rowstr;
 					else
-						linfo->start_char = utf8len_start_stop(rowstr, str);
+						linfo->start_char = utf_string_dsplen(rowstr, str - rowstr);
 				}
 
 				str += scrdesc->searchterm_size;
@@ -727,7 +749,22 @@ window_fill(int window_identifier,
 
 				if (str != NULL)
 				{
-					positions[npositions][0] = opts->force8bit ? (size_t) (str - rowstr) : utf8len_start_stop(rowstr, str);
+					int		position = opts->force8bit ? (size_t) (str - rowstr) : utf_string_dsplen(rowstr, str - rowstr);
+
+					/* apply column selection filtr */
+					if (scrdesc->search_columns > 0)
+					{
+						if (position < scrdesc->search_first_column)
+						{
+							str += opts->force8bit ? 1 : utf8charlen(*str);
+							continue;
+						}
+
+						if (position > scrdesc->search_first_column + scrdesc->search_columns - 1)
+							break;
+					}
+
+					positions[npositions][0] = position;
 					positions[npositions][1] = positions[npositions][0] + scrdesc->searchterm_char_size;
 
 					/* don't search more if we are over visible part */

@@ -102,6 +102,7 @@ typedef enum PspgCommand
 	cmd_ForwardSearch,
 	cmd_BackwardSearch,
 	cmd_ForwardSearchInSelection,
+	cmd_BackwardSearchInSelection,
 	cmd_SearchNext,
 	cmd_SearchPrev,
 	cmd_SearchColumn,

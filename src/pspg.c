@@ -2589,6 +2589,8 @@ throw_searching(ScrDesc *scrdesc, DataDesc *desc)
 	scrdesc->search_columns = 0;
 	scrdesc->search_selected_mode = false;
 
+	scrdesc->found = false;
+
 	reset_searching_lineinfo(desc);
 }
 
@@ -6729,8 +6731,6 @@ recheck_end:
 					{
 						const char   *pttrn;
 
-fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_ROW_OFFSET);
-
 						if (scrdesc.search_rows > 0)
 						{
 							if (lineno - CURSOR_ROW_OFFSET < scrdesc.search_first_row ||
@@ -6741,13 +6741,36 @@ fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_R
 						}
 
 						pttrn = pspg_search(&opts, &scrdesc, line + skip_bytes);
+						while (pttrn)
+						{
+							/* apply column selection filtr */
+							if (scrdesc.search_columns > 0)
+							{
+								int		bytes = pttrn - line;
+								int		pos = opts.force8bit ? bytes : utf_string_dsplen(line, bytes);
+
+								if (pos < scrdesc.search_first_column)
+								{
+									pttrn += opts.force8bit ? 1 : utf8charlen(*pttrn);
+									pttrn = pspg_search(&opts, &scrdesc, pttrn);
+
+									continue;
+								}
+
+								if (pos > scrdesc.search_first_column + scrdesc.search_columns - 1)
+									pttrn = NULL;
+							}
+
+							break;
+						}
+
 						if (pttrn)
 						{
 							int		found_start_bytes = pttrn - line;
 
 							scrdesc.found_start_x =
 								opts.force8bit ? (size_t) (found_start_bytes) :
-												 utf8len_start_stop(line, pttrn);
+												 utf_string_dsplen(line, found_start_bytes);
 
 							scrdesc.found_start_bytes = found_start_bytes;
 							scrdesc.found_row = lineno;
@@ -6885,6 +6908,22 @@ fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_R
 
 							if (ptr)
 							{
+								/* apply column selection filtr */
+								if (scrdesc.search_columns > 0)
+								{
+									int		bytes = ptr - _line;
+									int		pos = opts.force8bit ? bytes : utf_string_dsplen(_line, bytes);
+
+									if (pos < scrdesc.search_first_column)
+									{
+										ptr += opts.force8bit ? 1 : utf8charlen(*ptr);
+										continue;
+									}
+
+									if (pos > scrdesc.search_first_column + scrdesc.search_columns - 1)
+										break;
+								}
+
 								most_right_pttrn = ptr;
 								ptr += scrdesc.searchterm_size;
 							}
@@ -6930,6 +6969,7 @@ fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_R
 				}
 
 			case cmd_ForwardSearchInSelection:
+			case cmd_BackwardSearchInSelection:
 				{
 					if (scrdesc.selected_first_row == -1 &&
 						scrdesc.selected_first_column == -1)
@@ -6940,7 +6980,7 @@ fprintf(debug_pipe, ">>>>%d %d %d\n", scrdesc.search_first_row, lineno, CURSOR_R
 						break;
 					}
 
-					next_command = cmd_ForwardSearch;
+					next_command = command == cmd_ForwardSearchInSelection ? cmd_ForwardSearch : cmd_BackwardSearch;
 
 					scrdesc.search_first_row = -1;
 					scrdesc.search_rows = 0;

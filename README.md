@@ -196,7 +196,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | <kbd>END</kbd>, <kbd>$</kbd>                                             | go to end of line, last column                                      |
 | <kbd>Ctrl</kbd>+<kbd>e</kbd>                                             | scroll a window down                                                |
 | <kbd>Ctrl</kbd>+<kbd>y</kbd>                                             | scroll a window up                                                  |
-| <kbd>Ctrl</kbd>+<kbd>d</kbd>                                             | forward a half window                                               |                                                                                                                                                                                                                                                                                                            
+| <kbd>Ctrl</kbd>+<kbd>d</kbd>                                             | forward a half window                                               |
 | <kbd>Ctrl</kbd>+<kbd>u</kbd>                                             | backward a half window                                              |
 | <kbd>s</kbd>                                                             | save content to file                                                |
 | <kbd>/</kbd>                                                             | search for a pattern which will take you to the next occurrence     |
@@ -204,6 +204,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | <kbd>n</kbd>                                                             | for next match                                                      |
 | <kbd>N</kbd>                                                             | for next match in reverse direction                                 |
 | <kbd>c</kbd>                                                             | column search                                                       |
+| <kbd>Alt</kbd>+<kbd>/</kbd>                                              | search for a pattern inside selected area                           |
+| <kbd>Alt</kbd>+<kbd>?</kbd>                                              | backward search for a pattern inside selected area                  |
 | <kbd>Alt</kbd>+<kbd>c</kbd>                                              | switch (on, off) drawing line cursor                                |
 | <kbd>Alt</kbd>+<kbd>m</kbd>                                              | switch (on, off) own mouse handler                                  |
 | <kbd>Alt</kbd>+<kbd>n</kbd>                                              | switch (on, off) drawing line numbers                               |
