@@ -2387,6 +2387,8 @@ export_to_file(PspgCommand command,
 
 		endwin();
 
+		signal(SIGPIPE, SIG_IGN);
+
 		if (pipecmd)
 			fp = popen(pipecmd, "w");
 		else
@@ -2484,8 +2486,21 @@ export_to_file(PspgCommand command,
 		if (use_pipe)
 		{
 			int		stdscr_delay = wgetdelay(stdscr);
+			int		res;
 
-			pclose(fp);
+			res = pclose(fp);
+
+			/*
+			 * Ignore broken pipe error, when pclose is ok. It's probably
+			 * due closing consument program.
+			 */
+			if (!isok && current_state->_errno == EPIPE && res == 0)
+			{
+				isok = true;
+				current_state->errstr = NULL;
+			}
+
+			signal(SIGPIPE, SIG_DFL);
 
 			fprintf(stderr, "press enter");
 
@@ -2555,6 +2570,9 @@ export_to_file(PspgCommand command,
 											 buffer, true, false, false, true);
 		*force_refresh = true;
 	}
+
+	current_state->errstr = NULL;
+	current_state->_errno = 0;
 }
 
 /*
@@ -3967,7 +3985,11 @@ main(int argc, char *argv[])
 		lb_print_all_ddesc(&desc, fout);
 
 		if (fout != stdout)
+		{
 			pclose(fout);
+			signal(SIGPIPE, SIG_DFL);
+			signal(SIGINT, SigintHandler);
+		}
 
 		log_row("exit without start ncurses");
 		if (state.logfile)

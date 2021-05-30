@@ -675,6 +675,7 @@ process_item(ExportState *expstate,
 
 	if (errno != 0)
 	{
+		current_state->_errno = errno;
 		format_error("%s", strerror(errno));
 		log_row("Cannot write (%s)", current_state->errstr);
 
