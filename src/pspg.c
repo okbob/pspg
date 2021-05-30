@@ -33,6 +33,7 @@
 #include <string.h>
 #include <langinfo.h>
 #include <libgen.h>
+#include <limits.h>
 #include <locale.h>
 #include <signal.h>
 #include <sys/ioctl.h>
@@ -1173,7 +1174,7 @@ readline_redisplay()
 
 	if (!g_force8bit)
 	{
-		size_t prompt_dsplen = utf_string_dsplen(rl_display_prompt, SIZE_MAX);
+		size_t prompt_dsplen = utf_string_dsplen(rl_display_prompt, INT_MAX);
 
 		cursor_col = prompt_dsplen
 					  + readline_utf_string_dsplen(rl_line_buffer, rl_point, prompt_dsplen);

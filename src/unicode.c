@@ -20,7 +20,7 @@
 /*
  * Returns length of utf8 string in chars.
  */
-size_t
+inline size_t
 utf8len(char *s)
 {
 	size_t len = 0;
@@ -85,7 +85,7 @@ struct mbinterval
 };
 
 /* auxiliary function for binary search in interval table */
-static int
+inline static int
 mbbisearch(wchar_t ucs, const struct mbinterval *table, int max)
 {
 	int			min = 0;
@@ -288,7 +288,7 @@ unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size)
  *
  * No error checks here, c must point to a long-enough string.
  */
-wchar_t
+inline wchar_t
 utf8_to_unicode(const unsigned char *c)
 {
 	if ((*c & 0x80) == 0)
@@ -324,7 +324,7 @@ utf8_to_unicode(const unsigned char *c)
 inline int
 utf_dsplen(const char *s)
 {
-	if (*s == ' ')
+	if (*s >= 0x20 && *s < 0x7f)
 		return 1;
 
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
@@ -341,14 +341,15 @@ _utf_dsplen(const char *s)
  * The string is limited by max_bytes too.
  */
 int
-utf_string_dsplen(const char *s, size_t max_bytes)
+utf_string_dsplen(const char *s, int max_bytes)
 {
 	int result = 0;
 	const char *ptr = s;
+	char	c;
 
-	while (*ptr != '\0' && max_bytes > 0)
+	while ((c = *ptr) != '\0' && max_bytes > 0)
 	{
-		if (*ptr == ' ')
+		if (c >= 0x20 && c < 0x7f)
 		{
 			ptr += 1;
 			result += 1;
@@ -358,7 +359,7 @@ utf_string_dsplen(const char *s, size_t max_bytes)
 		{
 			int		clen;
 
-			clen  = utf8charlen(*ptr);
+			clen  = utf8charlen(c);
 			result += _utf_dsplen(ptr);
 			ptr += clen;
 			max_bytes -= clen;

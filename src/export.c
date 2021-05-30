@@ -12,6 +12,7 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -493,7 +494,7 @@ process_item(ExportState *expstate,
 							if (expstate->force8bit)
 								indent_spaces = strlen(expstate->table_name) + 1 + 12;
 							else
-								indent_spaces = utf_string_dsplen(expstate->table_name, SIZE_MAX) + 1 + 12;
+								indent_spaces = utf_string_dsplen(expstate->table_name, INT_MAX) + 1 + 12;
 
 							for (i = 0; i < expstate->columns; i++)
 							{

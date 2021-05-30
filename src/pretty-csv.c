@@ -12,6 +12,7 @@
  */
 #include <ctype.h>
 #include <libgen.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -520,11 +521,11 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 						{
 							if (multiline)
 							{
-								width = utf_string_dsplen_multiline(field, SIZE_MAX, &_more_lines, true, NULL, NULL);
+								width = utf_string_dsplen_multiline(field, INT_MAX, &_more_lines, true, NULL, NULL);
 								more_lines |= _more_lines;
 							}
 							else
-								width = utf_string_dsplen(field, SIZE_MAX);
+								width = utf_string_dsplen(field, INT_MAX);
 						}
 
 						spaces = pdesc->widths[j] - width;
@@ -1521,7 +1522,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 			if (opts->force8bit)
 				desc->headline_char_size = desc->headline_size;
 			else
-				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, SIZE_MAX);
+				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, INT_MAX);
 
 			desc->first_data_row = desc->border_head_row + 1;
 
