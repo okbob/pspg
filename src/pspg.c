@@ -2250,6 +2250,7 @@ export_to_file(PspgCommand command,
 			  int cursor_column,
 			  int rows,
 			  double percent,
+			  const char *pipecmd,
 			  bool *force_refresh)
 {
 	char	buffer[MAXPATHLEN + 1024];
@@ -2258,9 +2259,10 @@ export_to_file(PspgCommand command,
 	FILE   *fp = NULL;
 	char   *path = NULL;
 	bool	isok = false;
-	bool	copy_to_file = false;
 	int		fin = -1, fout = -1, ferr = -1;
 	pid_t	pid;
+	bool	copy_to_file = false;
+	bool	use_pipe = false;
 
 	*force_refresh = false;
 
@@ -2290,11 +2292,16 @@ export_to_file(PspgCommand command,
 		return;
 	}
 
-	if (command == cmd_SaveData ||
-		command == cmd_SaveAsCSV ||
-		opts->copy_target == COPY_TARGET_FILE)
+	if (pipecmd)
 	{
-		char *prompt;
+		use_pipe = true;
+	}
+	else if (command == cmd_SaveData ||
+			 command == cmd_SaveAsCSV ||
+			 opts->copy_target == COPY_TARGET_FILE)
+	{
+		char   *prompt;
+		char   *ptr;
 
 		if (format == CLIPBOARD_FORMAT_CSV)
 			prompt = "save to CSV file: ";
@@ -2305,10 +2312,14 @@ export_to_file(PspgCommand command,
 		if (buffer[0] == '\0')
 			return;
 
-		strncpy(last_path, buffer, sizeof(last_path) - 1);
-		last_path[sizeof(last_path) - 1] = '\0';
+		ptr = buffer;
+		while (*ptr == ' ')
+			ptr++;
 
-		copy_to_file = true;
+		if (*ptr == '|')
+			use_pipe = true;
+		else
+			copy_to_file = true;
 	}
 
 	if (INSERT_FORMAT_TYPE(format))
@@ -2366,6 +2377,28 @@ export_to_file(PspgCommand command,
 		current_state->errstr = NULL;
 
 		fp = fopen(path, "w");
+	}
+	else if (use_pipe)
+	{
+		errno = 0;
+		current_state->errstr = NULL;
+
+		*force_refresh = true;
+
+		endwin();
+
+		if (pipecmd)
+			fp = popen(pipecmd, "w");
+		else
+		{
+			char   *ptr = buffer;
+
+			while (*ptr == ' ')
+				ptr++;
+
+			if (*ptr == '|')
+				fp = popen(++ptr, "w");
+		}
 	}
 	else
 	{
@@ -2448,7 +2481,19 @@ export_to_file(PspgCommand command,
 						   rows, percent, table_name,
 						   command, format);
 
-		if (copy_to_file)
+		if (use_pipe)
+		{
+			int		stdscr_delay = wgetdelay(stdscr);
+
+			pclose(fp);
+
+			fprintf(stderr, "press enter");
+
+			timeout(-1);
+			(void) getch();
+			timeout(stdscr_delay);
+		}
+		else if (copy_to_file)
 			fclose(fp);
 		else
 		{
@@ -3081,6 +3126,7 @@ typedef struct
 	ClipboardFormat format;
 	int		rows;
 	double	percent;
+	char   *pipecmd;
 } ExportedSpec;
 
 static char *
@@ -3104,6 +3150,7 @@ parse_exported_spec(Options *opts,
 	spec->format = CLIPBOARD_FORMAT_TEXT;
 	spec->rows = 0;
 	spec->percent = 0.0;
+	spec->pipecmd = NULL;
 
 	*is_valid = false;
 
@@ -3246,6 +3293,22 @@ parse_exported_spec(Options *opts,
 			}
 
 			instr = get_token(instr, &token, &n);
+		}
+
+		if (instr && *instr)
+		{
+			if (*instr == '|')
+			{
+				spec->pipecmd = ++instr;
+				instr = NULL;
+			}
+			else if (*instr != '\\')
+			{
+				*next_event_keycode = show_info_wait(opts, scrdesc,
+													 " Syntax error (unexpected symbol)",
+													 NULL, NULL, true, false, true);
+				return NULL;
+			}
 		}
 	}
 
@@ -6519,7 +6582,7 @@ recheck_end:
 								   CLIPBOARD_FORMAT_TEXT,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6530,7 +6593,7 @@ recheck_end:
 								   CLIPBOARD_FORMAT_CSV,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6542,7 +6605,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, vertical_cursor_column,
-								   0, 0.0,
+								   0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6554,7 +6617,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   0, 0.0,
+								   0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6573,7 +6636,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   0, 0.0,
+								   0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6585,7 +6648,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, vertical_cursor_column,
-								   0, 0.0,
+								   0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6597,7 +6660,7 @@ recheck_end:
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
-								   0, 0.0,
+								   0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6608,7 +6671,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6619,7 +6682,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6630,7 +6693,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6641,7 +6704,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -6652,7 +6715,7 @@ recheck_end:
 								   opts.clipboard_format,
 								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
-								   0, 0, 0, 0.0,
+								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
 					break;
 				}
@@ -7393,6 +7456,7 @@ recheck_end:
 											   0, 0,
 											   expspec.rows,
 											   expspec.percent,
+											   expspec.pipecmd,
 											   &refresh_clear);
 							}
 							else
@@ -7424,6 +7488,7 @@ recheck_end:
 											   0, 0,
 											   expspec.rows,
 											   expspec.percent,
+											   expspec.pipecmd,
 											   &refresh_clear);
 							}
 							break;

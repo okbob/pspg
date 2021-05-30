@@ -245,6 +245,10 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | `\orderd [N|colum name]`                                   | desc sort by column        |
 | `\search [back] [selected] [colum name] [string|"string"]` | search string in data      |
 
+The output can be redirected to any command when the name starts with pipe symbol:
+
+    \copy csv | less
+
 
 ## Ending
 
