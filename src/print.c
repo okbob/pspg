@@ -749,7 +749,7 @@ window_fill(int window_identifier,
 
 				if (str != NULL)
 				{
-					int		position = opts->force8bit ? (size_t) (str - rowstr) : utf_string_dsplen(rowstr, str - rowstr);
+					int		position = opts->force8bit ? (int) (str - rowstr) : utf_string_dsplen(rowstr, str - rowstr);
 
 					/* apply column selection filtr */
 					if (scrdesc->search_columns > 0)

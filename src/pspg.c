@@ -6898,7 +6898,7 @@ recheck_end:
 							int		found_start_bytes = pttrn - line;
 
 							scrdesc.found_start_x =
-								opts.force8bit ? (size_t) (found_start_bytes) :
+								opts.force8bit ? (int) (found_start_bytes) :
 												 utf_string_dsplen(line, found_start_bytes);
 
 							scrdesc.found_start_bytes = found_start_bytes;
