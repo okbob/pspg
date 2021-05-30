@@ -2766,6 +2766,7 @@ const char *export_opts[] = {
 	"text",
 	"insert",
 	"cinsert",
+	"nullstr",
 	NULL
 };
 
@@ -3144,6 +3145,7 @@ typedef struct
 	ClipboardFormat format;
 	int		rows;
 	double	percent;
+	char   *nullstr;
 	char   *pipecmd;
 } ExportedSpec;
 
@@ -3159,6 +3161,7 @@ parse_exported_spec(Options *opts,
 	bool	format_specified = false;
 	bool	range_is_specified_already = false;
 	bool	range_specified = false;
+	bool	null_is_specified_already = false;
 
 	bool	next_token_shouldbe_number = false;
 	char   *token;
@@ -3168,6 +3171,7 @@ parse_exported_spec(Options *opts,
 	spec->format = CLIPBOARD_FORMAT_TEXT;
 	spec->rows = 0;
 	spec->percent = 0.0;
+	spec->nullstr = NULL;
 	spec->pipecmd = NULL;
 
 	*is_valid = false;
@@ -3249,6 +3253,45 @@ parse_exported_spec(Options *opts,
 			{
 				spec->format = CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS;
 				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "null") ||
+					 IS_TOKEN(token, n, "nullstr"))
+			{
+				char	*ident;
+				int		ident_len;
+
+				if (null_is_specified_already)
+				{
+					*next_event_keycode = show_info_wait(opts, scrdesc,
+														 " Syntax error (null is specified already)",
+														 NULL, NULL, true, false, true);
+					return NULL;
+				}
+
+				while (*instr == ' ')
+					instr += 1;
+
+				if (*instr != '"')
+				{
+					*next_event_keycode = show_info_wait(opts, scrdesc,
+														 " Syntax error (expected '\"')",
+														 NULL, NULL, true, false, true);
+					return NULL;
+				}
+
+				instr = get_identifier(instr, &ident, &ident_len);
+				if (!ident)
+				{
+					*next_event_keycode = show_info_wait(opts, scrdesc,
+														 " Syntax error (expected closed quoted string)",
+														 NULL, NULL, true, false, true);
+					return NULL;
+				}
+
+				ident = trim_quoted_str(ident, &ident_len, opts->force8bit);
+
+				if (ident_len > 0)
+					spec->nullstr = sstrndup(ident, ident_len);
 			}
 			else
 			{
@@ -7390,8 +7433,6 @@ recheck_end:
 								else
 									next_command = cmd_ForwardSearch;
 							}
-
-							break;
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "ord") ||
 								 IS_TOKEN(cmdline_ptr, n, "order") ||
@@ -7449,8 +7490,6 @@ recheck_end:
 								next_event_keycode = show_info_wait(&opts, &scrdesc,
 																   " Invalid identifier (expected column name)",
 																   NULL, true, true, false, true);
-
-							break;
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "save"))
 						{
@@ -7470,6 +7509,8 @@ recheck_end:
 								memcpy(&loc_opts, &opts, sizeof(Options));
 
 								loc_opts.copy_target = COPY_TARGET_FILE;
+								loc_opts.nullstr = expspec.nullstr;
+								loc_opts.empty_string_is_null = !expspec.nullstr;
 
 								export_to_file(expspec.command,
 											   expspec.format,
@@ -7481,8 +7522,8 @@ recheck_end:
 											   expspec.pipecmd,
 											   &refresh_clear);
 							}
-							else
-								break;
+
+							free(expspec.nullstr);
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "copy"))
 						{
@@ -7502,6 +7543,8 @@ recheck_end:
 								memcpy(&loc_opts, &opts, sizeof(Options));
 
 								loc_opts.copy_target = COPY_TARGET_CLIPBOARD;
+								loc_opts.nullstr = expspec.nullstr;
+								loc_opts.empty_string_is_null = !expspec.nullstr;
 
 								export_to_file(expspec.command,
 											   expspec.format,
@@ -7513,7 +7556,8 @@ recheck_end:
 											   expspec.pipecmd,
 											   &refresh_clear);
 							}
-							break;
+
+							free(expspec.nullstr);
 						}
 						else
 						{

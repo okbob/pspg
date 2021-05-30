@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	4.6.3
+Version: 	5.0.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,13 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Sun May 30 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- new light PaperColor theme
+- possibility to set nullstr used by export routines
+- introduction interactive command line and backslash commands
+- \save, \copy, \theme, \quit, \order, \orderd and \search commands
+- possibility to push export output to some program by using pipe
+
 * Sat Apr 17 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - --menu-always ensure active top bar menu all time
 - modify theme 9
