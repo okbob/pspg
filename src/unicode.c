@@ -13,17 +13,16 @@
 
 #include <ctype.h>
 #include <stdbool.h>
-
 #include "unicode.h"
 #include "string.h"
 
 /*
  * Returns length of utf8 string in chars.
  */
-inline size_t
-utf8len(char *s)
+inline int
+utf8len(const char *s)
 {
-	size_t len = 0;
+	int len = 0;
 
 	for (; *s; ++s)
 		if ((*s & 0xC0) != 0x80)
@@ -49,7 +48,7 @@ utf8len_start_stop(const char *start, const char *stop)
  * Returns length of utf8 char in bytes
  */
 inline int
-utf8charlen(char ch)
+utf8charlen(const char ch)
 {
 	if ((ch & 0x80) == 0)
 		return 1;
@@ -341,29 +340,31 @@ _utf_dsplen(const char *s)
  * The string is limited by max_bytes too.
  */
 int
-utf_string_dsplen(const char *s, int max_bytes)
+utf_string_dsplen(const char *s, int bytes)
 {
 	int result = 0;
-	const char *ptr = s;
-	char	c;
 
-	while ((c = *ptr) != '\0' && max_bytes > 0)
+	while (bytes > 0)
 	{
+		const char c = *s;
+
 		if (c >= 0x20 && c < 0x7f)
 		{
-			ptr += 1;
+			s += 1;
 			result += 1;
-			max_bytes -= 1;
-		} 
-		else
-		{
-			int		clen;
-
-			clen  = utf8charlen(c);
-			result += _utf_dsplen(ptr);
-			ptr += clen;
-			max_bytes -= clen;
+			bytes -= 1;
 		}
+		else if (c)
+		{
+			int clen  = utf8charlen(c);
+
+			result += _utf_dsplen(s);
+
+			s += clen;
+			bytes -= clen;
+		}
+		else
+			break;
 	}
 
 	return result;

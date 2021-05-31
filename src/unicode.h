@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-extern size_t utf8len(char *s);
+extern int utf8len(const char *s);
 extern size_t utf8len_start_stop(const char *start, const char *stop);
 extern int utf8charlen(char ch);
 extern int utf_dsplen(const char *s);
