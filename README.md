@@ -171,6 +171,7 @@ Options can be passed inside env variable `PSPG` too.
 | 20 | Tao Light theme                       |
 | 21 | FlatWhite theme                       |
 | 22 | Relational pipes theme                |
+| 23 | Paper Color theme                     |
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
@@ -239,15 +240,15 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | `\N+`                                                        | go to N lines forward      |
 | `\N-`                                                        | go to N lines backward     |
 | `\theme N`                                                   | set theme number           |
-| `\copy [all|selected] [nullstr "str"] [csv|tsv|insert|text]` | copy data to clipboard     |
-| `\save [all|selected] [nullstr "str"] [csv|tsv|insert|text]` | copy data to clipboard     |
-| `\order [N|colum name]`                                      | sort by colum              |
-| `\orderd [N|colum name]`                                     | desc sort by column        |
-| `\search [back] [selected] [colum name] [string|"string"]`   | search string in data      |
+| `\copy [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text]` | copy data to clipboard     |
+| `\save [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text]` | copy data to clipboard     |
+| `\order [N\|colum name]`                                      | sort by colum              |
+| `\orderd [N\|colum name]`                                     | desc sort by column        |
+| `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
 
 The output can be redirected to any command when the name starts with pipe symbol:
 
-    \copy csv | less
+    \copy csv \| less
 
 
 ## Ending
