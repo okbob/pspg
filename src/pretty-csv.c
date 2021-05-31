@@ -1442,6 +1442,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	pconfig.ignore_short_rows = opts->ignore_short_rows;
 
 	rowbuckets.allocated = false;
+	rowbuckets.nrows = 0;
 
 	if (query)
 	{

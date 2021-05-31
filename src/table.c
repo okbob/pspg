@@ -593,6 +593,9 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		desc->filename[64] = '\0';
 	}
 
+	if (!state->fp)
+		return false;
+
 	clearerr(state->fp);
 
 	/* detection truncating */
