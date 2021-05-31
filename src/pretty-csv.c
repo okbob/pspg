@@ -968,7 +968,8 @@ read_tsv(RowBucketType *rb,
 	int		size = 0;
 	int		nfields = 0;
 	int		c;
-	int		nullstr_size = strlen(opts->nullstr);
+	int		nullstr_size = opts->nullstr ? strlen(opts->nullstr) : 0;
+	char   *nullstr = opts->nullstr ? opts->nullstr : "";
 
 	c = fgetc(ifile);
 	do
@@ -991,7 +992,7 @@ read_tsv(RowBucketType *rb,
 					/* NULL */
 					if (c == 'N')
 					{
-						append_str(linebuf, opts->nullstr);
+						append_str(linebuf, nullstr);
 						size += nullstr_size;
 						goto next_char;
 					}
@@ -1091,7 +1092,7 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, opts->nullstr);
+		postprocess_rows(rb, linebuf, force8bit, nullstr);
 }
 
 static void
@@ -1112,7 +1113,8 @@ read_csv(RowBucketType *rb,
 	int		nfields = 0;
 	int		instr = false;			/* true when csv string is processed */
 	int		c;
-	int		nullstr_size = strlen(opts->nullstr);
+	int		nullstr_size = opts->nullstr ? strlen(opts->nullstr) : 0;
+	char   *nullstr = opts->nullstr ? opts->nullstr : "";
 
 	c = fgetc(ifile);
 
@@ -1210,7 +1212,7 @@ read_csv(RowBucketType *rb,
 					linebuf->sizes[nfields] = nullstr_size;
 					linebuf->starts[nfields++] = pos;
 
-					append_str(linebuf, opts->nullstr);
+					append_str(linebuf, nullstr);
 					pos += nullstr_size;
 				}
 
@@ -1273,7 +1275,7 @@ read_csv(RowBucketType *rb,
 				linebuf->sizes[nfields] = nullstr_size;
 				linebuf->starts[nfields++] = pos;
 
-				append_str(linebuf, opts->nullstr);
+				append_str(linebuf, nullstr);
 				pos += nullstr_size;
 			}
 			else
@@ -1355,7 +1357,7 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, opts->nullstr);
+		postprocess_rows(rb, linebuf, force8bit, nullstr);
 }
 
 /*

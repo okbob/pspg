@@ -3728,7 +3728,6 @@ main(int argc, char *argv[])
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_header = 'a';				/* auto detection */
-	opts.nullstr = "";
 	opts.border_type = 2;			/* outer border */
 
 #ifdef HAVE_INOTIFY
