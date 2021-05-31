@@ -829,7 +829,8 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 				td = (sec - last_watch_sec) * 1000 + ms - last_watch_ms;
 
-				if (desc->title[0] != '\0' || desc->filename[0] != '\0')
+				if (!current_state->errstr &&
+					(desc->title[0] != '\0' || desc->filename[0] != '\0'))
 					x = maxx / 4;
 
 				if (paused)
