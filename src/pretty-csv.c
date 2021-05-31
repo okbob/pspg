@@ -1404,6 +1404,15 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 	memset(desc, 0, sizeof(DataDesc));
 
+	if (state->pathname[0])
+	{
+		char	   *name;
+
+		name = basename(state->pathname);
+		strncpy(desc->filename, name, 64);
+		desc->filename[64] = '\0';
+	}
+
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
 	desc->border_top_row = -1;
