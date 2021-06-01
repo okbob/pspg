@@ -430,6 +430,8 @@ pager = /usr/bin/pspg --csv --rr=2 --quit-if-one-screen --ignore-case --csv-head
 table_format = csv
 ```
 
+Older version of pgcli had very slow output in tabular format. An workaround was using csv format. This should not be necessary on current versions when the performance issue was fixed.
+
 # Note - mouse
 
 pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique. If there
