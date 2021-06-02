@@ -248,7 +248,7 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 The output can be redirected to any command when the name starts with pipe symbol:
 
-    \copy csv \| less
+    \copy csv | less
 
 
 ## Ending
