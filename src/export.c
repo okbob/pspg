@@ -94,7 +94,10 @@ csv_format(char *str, int *slen,
 		int		size = force8bit ? 1 : utf8charlen(*ptr);
 
 		if (*str == '"')
+		{
 			*ptr++ = '"';
+			*slen += 1;
+		}
 
 		_slen -= size;
 		*slen += size;
@@ -589,11 +592,44 @@ process_item(ExportState *expstate,
 			fputc('\n', expstate->fp);
 	}
 
+	else if (expstate->format == CLIPBOARD_FORMAT_PIPE_SEPARATED)
+	{
+		errno = 0;
+
+		if (!is_colname)
+		{
+			if (typ != 'N')
+			{
+				if (typ == 'I' || typ == 'd')
+				{
+					/* Ignore items outer to selected range */
+					if (expstate->xmin != -1 &&
+						(xpos <= expstate->xmin ||
+						 expstate->xmax <= xpos))
+					return true;
+
+					if (typ == 'd')
+					{
+						field = trim_str(field, &size, expstate->force8bit);
+						fwrite(field, size, 1, expstate->fp);
+					}
+					else
+						fputs(" | ", expstate->fp);
+				}
+			}
+			else
+				fputc('\n', expstate->fp);
+		}
+	}
+
 	/*
 	 * Export in CSV or TSV format
 	 */
 	else if (DSV_FORMAT_TYPE(expstate->format))
 	{
+		if (expstate->format == CLIPBOARD_FORMAT_SQL_VALUES && is_colname)
+			return true;
+
 		if (typ == 'N' &&
 			!expstate->copy_line_extended && 
 			!has_continue_mark)
@@ -610,12 +646,20 @@ process_item(ExportState *expstate,
 
 				field = trim_str(field, &size, expstate->force8bit);
 
-				_field = csv_format(field, &size,
-									expstate->force8bit,
-									expstate->empty_string_is_null,
-									expstate->nullstr,
-									expstate->nullstrlen);
+				if (expstate->format == CLIPBOARD_FORMAT_SQL_VALUES)
+					_field = quote_sql_literal(field,
+											   &size,
+											   expstate->force8bit,
+											   expstate->empty_string_is_null,
+											   expstate->nullstr,
+											   expstate->nullstrlen);
+				else
 
+					_field = csv_format(field, &size,
+										expstate->force8bit,
+										expstate->empty_string_is_null,
+										expstate->nullstr,
+										expstate->nullstrlen);
 
 				if (expstate->copy_line_extended && is_colname)
 				{
@@ -645,7 +689,8 @@ process_item(ExportState *expstate,
 					if (expstate->colno > 0)
 					{
 
-						if (expstate->format == CLIPBOARD_FORMAT_CSV)
+						if (expstate->format == CLIPBOARD_FORMAT_CSV ||
+							expstate->format == CLIPBOARD_FORMAT_SQL_VALUES)
 							fputc(',', expstate->fp);
 						else if (expstate->format == CLIPBOARD_FORMAT_TSVC)
 							fputc('\t', expstate->fp);

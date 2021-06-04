@@ -1260,7 +1260,7 @@ get_string(Options *opts,
 	}
 	else
 	{
-		rl_completer_word_break_characters = NULL;
+		rl_completer_word_break_characters = (char *) rl_basic_word_break_characters;
 		rl_completer_quote_characters = NULL;
 	}
 
@@ -1328,6 +1328,7 @@ get_string(Options *opts,
 		prev_c = c;
 
 		forward_to_readline(c);
+
 		wrefresh(bottom_bar);
 
 		if (!input_is_valid)
@@ -2766,9 +2767,11 @@ const char *export_opts[] = {
 	"csv",
 	"tsvc",
 	"text",
+	"pipesep",
 	"insert",
 	"cinsert",
 	"nullstr",
+	"sqlvalues",
 	NULL
 };
 
@@ -3241,9 +3244,21 @@ parse_exported_spec(Options *opts,
 				spec->format = CLIPBOARD_FORMAT_TSVC;
 				format_specified = true;
 			}
+			else if (IS_TOKEN(token, n, "sqlval") ||
+					 IS_TOKEN(token, n, "sqlvalues"))
+			{
+				spec->format = CLIPBOARD_FORMAT_SQL_VALUES;
+				format_specified = true;
+			}
 			else if (IS_TOKEN(token, n, "text"))
 			{
 				spec->format = CLIPBOARD_FORMAT_TEXT;
+				format_specified = true;
+			}
+			else if (IS_TOKEN(token, n, "pipesep") ||
+					 IS_TOKEN(token, n, "ps"))
+			{
+				spec->format = CLIPBOARD_FORMAT_PIPE_SEPARATED;
 				format_specified = true;
 			}
 			else if (IS_TOKEN(token, n, "insert"))
@@ -5207,6 +5222,8 @@ reinit_theme:
 						next_command != cmd_UseClipboard_text &&
 						next_command != cmd_UseClipboard_INSERT &&
 						next_command != cmd_UseClipboard_INSERT_with_comments &&
+						next_command != cmd_UseClipboard_SQL_values &&
+						next_command != cmd_UseClipboard_pipe_separated &&
 						next_command != cmd_SetCopyFile &&
 						next_command != cmd_SetCopyClipboard &&
 						next_command != cmd_TogleEmptyStringIsNULL &&
@@ -5452,6 +5469,28 @@ hide_menu:
 
 			case cmd_UseClipboard_TSVC:
 				opts.clipboard_format = CLIPBOARD_FORMAT_TSVC;
+
+#ifdef COMPILE_MENU
+
+				refresh_clipboard_options(&opts, menu);
+
+#endif
+
+				break;
+
+			case cmd_UseClipboard_SQL_values:
+				opts.clipboard_format = CLIPBOARD_FORMAT_SQL_VALUES;
+
+#ifdef COMPILE_MENU
+
+				refresh_clipboard_options(&opts, menu);
+
+#endif
+
+				break;
+
+			case cmd_UseClipboard_pipe_separated:
+				opts.clipboard_format = CLIPBOARD_FORMAT_PIPE_SEPARATED;
 
 #ifdef COMPILE_MENU
 

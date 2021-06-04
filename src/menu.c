@@ -65,6 +65,8 @@ ST_MENU_ITEM _copy[] = {
 	{"_2_Use formatted text", cmd_UseClipboard_text, NULL, 0, 0, 0, NULL},
 	{"_3_Use INSERT format", cmd_UseClipboard_INSERT, NULL, 0, 0, 0, NULL},
 	{"_4_Use commented INSERT format", cmd_UseClipboard_INSERT_with_comments, NULL, 0, 0, 0, NULL},
+	{"_5_Use SQL Values format", cmd_UseClipboard_SQL_values, NULL, 0, 0, 0, NULL},
+	{"_6_Use pipe separated text", cmd_UseClipboard_pipe_separated, NULL, 0, 0, 0, NULL},
 	{NULL, 0, NULL, 0, 0, 0, NULL}
 };
 
@@ -415,6 +417,9 @@ refresh_clipboard_options(Options *opts, struct ST_MENU *menu)
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_INSERT);
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_MARKED,
 					   opts->clipboard_format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
+
+	st_menu_set_option(menu, cmd_UseClipboard_SQL_values, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_SQL_VALUES);
+	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_PIPE_SEPARATED);
 }
 
 void

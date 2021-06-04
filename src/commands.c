@@ -290,6 +290,10 @@ cmd_string(int cmd)
 			return "UseClipboardFormatTSVC";
 		case cmd_UseClipboard_text:
 			return "UseClipboardFormattext";
+		case cmd_UseClipboard_SQL_values:
+			return "UseClipboardFormatSQLValues";
+		case cmd_UseClipboard_pipe_separated:
+			return "UseClipboardFormatPipeSeparated";
 		case cmd_UseClipboard_INSERT:
 			return "UseClipboardFormatINSERT";
 		case cmd_UseClipboard_INSERT_with_comments:
