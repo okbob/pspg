@@ -16,6 +16,8 @@
 #include "unicode.h"
 #include "string.h"
 
+inline static wchar_t utf8_to_unicode(const unsigned char *c);
+
 /*
  * Returns length of utf8 string in chars.
  */
@@ -287,7 +289,7 @@ unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size)
  *
  * No error checks here, c must point to a long-enough string.
  */
-inline wchar_t
+inline static wchar_t
 utf8_to_unicode(const unsigned char *c)
 {
 	if ((*c & 0x80) == 0)

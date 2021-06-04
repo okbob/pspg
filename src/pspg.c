@@ -383,7 +383,7 @@ trim_footer_rows(Options *opts, DataDesc *desc)
 			else
 				*line = '\0';
 
-			len = opts->force8bit ? strlen(line) : utf8len(line);
+			len = opts->force8bit ? (int) strlen(line) : utf8len(line);
 			if (len > desc->footer_char_size)
 				desc->footer_char_size = len;
 		}
@@ -6854,7 +6854,7 @@ recheck_end:
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
 						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
-						scrdesc.searchterm_char_size = opts.force8bit ? strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
+						scrdesc.searchterm_char_size = opts.force8bit ? (int) strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
 
 						search_direction = SEARCH_FORWARD;
 
