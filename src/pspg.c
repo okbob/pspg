@@ -301,6 +301,27 @@ disable_xterm_mouse_mode(void)
 	fflush(stdout);
 }
 
+/*
+ * ncurses in RHEL 7 doesn't support wgetdelay function  This function
+ * was introduced in ncurses 6.0. See build issue #174.
+ *
+ */
+static inline int
+_wgetdelay(WINDOW *w)
+{
+
+#if NCURSES_VERSION_MAJOR >= 6
+
+	return wgetdelay(w);
+
+#else
+
+	return 1000;
+
+#endif
+
+}
+
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
 #ifdef DEBUG_PIPE
@@ -1824,7 +1845,7 @@ repeat:
 			/* activate unblocking mode */
 			if (!hungry_mouse_mode)
 			{
-				stdscr_delay = wgetdelay(stdscr);
+				stdscr_delay = _wgetdelay(stdscr);
 
 				timeout(0);
 
@@ -2488,7 +2509,7 @@ export_to_file(PspgCommand command,
 
 		if (use_pipe)
 		{
-			int		stdscr_delay = wgetdelay(stdscr);
+			int		stdscr_delay = _wgetdelay(stdscr);
 			int		res;
 
 			res = pclose(fp);
