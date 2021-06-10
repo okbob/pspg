@@ -147,7 +147,7 @@ isBottomLeftChar(char *str)
  * detect different faces of headline in extended mode
  */
 bool
-is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx)
+is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 {
 	int		pos = 0;
 
@@ -191,7 +191,7 @@ is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx)
 		while (*str != ']' && *str != '\0')
 		{
 			pos += 1;
-			str += opts->force8bit ? 1 : utf8charlen(*str);
+			str += charlen(str);
 		}
 
 		*ei_maxx = pos - 1;
@@ -480,7 +480,7 @@ endline_exit:
  * Copy trimmed string
  */
 static void
-strncpytrim(Options *opts, char *dest, const char *src,
+strncpytrim(char *dest, const char *src,
 			size_t ndest, size_t nsrc)
 {
 	const char *endptr;
@@ -510,7 +510,7 @@ strncpytrim(Options *opts, char *dest, const char *src,
 		if (*src == '\0')
 			break;
 
-		clen = (size_t) opts->force8bit ? 1 : utf8charlen(*src);
+		clen = (size_t) charlen(src);
 		if (clen <= ndest && clen <= nsrc)
 		{
 			size_t		i;
@@ -675,21 +675,21 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		/* save possible table name */
 		if (nrows == 0 && !isTopLeftChar(line))
 		{
-			strncpytrim(opts, desc->title, line, 63, read);
+			strncpytrim(desc->title, line, 63, read);
 			desc->title_rows = 1;
 		}
 
 		if (desc->border_head_row == -1 && desc->border_top_row == -1 && isTopLeftChar(line))
 		{
 			desc->border_top_row = nrows;
-			desc->is_expanded_mode = is_expanded_header(opts, line, NULL, NULL);
+			desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 		}
 		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
 		{
 			desc->border_head_row = nrows;
 
 			if (!desc->is_expanded_mode)
-				desc->is_expanded_mode = is_expanded_header(opts, line, NULL, NULL);
+				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 
 			/* title surely doesn't it there */
 			if ((!desc->is_expanded_mode && nrows == 1) ||
@@ -828,7 +828,7 @@ broken_format:
  * Translate from UTF8 to semantic characters.
  */
 bool
-translate_headline(Options *opts, DataDesc *desc)
+translate_headline(DataDesc *desc)
 {
 	char   *srcptr;
 	char   *destptr;
@@ -836,7 +836,6 @@ translate_headline(Options *opts, DataDesc *desc)
 	bool	broken_format = false;
 	int		processed_chars = 0;
 	bool	is_expanded_info = false;
-	bool	force8bit = opts->force8bit;
 
 	srcptr = desc->headline;
 	destptr = smalloc(desc->headline_size + 2);
@@ -876,7 +875,7 @@ translate_headline(Options *opts, DataDesc *desc)
 			desc->expanded_info_minx = processed_chars;
 
 			*destptr++ = 'd';
-			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
+			srcptr += charlen(srcptr);
 		}
 		else if (is_expanded_info)
 		{
@@ -885,7 +884,7 @@ translate_headline(Options *opts, DataDesc *desc)
 				is_expanded_info = false;
 			}
 			*destptr++ = 'd';
-			srcptr += force8bit ? 1 : utf8charlen(*srcptr);
+			srcptr += charlen(srcptr);
 		}
 		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
 				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
@@ -1123,8 +1122,8 @@ translate_headline(Options *opts, DataDesc *desc)
 				}
 				else
 				{
-					nextchar = namesline + (opts->force8bit ? 1 : utf8charlen(*namesline));
-					display_width = opts->force8bit ? 1 : utf_dsplen(namesline);
+					nextchar = namesline + charlen(namesline);
+					display_width = dsplen(namesline);
 				}
 			}
 			else
@@ -1209,7 +1208,6 @@ cut_text(char *str,
 		 int xmin,
 		 int xmax,
 		 bool border0,
-		 bool force8bit,
 		 char **result)
 {
 #define TEXT_STACK_BUFFER_SIZE		1024
@@ -1219,12 +1217,12 @@ cut_text(char *str,
 		char	   *_str = NULL;
 		char	   *after_last_nospc = NULL;
 		int			pos = 0;
-		int			charlen;
+		int			chrlen;
 		bool		skip_left_spaces = true;
 
 		while (*str)
 		{
-			charlen = utf8charlen(*str);
+			chrlen = charlen(str);
 
 			if (pos > xmin || (border0 && pos >= xmin))
 			{
@@ -1244,10 +1242,10 @@ cut_text(char *str,
 			}
 
 			if (*str != ' ')
-				after_last_nospc = str + charlen;
+				after_last_nospc = str + chrlen;
 
 			pos += utf_dsplen(str);
-			str += charlen;
+			str += chrlen;
 
 			if (pos >= xmax)
 				break;
@@ -1265,7 +1263,7 @@ cut_text(char *str,
 			if (!cstr)
 				leave("out of memory");
 
-			if (force8bit)
+			if (!use_utf8)
 			{
 				*result = cstr;
 				return true;
@@ -1351,7 +1349,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 
 		while (*str)
 		{
-			int		charlen = utf8charlen(*str);
+			int		chrlen = charlen(str);
 
 			if (x > xmin || (border0 && x >= xmin))
 			{
@@ -1382,16 +1380,16 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 						while (*str)
 						{
 							if (*str != ' ')
-								after_last_nospace = str + charlen;
+								after_last_nospace = str + chrlen;
 
-							x += utf_dsplen(str);
-							str += charlen;
+							x += dsplen(str);
+							str += chrlen;
 
 							if (x >= xmax)
 								break;
 
 							if (*str)
-								charlen = utf8charlen(*str);
+								chrlen = charlen(str);
 						}
 
 						len = after_last_nospace - saved_str;
@@ -1421,7 +1419,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					only_digits = true;
 				}
 
-				memcpy(buffptr, str, charlen);
+				memcpy(buffptr, str, chrlen);
 
 				/* trim from right */
 				if (c != ' ')
@@ -1429,7 +1427,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					bool	only_digits_prev = only_digits;
 					bool	only_digits_with_point_prev = only_digits_with_point;
 
-					after_last_nospace = buffptr + charlen;
+					after_last_nospace = buffptr + chrlen;
 					if (after_last_nospace - buffer > (BUFFER_MAX_SIZE - 1))
 					{
 						/* too long string - should not be translated to number */
@@ -1460,11 +1458,11 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 						first_nospace_nodigit = buffptr;
 					}
 				}
-				buffptr += charlen;
+				buffptr += chrlen;
 			}
 
-			x += utf_dsplen(str);
-			str += charlen;
+			x += dsplen(str);
+			str += chrlen;
 
 			if (x >= xmax)
 				break;
@@ -1520,12 +1518,10 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
  * Try to detect multiline rows.
  */
 void
-multilines_detection(Options *opts, DataDesc *desc)
+multilines_detection(DataDesc *desc)
 {
 	LineBufferIter	lbi;
 	LineBufferMark	lbm;
-
-	bool		force8bit = opts->force8bit;
 
 	bool		border0 = (desc->border_type == 0);
 	bool		border1 = (desc->border_type == 1);
@@ -1561,7 +1557,7 @@ multilines_detection(Options *opts, DataDesc *desc)
 				{
 					char	*sym;
 
-					sym = str + (force8bit ? 1 : utf8charlen(*str));
+					sym = str + charlen(str);
 					if (*sym != '\0')
 						found_continuation_symbol = is_line_continuation_char(sym, desc);
 				}
@@ -1588,8 +1584,8 @@ multilines_detection(Options *opts, DataDesc *desc)
 				break;
 			}
 
-			pos += force8bit ? 1 : utf_dsplen(str);
-			str += force8bit ? 1 : utf8charlen(*str);
+			pos += dsplen(str);
+			str += charlen(str);
 		}
 	}
 
@@ -1602,7 +1598,7 @@ multilines_detection(Options *opts, DataDesc *desc)
  * original order. "sbcn" - sort by column number
  */
 void
-update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort)
+update_order_map(ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort)
 {
 	LineBuffer	   *lnb = &desc->rows;
 	char		   *nullstr = NULL;
@@ -1622,7 +1618,7 @@ update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool
 	sortbuf = smalloc(desc->total_rows * sizeof(SortData));
 
 	/* multilines should be detected first */
-	multilines_detection(opts, desc);
+	multilines_detection(desc);
 
 	lnb = &desc->rows;
 	lineno = 0;
@@ -1714,7 +1710,7 @@ sort_by_string:
 						sortbuf[sortbuf_pos].lnb_row = i;
 						sortbuf[sortbuf_pos].d = 0.0;
 
-						if (cut_text(lnb->rows[i], xmin, xmax, border0, opts->force8bit, &sortbuf[sortbuf_pos].strxfrm))
+						if (cut_text(lnb->rows[i], xmin, xmax, border0, &sortbuf[sortbuf_pos].strxfrm))
 							sortbuf[sortbuf_pos++].info = INFO_STRXFRM;
 						else
 							sortbuf[sortbuf_pos++].info = INFO_UNKNOWN;		/* empty string */

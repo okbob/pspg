@@ -279,13 +279,13 @@ init_menu_config(Options *opts)
 		fcp = st_menu_load_style(&menu_config,
 								 menu_theme,
 								 40,
-								 opts->force8bit,
+								 !use_utf8,
 								 opts->force_ascii_art);
 
 		st_menu_load_style(&menu_config2,
 						   ST_MENU_STYLE_FREE_DOS_P,
 						   fcp,
-						   opts->force8bit,
+						   !use_utf8,
 						   opts->force_ascii_art);
 	}
 	else
@@ -293,7 +293,7 @@ init_menu_config(Options *opts)
 							   menu_theme,
 							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 40,
 							   &start_from_rgb,
-							   opts->force8bit,
+							   !use_utf8,
 							   opts->force_ascii_art);
 
 	/* extra pspg menu theme customization */

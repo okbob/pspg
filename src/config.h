@@ -50,7 +50,6 @@ typedef struct
 	bool	no_highlight_search;
 	bool	no_highlight_lines;
 	bool	force_uniborder;
-	bool	force8bit;
 	bool	no_commandbar;
 	bool	no_topbar;
 	bool	show_rownum;

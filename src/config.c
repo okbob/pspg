@@ -82,7 +82,7 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val, char **str_val)
 			char   *str;
 
 			size = strlen(line);
-			str = trim_quoted_str(line, &size, true);
+			str = trim_quoted_str(line, &size);
 
 			*str_val = sstrndup(str, size);
 			return 3;

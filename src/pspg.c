@@ -111,7 +111,6 @@
 
 static char		readline_buffer[1024];
 static bool		got_readline_string;
-static bool		g_force8bit;
 static unsigned char	input;
 static bool		input_avail = false;
 
@@ -192,6 +191,11 @@ int buffered_mouse_events_read = 0;
 
 static char   *string_argument = NULL;
 static bool	string_argument_is_valid = false;
+
+/*
+ * Global setting
+ */
+bool use_utf8;
 
 
 /*
@@ -355,13 +359,13 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 
 	if (ignore_case || (ignore_lower_case && !has_upperchr))
 	{
-		result = opts->force8bit ? nstrstr(str, searchterm) : utf8_nstrstr(str, searchterm);
+		result = use_utf8 ? utf8_nstrstr(str, searchterm) : nstrstr(str, searchterm);
 	}
 	else if (ignore_lower_case && has_upperchr)
 	{
-		result = opts->force8bit ?
-						nstrstr_ignore_lower_case(str, searchterm) :
-						utf8_nstrstr_ignore_lower_case(str, searchterm);
+		result = use_utf8 ?
+						utf8_nstrstr_ignore_lower_case(str, searchterm) :
+						nstrstr_ignore_lower_case(str, searchterm);
 	}
 	else
 		result = strstr(str, searchterm);
@@ -373,7 +377,7 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
  * Trim footer rows - We should to trim footer rows and calculate footer_char_size
  */
 static void
-trim_footer_rows(Options *opts, DataDesc *desc)
+trim_footer_rows(DataDesc *desc)
 {
 	if (desc->headline_transl != NULL && desc->footer_row != -1)
 	{
@@ -404,7 +408,7 @@ trim_footer_rows(Options *opts, DataDesc *desc)
 			else
 				*line = '\0';
 
-			len = opts->force8bit ? (int) strlen(line) : utf8len(line);
+			len = use_utf8 ? utf8len(line) : (int) strlen(line);
 			if (len > desc->footer_char_size)
 				desc->footer_char_size = len;
 		}
@@ -1009,7 +1013,7 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 		while (bytes > 0 && *str != '\0')
 		{
-			size_t		sz = opts->force8bit ? 1 : utf8charlen(*str);
+			size_t		sz = charlen(str);
 
 			if (sz > bytes)
 				break;
@@ -1194,7 +1198,7 @@ readline_redisplay()
 {
 	size_t cursor_col;
 
-	if (!g_force8bit)
+	if (use_utf8)
 	{
 		size_t prompt_dsplen = utf_string_dsplen(rl_display_prompt, INT_MAX);
 
@@ -1248,7 +1252,6 @@ get_string(Options *opts,
 
 	g_bottom_bar = bottom_bar;
 	got_readline_string = false;
-	g_force8bit = opts->force8bit;
 	input_attr = t->input_attr;
 	g_tabcomplete_mode = tabcomplete_mode;
 	g_desc = desc;
@@ -1398,7 +1401,7 @@ finish_read:
 			int		bytes;
 
 			bytes = strlen(readline_buffer);
-			tstr = trim_quoted_str(readline_buffer, &bytes, opts->force8bit);
+			tstr = trim_quoted_str(readline_buffer, &bytes);
 
 			bytes = bytes < (maxsize - 1) ? bytes : (maxsize - 1);
 			memcpy(buffer, tstr, bytes);
@@ -1454,7 +1457,7 @@ finish_read:
 		int		bytes;
 
 		bytes = strlen(buffer);
-		tstr = trim_quoted_str(buffer, &bytes, opts->force8bit);
+		tstr = trim_quoted_str(buffer, &bytes);
 
 		memcpy(buffer, tstr, bytes);
 		buffer[bytes] = '\0';
@@ -1493,19 +1496,9 @@ finish_read:
 #define SEARCH_BACKWARD			2
 
 static bool
-has_upperchr(Options *opts, char *str)
+has_upperchr(char *str)
 {
-	if (opts->force8bit)
-	{
-		while (*str != '\0')
-		{
-			if (isupper(*str))
-				return true;
-
-			str += 1;
-		}
-	}
-	else
+	if (use_utf8)
 	{
 		while (*str != '\0')
 		{
@@ -1513,6 +1506,16 @@ has_upperchr(Options *opts, char *str)
 				return true;
 
 			str += utf8charlen(*str);
+		}
+	}
+	else
+	{
+		while (*str != '\0')
+		{
+			if (isupper(*str))
+				return true;
+
+			str += 1;
 		}
 	}
 
@@ -2446,17 +2449,18 @@ export_to_file(PspgCommand command,
 		if (format == CLIPBOARD_FORMAT_TEXT ||
 			INSERT_FORMAT_TYPE(format))
 		{
-			if (opts->force8bit)
-				fmt = "text/plain";
-			else
+			if (use_utf8)
 				fmt = "text/plain;charset=utf-8";
+			else
+				fmt = "text/plain";
+
 		}
 		else if (format == CLIPBOARD_FORMAT_CSV)
 		{
-			if (opts->force8bit)
-				fmt = "text/csv";
-			else
+			if (use_utf8)
 				fmt = "text/csv;charset=utf-8";
+			else
+				fmt = "text/csv";
 		}
 		else if (format == CLIPBOARD_FORMAT_TSVC)
 		{
@@ -2464,10 +2468,10 @@ export_to_file(PspgCommand command,
 		}
 		else /* fallback */
 		{
-			if (opts->force8bit)
-				fmt = "text/plain";
-			else
+			if (use_utf8)
 				fmt = "text/plain;charset=utf-8";
+			else
+				fmt = "text/plain";
 		}
 
 		if (clipboard_application_id == 1)
@@ -2931,14 +2935,14 @@ tablename_generator(const char *text, int state)
 
 		list_index += 1;
 
-		if (g_force8bit)
+		if (use_utf8)
 		{
-			if (nstarts_with_with_sizes(name, name_len, text, len))
+			if (utf8_nstarts_with_with_sizes(name, name_len, text, len))
 				return sstrndup(name, name_len);
 		}
 		else
 		{
-			if (utf8_nstarts_with_with_sizes(name, name_len, text, len))
+			if (nstarts_with_with_sizes(name, name_len, text, len))
 				return sstrndup(name, name_len);
 		}
 	}
@@ -3326,7 +3330,7 @@ parse_exported_spec(Options *opts,
 					return NULL;
 				}
 
-				ident = trim_quoted_str(ident, &ident_len, opts->force8bit);
+				ident = trim_quoted_str(ident, &ident_len);
 
 				if (ident_len > 0)
 					spec->nullstr = sstrndup(ident, ident_len);
@@ -3420,8 +3424,7 @@ parse_exported_spec(Options *opts,
  * Returns count of column names with pattern string
  */
 static int
-substr_column_name_search(Options *opts,
-						  DataDesc *desc,
+substr_column_name_search(DataDesc *desc,
 						  char *pattern,
 						  int len,
 						  int first_colno,
@@ -3437,9 +3440,9 @@ substr_column_name_search(Options *opts,
 		char	   *name = desc->namesline + desc->cranges[i - 1].name_offset;
 		int			size = desc->cranges[i - 1].name_size;
 
-		if (opts->force8bit)
+		if (use_utf8)
 		{
-			if (nstrstr_with_sizes(name, size, pattern, len))
+			if (utf8_nstrstr_with_sizes(name, size, pattern, len))
 			{
 				if (*colno == -1)
 					*colno = i;
@@ -3449,7 +3452,7 @@ substr_column_name_search(Options *opts,
 		}
 		else
 		{
-			if (utf8_nstrstr_with_sizes(name, size, pattern, len))
+			if (nstrstr_with_sizes(name, size, pattern, len))
 			{
 				if (*colno == -1)
 					*colno = i;
@@ -3585,9 +3588,9 @@ parse_search_spec(Options *opts,
 						{
 							int		count;
 
-							ident = trim_quoted_str(ident, &len, opts->force8bit);
+							ident = trim_quoted_str(ident, &len);
 
-							if ((count = substr_column_name_search(opts, desc, ident, len, 1, &spec->colno)) == 0)
+							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
 							{
 								*next_event_keycode = show_info_wait(opts, scrdesc,
 																    " Cannot to identify column",
@@ -3609,7 +3612,7 @@ parse_search_spec(Options *opts,
 				}
 
 				pattern_len = strlen(pattern);
-				pattern = trim_quoted_str(pattern, &pattern_len, opts->force8bit);
+				pattern = trim_quoted_str(pattern, &pattern_len);
 				free(string_argument);
 				string_argument_is_valid = false;
 
@@ -3931,10 +3934,15 @@ main(int argc, char *argv[])
 
 	setlocale(LC_ALL, "");
 
-	/* Don't use UTF when terminal doesn't use UTF */
-	opts.force8bit = strcmp(nl_langinfo(CODESET), "UTF-8") != 0;
+	/*
+	 * Don't use UTF when terminal doesn't use UTF. Without
+	 * correct setting of encoding, the ncurses should not
+	 * work too.
+	 */
+	use_utf8 = strcmp(nl_langinfo(CODESET), "UTF-8") == 0;
 
 	log_row("started");
+	log_row("%s utf8 support", use_utf8 ? "with" : "without");
 
 	if (opts.csv_format || opts.tsv_format || opts.query)
 		result = read_and_format(&opts, &desc, &state);
@@ -3983,7 +3991,7 @@ main(int argc, char *argv[])
 	}
 
 	if (desc.headline)
-		(void) translate_headline(&opts, &desc);
+		(void) translate_headline(&desc);
 
 	detected_format = desc.headline_transl;
 
@@ -4314,7 +4322,7 @@ reinit_theme:
 
 	first_data_row = desc.first_data_row;
 
-	trim_footer_rows(&opts, &desc);
+	trim_footer_rows(&desc);
 
 	if (reinit)
 	{
@@ -4395,7 +4403,7 @@ reinit_theme:
 						break;
 					}
 					pos += 1;
-					str += opts.force8bit ? 1 : utf8charlen(*str);
+					str += charlen(str);
 				}
 			}
 		}
@@ -4432,7 +4440,7 @@ reinit_theme:
 					}
 				}
 
-				trim_footer_rows(&opts, &desc);
+				trim_footer_rows(&desc);
 			}
 		}
 	}
@@ -5062,7 +5070,7 @@ reinit_theme:
 							memcpy(&desc, &desc2, sizeof(desc));
 
 							if (desc.headline)
-								(void) translate_headline(&opts, &desc);
+								(void) translate_headline(&desc);
 
 							if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 							{
@@ -5110,7 +5118,7 @@ reinit_theme:
 							last_watch_sec = sec; last_watch_ms = ms;
 
 							if (last_ordered_column != -1)
-								update_order_map(&opts, &scrdesc, &desc, last_ordered_column, last_order_desc);
+								update_order_map(&scrdesc, &desc, last_ordered_column, last_order_desc);
 						}
 						else
 							DataDescFree(&desc2);
@@ -6705,8 +6713,7 @@ recheck_end:
 						sortedby_colno = vertical_cursor_column;
 					}
 
-					update_order_map(&opts,
-									 &scrdesc,
+					update_order_map(&scrdesc,
 									 &desc,
 									 sortedby_colno,
 									 command == cmd_SortDesc);
@@ -6890,9 +6897,9 @@ recheck_end:
 					if (locsearchterm[0] != '\0')
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
+						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
-						scrdesc.searchterm_char_size = opts.force8bit ? (int) strlen(scrdesc.searchterm) : utf8len(scrdesc.searchterm);
+						scrdesc.searchterm_char_size = use_utf8 ?  utf8len(scrdesc.searchterm) : (int) strlen(scrdesc.searchterm);
 
 						search_direction = SEARCH_FORWARD;
 
@@ -6953,11 +6960,11 @@ recheck_end:
 							if (scrdesc.search_columns > 0)
 							{
 								int		bytes = pttrn - line;
-								int		pos = opts.force8bit ? bytes : utf_string_dsplen(line, bytes);
+								int		pos = use_utf8 ? utf_string_dsplen(line, bytes) : bytes;
 
 								if (pos < scrdesc.search_first_column)
 								{
-									pttrn += opts.force8bit ? 1 : utf8charlen(*pttrn);
+									pttrn += charlen(pttrn);
 									pttrn = pspg_search(&opts, &scrdesc, pttrn);
 
 									continue;
@@ -6975,8 +6982,7 @@ recheck_end:
 							int		found_start_bytes = pttrn - line;
 
 							scrdesc.found_start_x =
-								opts.force8bit ? (int) (found_start_bytes) :
-												 utf_string_dsplen(line, found_start_bytes);
+								use_utf8 ? utf_string_dsplen(line, found_start_bytes) : (int) (found_start_bytes);
 
 							scrdesc.found_start_bytes = found_start_bytes;
 							scrdesc.found_row = lineno;
@@ -7035,7 +7041,7 @@ recheck_end:
 					{
 
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = has_upperchr(&opts, scrdesc.searchterm);
+						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
@@ -7118,11 +7124,11 @@ recheck_end:
 								if (scrdesc.search_columns > 0)
 								{
 									int		bytes = ptr - _line;
-									int		pos = opts.force8bit ? bytes : utf_string_dsplen(_line, bytes);
+									int		pos = use_utf8 ? utf_string_dsplen(_line, bytes) : bytes;
 
 									if (pos < scrdesc.search_first_column)
 									{
-										ptr += opts.force8bit ? 1 : utf8charlen(*ptr);
+										ptr += charlen(ptr);
 										continue;
 									}
 
@@ -7144,8 +7150,7 @@ recheck_end:
 								first_row = cursor_row;
 
 							scrdesc.found_start_x =
-								opts.force8bit ? (size_t) (found_start_bytes) :
-												 utf8len_start_stop(_line, most_right_pttrn);
+								use_utf8 ? utf8len_start_stop(_line, most_right_pttrn) : (size_t) (found_start_bytes);
 
 							scrdesc.found_start_bytes = found_start_bytes;
 							scrdesc.found_row = lineno;
@@ -7256,9 +7261,9 @@ recheck_end:
 
 							for (colnum = startcolumn; colnum <= desc.columns; colnum++)
 							{
-								if (opts.force8bit)
+								if (use_utf8)
 								{
-									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
+									if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
 														   desc.cranges[colnum - 1].name_size,
 														   scrdesc.searchcolterm,
 														   scrdesc.searchcolterm_size))
@@ -7269,7 +7274,7 @@ recheck_end:
 								}
 								else
 								{
-									if (utf8_nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
+									if (nstrstr_with_sizes(desc.namesline + desc.cranges[colnum - 1].name_offset,
 														   desc.cranges[colnum - 1].name_size,
 														   scrdesc.searchcolterm,
 														   scrdesc.searchcolterm_size))
@@ -7548,8 +7553,8 @@ recheck_end:
 									int		count;
 									int		colno;
 
-									ident = trim_quoted_str(ident, &len, opts.force8bit);
-									count = substr_column_name_search(&opts, &desc, ident, len, 1, &colno);
+									ident = trim_quoted_str(ident, &len);
+									count = substr_column_name_search(&desc, ident, len, 1, &colno);
 
 									long_argument = colno;
 

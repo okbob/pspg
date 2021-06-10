@@ -341,7 +341,7 @@ extern LineInfo *set_line_info(Options *opts, ScrDesc *scrdesc, DataDesc *desc, 
 #define PSPG_ERRSTR_BUFFER_SIZE		2048
 extern char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
-extern bool is_expanded_header(Options *opts, char *str, int *ei_minx, int *ei_maxx);
+extern bool is_expanded_header(char *str, int *ei_minx, int *ei_maxx);
 extern int min_int(int a, int b);
 extern const char *nstrstr(const char *haystack, const char *needle);
 extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *needle);
@@ -384,13 +384,15 @@ extern char *sstrdup(const char *str);
 extern char *sstrdup2(const char *str, char *debugstr);
 extern char *sstrndup(const char *str, int bytes);
 
-extern char *trim_str(const char *str, int *size, bool force8bit);
-extern char *trim_quoted_str(const char *str, int *size, bool force8bit);
+extern int charlen(const char *str);
+extern int dsplen(const char *str);
+extern char *trim_str(const char *str, int *size);
+extern char *trim_quoted_str(const char *str, int *size);
 extern void InitExtStr(ExtStr *estr);
 extern void ResetExtStr(ExtStr *estr);
 extern void ExtStrAppendNewLine(ExtStr *estr, char *str);
-extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, bool force8bit, char linestyle, bool continuation_mark);
-extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit);
+extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, bool continuation_mark);
+extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);
@@ -398,10 +400,10 @@ extern char *tilde(char *dest, const char *path);
 
 /* from table.c */
 extern bool readfile(Options *opts, DataDesc *desc, StateData *state);
-extern bool translate_headline(Options *opts, DataDesc *desc);
-extern void multilines_detection(Options *opts, DataDesc *desc);
+extern bool translate_headline(DataDesc *desc);
+extern void multilines_detection(DataDesc *desc);
 
-extern void update_order_map(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort);
+extern void update_order_map(ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort);
 
 /* from string.c */
 extern const char *nstrstr(const char *haystack, const char *needle);
@@ -436,6 +438,12 @@ extern bool ddesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos);
 extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
 extern void lb_free(DataDesc *desc);
 extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
+
+
+/*
+ * Global setting
+ */
+extern bool use_utf8;
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

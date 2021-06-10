@@ -51,7 +51,6 @@ typedef struct
 	int			size;
 	int			free;
 	LineBuffer *linebuf;
-	bool		force8bit;
 	int			flushed_rows;		/* number of flushed rows */
 	int			maxbytes;
 	bool		printed_headline;
@@ -383,7 +382,7 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 				break;
 			}
 
-			chrl = printbuf->force8bit ? 1 : utf8charlen(*ptr);
+			chrl = charlen(ptr);
 			size += chrl;
 			ptr += chrl;
 		}
@@ -497,7 +496,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 					{
 						bool	left_align = pdesc->types[j] != 'd';
 
-						if (printbuf->force8bit)
+						if (!use_utf8)
 						{
 							if (multiline)
 							{
@@ -713,7 +712,6 @@ static void
 postprocess_fields(int nfields,
 				   RowType *row,
 				   LinebufType *linebuf,
-				   bool force8bit,
 				   bool ignore_short_rows,
 				   bool reduced_sizes,			/* the doesn't calculate ending zero */
 				   bool *is_multiline_row)
@@ -739,7 +737,7 @@ postprocess_fields(int nfields,
 		if (linebuf->hidden[i])
 			continue;
 
-		if (force8bit)
+		if (!use_utf8)
 		{
 			size_t		cw = 0;
 			char	    *ptr = row->fields[i];
@@ -807,11 +805,10 @@ postprocess_fields(int nfields,
 static void
 postprocess_rows(RowBucketType *rb,
 				 LinebufType *linebuf,
-				 bool force8bit,
 				 char *nullstr)
 {
 	size_t		nullstr_size = strlen(nullstr);
-	size_t		nullstr_width = force8bit ? strlen(nullstr) : (size_t) utf_string_dsplen(nullstr, strlen(nullstr));
+	size_t		nullstr_width = use_utf8 ? (size_t) utf_string_dsplen(nullstr, strlen(nullstr)) : strlen(nullstr);
 
 	while (rb)
 	{
@@ -959,7 +956,6 @@ mark_hidden_columns(LinebufType *linebuf,
 static void
 read_tsv(RowBucketType *rb,
 		 LinebufType *linebuf,
-		 bool force8bit,
 		 FILE *ifile,
 		 bool ignore_short_rows,
 		 Options *opts)
@@ -1067,7 +1063,6 @@ read_tsv(RowBucketType *rb,
 				postprocess_fields(nfields,
 								   row,
 								   linebuf,
-								   force8bit,
 								   ignore_short_rows,
 								   false,
 								   &multiline);
@@ -1092,14 +1087,13 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, nullstr);
+		postprocess_rows(rb, linebuf, nullstr);
 }
 
 static void
 read_csv(RowBucketType *rb,
 		 LinebufType *linebuf,
 		 char sep,
-		 bool force8bit,
 		 FILE *ifile,
 		 bool ignore_short_rows,
 		 Options *opts)
@@ -1225,7 +1219,7 @@ read_csv(RowBucketType *rb,
 				last_nw = pos;
 			}
 
-			l = force8bit ? 1 : utf8charlen(c);
+			l = use_utf8 ? utf8charlen(c) : 1;
 			if (l > 1)
 			{
 				int		i;
@@ -1324,7 +1318,6 @@ read_csv(RowBucketType *rb,
 			postprocess_fields(nfields,
 							   row,
 							   linebuf,
-							   force8bit,
 							   ignore_short_rows,
 							   true,
 							   &multiline);
@@ -1357,7 +1350,7 @@ next_char:
 
 	/* append nullstr to missing columns */
 	if (nullstr_size > 0 && !ignore_short_rows)
-		postprocess_rows(rb, linebuf, force8bit, nullstr);
+		postprocess_rows(rb, linebuf, nullstr);
 }
 
 /*
@@ -1446,7 +1439,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	linebuf.used = 0;
 	linebuf.size = 10 * 1024;
 
-	pconfig.linestyle = (opts->force_ascii_art || opts->force8bit) ? 'a' : 'u';
+	pconfig.linestyle = (opts->force_ascii_art || !use_utf8) ? 'a' : 'u';
 	pconfig.border = opts->border_type;
 	pconfig.double_header = opts->double_header;
 	pconfig.header_mode = opts->csv_header;
@@ -1476,7 +1469,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		read_csv(&rowbuckets,
 				 &linebuf,
 				 opts->csv_separator,
-				 opts->force8bit,
 				 state->fp, opts->ignore_short_rows,
 				 opts);
 
@@ -1486,7 +1478,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	{
 		read_tsv(&rowbuckets,
 				 &linebuf,
-				 opts->force8bit,
 				 state->fp,
 				 opts->ignore_short_rows,
 				 opts);
@@ -1500,7 +1491,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	printbuf.free = linebuf.size;
 	printbuf.used = 0;
 	printbuf.linebuf = &desc->rows;
-	printbuf.force8bit = opts->force8bit;
 
 	/* init other printbuf fields */
 	printbuf.printed_headline = false;
@@ -1531,10 +1521,10 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 			desc->headline = desc->rows.rows[headline_rowno];
 			desc->headline_size = strlen(desc->headline);
 
-			if (opts->force8bit)
-				desc->headline_char_size = desc->headline_size;
-			else
+			if (use_utf8)
 				desc->headline_char_size = desc->maxx = utf_string_dsplen(desc->headline, INT_MAX);
+			else
+				desc->headline_char_size = desc->headline_size;
 
 			desc->first_data_row = desc->border_head_row + 1;
 

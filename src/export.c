@@ -26,7 +26,6 @@
  */
 static char *
 csv_format(char *str, int *slen,
-		   bool force8bit,
 		   bool empty_string_is_null,
 		   char *nullstr, int nullstrlen)
 {
@@ -45,7 +44,7 @@ csv_format(char *str, int *slen,
 	}
 
 
-	if (!force8bit &&
+	if (use_utf8 &&
 		*slen == 3 && strncmp(str, "\342\210\205", 3) == 0)
 	{
 		*slen = 0;
@@ -73,7 +72,7 @@ csv_format(char *str, int *slen,
 			break;
 		}
 
-		size = force8bit ? 1 : utf8charlen(*ptr);
+		size = charlen(ptr);
 
 		ptr += size;
 		_slen -= size;
@@ -91,7 +90,7 @@ csv_format(char *str, int *slen,
 	*slen = 1;
 	while (_slen > 0)
 	{
-		int		size = force8bit ? 1 : utf8charlen(*ptr);
+		int		size = charlen(ptr);
 
 		if (*str == '"')
 		{
@@ -117,7 +116,7 @@ csv_format(char *str, int *slen,
  * Ensure correct format for SQL identifier
  */
 static char *
-quote_sql_identifier(char *str, int *slen, bool force8bit)
+quote_sql_identifier(char *str, int *slen)
 {
 	bool	needs_quoting = false;
 	char   *ptr, *result;
@@ -139,7 +138,7 @@ quote_sql_identifier(char *str, int *slen, bool force8bit)
 
 		while (*ptr && _slen > 0)
 		{
-			int		size = force8bit ? 1 : utf8charlen(*ptr);
+			int		size = charlen(ptr);
 
 			if (!((*ptr >= 'a' && *ptr <= 'z') ||
 				(*ptr >= '0' && *ptr <= '9') ||
@@ -167,7 +166,7 @@ quote_sql_identifier(char *str, int *slen, bool force8bit)
 
 	while (_slen > 0)
 	{
-		int		size = force8bit ? 1 : utf8charlen(*ptr);
+		int		size = charlen(ptr);
 
 		if (*str == '"')
 			*ptr++ = '"';
@@ -189,7 +188,6 @@ quote_sql_identifier(char *str, int *slen, bool force8bit)
 static char *
 quote_sql_literal(char *str,
 				  int *slen,
-				  bool force8bit,
 				  bool empty_string_is_null,
 				  char *nullstr,
 				  int nullstrlen)
@@ -220,7 +218,7 @@ quote_sql_literal(char *str,
 		 strncmp(str, "null", *slen) == 0))
 		return str;
 
-	if (!force8bit &&
+	if (use_utf8 &&
 		*slen == 3 && strncmp(str, "\342\210\205", 3) == 0)
 	{
 		*slen = 4;
@@ -238,7 +236,7 @@ quote_sql_literal(char *str,
 
 	while (*ptr && _slen > 0)
 	{
-		int		size = force8bit ? 1 : utf8charlen(*ptr);
+		int		size = charlen(ptr);
 
 		if (*ptr == '.')
 		{
@@ -273,7 +271,7 @@ quote_sql_literal(char *str,
 
 	while (_slen > 0)
 	{
-		int		size = force8bit ? 1 : utf8charlen(*ptr);
+		int		size = charlen(ptr);
 
 		if (*str == '\'')
 			*ptr++ = '\'';
@@ -299,7 +297,6 @@ typedef struct
 {
 	char	   *row;
 	char	   *headline;
-	bool		force8bit;
 	int			xpos;
 } FmtLineIter;
 
@@ -321,16 +318,8 @@ next_char(FmtLineIter *iter,
 	*typ = *(iter->headline);
 	*xpos = iter->xpos;
 
-	if (iter->force8bit)
-	{
-		*size = 1;
-		*width = 1;
-	}
-	else
-	{
-		*size = utf8charlen(*result);
-		*width = utf_dsplen(result);
-	}
+	*size = charlen(result);
+	*width = dsplen(result);
 
 	iter->row += *size;
 	iter->headline += *width;
@@ -349,7 +338,6 @@ typedef struct
 	char	   *table_name;
 	int			columns;
 
-	bool		force8bit;
 	bool		empty_string_is_null;
 
 	char	   *nullstr;
@@ -385,7 +373,6 @@ process_item(ExportState *expstate,
 				InitExtStr(estr);
 
 			ExtStrAppendLine(estr, field, size,
-							 expstate->force8bit,
 							 expstate->linestyle,
 							 has_continue_mark);
 
@@ -400,13 +387,12 @@ process_item(ExportState *expstate,
 			if (estr->len > 0)
 			{
 				ExtStrAppendLine(estr, field, size,
-								 expstate->force8bit,
 								 expstate->linestyle,
 								 has_continue_mark);
 
 				size = ExtStrTrimEnd(estr,
-									 expstate->format == CLIPBOARD_FORMAT_TSVC,
-									 expstate->force8bit);
+									 expstate->format == CLIPBOARD_FORMAT_TSVC);
+
 				field = estr->data;
 
 				/* Reset doesn't release memory */
@@ -441,8 +427,8 @@ process_item(ExportState *expstate,
 					memset(expstate->colnames, 0, sizeof(char *) * expstate->columns);
 				}
 
-				field = trim_str(field, &size, expstate->force8bit);
-				_field = quote_sql_identifier(field, &size, expstate->force8bit);
+				field = trim_str(field, &size);
+				_field = quote_sql_identifier(field, &size);
 
 				if (!_field)
 					expstate->colnames[expstate->colno] = sstrdup("");
@@ -494,10 +480,10 @@ process_item(ExportState *expstate,
 							int		columns = 0;
 							int		loc_colno = 0;
 
-							if (expstate->force8bit)
-								indent_spaces = strlen(expstate->table_name) + 1 + 12;
-							else
+							if (use_utf8)
 								indent_spaces = utf_string_dsplen(expstate->table_name, INT_MAX) + 1 + 12;
+							else
+								indent_spaces = strlen(expstate->table_name) + 1 + 12;
 
 							for (i = 0; i < expstate->columns; i++)
 							{
@@ -550,10 +536,9 @@ process_item(ExportState *expstate,
 					}
 				}
 
-				field = trim_str(field, &size, expstate->force8bit);
+				field = trim_str(field, &size);
 				_field = quote_sql_literal(field,
 										   &size,
-										   expstate->force8bit,
 										   expstate->empty_string_is_null,
 										   expstate->nullstr,
 										   expstate->nullstrlen);
@@ -610,7 +595,7 @@ process_item(ExportState *expstate,
 
 					if (typ == 'd')
 					{
-						field = trim_str(field, &size, expstate->force8bit);
+						field = trim_str(field, &size);
 						fwrite(field, size, 1, expstate->fp);
 					}
 					else
@@ -644,19 +629,17 @@ process_item(ExportState *expstate,
 				int saved_errno = 0;
 				char   *_field;
 
-				field = trim_str(field, &size, expstate->force8bit);
+				field = trim_str(field, &size);
 
 				if (expstate->format == CLIPBOARD_FORMAT_SQL_VALUES)
 					_field = quote_sql_literal(field,
 											   &size,
-											   expstate->force8bit,
 											   expstate->empty_string_is_null,
 											   expstate->nullstr,
 											   expstate->nullstrlen);
 				else
 
 					_field = csv_format(field, &size,
-										expstate->force8bit,
 										expstate->empty_string_is_null,
 										expstate->nullstr,
 										expstate->nullstrlen);
@@ -769,7 +752,6 @@ export_data(Options *opts,
 
 	expstate.format = format;
 	expstate.fp = fp;
-	expstate.force8bit = opts->force8bit;
 	expstate.empty_string_is_null = opts->empty_string_is_null;
 	expstate.nullstr = opts->nullstr;
 	expstate.nullstrlen = opts->nullstr ? strlen(opts->nullstr) : 0;
@@ -798,9 +780,7 @@ export_data(Options *opts,
 		{
 			int		slen = strlen(table_name);
 
-			expstate.table_name = quote_sql_identifier(table_name,
-													   &slen,
-													   opts->force8bit);
+			expstate.table_name = quote_sql_identifier(table_name, &slen);
 		}
 
 		save_column_names = true;
@@ -896,7 +876,7 @@ export_data(Options *opts,
 	if (!((format == CLIPBOARD_FORMAT_TEXT && cmd == cmd_CopyAllLines) ||
 		  cmd == cmd_CopySearchedLines || cmd == cmd_CopyMarkedLines))
 	{
-		multilines_detection(opts, desc);
+		multilines_detection(desc);
 		if (desc->has_multilines)
 		{
 			bool	prevline_continuation_mark = false;
@@ -1019,7 +999,6 @@ export_data(Options *opts,
 
 		iter.headline = desc->headline_transl;
 		iter.row = rowstr;
-		iter.force8bit = opts->force8bit;
 		iter.xpos = 0;
 
 		field = NULL; field_size = 0; field_xpos = -1;

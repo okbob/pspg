@@ -323,7 +323,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --stream                 read input forever\n");
 					fprintf(stdout, "  -X, --reprint-on-exit    preserve content after exit\n");
 					fprintf(stdout, "\nOutput format options:\n");
-					fprintf(stdout, "  -a, --ascii              force ascii\n");
+					fprintf(stdout, "  -a, --ascii decor        force ascii\n");
 					fprintf(stdout, "  -b, --blackwhite         black-white style\n");
 					fprintf(stdout, "  -s, --style=N            set color style number (0..%d)\n", MAX_STYLE);
 					fprintf(stdout, "  --bold-labels            row, column labels use bold font\n");
@@ -513,7 +513,7 @@ readargs(char **argv,
 					char   *nullstr;
 					int		size;
 
-					nullstr = trim_quoted_str(optarg, &size, opts->force8bit);
+					nullstr = trim_quoted_str(optarg, &size);
 					if (size > 255)
 					{
 						state->errstr = "nullstr is too long (only 255 bytes are allowed)";

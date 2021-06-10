@@ -223,38 +223,56 @@ sstrndup(const char *str, int bytes)
 }
 
 /*
+ * Returns byte size of first char of string
+ */
+inline int
+charlen(const char *str)
+{
+	return use_utf8 ? utf8charlen(*str) : 1;
+}
+
+inline int
+dsplen(const char *str)
+{
+	return use_utf8 ? utf_dsplen(str) : 1;
+}
+
+/*
  * truncate spaces from both ends
  */
 char *
-trim_str(const char *str, int *size, bool force8bit)
+trim_str(const char *str, int *size)
 {
 	char   *result = NULL;
+	int		bytes = *size;
 
-	while (*str == ' ' && *size > 0)
+	while (*str == ' ' && bytes > 0)
 	{
 		str += 1;
-		*size -= 1;
+		bytes -= 1;
 	}
 
-	if (*size > 0)
+	if (bytes > 0)
 	{
-		const char   *after_nspc_chr = NULL;
+		const char *after_nspc_chr = NULL;
 
 		result = (char *) str;
 
-		while (*size > 0)
+		while (bytes > 0)
 		{
-			int		charlen = force8bit ? 1 : utf8charlen(*str);
+			int		chrlen = charlen(str);
 
 			if (*str != ' ')
-				after_nspc_chr = str + charlen;
+				after_nspc_chr = str + chrlen;
 
-			str = str + charlen;
-			*size -= charlen;
+			str = str + chrlen;
+			bytes -= chrlen;
 		}
 
 		*size = after_nspc_chr - result;
 	}
+	else
+		*size = 0;
 
 	return result;
 }
@@ -263,11 +281,11 @@ trim_str(const char *str, int *size, bool force8bit)
  * truncate spaces from both ends, support quotes and double quotes
  */
 char *
-trim_quoted_str(const char *str, int *size, bool force8bit)
+trim_quoted_str(const char *str, int *size)
 {
 	char	   *result;
 
-	result = trim_str(str, size, force8bit);
+	result = trim_str(str, size);
 
 	/* check first and last char */
 	if (*size > 0)
@@ -333,13 +351,12 @@ void
 ExtStrAppendLine(ExtStr *estr,
 				 char *str,
 				 int size,
-				 bool force8bit,
 				 char linestyle,
 				 bool continuation_mark)
 {
 	bool	insert_nl = false;
 
-	str = trim_str(str, &size, force8bit);
+	str = trim_str(str, &size);
 
 	if (size == 0)
 		return;
@@ -382,7 +399,7 @@ ExtStrAppendLine(ExtStr *estr,
 		{
 			size -= continuation_mark_size;
 
-			str = trim_str(str, &size, force8bit);
+			str = trim_str(str, &size);
 		}
 	}
 
@@ -404,7 +421,7 @@ ExtStrAppendLine(ExtStr *estr,
 }
 
 int
-ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit)
+ExtStrTrimEnd(ExtStr *estr, bool replace_nl)
 {
 	char	   *ptr;
 	char	   *last_nonwhite = NULL;
@@ -419,7 +436,7 @@ ExtStrTrimEnd(ExtStr *estr, bool replace_nl, bool force8bit)
 		if (*ptr == '\n' && replace_nl)
 			*ptr = ' ';
 
-		ptr += force8bit ? 1 : utf8charlen(*ptr);
+		ptr += charlen(ptr);
 	}
 
 	if (last_nonwhite)

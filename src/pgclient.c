@@ -101,12 +101,12 @@ column_type_class(Oid ftype)
 #ifdef HAVE_POSTGRESQL
 
 static int
-field_info(Options *opts, char *str, bool *multiline)
+field_info(char *str, bool *multiline)
 {
 	long int	digits;
 	long int	others;
 
-	if (opts->force8bit)
+	if (!use_utf8)
 	{
 		int		cw = 0;
 		int		width = 0;
@@ -339,7 +339,7 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 		row->fields[n] = locbuf;
 		locbuf += strlen(name) + 1;
 
-		pdesc->widths[n] = field_info(opts, row->fields[n], &multiline_col);
+		pdesc->widths[n] = field_info(row->fields[n], &multiline_col);
 		pdesc->multilines[n++] = multiline_col;
 
 		multiline_row |= multiline_col;
@@ -384,7 +384,7 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 			locbuf += strlen(value) + 1;
 
 			pdesc->widths[n] = max_int(pdesc->widths[n],
-									  field_info(opts, row->fields[n], &multiline_col));
+									  field_info(row->fields[n], &multiline_col));
 			pdesc->multilines[n] |= multiline_col;
 			multiline_row |= multiline_col;
 

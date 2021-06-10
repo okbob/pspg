@@ -111,7 +111,7 @@ flush_bytes(WINDOW *win,
 			}
 			else
 			{
-				int len = opts->force8bit ? 1 : utf8charlen(*rowstr);
+				int len = charlen(rowstr);
 
 				waddnstr(win, rowstr, len);
 				offsetx += utf_dsplen(rowstr);
@@ -196,7 +196,6 @@ print_column_names(WINDOW *win,
 	int		pos = 0;
 	int		bytes;
 	int		chars;
-	bool	force8bit = opts->force8bit;
 
 	attr_t		active_attr = 0;
 	attr_t		new_attr;
@@ -211,16 +210,8 @@ print_column_names(WINDOW *win,
 	/* skip left invisible chars */
 	while (pos < srcx)
 	{
-		if (!force8bit)
-		{
-			bytes = utf8charlen(*ptr);
-			chars = utf_dsplen(ptr);
-		}
-		else
-		{
-			bytes = 1;
-			chars = 1;
-		}
+		bytes = charlen(ptr);
+		chars = dsplen(ptr);
 
 		if (pos + chars > srcx)
 		{
@@ -260,16 +251,8 @@ print_column_names(WINDOW *win,
 		is_in_range = selected_xmin != -1 && pos != -1 &&
 						  pos >= selected_xmin && pos <= selected_xmax;
 
-		if (!force8bit)
-		{
-			bytes = utf8charlen(*ptr);
-			chars = utf_dsplen(ptr);
-		}
-		else
-		{
-			bytes = 1;
-			chars = 1;
-		}
+		bytes = charlen(ptr);
+		chars = dsplen(ptr);
 
 		if (is_in_range)
 			new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
@@ -376,19 +359,12 @@ print_column_names(WINDOW *win,
 				/* first n chars */
 				while (*str)
 				{
-					if (!force8bit)
-					{
-						bytes = utf8charlen(*str);
-						chars = utf_dsplen(str);
-					}
-					else
-					{
-						bytes = 1;
-						chars = 1;
-					}
+					bytes = charlen(str);
+					chars = dsplen(str);
 
 					if (width + chars > act_width)
 						break;
+
 					width += chars;
 					str += bytes;
 					colname_size += bytes;
@@ -399,16 +375,8 @@ print_column_names(WINDOW *win,
 				/* last n chars */
 				while (*colname)
 				{
-					if (!force8bit)
-					{
-						bytes = utf8charlen(*colname);
-						chars = utf_dsplen(colname);
-					}
-					else
-					{
-						bytes = 1;
-						chars = 1;
-					}
+					bytes = charlen(colname);
+					chars = dsplen(colname);
 
 					if (colname_width <= act_width)
 						break;
@@ -477,17 +445,18 @@ set_line_info(Options *opts,
 			 */
 			if (opts->ignore_case || (opts->ignore_lower_case && !scrdesc->has_upperchr))
 			{
-				if (opts->force8bit)
-					str = nstrstr(str, scrdesc->searchterm);
-				else
+
+				if (use_utf8)
 					str = utf8_nstrstr(str, scrdesc->searchterm);
+				else
+					str = nstrstr(str, scrdesc->searchterm);
 			}
 			else if (opts->ignore_lower_case && scrdesc->has_upperchr)
 			{
-				if (opts->force8bit)
-					str = nstrstr_ignore_lower_case(str, scrdesc->searchterm);
-				else
+				if (use_utf8)
 					str = utf8_nstrstr_ignore_lower_case(str, scrdesc->searchterm);
+				else
+					str = nstrstr_ignore_lower_case(str, scrdesc->searchterm);
 			}
 			else
 				/* we can use case sensitive searching (binary comparation) */
@@ -501,14 +470,11 @@ set_line_info(Options *opts,
 					int		bytes = str - rowstr;
 					int		pos;
 
-					if (opts->force8bit)
-						pos = bytes;
-					else
-						pos = utf_string_dsplen(rowstr, bytes);
+					pos = use_utf8 ? utf_string_dsplen(rowstr, bytes) : bytes;
 
 					if (pos < scrdesc->search_first_column)
 					{
-						str += opts->force8bit ? 1 : utf8charlen(*str);
+						str += charlen(str);
 						continue;
 					}
 
@@ -525,10 +491,11 @@ set_line_info(Options *opts,
 				else
 				{
 					linfo->mask |= LINEINFO_FOUNDSTR;
-					if (opts->force8bit)
-						linfo->start_char = str - rowstr;
-					else
+
+					if (use_utf8)
 						linfo->start_char = utf_string_dsplen(rowstr, str - rowstr);
+					else
+						linfo->start_char = str - rowstr;
 				}
 
 				str += scrdesc->searchterm_size;
@@ -562,7 +529,7 @@ draw_scrollbar_win(WINDOW *win,
 
 	if (t->scrollbar_use_arrows)
 	{
-		if (opts->force8bit || opts->force_ascii_art)
+		if (!use_utf8 || opts->force_ascii_art)
 		{
 			mvwaddch(win, 0, 0, ACS_UARROW);
 			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
@@ -749,14 +716,14 @@ window_fill(int window_identifier,
 
 				if (str != NULL)
 				{
-					int		position = opts->force8bit ? (int) (str - rowstr) : utf_string_dsplen(rowstr, str - rowstr);
+					int		position = use_utf8 ? utf_string_dsplen(rowstr, str - rowstr) : (int) (str - rowstr);
 
 					/* apply column selection filtr */
 					if (scrdesc->search_columns > 0)
 					{
 						if (position < scrdesc->search_first_column)
 						{
-							str += opts->force8bit ? 1 : utf8charlen(*str);
+							str += charlen(str);
 							continue;
 						}
 
@@ -855,7 +822,7 @@ window_fill(int window_identifier,
 			if (desc->is_expanded_mode)
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
-				is_expand_head = is_expanded_header(opts, rowstr, &ei_min, &ei_max);
+				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
 				if (is_expand_head)
 				{
 					if (scrdesc->first_rec_title_y == -1)
@@ -906,35 +873,18 @@ window_fill(int window_identifier,
 			/* skip first srcx chars */
 			i = srcx;
 			left_spaces = 0;
-			if (opts->force8bit)
+
+			while(i > 0)
 			{
-				while(i > 0)
+				if (*rowstr != '\0' && *rowstr != '\n')
 				{
-					if (*rowstr != '\0' && *rowstr != '\n')
-					{
-						i -= 1;
-						rowstr += 1;
-						if (i < 0)
-							left_spaces = -i;
-					}
-					else
-						break;
+					i -= dsplen(rowstr);
+					rowstr += charlen(rowstr);
+					if (i < 0)
+						left_spaces = -i;
 				}
-			}
-			else
-			{
-				while(i > 0)
-				{
-					if (*rowstr != '\0' && *rowstr != '\n')
-					{
-						i -= utf_dsplen(rowstr);
-						rowstr += utf8charlen(*rowstr);
-						if (i < 0)
-							left_spaces = -i;
-					}
-					else
-						break;
-				}
+				else
+					break;
 			}
 
 			/* Fix too hungry cutting when some multichar char is removed */
@@ -1195,25 +1145,14 @@ window_fill(int window_identifier,
 
 					if (*ptr != '\0')
 					{
-						if (opts->force8bit)
-						{
-							i += 1;
-							ptr += 1;
+						int dlen = dsplen(ptr);
+						int len  = charlen(ptr);
 
-							if (!skip_char)
-								bytes += 1;
-						}
-						else
-						{
-							int dsplen = utf_dsplen(ptr);
-							int len  = utf8charlen(*ptr);
+						i = (dlen != -1 && i != -1) ? i + dlen : -1;
+						ptr += len;
 
-							i = dsplen != -1 && i != -1 ? i + dsplen : -1;
-							ptr += len;
-
-							if (!skip_char)
-								bytes += len;
-						}
+						if (!skip_char)
+							bytes += len;
 					}
 					else
 					{
@@ -1349,7 +1288,6 @@ static void
 draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			int maxy, int maxx,				/* size of visible rectangle */
 			int srcy, int srcx,				/* offset to displayed data */
-			Options *opts,
 			DataDesc *desc,
 			attr_t data_attr,				/* colors for data (alphanums) */
 			attr_t line_attr,				/* colors for borders */
@@ -1395,7 +1333,7 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			if (desc->is_expanded_mode)
 			{
 				fix_line_attr_style = effective_row >= desc->border_bottom_row;
-				is_expand_head = is_expanded_header(opts, rowstr, &ei_min, &ei_max);
+				is_expand_head = is_expanded_header(rowstr, &ei_min, &ei_max);
 			}
 			else
 			{
@@ -1411,35 +1349,18 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			/* skip first srcx chars */
 			i = srcx;
 			left_spaces = 0;
-			if (opts->force8bit)
+
+			while(i > 0)
 			{
-				while(i > 0)
+				if (*rowstr != '\0' && *rowstr != '\n')
 				{
-					if (*rowstr != '\0' && *rowstr != '\n')
-					{
-						i -= 1;
-						rowstr += 1;
-						if (i < 0)
-							left_spaces = -i;
-					}
-					else
-						break;
+					i -= dsplen(rowstr);
+					rowstr += charlen(rowstr);
+					if (i < 0)
+						left_spaces = -i;
 				}
-			}
-			else
-			{
-				while(i > 0)
-				{
-					if (*rowstr != '\0' && *rowstr != '\n')
-					{
-						i -= utf_dsplen(rowstr);
-						rowstr += utf8charlen(*rowstr);
-						if (i < 0)
-							left_spaces = -i;
-					}
-					else
-						break;
-				}
+				else
+					break;
 			}
 
 			/* Fix too hungry cutting when some multichar char is removed */
@@ -1522,8 +1443,9 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 					if (*ptr != '\0' && *ptr != '\n')
 					{
-						int len  = opts->force8bit ? 1 : utf8charlen(*ptr);
-						i += opts->force8bit ? 1 : utf_dsplen(ptr);
+						int len  = charlen(ptr);
+
+						i += dsplen(ptr);
 						ptr += len;
 						bytes += len;
 					}
@@ -1584,7 +1506,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows, 0,
 						  scrdesc->rows_rows, scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, 0,
-						  opts, desc,
+						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
 		}
@@ -1597,7 +1519,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(0, scrdesc->fix_cols_cols,
 						  scrdesc->fix_rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  desc->title_rows + fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
-						  opts, desc,
+						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  true);
 		}
@@ -1610,7 +1532,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(0, 0,
 						  scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  desc->title_rows + fix_rows_offset, 0,
-						  opts, desc,
+						  desc,
 						  COLOR_PAIR(4) | A_BOLD, 0, COLOR_PAIR(8) | A_BOLD,
 						  false);
 		}
@@ -1623,7 +1545,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows, scrdesc->fix_cols_cols,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
-						  opts, desc,
+						  desc,
 						  opts->theme == 2 ? 0 | A_BOLD : 0,
 						  opts->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
 						  COLOR_PAIR(8) | A_BOLD,
@@ -1638,7 +1560,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			draw_rectange(scrdesc->fix_rows_rows + scrdesc->rows_rows, 0,
 						  scrdesc->footer_rows, scrdesc->maxx,
 						  first_data_row + first_row + scrdesc->rows_rows - fix_rows_offset, footer_cursor_col,
-						  opts, desc,
+						  desc,
 						  COLOR_PAIR(9), 0, 0, true);
 		}
 
