@@ -706,7 +706,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	WINDOW	   *top_bar = w_top_bar(scrdesc);
 	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
 
-	refresh();
+	//refresh();
 	getmaxyx(stdscr, maxy, maxx);
 
 	if (top_bar != NULL)
