@@ -5238,28 +5238,45 @@ reinit_theme:
 				{
 					next_command = ami->code;
 
-					if (next_command != cmd_UseClipboard_CSV &&
-						next_command != cmd_UseClipboard_TSVC &&
-						next_command != cmd_UseClipboard_text &&
-						next_command != cmd_UseClipboard_INSERT &&
-						next_command != cmd_UseClipboard_INSERT_with_comments &&
-						next_command != cmd_UseClipboard_SQL_values &&
-						next_command != cmd_UseClipboard_pipe_separated &&
-						next_command != cmd_SetCopyFile &&
-						next_command != cmd_SetCopyClipboard &&
-						next_command != cmd_TogleEmptyStringIsNULL &&
-						next_command != cmd_SetOwnNULLString)
-						goto hide_menu;
+					/*
+					 * Because pspg has not dialogs and use just menu, we use
+					 * menu items like options. For export options we want to
+					 * hold menu unclosed until command item is selected. So
+					 * next switch detects menu's id related to options and for
+					 * these items, the pull down menu stays visible.
+					 */
+					switch (next_command)
+					{
+						case cmd_UseClipboard_CSV:
+						case cmd_UseClipboard_TSVC:
+						case cmd_UseClipboard_text:
+						case cmd_UseClipboard_INSERT:
+						case cmd_UseClipboard_INSERT_with_comments:
+						case cmd_UseClipboard_SQL_values:
+						case cmd_UseClipboard_pipe_separated:
+						case cmd_SetCopyFile:
+						case cmd_SetCopyClipboard:
+						case cmd_TogleEmptyStringIsNULL:
+						case cmd_SetOwnNULLString:
+							/* do nothing */
+							break;
+
+						default:
+							goto hide_menu;
+					}
 				}
 
 				/*
 				 * Read info from bottom command bar
 				 */
-				aci = st_menu_selected_command(&activated);
-				if (activated)
+				if (!activated)
 				{
-					next_command = aci->code;
-					goto refresh;
+					aci = st_menu_selected_command(&activated);
+					if (activated)
+					{
+						next_command = aci->code;
+						goto refresh;
+					}
 				}
 			}
 
