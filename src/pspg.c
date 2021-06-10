@@ -1626,6 +1626,10 @@ unget_event(int key_code, bool alt, MEVENT *mevent)
 		pspg_event_buffer_write = 0;
 	}
 
+
+	if (key_code == 0 || key_code == ERR)
+		return;
+
 	if (pspg_event_buffer_write < PSPG_EVENT_BUFFER_SIZE)
 	{
 		PspgEvent *event = &pspg_event_buffer[pspg_event_buffer_write++];
@@ -1638,6 +1642,14 @@ unget_event(int key_code, bool alt, MEVENT *mevent)
 	}
 	else
 		leave("internal event buffer is too short");
+
+#ifdef DEBUG_PIPE
+
+	fprintf(debug_pipe, "event buffer length: %d\n",
+				  pspg_event_buffer_write - pspg_event_buffer_read);
+
+#endif
+
 }
 
 static bool
@@ -1774,7 +1786,7 @@ get_event(MEVENT *mevent,
 		if (reopen_file)
 			*reopen_file = false;
 
-		return c;
+		goto throw_event;
 	}
 
 retry:
@@ -1948,7 +1960,8 @@ repeat:
 				timeout(stdscr_delay);
 				hungry_mouse_mode = false;
 
-				unget_event(c, false, NULL);
+				if (c != 0 && c != ERR)
+					unget_event(c, false, NULL);
 
 				*alt = false;
 				*sigint = false;
@@ -1964,7 +1977,7 @@ repeat:
 return_first_mouse_event:
 
 				if (get_buffered_event(&c, alt, mevent))
-					return c;
+					goto throw_event;
 
 				return 0;
 			}
@@ -2035,6 +2048,8 @@ return_first_mouse_event:
 	}
 
 	*alt = !first_event;
+
+throw_event:
 
 #ifdef DEBUG_PIPE
 
