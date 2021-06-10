@@ -155,9 +155,7 @@ int	debug_eventno = 0;
 
 #endif
 
-static bool	press_alt = false;
 static bool	got_sigint = false;
-static MEVENT		event;
 
 static long	last_watch_ms = 0;
 static time_t	last_watch_sec = 0;					/* time when we did last refresh */
@@ -168,6 +166,7 @@ static bool xterm_mouse_mode_was_initialized = false;
 
 static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
+static void unget_event(int key_code, bool alt, MEVENT *mevent);
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 static bool check_visible_vertical_cursor(DataDesc *desc, ScrDesc *scrdesc, Options *opts, int vertical_cursor_column);
 
@@ -181,14 +180,34 @@ static struct sigaction old_sigsegv_handler;
 char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 
 /*
- * Buffer for mouse events, allows to skip too frequently mouse events.
+ * Buffer of events. This buffer is used for two purposes:
+ *
+ * a) group processing of mouse events - usually pspg redraw
+ *    output after processing of any input event, but mouse
+ *    mouse events can be generated too frequently, and too
+ *    frequent redraw can make latences on slower terminals or
+ *    can make flickering on fast terminals (the image is repainted
+ *    faster than is refresh rate of display).
+ *
+ * b) saving event that hides information text
  */
-#define		MOUSE_EVENTS_BUFFER_SIZE		10
+typedef struct
+{
+	int		key_code;
+	bool	alt;
+	MEVENT	mevent;
+} PspgEvent;
 
-MEVENT mouse_events_buffer[MOUSE_EVENTS_BUFFER_SIZE];
-int buffered_mouse_events_count = 0;
-int buffered_mouse_events_read = 0;
+#define		PSPG_EVENT_BUFFER_SIZE			20
 
+static PspgEvent	pspg_event_buffer[PSPG_EVENT_BUFFER_SIZE];
+
+static int pspg_event_buffer_read = 0;
+static int pspg_event_buffer_write = 0;
+
+/*
+ * Arguments of forwarded commands
+ */
 static char   *string_argument = NULL;
 static bool	string_argument_is_valid = false;
 
@@ -1067,7 +1086,7 @@ make_beep(Options *opts)
 /*
  * It is used for result of action info
  */
-static int
+static void
 show_info_wait(Options *opts,
 			   ScrDesc *scrdesc,
 			   const char *fmt,
@@ -1082,6 +1101,8 @@ show_info_wait(Options *opts,
 	attr_t  att;
 	int		c;
 	int		timeout = -1;
+	bool	press_alt;
+	MEVENT	mevent;
 
 	/*
 	 * When refresh is required first, then store params and quit immediately.
@@ -1102,7 +1123,7 @@ show_info_wait(Options *opts,
 		scrdesc->applytimeout = applytimeout;
 		scrdesc->is_error = is_error;
 
-		return 0;
+		return;
 	}
 
 	att = !is_error ? t->bottom_light_attr : t->error_attr;
@@ -1113,6 +1134,9 @@ show_info_wait(Options *opts,
 		mvwprintw(bottom_bar, 0, 0, fmt, par);
 	else
 		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
+
+	if (!applytimeout)
+		wprintw(bottom_bar, " (press any key)");
 
 	if (par)
 		log_row(fmt, par);
@@ -1125,7 +1149,7 @@ show_info_wait(Options *opts,
 	wattroff(bottom_bar,  att);
 	wnoutrefresh(bottom_bar);
 
-	refresh();
+	doupdate();
 
 	if (beep)
 		make_beep(opts);
@@ -1133,7 +1157,7 @@ show_info_wait(Options *opts,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&event, &press_alt, &got_sigint, NULL, NULL, NULL, timeout, 0);
+	c = get_event(&mevent, &press_alt, &got_sigint, NULL, NULL, NULL, timeout, 0);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -1141,13 +1165,8 @@ show_info_wait(Options *opts,
 	scrdesc->refresh_scr = true;
 
 	/* eat escape if pressed here */
-	if (c == 27 && press_alt)
-	{
-		press_alt = false;
-		return 0;
-	}
-	else
-		return c == ERR ? 0 : c;
+	if (!(c == 27 && press_alt))
+		unget_event(c, press_alt, &mevent);
 }
 
 #ifdef HAVE_LIBREADLINE
@@ -1597,6 +1616,68 @@ get_x_focus(int vertical_cursor_column,
 }
 
 /*
+ * Routines for maintaining of buffered events
+ */
+static void
+unget_event(int key_code, bool alt, MEVENT *mevent)
+{
+	if (pspg_event_buffer_read >= pspg_event_buffer_write)
+	{
+		pspg_event_buffer_read = 0;
+		pspg_event_buffer_write = 0;
+	}
+
+	if (pspg_event_buffer_write < PSPG_EVENT_BUFFER_SIZE)
+	{
+		PspgEvent *event = &pspg_event_buffer[pspg_event_buffer_write++];
+
+		event->key_code = key_code;
+		event->alt = alt;
+
+		if (key_code == KEY_MOUSE)
+			memcpy(&event->mevent, mevent, sizeof(MEVENT));
+	}
+	else
+		leave("internal event buffer is too short");
+}
+
+static bool
+get_buffered_event(int *key_code, bool *alt, MEVENT *mevent)
+{
+	bool	result = false;
+
+	if (pspg_event_buffer_read < pspg_event_buffer_write)
+	{
+		PspgEvent *event = &pspg_event_buffer[pspg_event_buffer_read++];
+
+		*key_code = event->key_code;
+		*alt = event->alt;
+
+		if (event->key_code == KEY_MOUSE)
+			memcpy(mevent, &event->mevent, sizeof(MEVENT));
+
+		result = true;
+	}
+
+	if (pspg_event_buffer_read >= pspg_event_buffer_write)
+	{
+		pspg_event_buffer_read = 0;
+		pspg_event_buffer_write = 0;
+	}
+
+	return result;
+}
+
+static int
+event_buffer_count(void)
+{
+	if (pspg_event_buffer_read < pspg_event_buffer_write)
+		return pspg_event_buffer_write - pspg_event_buffer_read;
+	else
+		return 0;
+}
+
+/*
  * Reads keycode. When keycode is Esc - then read next keycode, and sets flag alt.
  * When keycode is related to mouse, then get mouse event details.
  */
@@ -1680,11 +1761,9 @@ get_event(MEVENT *mevent,
 
 #endif
 
-	/* returns buffered mouse events */
-	if (buffered_mouse_events_count > 0 &&
-		buffered_mouse_events_count > buffered_mouse_events_read)
+	/* returns buffered events if exists*/
+	if (get_buffered_event(&c, alt, mevent))
 	{
-		*alt = false;
 		*sigint = false;
 
 		if (timeout)
@@ -1696,11 +1775,7 @@ get_event(MEVENT *mevent,
 		if (reopen_file)
 			*reopen_file = false;
 
-		memcpy(mevent,
-			   &mouse_events_buffer[buffered_mouse_events_read++],
-			   sizeof(MEVENT));
-
-		return KEY_MOUSE;
+		return c;
 	}
 
 retry:
@@ -1853,16 +1928,15 @@ repeat:
 				timeout(0);
 
 				hungry_mouse_mode = true;
-				buffered_mouse_events_count = 0;
 			}
 
-			ok = getmouse(&mouse_events_buffer[buffered_mouse_events_count]);
+			ok = getmouse(mevent);
 			if (ok == OK)
-				buffered_mouse_events_count += 1;
+				unget_event(c, false, mevent);
 
 			/*
 			 * You can continue in hungry mode until buffer is full */
-			if (buffered_mouse_events_count < MOUSE_EVENTS_BUFFER_SIZE)
+			if (pspg_event_buffer_write + 1 < PSPG_EVENT_BUFFER_SIZE)
 				continue;
 			else
 				goto return_first_mouse_event;
@@ -1875,17 +1949,7 @@ repeat:
 				timeout(stdscr_delay);
 				hungry_mouse_mode = false;
 
-#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
-
-				if (c != ERR && c != 0)
-					unget_wch(ch);
-
-#else
-
-				if (c != ERR && c != 0)
-					ungetch(c);
-
-#endif
+				unget_event(c, false, NULL);
 
 				*alt = false;
 				*sigint = false;
@@ -1900,16 +1964,8 @@ repeat:
 
 return_first_mouse_event:
 
-				if (buffered_mouse_events_count > 0)
-				{
-					buffered_mouse_events_read = 0;
-
-					memcpy(mevent,
-						   &mouse_events_buffer[buffered_mouse_events_read++],
-						   sizeof(MEVENT));
-
-					return KEY_MOUSE;
-				}
+				if (get_buffered_event(&c, alt, mevent))
+					return c;
 
 				return 0;
 			}
@@ -2269,7 +2325,6 @@ rwe_popen(char *command, int *fin, int *fout, int *ferr)
 static void
 export_to_file(PspgCommand command,
 			  ClipboardFormat format,
-			  int *next_event_keycode,
 			  Options *opts,
 			  ScrDesc *scrdesc,
 			  DataDesc *desc,
@@ -2438,9 +2493,8 @@ export_to_file(PspgCommand command,
 
 		if (!clipboard_application_id)
 		{
-			*next_event_keycode = show_info_wait(opts,
-												 scrdesc,
-												 " Cannot find clipboard application (press any key)",
+			show_info_wait(opts, scrdesc,
+												 " Cannot find clipboard application",
 												 NULL, true, true, false, true);
 
 				return;
@@ -2486,10 +2540,9 @@ export_to_file(PspgCommand command,
 			format_error("%s", strerror(errno));
 			log_row("open error (%s)", current_state->errstr);
 
-			*next_event_keycode = show_info_wait(opts,
-												 scrdesc,
-												 " Cannot to start clipboard application (press any key)",
-												 NULL, true, true, false, true);
+			show_info_wait(opts, scrdesc,
+						   " Cannot to start clipboard application",
+						   NULL, true, true, false, true);
 
 			/* err string is saved already, because refresh_first is used */
 			current_state->errstr = NULL;
@@ -2561,10 +2614,9 @@ export_to_file(PspgCommand command,
 				format_error("%s", err_buffer);
 				log_row("write error (%s)", current_state->errstr);
 
-				*next_event_keycode = show_info_wait(opts,
-													 scrdesc,
-													 " Cannot write to clipboard (%s) (press any key)",
-													(char *) current_state->errstr, true, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   " Cannot write to clipboard (%s)",
+							   (char *) current_state->errstr, true, true, false, true);
 
 				/* err string is saved already, because refresh_first is used */
 				current_state->errstr = NULL;
@@ -2592,10 +2644,9 @@ export_to_file(PspgCommand command,
 				strcpy(buffer, "clipboard");
 		}
 
-		*next_event_keycode = show_info_wait(opts,
-											 scrdesc,
-											 " Cannot write to %s (press any key)",
-											 buffer, true, false, false, true);
+		show_info_wait(opts, scrdesc,
+					   " Cannot write to %s",
+					   buffer, true, false, false, true);
 		*force_refresh = true;
 	}
 
@@ -3184,8 +3235,7 @@ parse_exported_spec(Options *opts,
 				    ScrDesc *scrdesc,
 					char *instr,
 					ExportedSpec *spec,
-					bool *is_valid,
-					int *next_event_keycode)
+					bool *is_valid)
 {
 	bool	format_is_specified_already = false;
 	bool	format_specified = false;
@@ -3218,9 +3268,9 @@ parse_exported_spec(Options *opts,
 
 			if (n > 20)
 			{
-				*next_event_keycode = show_info_wait(opts, scrdesc,
-													 " Syntax error (too long token)",
-													 NULL, NULL, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   " Syntax error (too long token)",
+							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 
@@ -3304,9 +3354,9 @@ parse_exported_spec(Options *opts,
 
 				if (null_is_specified_already)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (null is specified already)",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (null is specified already)",
+								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
@@ -3315,18 +3365,18 @@ parse_exported_spec(Options *opts,
 
 				if (*instr != '"')
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (expected '\"')",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (expected '\"')",
+								    NULL, NULL, true, false, true);
 					return NULL;
 				}
 
 				instr = get_identifier(instr, &ident, &ident_len);
 				if (!ident)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (expected closed quoted string)",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (expected closed quoted string)",
+								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
@@ -3341,25 +3391,25 @@ parse_exported_spec(Options *opts,
 
 				snprintf(buffer, 255, " Syntax error (unknown token \"%.*s\")", n, token);
 
-				*next_event_keycode = show_info_wait(opts, scrdesc,
-													 buffer,
-													 NULL, NULL, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   buffer,
+							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 
 			if (format_is_specified_already && format_specified)
 			{
-				*next_event_keycode = show_info_wait(opts, scrdesc,
-													 " Syntax error (format specification is redundant)",
-													 NULL, NULL, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   " Syntax error (format specification is redundant)",
+							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 
 			if (range_is_specified_already && range_specified)
 			{
-				*next_event_keycode = show_info_wait(opts, scrdesc,
-													 " Syntax error (range specification is redundant)",
-													 NULL, NULL, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   " Syntax error (range specification is redundant)",
+							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 
@@ -3379,9 +3429,9 @@ parse_exported_spec(Options *opts,
 
 				if (!instr || instr == endptr || errno != 0)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (expected number)",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (expected number)",
+								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
@@ -3407,9 +3457,9 @@ parse_exported_spec(Options *opts,
 			}
 			else if (*instr != '\\')
 			{
-				*next_event_keycode = show_info_wait(opts, scrdesc,
-													 " Syntax error (unexpected symbol)",
-													 NULL, NULL, true, false, true);
+				show_info_wait(opts, scrdesc,
+							   " Syntax error (unexpected symbol)",
+							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 		}
@@ -3478,8 +3528,7 @@ parse_search_spec(Options *opts,
 				  ScrDesc *scrdesc,
 				  char *instr,
 				  SearchSpec *spec,
-				  bool *is_valid,
-				  int *next_event_keycode)
+				  bool *is_valid)
 {
 	bool	direction_is_specified_already = false;
 	bool	range_is_specified_already = false;
@@ -3506,9 +3555,9 @@ parse_search_spec(Options *opts,
 				instr = get_identifier(instr, &ident, &n);
 				if (!ident)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (expected closed quoted string)",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (expected closed quoted string)",
+								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
@@ -3518,9 +3567,9 @@ parse_search_spec(Options *opts,
 
 				if (pattern_is_specified_already)
 				{
-					*next_event_keycode = show_info_wait(opts, scrdesc,
-														 " Syntax error (pattern is specified already)",
-														 NULL, NULL, true, false, true);
+					show_info_wait(opts, scrdesc,
+								   " Syntax error (pattern is specified already)",
+								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
@@ -3544,9 +3593,9 @@ parse_search_spec(Options *opts,
 
 						if (direction_is_specified_already)
 						{
-							*next_event_keycode = show_info_wait(opts, scrdesc,
-																 " Syntax error (direction is specified already)",
-																 NULL, NULL, true, false, true);
+							show_info_wait(opts, scrdesc,
+										   " Syntax error (direction is specified already)",
+										   NULL, NULL, true, false, true);
 							return NULL;
 						}
 
@@ -3560,9 +3609,9 @@ parse_search_spec(Options *opts,
 
 						if (range_is_specified_already)
 						{
-							*next_event_keycode = show_info_wait(opts, scrdesc,
-															 " Syntax error (range specification is redundant)",
-															 NULL, NULL, true, false, true);
+							show_info_wait(opts, scrdesc,
+										   " Syntax error (range specification is redundant)",
+										   NULL, NULL, true, false, true);
 							return NULL;
 						}
 
@@ -3577,9 +3626,9 @@ parse_search_spec(Options *opts,
 
 						if (range_is_specified_already)
 						{
-							*next_event_keycode = show_info_wait(opts, scrdesc,
-															 " Syntax error (range specification is redundant)",
-															 NULL, NULL, true, false, true);
+							show_info_wait(opts, scrdesc,
+										   " Syntax error (range specification is redundant)",
+										   NULL, NULL, true, false, true);
 							return NULL;
 						}
 
@@ -3592,17 +3641,17 @@ parse_search_spec(Options *opts,
 
 							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
 							{
-								*next_event_keycode = show_info_wait(opts, scrdesc,
-																    " Cannot to identify column",
-																	NULL, true, true, false, true);
+								show_info_wait(opts, scrdesc,
+											   " Cannot to identify column",
+											   NULL, true, true, false, true);
 								return NULL;
 							}
 						}
 						else
 						{
-							*next_event_keycode = show_info_wait(opts, scrdesc,
-															    " Invalid identifier (expected column name)",
-																 NULL, true, true, false, true);
+							show_info_wait(opts, scrdesc,
+										   " Invalid identifier (expected column name)",
+										   NULL, true, true, false, true);
 							return NULL;
 						}
 
@@ -3623,9 +3672,9 @@ parse_search_spec(Options *opts,
 
 					if (pattern_is_specified_already)
 					{
-						*next_event_keycode = show_info_wait(opts, scrdesc,
-															 " Syntax error (pattern is specified already)",
-															 NULL, NULL, true, false, true);
+						show_info_wait(opts, scrdesc,
+									   " Syntax error (pattern is specified already)",
+									   NULL, NULL, true, false, true);
 						return NULL;
 					}
 				}
@@ -3710,6 +3759,9 @@ main(int argc, char *argv[])
 
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
+
+	bool	press_alt;
+	MEVENT	event;
 
 	char   *pspgenv;
 	bool	result;
@@ -4599,8 +4651,7 @@ reinit_theme:
 		if (next_command == cmd_Invalid)
 		{
 			bool	skip_update_after_mouse_event =
-						buffered_mouse_events_count > 0 &&
-						buffered_mouse_events_count > buffered_mouse_events_read
+						event_buffer_count() > 0
 
 #ifdef COMPILE_MENU
 
@@ -4922,10 +4973,10 @@ reinit_theme:
 
 			if (scrdesc.fmt != NULL)
 			{
-				next_event_keycode = show_info_wait(&opts, &scrdesc,
-									scrdesc.fmt, scrdesc.par, scrdesc.beep,
-									false, scrdesc.applytimeout,
-									scrdesc.is_error);
+				show_info_wait(&opts, &scrdesc,
+							   scrdesc.fmt, scrdesc.par, scrdesc.beep,
+							   false, scrdesc.applytimeout,
+							   scrdesc.is_error);
 				if (scrdesc.fmt != NULL)
 				{
 					free(scrdesc.fmt);
@@ -5670,7 +5721,7 @@ reset_search:
 					{
 						char	buffer1[1000];
 
-						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s) (press any key)",
+						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s)",
 								PSPG_CONF, strerror(errno));
 
 						show_info_wait(&opts, &scrdesc,
@@ -5679,7 +5730,7 @@ reset_search:
 					}
 					else
 						show_info_wait(&opts, &scrdesc,
-									   " Cannot write to \"%s\" (press any key)",
+									   " Cannot write to \"%s\"",
 									   PSPG_CONF, true, true, false, true);
 				}
 				else
@@ -6730,7 +6781,6 @@ recheck_end:
 				{
 					export_to_file(cmd_SaveData,
 								   CLIPBOARD_FORMAT_TEXT,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6741,7 +6791,6 @@ recheck_end:
 				{
 					export_to_file(cmd_SaveAsCSV,
 								   CLIPBOARD_FORMAT_CSV,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6752,7 +6801,6 @@ recheck_end:
 				{
 					export_to_file(cmd_Copy,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, vertical_cursor_column,
 								   0, 0.0, NULL,
@@ -6764,7 +6812,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyLine,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
 								   0, 0.0, NULL,
@@ -6783,7 +6830,6 @@ recheck_end:
 
 					export_to_file(cmd_CopyLineExtended,
 								   fmt,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
 								   0, 0.0, NULL,
@@ -6795,7 +6841,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyColumn,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, vertical_cursor_column,
 								   0, 0.0, NULL,
@@ -6807,7 +6852,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopySelected,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   cursor_row, 0,
 								   0, 0.0, NULL,
@@ -6819,7 +6863,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyAllLines,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6830,7 +6873,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyTopLines,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6841,7 +6883,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyBottomLines,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6852,7 +6893,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopyMarkedLines,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -6863,7 +6903,6 @@ recheck_end:
 				{
 					export_to_file(cmd_CopySearchedLines,
 								   opts.clipboard_format,
-								   &next_event_keycode,
 								   &opts, &scrdesc, &desc,
 								   0, 0, 0, 0.0, NULL,
 								   &refresh_clear);
@@ -7006,7 +7045,7 @@ recheck_end:
 
 					if (!scrdesc.found)
 						show_info_wait(&opts, &scrdesc,
-									   " Not found (press any key)",
+									   " Not found",
 									   NULL, true, true, false, false);
 					break;
 				}
@@ -7173,7 +7212,7 @@ recheck_end:
 
 					if (!scrdesc.found)
 						show_info_wait(&opts, &scrdesc,
-									   " Not found (press any key)",
+									   " Not found",
 									   NULL, true, true, false, false);
 
 					break;
@@ -7185,9 +7224,9 @@ recheck_end:
 					if (scrdesc.selected_first_row == -1 &&
 						scrdesc.selected_first_column == -1)
 					{
-						next_event_keycode = show_info_wait(&opts, &scrdesc,
-														   " There are not selected area",
-														   NULL, true, true, true, false);
+						show_info_wait(&opts, &scrdesc,
+									   " There are not selected area",
+									   NULL, true, true, true, false);
 						break;
 					}
 
@@ -7306,7 +7345,7 @@ recheck_end:
 							{
 								if (search_from_start)
 									show_info_wait(&opts, &scrdesc,
-												   " Search from first column (press any key)",
+												   " Search from first column",
 												   NULL, true, true, true, false);
 
 								opts.vertical_cursor = true;
@@ -7317,17 +7356,17 @@ recheck_end:
 							}
 							else
 								show_info_wait(&opts, &scrdesc,
-											   " Not found (press any key)",
+											   " Not found",
 											   NULL, true, true, false, false);
 						}
 						else
 							show_info_wait(&opts, &scrdesc,
-										   " Search pattern is a empty string (press any key)",
+										   " Search pattern is a empty string",
 										   NULL, true, true, true, false);
 					}
 					else
 						show_info_wait(&opts, &scrdesc,
-									   " Columns names are not detected (press any key)",
+									   " Columns names are not detected",
 									   NULL, true, true, true, false);
 
 					break;
@@ -7369,9 +7408,9 @@ recheck_end:
 
 					if (*cmdline_ptr++ != '\\')
 					{
-						next_event_keycode = show_info_wait(&opts, &scrdesc,
-														   " Syntax error (expected \"\\\")",
-														   NULL, true, true, false, true);
+						show_info_wait(&opts, &scrdesc,
+									   " Syntax error (expected \"\\\")",
+									   NULL, true, true, false, true);
 
 						cmdline_ptr = NULL;
 						break;
@@ -7423,9 +7462,9 @@ recheck_end:
 						}
 						else if (next_is_num)
 						{
-							next_event_keycode = show_info_wait(&opts, &scrdesc,
-																" Syntax error (expected number)",
-																NULL, true, true, false, true);
+							show_info_wait(&opts, &scrdesc,
+										   " Syntax error (expected number)",
+										   NULL, true, true, false, true);
 
 							cmdline[0] = '\0';
 							cmdline_ptr = cmdline;
@@ -7462,9 +7501,9 @@ recheck_end:
 							}
 							else
 							{
-								next_event_keycode = show_info_wait(&opts, &scrdesc,
-																	" expected number",
-																	NULL, true, true, false, true);
+								show_info_wait(&opts, &scrdesc,
+											   " expected number",
+											   NULL, true, true, false, true);
 								cmdline[0] = '\0';
 								break;
 							}
@@ -7476,8 +7515,7 @@ recheck_end:
 
 							cmdline_ptr = parse_search_spec(&opts, &desc, &scrdesc,
 															cmdline_ptr + n,
-															&spec, &is_valid,
-															&next_event_keycode);
+															&spec, &is_valid);
 
 							if (is_valid)
 							{
@@ -7498,9 +7536,9 @@ recheck_end:
 									if (scrdesc.selected_first_row == -1 &&
 										  scrdesc.selected_first_column == -1)
 									{
-										next_event_keycode = show_info_wait(&opts, &scrdesc,
-																			" There are not selected area",
-																			NULL, true, true, true, false);
+										show_info_wait(&opts, &scrdesc,
+													   " There are not selected area",
+													   NULL, true, true, true, false);
 										break;
 									}
 
@@ -7544,9 +7582,9 @@ recheck_end:
 									if (long_argument >= 1 && long_argument <= desc.columns)
 										next_command = OrderCommand;
 									else
-										next_event_keycode = show_info_wait(&opts, &scrdesc,
-																		   " Column number is out of range",
-																		   NULL, true, true, false, true);
+										show_info_wait(&opts, &scrdesc,
+													   " Column number is out of range",
+													   NULL, true, true, false, true);
 								}
 								else
 								{
@@ -7564,15 +7602,15 @@ recheck_end:
 										next_command = OrderCommand;
 									}
 									else
-										next_event_keycode = show_info_wait(&opts, &scrdesc,
-																		   " Cannot to identify column",
-																		   NULL, true, true, false, true);
+										show_info_wait(&opts, &scrdesc,
+													   " Cannot to identify column",
+													   NULL, true, true, false, true);
 								}
 							}
 							else
-								next_event_keycode = show_info_wait(&opts, &scrdesc,
-																   " Invalid identifier (expected column name)",
-																   NULL, true, true, false, true);
+								show_info_wait(&opts, &scrdesc,
+											   " Invalid identifier (expected column name)",
+											   NULL, true, true, false, true);
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "save"))
 						{
@@ -7583,8 +7621,7 @@ recheck_end:
 															  &scrdesc,
 															  cmdline_ptr + n,
 															  &expspec,
-															  &is_valid,
-															  &next_event_keycode);
+															  &is_valid);
 							if (is_valid)
 							{
 								Options loc_opts;
@@ -7597,7 +7634,6 @@ recheck_end:
 
 								export_to_file(expspec.command,
 											   expspec.format,
-											   &next_event_keycode,
 											   &loc_opts, &scrdesc, &desc,
 											   0, 0,
 											   expspec.rows,
@@ -7617,8 +7653,7 @@ recheck_end:
 															  &scrdesc,
 															  cmdline_ptr + n,
 															  &expspec,
-															  &is_valid,
-															  &next_event_keycode);
+															  &is_valid);
 							if (is_valid)
 							{
 								Options loc_opts;
@@ -7631,7 +7666,6 @@ recheck_end:
 
 								export_to_file(expspec.command,
 											   expspec.format,
-											   &next_event_keycode,
 											   &loc_opts, &scrdesc, &desc,
 											   0, 0,
 											   expspec.rows,
@@ -7645,9 +7679,9 @@ recheck_end:
 						else
 						{
 							cmdline_ptr[n] = '\0';
-							next_event_keycode = show_info_wait(&opts, &scrdesc,
-															   " Unknown command \"%s\"",
-															   cmdline_ptr, true, true, false, true);
+							show_info_wait(&opts, &scrdesc,
+										   " Unknown command \"%s\"",
+											   cmdline_ptr, true, true, false, true);
 
 							cmdline[0] = '\0';
 							cmdline_ptr = cmdline;
