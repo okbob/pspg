@@ -119,7 +119,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("ignore_case", opts->ignore_case);
 	SAFE_SAVE_BOOL_OPTION("ignore_lower_case", opts->ignore_lower_case);
 	SAFE_SAVE_BOOL_OPTION("no_cursor", opts->no_cursor);
-	SAFE_SAVE_BOOL_OPTION("no_sound", opts->no_sound);
+	SAFE_SAVE_BOOL_OPTION("no_sound", quiet_mode);
 	SAFE_SAVE_BOOL_OPTION("no_mouse", opts->no_mouse);
 	SAFE_SAVE_BOOL_OPTION("less_status_bar", opts->less_status_bar);
 	SAFE_SAVE_BOOL_OPTION("no_highlight_search", opts->no_highlight_search);
@@ -256,7 +256,7 @@ load_config(char *path, Options *opts)
 			else if (strcmp(key, "ignore_lower_case") == 0)
 				is_valid = assign_bool(key, &opts->ignore_lower_case, bool_val, res);
 			else if (strcmp(key, "no_sound") == 0)
-				is_valid = assign_bool(key, &opts->no_sound, bool_val, res);
+				is_valid = assign_bool(key, &quiet_mode, bool_val, res);
 			else if (strcmp(key, "no_cursor") == 0)
 				is_valid = assign_bool(key, &opts->no_cursor, bool_val, res);
 			else if (strcmp(key, "no_mouse") == 0)

@@ -206,16 +206,10 @@ static int pspg_event_buffer_read = 0;
 static int pspg_event_buffer_write = 0;
 
 /*
- * Arguments of forwarded commands
- */
-static char   *string_argument = NULL;
-static bool	string_argument_is_valid = false;
-
-/*
  * Global setting
  */
-bool use_utf8;
-
+bool	use_utf8;
+bool	quiet_mode = false;
 
 /*
  * Own signal handlers
@@ -1076,9 +1070,9 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 }
 
 static void
-make_beep(Options *opts)
+make_beep(void)
 {
-	if (!opts->no_sound)
+	if (!quiet_mode)
 		beep();
 }
 
@@ -1086,8 +1080,7 @@ make_beep(Options *opts)
  * It is used for result of action info
  */
 static void
-show_info_wait(Options *opts,
-			   ScrDesc *scrdesc,
+show_info_wait(ScrDesc *scrdesc,
 			   const char *fmt,
 			   const char *par,
 			   bool beep,
@@ -1151,7 +1144,7 @@ show_info_wait(Options *opts,
 	doupdate();
 
 	if (beep)
-		make_beep(opts);
+		make_beep();
 
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
@@ -2372,7 +2365,7 @@ export_to_file(PspgCommand command,
 	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
 		opts->no_cursor)
 	{
-		show_info_wait(opts, scrdesc,
+		show_info_wait(scrdesc,
 					   " Cursor is not visible",
 					   NULL, true, true, true, false);
 		return;
@@ -2382,7 +2375,7 @@ export_to_file(PspgCommand command,
 		!(scrdesc->selected_first_row != -1 ||
 		  scrdesc->selected_first_column != -1))
 	{
-		show_info_wait(opts, scrdesc,
+		show_info_wait(scrdesc,
 					   " There are not selected data",
 					   NULL, true, true, true, false);
 		return;
@@ -2441,14 +2434,14 @@ export_to_file(PspgCommand command,
 
 			if (endptr == number)
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Cannot convert input string to number",
 							   NULL, true, true, false, true);
 				return;
 			}
 			else if (errno != 0)
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Cannot convert input string to number (%s)",
 							   strerror(errno), true, true, false, true);
 				return;
@@ -2507,9 +2500,9 @@ export_to_file(PspgCommand command,
 
 		if (!clipboard_application_id)
 		{
-			show_info_wait(opts, scrdesc,
-												 " Cannot find clipboard application",
-												 NULL, true, true, false, true);
+			show_info_wait(scrdesc,
+						   " Cannot find clipboard application",
+						   NULL, true, true, false, true);
 
 				return;
 		}
@@ -2554,7 +2547,7 @@ export_to_file(PspgCommand command,
 			format_error("%s", strerror(errno));
 			log_row("open error (%s)", current_state->errstr);
 
-			show_info_wait(opts, scrdesc,
+			show_info_wait(scrdesc,
 						   " Cannot to start clipboard application",
 						   NULL, true, true, false, true);
 
@@ -2628,7 +2621,7 @@ export_to_file(PspgCommand command,
 				format_error("%s", err_buffer);
 				log_row("write error (%s)", current_state->errstr);
 
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Cannot write to clipboard (%s)",
 							   (char *) current_state->errstr, true, true, false, true);
 
@@ -2658,7 +2651,7 @@ export_to_file(PspgCommand command,
 				strcpy(buffer, "clipboard");
 		}
 
-		show_info_wait(opts, scrdesc,
+		show_info_wait(scrdesc,
 					   " Cannot write to %s",
 					   buffer, true, false, false, true);
 		*force_refresh = true;
@@ -2772,7 +2765,7 @@ check_visible_vertical_cursor(DataDesc *desc,
 {
 	if (desc->columns == 0)
 	{
-		show_info_wait(opts, scrdesc,
+		show_info_wait(scrdesc,
 					   " Sort is available only for tables.",
 					   NULL, true, true, true, false);
 
@@ -2781,7 +2774,7 @@ check_visible_vertical_cursor(DataDesc *desc,
 
 	if (!opts->vertical_cursor || vertical_cursor_column == 0)
 	{
-		show_info_wait(opts, scrdesc,
+		show_info_wait(scrdesc,
 					   " Vertical cursor is not visible",
 					   NULL, true, true, true, false);
 
@@ -3245,8 +3238,7 @@ typedef struct
 } ExportedSpec;
 
 static char *
-parse_exported_spec(Options *opts,
-				    ScrDesc *scrdesc,
+parse_exported_spec(ScrDesc *scrdesc,
 					char *instr,
 					ExportedSpec *spec,
 					bool *is_valid)
@@ -3282,7 +3274,7 @@ parse_exported_spec(Options *opts,
 
 			if (n > 20)
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Syntax error (too long token)",
 							   NULL, NULL, true, false, true);
 				return NULL;
@@ -3368,7 +3360,7 @@ parse_exported_spec(Options *opts,
 
 				if (null_is_specified_already)
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (null is specified already)",
 								   NULL, NULL, true, false, true);
 					return NULL;
@@ -3379,7 +3371,7 @@ parse_exported_spec(Options *opts,
 
 				if (*instr != '"')
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (expected '\"')",
 								    NULL, NULL, true, false, true);
 					return NULL;
@@ -3388,7 +3380,7 @@ parse_exported_spec(Options *opts,
 				instr = get_identifier(instr, &ident, &ident_len);
 				if (!ident)
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (expected closed quoted string)",
 								   NULL, NULL, true, false, true);
 					return NULL;
@@ -3405,7 +3397,7 @@ parse_exported_spec(Options *opts,
 
 				snprintf(buffer, 255, " Syntax error (unknown token \"%.*s\")", n, token);
 
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   buffer,
 							   NULL, NULL, true, false, true);
 				return NULL;
@@ -3413,7 +3405,7 @@ parse_exported_spec(Options *opts,
 
 			if (format_is_specified_already && format_specified)
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Syntax error (format specification is redundant)",
 							   NULL, NULL, true, false, true);
 				return NULL;
@@ -3421,7 +3413,7 @@ parse_exported_spec(Options *opts,
 
 			if (range_is_specified_already && range_specified)
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Syntax error (range specification is redundant)",
 							   NULL, NULL, true, false, true);
 				return NULL;
@@ -3443,7 +3435,7 @@ parse_exported_spec(Options *opts,
 
 				if (!instr || instr == endptr || errno != 0)
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (expected number)",
 								   NULL, NULL, true, false, true);
 					return NULL;
@@ -3471,7 +3463,7 @@ parse_exported_spec(Options *opts,
 			}
 			else if (*instr != '\\')
 			{
-				show_info_wait(opts, scrdesc,
+				show_info_wait(scrdesc,
 							   " Syntax error (unexpected symbol)",
 							   NULL, NULL, true, false, true);
 				return NULL;
@@ -3534,11 +3526,11 @@ typedef struct
 	bool		backward;
 	bool		selected;
 	int			colno;
+	char	   *pattern;
 } SearchSpec;
 
 static char *
-parse_search_spec(Options *opts,
-				  DataDesc *desc,
+parse_search_spec(DataDesc *desc,
 				  ScrDesc *scrdesc,
 				  char *instr,
 				  SearchSpec *spec,
@@ -3551,6 +3543,7 @@ parse_search_spec(Options *opts,
 	spec->backward = false;
 	spec->selected = false;
 	spec->colno = 0;
+	spec->pattern = NULL;
 
 	*is_valid = false;
 
@@ -3569,19 +3562,17 @@ parse_search_spec(Options *opts,
 				instr = get_identifier(instr, &ident, &n);
 				if (!ident)
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (expected closed quoted string)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
 
-				free(string_argument);
-				string_argument = sstrndup(ident, n);
-				string_argument_is_valid = true;
+				spec->pattern = sstrndup(ident, n);
 
 				if (pattern_is_specified_already)
 				{
-					show_info_wait(opts, scrdesc,
+					show_info_wait(scrdesc,
 								   " Syntax error (pattern is specified already)",
 								   NULL, NULL, true, false, true);
 					return NULL;
@@ -3607,7 +3598,7 @@ parse_search_spec(Options *opts,
 
 						if (direction_is_specified_already)
 						{
-							show_info_wait(opts, scrdesc,
+							show_info_wait(scrdesc,
 										   " Syntax error (direction is specified already)",
 										   NULL, NULL, true, false, true);
 							return NULL;
@@ -3623,7 +3614,7 @@ parse_search_spec(Options *opts,
 
 						if (range_is_specified_already)
 						{
-							show_info_wait(opts, scrdesc,
+							show_info_wait(scrdesc,
 										   " Syntax error (range specification is redundant)",
 										   NULL, NULL, true, false, true);
 							return NULL;
@@ -3640,7 +3631,7 @@ parse_search_spec(Options *opts,
 
 						if (range_is_specified_already)
 						{
-							show_info_wait(opts, scrdesc,
+							show_info_wait(scrdesc,
 										   " Syntax error (range specification is redundant)",
 										   NULL, NULL, true, false, true);
 							return NULL;
@@ -3655,7 +3646,7 @@ parse_search_spec(Options *opts,
 
 							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
 							{
-								show_info_wait(opts, scrdesc,
+								show_info_wait(scrdesc,
 											   " Cannot to identify column",
 											   NULL, true, true, false, true);
 								return NULL;
@@ -3663,7 +3654,7 @@ parse_search_spec(Options *opts,
 						}
 						else
 						{
-							show_info_wait(opts, scrdesc,
+							show_info_wait(scrdesc,
 										   " Invalid identifier (expected column name)",
 										   NULL, true, true, false, true);
 							return NULL;
@@ -3676,17 +3667,14 @@ parse_search_spec(Options *opts,
 
 				pattern_len = strlen(pattern);
 				pattern = trim_quoted_str(pattern, &pattern_len);
-				free(string_argument);
-				string_argument_is_valid = false;
 
 				if (pattern_len > 0)
 				{
-					string_argument = sstrndup(pattern, pattern_len);
-					string_argument_is_valid = true;
+					spec->pattern = sstrndup(pattern, pattern_len);
 
 					if (pattern_is_specified_already)
 					{
-						show_info_wait(opts, scrdesc,
+						show_info_wait(scrdesc,
 									   " Syntax error (pattern is specified already)",
 									   NULL, NULL, true, false, true);
 						return NULL;
@@ -3817,9 +3805,15 @@ main(int argc, char *argv[])
 	int		mouse_row = -1;
 	int		mouse_col = -1;
 
+	/*
+	 * Arguments of forwarded commands
+	 */
+	char   *string_argument = NULL;
+	bool	string_argument_is_valid = false;
 	long	long_argument = 1;
 	bool	long_argument_is_valid = false;
 
+	/* Name of pspg config file */
 	const char *PSPG_CONF;
 
 #ifdef HAVE_LIBREADLINE
@@ -4987,7 +4981,7 @@ reinit_theme:
 
 			if (scrdesc.fmt != NULL)
 			{
-				show_info_wait(&opts, &scrdesc,
+				show_info_wait(&scrdesc,
 							   scrdesc.fmt, scrdesc.par, scrdesc.beep,
 							   false, scrdesc.applytimeout,
 							   scrdesc.is_error);
@@ -5259,7 +5253,7 @@ reinit_theme:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&opts, &scrdesc,
+					show_info_wait(&scrdesc,
 								   " For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
@@ -5437,7 +5431,7 @@ hide_menu:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&opts, &scrdesc,
+					show_info_wait(&scrdesc,
 								   " For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
@@ -5725,7 +5719,7 @@ reset_search:
 				goto reinit_theme;
 
 			case cmd_SoundToggle:
-				opts.no_sound = !opts.no_sound;
+				quiet_mode = !quiet_mode;
 				break;
 
 			case cmd_SaveSetup:
@@ -5738,17 +5732,17 @@ reset_search:
 						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s)",
 								PSPG_CONF, strerror(errno));
 
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   buffer1,
 									   strerror(errno), true, true, false, true);
 					}
 					else
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Cannot write to \"%s\"",
 									   PSPG_CONF, true, true, false, true);
 				}
 				else
-					show_info_wait(&opts, &scrdesc,
+					show_info_wait(&scrdesc,
 								   " Setup saved to \"%s\"",
 								   PSPG_CONF, true, true, true, false);
 				break;
@@ -5897,7 +5891,7 @@ reset_search:
 						opts.no_mouse= false;
 					}
 
-					show_info_wait(&opts, &scrdesc,
+					show_info_wait(&scrdesc,
 								   " mouse handling: %s ",
 								   opts.no_mouse ? "off" : "on", false, true, true, false);
 					break;
@@ -5912,7 +5906,7 @@ reset_search:
 				{
 					if (desc.columns == 0)
 					{
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Vertical cursor is available only for tables.",
 									   NULL, true, true, true, false);
 						break;
@@ -6051,7 +6045,7 @@ reset_search:
 					}
 
 					if (!found)
-						make_beep(&opts);
+						make_beep();
 				}
 				break;
 
@@ -6083,7 +6077,7 @@ reset_search:
 					}
 
 					if (!found)
-						make_beep(&opts);
+						make_beep();
 				}
 				break;
 
@@ -6187,7 +6181,7 @@ show_first_col:
 							first_row = cursor_row + fix_rows_offset;
 					}
 					else
-						make_beep(&opts);
+						make_beep();
 
 					break;
 				}
@@ -6207,7 +6201,7 @@ show_first_col:
 					if (++cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
-						make_beep(&opts);
+						make_beep();
 					}
 
 					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
@@ -6552,7 +6546,7 @@ recheck_right:
 							cursor_row = 0;
 					}
 						else
-						make_beep(&opts);
+						make_beep();
 				}
 				break;
 
@@ -6574,7 +6568,7 @@ recheck_right:
 					if (cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
-						make_beep(&opts);
+						make_beep();
 					}
 
 					if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
@@ -6704,14 +6698,14 @@ recheck_end:
 
 							if (endptr == linenotxt)
 							{
-								show_info_wait(&opts, &scrdesc,
+								show_info_wait(&scrdesc,
 											   " Cannot convert input string to number",
 											   NULL, true, true, false, true);
 								break;
 							}
 							else if (errno != 0)
 							{
-								show_info_wait(&opts, &scrdesc,
+								show_info_wait(&scrdesc,
 											   " Cannot convert input string to number (%s)",
 											   strerror(errno), true, true, false, true);
 								break;
@@ -6729,7 +6723,7 @@ recheck_end:
   					if (cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
-						make_beep(&opts);
+						make_beep();
 					}
 
 					if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
@@ -6936,6 +6930,7 @@ recheck_end:
 						strncpy(locsearchterm, string_argument, sizeof(locsearchterm) - 1);
 						locsearchterm[sizeof(locsearchterm) - 1] = '\0';
 						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+
 						free(string_argument);
 						string_argument = NULL;
 						string_argument_is_valid = false;
@@ -7058,7 +7053,7 @@ recheck_end:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Not found",
 									   NULL, true, true, false, false);
 					break;
@@ -7077,6 +7072,7 @@ recheck_end:
 						strncpy(locsearchterm, string_argument, sizeof(locsearchterm) - 1);
 						locsearchterm[sizeof(locsearchterm) - 1] = '\0';
 						memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+
 						free(string_argument);
 						string_argument = NULL;
 						string_argument_is_valid = false;
@@ -7225,7 +7221,7 @@ recheck_end:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Not found",
 									   NULL, true, true, false, false);
 
@@ -7238,7 +7234,7 @@ recheck_end:
 					if (scrdesc.selected_first_row == -1 &&
 						scrdesc.selected_first_column == -1)
 					{
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " There are not selected area",
 									   NULL, true, true, true, false);
 						break;
@@ -7358,7 +7354,7 @@ recheck_end:
 							if (found)
 							{
 								if (search_from_start)
-									show_info_wait(&opts, &scrdesc,
+									show_info_wait(&scrdesc,
 												   " Search from first column",
 												   NULL, true, true, true, false);
 
@@ -7369,17 +7365,17 @@ recheck_end:
 								last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 							}
 							else
-								show_info_wait(&opts, &scrdesc,
+								show_info_wait(&scrdesc,
 											   " Not found",
 											   NULL, true, true, false, false);
 						}
 						else
-							show_info_wait(&opts, &scrdesc,
+							show_info_wait(&scrdesc,
 										   " Search pattern is a empty string",
 										   NULL, true, true, true, false);
 					}
 					else
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Columns names are not detected",
 									   NULL, true, true, true, false);
 
@@ -7422,7 +7418,7 @@ recheck_end:
 
 					if (*cmdline_ptr++ != '\\')
 					{
-						show_info_wait(&opts, &scrdesc,
+						show_info_wait(&scrdesc,
 									   " Syntax error (expected \"\\\")",
 									   NULL, true, true, false, true);
 
@@ -7476,7 +7472,7 @@ recheck_end:
 						}
 						else if (next_is_num)
 						{
-							show_info_wait(&opts, &scrdesc,
+							show_info_wait(&scrdesc,
 										   " Syntax error (expected number)",
 										   NULL, true, true, false, true);
 
@@ -7515,7 +7511,7 @@ recheck_end:
 							}
 							else
 							{
-								show_info_wait(&opts, &scrdesc,
+								show_info_wait(&scrdesc,
 											   " expected number",
 											   NULL, true, true, false, true);
 								cmdline[0] = '\0';
@@ -7527,7 +7523,11 @@ recheck_end:
 							SearchSpec		spec;
 							bool			is_valid;
 
-							cmdline_ptr = parse_search_spec(&opts, &desc, &scrdesc,
+							free(string_argument);
+							string_argument = NULL;
+							string_argument_is_valid = false;
+
+							cmdline_ptr = parse_search_spec(&desc, &scrdesc,
 															cmdline_ptr + n,
 															&spec, &is_valid);
 
@@ -7550,7 +7550,7 @@ recheck_end:
 									if (scrdesc.selected_first_row == -1 &&
 										  scrdesc.selected_first_column == -1)
 									{
-										show_info_wait(&opts, &scrdesc,
+										show_info_wait(&scrdesc,
 													   " There are not selected area",
 													   NULL, true, true, true, false);
 										break;
@@ -7563,11 +7563,19 @@ recheck_end:
 									scrdesc.search_selected_mode = true;
 								}
 
+								if (spec.pattern)
+								{
+									string_argument = spec.pattern;
+									string_argument_is_valid = true;
+								}
+
 								if (spec.backward)
 									next_command = cmd_BackwardSearch;
 								else
 									next_command = cmd_ForwardSearch;
 							}
+							else
+								free(spec.pattern);
 						}
 						else if (IS_TOKEN(cmdline_ptr, n, "ord") ||
 								 IS_TOKEN(cmdline_ptr, n, "order") ||
@@ -7596,7 +7604,7 @@ recheck_end:
 									if (long_argument >= 1 && long_argument <= desc.columns)
 										next_command = OrderCommand;
 									else
-										show_info_wait(&opts, &scrdesc,
+										show_info_wait(&scrdesc,
 													   " Column number is out of range",
 													   NULL, true, true, false, true);
 								}
@@ -7616,13 +7624,13 @@ recheck_end:
 										next_command = OrderCommand;
 									}
 									else
-										show_info_wait(&opts, &scrdesc,
+										show_info_wait(&scrdesc,
 													   " Cannot to identify column",
 													   NULL, true, true, false, true);
 								}
 							}
 							else
-								show_info_wait(&opts, &scrdesc,
+								show_info_wait(&scrdesc,
 											   " Invalid identifier (expected column name)",
 											   NULL, true, true, false, true);
 						}
@@ -7631,8 +7639,7 @@ recheck_end:
 							ExportedSpec expspec;
 							bool	is_valid;
 
-							cmdline_ptr = parse_exported_spec(&opts,
-															  &scrdesc,
+							cmdline_ptr = parse_exported_spec(&scrdesc,
 															  cmdline_ptr + n,
 															  &expspec,
 															  &is_valid);
@@ -7663,8 +7670,7 @@ recheck_end:
 							ExportedSpec expspec;
 							bool	is_valid;
 
-							cmdline_ptr = parse_exported_spec(&opts,
-															  &scrdesc,
+							cmdline_ptr = parse_exported_spec(&scrdesc,
 															  cmdline_ptr + n,
 															  &expspec,
 															  &is_valid);
@@ -7693,7 +7699,7 @@ recheck_end:
 						else
 						{
 							cmdline_ptr[n] = '\0';
-							show_info_wait(&opts, &scrdesc,
+							show_info_wait(&scrdesc,
 										   " Unknown command \"%s\"",
 											   cmdline_ptr, true, true, false, true);
 
@@ -7754,7 +7760,7 @@ recheck_end:
 						if (cursor_row > max_cursor_row)
 						{
 							cursor_row = max_cursor_row;
-							make_beep(&opts);
+							make_beep();
 						}
 
 						if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
@@ -7790,7 +7796,7 @@ recheck_end:
 								cursor_row = 0;
 						}
 						else
-							make_beep(&opts);
+							make_beep();
 
 						/*
 						 * Without extra sleep time, an usage of mouse wheel can generate

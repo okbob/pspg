@@ -44,7 +44,6 @@ typedef struct
 	char   *log_pathname;
 	bool	ignore_case;
 	bool	ignore_lower_case;
-	bool	no_sound;
 	bool	no_mouse;
 	bool	less_status_bar;
 	bool	no_highlight_search;

@@ -398,7 +398,7 @@ readargs(char **argv,
 				opts->no_mouse = true;
 				break;
 			case 3:
-				opts->no_sound = true;
+				quiet_mode = true;
 				break;
 			case 4:
 				opts->less_status_bar = true;

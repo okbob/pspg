@@ -444,6 +444,7 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
  * Global setting
  */
 extern bool use_utf8;
+extern bool quiet_mode;
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

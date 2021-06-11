@@ -369,7 +369,7 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	st_menu_set_option(menu, cmd_FreezeThreeCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 3);
 	st_menu_set_option(menu, cmd_FreezeFourCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 4);
 
-	st_menu_set_option(menu, cmd_SoundToggle, ST_MENU_OPTION_MARKED, opts->no_sound);
+	st_menu_set_option(menu, cmd_SoundToggle, ST_MENU_OPTION_MARKED, quiet_mode);
 	st_menu_set_option(menu, cmd_UtfArtToggle, ST_MENU_OPTION_MARKED, opts->force_uniborder);
 	st_menu_set_option(menu, cmd_MenuAsciiArtToggle, ST_MENU_OPTION_MARKED, opts->force_ascii_art);
 	st_menu_set_option(menu, cmd_MouseToggle, ST_MENU_OPTION_MARKED, !opts->no_mouse);
