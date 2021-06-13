@@ -244,7 +244,13 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | `\save [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text\|pipesep\|sqlvalues]` | copy data to clipboard     |
 | `\order [N\|colum name]`                                      | sort by colum              |
 | `\orderd [N\|colum name]`                                     | desc sort by column        |
+| `\sort [N\|colum name]`                                       | sort by colum              |
+| `\sortd [N\|colum name]`                                      | desc sort by column        |
 | `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
+
+```
+\sort relname
+```
 
 The output can be redirected to any command when the name starts with pipe symbol:
 

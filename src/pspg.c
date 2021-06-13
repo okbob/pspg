@@ -2328,7 +2328,6 @@ rwe_popen(char *command, int *fin, int *fout, int *ferr)
 	return -1;
 }
 
-
 static void
 export_to_file(PspgCommand command,
 			  ClipboardFormat format,
@@ -2837,6 +2836,8 @@ const char *bscommands[] = {
 	"order",
 	"orderd",
 	"search",
+	"sort",
+	"sortd",
 	NULL
 };
 
@@ -3093,7 +3094,9 @@ pspg_complete(const char *text, int start, int end)
 							else if (IS_TOKEN(token, n, "ordd") ||
 									 IS_TOKEN(token, n, "orderd") ||
 									 IS_TOKEN(token, n, "ord") ||
-									 IS_TOKEN(token, n, "order"))
+									 IS_TOKEN(token, n, "order") ||
+									 IS_TOKEN(token, n, "sort") ||
+									 IS_TOKEN(token, n, "sortd"))
 							{
 								return rl_completion_matches(text, tablename_generator);
 							}
@@ -7580,7 +7583,9 @@ recheck_end:
 						else if (IS_TOKEN(cmdline_ptr, n, "ord") ||
 								 IS_TOKEN(cmdline_ptr, n, "order") ||
 								 IS_TOKEN(cmdline_ptr, n, "ordd") ||
-								 IS_TOKEN(cmdline_ptr, n, "orderd"))
+								 IS_TOKEN(cmdline_ptr, n, "orderd") ||
+								 IS_TOKEN(cmdline_ptr, n, "sort") ||
+								 IS_TOKEN(cmdline_ptr, n, "sortd"))
 						{
 							char   *ident;
 							int		len;
