@@ -296,7 +296,7 @@ chr_casexfrm(ST_MENU_CONFIG *config, char *str)
 
 		fold  = utf8_tofold((const char *) buffer2);
 
-		*((int *) buffer) = fold;
+		memcpy(buffer, &fold, sizeof(int));
 		buffer[sizeof(int)] = '\0';
 
 		result = strdup(buffer);
