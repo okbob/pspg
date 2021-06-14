@@ -1801,7 +1801,7 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		f = popen("wl-copy -v 2>/dev/null", "r");
 		if (f)
 		{
-			getline(&line, &size, f);
+			(void) getline(&line, &size, f);
 			if (line)
 			{
 				if (strncmp(line, "wl-clipboard", 12) == 0)
@@ -1826,7 +1826,7 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		f = popen("xclip -version 2>&1", "r");
 		if (f)
 		{
-			getline(&line, &size, f);
+			(void) getline(&line, &size, f);
 			if (line)
 			{
 				if (strncmp(line, "xclip", 5) == 0)
@@ -1849,7 +1849,7 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		f = popen("pbcopy", "r");
 		if (f)
 		{
-			getline(&line, &size, f);
+			(void) getline(&line, &size, f);
 			if (line)
 			{
 				/* there is not version option */
