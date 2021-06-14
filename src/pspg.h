@@ -330,7 +330,18 @@ typedef struct
 } ExtStr;
 
 /* from pspg.c */
-void exit_ncurses(void);
+extern void exit_ncurses(void);
+extern void export_to_file(PspgCommand command, ClipboardFormat format, Options *opts, ScrDesc *scrdesc,
+						   DataDesc *desc, int cursor_row, int cursor_column, int rows, double percent,
+						   const char *pipecmd, bool *force_refresh);
+extern void throw_searching(ScrDesc *scrdesc, DataDesc *desc);
+extern void enable_xterm_mouse_mode(bool enable);
+extern bool disable_xterm_mouse_mode(void);
+extern void show_info_wait(ScrDesc *scrdesc, const char *fmt, const char *par, bool beep,
+						   bool refresh_first, bool applytimeout, bool is_error);
+
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
 
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax,
@@ -439,12 +450,33 @@ extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
 extern void lb_free(DataDesc *desc);
 extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 
+/* from bscommands.c */
+extern const char *get_token(const char *instr, const char **token, int *n);
+extern const char *get_identifier(const char *instr, const char **ident, int *n);
+extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, ScrDesc *scrdesc, DataDesc *desc,
+											int max_cursor_row, int cursor_row,
+											int *next_command, long *long_argument, bool *long_argument_is_valid,
+											char **string_argument, bool *string_argument_is_valid, bool *refresh_clear);
+
+#define IS_TOKEN(str, n, token)		((n == strlen(token)) && (strncmp(str, token, n) == 0))
+
+/* from readline.c */
+extern void pspg_init_readline(const char *histfile);
+extern void pspg_save_history(const char *histfile);
+extern bool get_string(DataDesc *desc, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize,
+					   char *defstr, char tabcomplete_mode);
+
 
 /*
  * Global setting
  */
 extern bool use_utf8;
 extern bool quiet_mode;
+
+/*
+ * Global variables
+ */
+extern bool	handle_sigint;
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

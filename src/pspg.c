@@ -56,38 +56,6 @@
 
 #endif
 
-/*
- * Uncomment for test without readline
- *
-#undef HAVE_LIBREADLINE
-#undef HAVE_READLINE_HISTORY
- */
-
-#ifdef HAVE_LIBREADLINE
-
-#if defined(HAVE_READLINE_READLINE_H)
-
-#include <readline/readline.h>
-
-#elif defined(HAVE_READLINE_H)
-
-#include <readline.h>
-
-#endif
-
-#if RL_VERSION_MAJOR < 6
-#define rl_display_prompt rl_prompt
-#endif
-#endif
-
-#ifdef HAVE_READLINE_HISTORY
-#if defined(HAVE_READLINE_HISTORY_H)
-#include <readline/history.h>
-#elif defined(HAVE_HISTORY_H)
-#include <history.h>
-#endif
-#endif
-
 #include "commands.h"
 #include "config.h"
 #include "pspg.h"
@@ -107,25 +75,7 @@
 
 #endif
 
-#ifdef HAVE_LIBREADLINE
 
-static char		readline_buffer[1024];
-static bool		got_readline_string;
-static unsigned char	input;
-static bool		input_avail = false;
-
-static WINDOW  *g_bottom_bar;
-static attr_t	input_attr;
-
-static bool		forward_complete;
-static char	   *readline_prompt;
-static int		g_tabcomplete_mode;
-static const char **g_possible_tokens = NULL;
-static DataDesc *g_desc = NULL;
-
-#endif
-
-static bool		handle_sigint = false;
 static char		last_row_search[256];
 static char		last_col_search[256];
 static char		last_line[256];
@@ -134,17 +84,9 @@ static char		last_rows_number[256];
 static char		last_table_name[256];
 static char		last_nullstr[256];
 static char		cmdline[1024];
-static char    *cmdline_ptr = 0;
+static const char *cmdline_ptr = 0;
 
 int		clipboard_application_id = 0;
-
-#ifdef HAVE_READLINE_HISTORY
-
-static char		last_history[256];
-
-#endif
-
-#define UNUSED(expr) do { (void)(expr); } while (0)
 
 #define		USE_EXTENDED_NAMES
 
@@ -210,6 +152,11 @@ static int pspg_event_buffer_write = 0;
  */
 bool	use_utf8;
 bool	quiet_mode = false;
+
+/*
+ * Global state variables
+ */
+bool	handle_sigint = false;
 
 /*
  * Own signal handlers
@@ -304,18 +251,39 @@ current_time(time_t *sec, long *ms)
 	*sec = spec.tv_sec;
 }
 
-static inline void
-enable_xterm_mouse_mode(void)
+inline void
+enable_xterm_mouse_mode(bool enable_mode)
 {
-	fprintf(stdout, "\033[?1002h");
-	fflush(stdout);
+	if (enable_mode)
+	{
+		fprintf(stdout, "\033[?1002h");
+		fflush(stdout);
+		xterm_mouse_mode_was_initialized = true;
+		log_row("xterm mouse mode 1002 activated");
+	}
+	else
+	{
+		xterm_mouse_mode_was_initialized = false;
+		log_row("xterm mouse mode 1002 is not activated");
+	}
 }
 
-static inline void
+inline bool
 disable_xterm_mouse_mode(void)
 {
-	fprintf(stdout, "\033[?1002l");
-	fflush(stdout);
+	if (xterm_mouse_mode_was_initialized)
+	{
+		fprintf(stdout, "\033[?1002l");
+		fflush(stdout);
+		xterm_mouse_mode_was_initialized = false;
+		log_row("xterm mouse mode 1002 is deactivated");
+		return true;
+	}
+	else
+	{
+		log_row("xterm mouse mode 1002 is not active");
+		return false;
+	}
 }
 
 /*
@@ -1079,7 +1047,7 @@ make_beep(void)
 /*
  * It is used for result of action info
  */
-static void
+void
 show_info_wait(ScrDesc *scrdesc,
 			   const char *fmt,
 			   const char *par,
@@ -1159,348 +1127,6 @@ show_info_wait(ScrDesc *scrdesc,
 	/* eat escape if pressed here */
 	if (!(c == 27 && press_alt))
 		unget_event(c, press_alt, &mevent);
-}
-
-#ifdef HAVE_LIBREADLINE
-
-#if RL_READLINE_VERSION >= 0x0603
-
-static int
-readline_input_avail(void)
-{
-    return input_avail;
-}
-
-#endif
-
-static int
-readline_getc(FILE *dummy)
-{
-	UNUSED(dummy);
-
-    input_avail = false;
-    return input;
-}
-
-static void
-forward_to_readline(char c)
-{
-    input = c;
-    input_avail = true;
-    rl_callback_read_char();
-}
-
-static void
-got_string(char *line)
-{
-	if (line)
-	{
-		strncpy(readline_buffer, line, sizeof(readline_buffer) - 1);
-		*(readline_buffer + sizeof(readline_buffer) - 1) = '\0';
-	}
-	else
-		readline_buffer[0] = '\0';
-
-	got_readline_string = true;
-}
-
-static void
-readline_redisplay()
-{
-	size_t cursor_col;
-
-	if (use_utf8)
-	{
-		size_t prompt_dsplen = utf_string_dsplen(rl_display_prompt, INT_MAX);
-
-		cursor_col = prompt_dsplen
-					  + readline_utf_string_dsplen(rl_line_buffer, rl_point, prompt_dsplen);
-	}
-	else
-	{
-		cursor_col = strlen(rl_display_prompt) + min_int(strlen(rl_line_buffer), rl_point);
-	}
-
-	wbkgd(g_bottom_bar, input_attr);
-	werase(g_bottom_bar);
-	mvwprintw(g_bottom_bar, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
-	mvwchgat(g_bottom_bar, 0, 0, -1, input_attr, PAIR_NUMBER(input_attr), 0);
-
-	if (cursor_col >= (size_t) COLS)
-		curs_set(0);
-	else
-	{
-		wmove(g_bottom_bar, 0, cursor_col);
-		curs_set(2);
-	}
-
-	wrefresh(g_bottom_bar);
-}
-
-#endif
-
-static bool
-get_string(Options *opts,
-		   DataDesc *desc,
-		   ScrDesc *scrdesc,
-		   char *prompt,
-		   char *buffer,
-		   int maxsize,
-		   char *defstr,
-		   char tabcomplete_mode)
-{
-	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
-	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
-	bool	input_is_valid = true;
-
-#ifdef HAVE_LIBREADLINE
-
-	int		c;
-	int		prev_c = 0;
-	mmask_t		prev_mousemask = 0;
-
-	log_row("input string prompt - \"%s\"", prompt);
-
-	g_bottom_bar = bottom_bar;
-	got_readline_string = false;
-	input_attr = t->input_attr;
-	g_tabcomplete_mode = tabcomplete_mode;
-	g_desc = desc;
-
-	wattron(bottom_bar, t->input_attr);
-	mvwprintw(bottom_bar, 0, 0, "");
-	wclrtoeol(bottom_bar);
-
-	curs_set(1);
-	echo();
-
-	readline_prompt = prompt;
-
-	rl_getc_function = readline_getc;
-
-#if RL_READLINE_VERSION >= 0x0603
-
-	rl_input_available_hook = readline_input_avail;
-
-#endif
-
-	rl_redisplay_function = readline_redisplay;
-
-	rl_callback_handler_install(prompt, got_string);
-
-	if (tabcomplete_mode == 'c')
-	{
-		rl_completer_word_break_characters = "\\ ";
-		rl_completer_quote_characters = "\"'";
-	}
-	else
-	{
-		rl_completer_word_break_characters = (char *) rl_basic_word_break_characters;
-		rl_completer_quote_characters = NULL;
-	}
-
-	mousemask(0, &prev_mousemask);
-
-	if (xterm_mouse_mode_was_initialized)
-	{
-		disable_xterm_mouse_mode();
-		xterm_mouse_mode_was_initialized = false;
-	}
-
-	if (tabcomplete_mode == 'c')
-	{
-		rl_inhibit_completion = 0;
-
-		rl_insert_text("\\");
-		rl_forced_update_display();
-		wrefresh(bottom_bar);
-	}
-	else if (tabcomplete_mode == 'f')
-		rl_inhibit_completion = 0;
-	else if (tabcomplete_mode == 'u')
-		rl_inhibit_completion = 1;
-
-	/* use default value from buffer */
-	if (defstr && *defstr)
-	{
-		rl_insert_text(defstr);
-		rl_forced_update_display();
-		wrefresh(bottom_bar);
-	}
-
-	wtimeout(bottom_bar, 100);
-
-	while (!got_readline_string)
-	{
-		do
-		{
-			if (forward_complete)
-			{
-				c = 9;
-				forward_complete = false;
-			}
-			else
-				c = wgetch(bottom_bar);
-
-			if (c == ERR && errno == EINTR)
-				goto finish_read;
-
-			if (handle_sigint)
-				goto finish_read;
-		}
-		while (c == ERR || c == 0);
-
-		/* detect double alts .. escape */
-		if (c == 27 && prev_c == 27)
-		{
-			/*
-			 * Cannot leave here - readline requires complete ALT pair.
-			 * So just update flag here.
-			 */
-			input_is_valid = false;
-		}
-
-		prev_c = c;
-
-		forward_to_readline(c);
-
-		wrefresh(bottom_bar);
-
-		if (!input_is_valid)
-			break;
-	}
-
-finish_read:
-
-	if (handle_sigint)
-	{
-		handle_sigint = false;
-		input_is_valid = false;
-	}
-
-	mousemask(prev_mousemask, NULL);
-
-	if (opts->xterm_mouse_mode)
-	{
-		xterm_mouse_mode_was_initialized = true;
-		enable_xterm_mouse_mode();
-	}
-
-	rl_callback_handler_remove();
-
-	curs_set(0);
-	noecho();
-
-	/* don't allow alt chars (garbage) in input string */
-	if (input_is_valid)
-	{
-		char   *ptr = readline_buffer;
-
-		while (*ptr)
-			if (*ptr++ == 27)
-			{
-				input_is_valid = false;
-				break;
-			}
-	}
-
-	if (input_is_valid)
-	{
-		if (tabcomplete_mode == 'f')
-		{
-			char	*tstr;
-			int		bytes;
-
-			bytes = strlen(readline_buffer);
-			tstr = trim_quoted_str(readline_buffer, &bytes);
-
-			bytes = bytes < (maxsize - 1) ? bytes : (maxsize - 1);
-			memcpy(buffer, tstr, bytes);
-			buffer[bytes] = '\0';
-		}
-		else
-		{
-			strncpy(buffer, readline_buffer, maxsize - 1);
-			buffer[maxsize] = '\0';
-		}
-
-#ifdef HAVE_READLINE_HISTORY
-
-		if (*buffer)
-		{
-			/*
-			 * Don't write same strings to hist file
-			 */
-			if (*last_history == '\0' || strncmp(last_history, buffer, sizeof(last_history)) != 0)
-			{
-				add_history(buffer);
-				strncpy(last_history, buffer, sizeof(last_history) - 1);
-				last_history[sizeof(last_history) - 1] = '\0';
-			}
-		}
-
-#endif
-
-		if (defstr)
-			strcpy(defstr, buffer);
-	}
-	else
-	{
-		if (defstr)
-			*defstr = '\0';
-		buffer[0] = '\0';
-	}
-
-#else
-
-	log_row("input string prompt - \"%s\"", prompt);
-
-	wbkgd(bottom_bar, t->input_attr);
-	werase(bottom_bar);
-	mvwprintw(bottom_bar, 0, 0, "%s", prompt);
-	curs_set(1);
-	echo();
-	wgetnstr(bottom_bar, buffer, maxsize);
-
-	if (tabcomplete_mode == 'f')
-	{
-		char	*tstr;
-		int		bytes;
-
-		bytes = strlen(buffer);
-		tstr = trim_quoted_str(buffer, &bytes);
-
-		memcpy(buffer, tstr, bytes);
-		buffer[bytes] = '\0';
-	}
-
-	/* reset ctrlc, wgetnstr doesn't handle this signal now */
-	handle_sigint = false;
-
-	curs_set(0);
-	noecho();
-
-#endif
-
-
-	/*
-	 * Screen should be refreshed after show any info.
-	 */
-	scrdesc->refresh_scr = true;
-
-	log_row("input string - \"%s\"", buffer);
-
-	/*
-	 * Keypad is an feature of an screen, not of an window. In this routine
-	 * I read from window without keypad flag, because I redirect events to
-	 * readline. But next reading from stdin looks partialy broken (like
-	 * without keypad flag), although the reading is related to stdscr with
-	 * keypad flag. I found dirty workaround - call keypad(stdscr, TRUE)
-	 * again.
-	 */
-	keypad(stdscr, TRUE);
-
-	return input_is_valid;
 }
 
 #define SEARCH_FORWARD			1
@@ -2087,8 +1713,7 @@ exit_ncurses(void)
 	if (active_ncurses)
 		endwin();
 
-	if (xterm_mouse_mode_was_initialized)
-		disable_xterm_mouse_mode();
+	(void) disable_xterm_mouse_mode();
 }
 
 static void
@@ -2328,7 +1953,7 @@ rwe_popen(char *command, int *fin, int *fout, int *ferr)
 	return -1;
 }
 
-static void
+void
 export_to_file(PspgCommand command,
 			  ClipboardFormat format,
 			  Options *opts,
@@ -2396,7 +2021,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		(void) get_string(opts, desc, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
+		(void) get_string(desc, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
 		if (buffer[0] == '\0')
 			return;
 
@@ -2412,7 +2037,7 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		(void) get_string(opts, desc, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
+		(void) get_string(desc, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
 		if (table_name[0] == '\0')
 			return;
 	}
@@ -2424,7 +2049,7 @@ export_to_file(PspgCommand command,
 		{
 			char	   *endptr;
 
-			(void) get_string(opts, desc, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
+			(void) get_string(desc, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
 			if (number[0] == '\0')
 				return;
 
@@ -2722,7 +2347,7 @@ typedef enum
 /*
  * Trivial functions reduce redundant code.
  */
-static void
+void
 throw_searching(ScrDesc *scrdesc, DataDesc *desc)
 {
 	*scrdesc->searchterm = '\0';
@@ -2824,875 +2449,6 @@ mousex_get_colno(DataDesc *desc,
 	}
 
 	return colno;
-}
-
-#ifdef HAVE_LIBREADLINE
-
-const char *bscommands[] = {
-	"save",
-	"copy",
-	"theme",
-	"quit",
-	"order",
-	"orderd",
-	"search",
-	"sort",
-	"sortd",
-	NULL
-};
-
-const char *export_opts[] = {
-	"all",
-	"top",
-	"bottom",
-	"selected",
-	"searched",
-	"marked",
-	"csv",
-	"tsvc",
-	"text",
-	"pipesep",
-	"insert",
-	"cinsert",
-	"nullstr",
-	"sqlvalues",
-	NULL
-};
-
-
-const char *search_opts[] = {
-	"backward",
-	"selected",
-	"column",
-	NULL
-};
-
-#define IS_TOKEN(str, n, token)		((n == strlen(token)) && (strncmp(str, token, n) == 0))
-
-/*
- * Returns pointer to first non token char. When token is valid, then
- * output n is higher than 0 and token pointer is non null.
- */
-static char *
-get_token(char *instr, char **token, int *n)
-{
-	*token = NULL;
-	*n = 0;
-
-	/* skip initial spaces */
-	while (*instr == ' ')
-		instr += 1;
-
-	if (*instr == '\0')
-		return NULL;
-
-	if (isalpha(*instr))
-	{
-		*token = instr++;
-		while (isalpha(*instr))
-			instr += 1;
-
-		*n = instr - *token;
-	}
-
-	return instr;
-}
-
-static char *
-get_identifier(char *instr, char **ident, int *n)
-{
-	char		ending_symbol = -1;
-
-	*ident = NULL;
-	*n = 0;
-
-	if (!instr)
-		return NULL;
-
-	/* skip initial spaces */
-	while (*instr == ' ')
-		instr += 1;
-
-	if (*instr == '\0')
-		return NULL;
-
-	if (*instr == '\'' || *instr == '"')
-	{
-		ending_symbol = *instr;
-		*ident = ++instr;
-
-		while (*instr)
-		{
-			if (instr[0] == '\\' &&
-				(instr[1] == '\'' || instr[1] == '"'))
-			{
-				instr += 2;
-			}
-			else if (*instr == ending_symbol)
-			{
-				*n = instr - *ident;
-				instr += 1;
-				break;
-			}
-			else
-				instr += 1;
-		}
-	}
-	else if (isalnum(*instr))
-	{
-		*ident = instr++;
-		while (isalnum(*instr))
-			instr += 1;
-
-		*n = instr - *ident;
-	}
-
-	return *instr ? instr : NULL;
-}
-
-static char *
-completion_generator(const char *text, int state)
-{
-	static int list_index, len;
-	const char *name;
-
-	if (!state)
-	{
-		list_index = 0;
-		len = strlen(text);
-	}
-
-	while ((name = g_possible_tokens[list_index++]))
-	{
-		if (strncmp(name, text, len) == 0)
-			return strdup(name);
-	}
-
-	return NULL;
-}
-
-static char *
-tablename_generator(const char *text, int state)
-{
-	static int list_index, len;
-	const char *name;
-	int		name_len;
-
-	if (!g_desc->namesline)
-		return NULL;
-
-	if (!state)
-	{
-		list_index = 0;
-		len = strlen(text);
-	}
-
-	while (list_index < g_desc->columns)
-	{
-		name = g_desc->namesline + g_desc->cranges[list_index].name_offset;
-		name_len = g_desc->cranges[list_index].name_size;
-
-		list_index += 1;
-
-		if (use_utf8)
-		{
-			if (utf8_nstarts_with_with_sizes(name, name_len, text, len))
-				return sstrndup(name, name_len);
-		}
-		else
-		{
-			if (nstarts_with_with_sizes(name, name_len, text, len))
-				return sstrndup(name, name_len);
-		}
-	}
-
-	return NULL;
-}
-
-static void
-get_prev_token(int start, char **token, int *size)
-{
-	*size = 0;
-	*token = NULL;
-
-	if (start > 0)
-	{
-		char *ptr = &rl_line_buffer[start - 1];
-
-		/* check previous token */
-		if (*ptr == '"')
-			ptr -= 1;
-
-		while (ptr >= rl_line_buffer && *ptr == ' ')
-			ptr -= 1;
-
-		while (ptr > rl_line_buffer)
-		{
-			if (isalnum(*(ptr - 1)))
-				ptr -= 1;
-			else
-				break;
-		}
-
-		if (isalnum(*ptr))
-			get_token(ptr, token, size);
-	}
-}
-
-static char **
-pspg_complete(const char *text, int start, int end)
-{
-	UNUSED(end);
-
-	if (g_tabcomplete_mode == 'f')
-	{
-		rl_completion_suppress_append = 1;
-		rl_attempted_completion_over = 0;
-	}
-	else
-	{
-		rl_completion_suppress_append = 0;
-		rl_attempted_completion_over = 1;
-
-		if (g_tabcomplete_mode == 'c')
-		{
-			if (start > 0)
-			{
-				if (rl_line_buffer[start - 1] == '\\')
-				{
-					g_possible_tokens = bscommands;
-					return rl_completion_matches(text, completion_generator);
-				}
-				else
-				{
-					int		i;
-					char   *bscommand = NULL;
-
-					for (i = start - 1; i >= 0; i--)
-					{
-						if (rl_line_buffer[i] == '\\')
-						{
-							bscommand = &rl_line_buffer[i+1];
-							break;
-						}
-					}
-
-					if (bscommand)
-					{
-						char   *token;
-						int		n;
-
-						get_token(bscommand, &token, &n);
-						if (n > 0)
-						{
-							if (IS_TOKEN(token, n, "save") ||
-								IS_TOKEN(token, n, "copy"))
-							{
-								g_possible_tokens = export_opts;
-								return rl_completion_matches(text, completion_generator);
-							}
-							else if (IS_TOKEN(token, n, "ordd") ||
-									 IS_TOKEN(token, n, "orderd") ||
-									 IS_TOKEN(token, n, "ord") ||
-									 IS_TOKEN(token, n, "order") ||
-									 IS_TOKEN(token, n, "sort") ||
-									 IS_TOKEN(token, n, "sortd"))
-							{
-								return rl_completion_matches(text, tablename_generator);
-							}
-							else if (IS_TOKEN(token, n, "search"))
-							{
-								char	   *prev_token;
-								int			prev_token_size;
-								bool		prev_token_is_column = false;
-
-								get_prev_token(start, &prev_token, &prev_token_size);
-
-								if (prev_token_size > 0)
-								{
-									prev_token_is_column = IS_TOKEN(prev_token, prev_token_size, "colum") ||
-														  IS_TOKEN(prev_token, prev_token_size, "column");
-								}
-
-								if (prev_token_is_column)
-									return rl_completion_matches(text, tablename_generator);
-								else
-								{
-									g_possible_tokens = search_opts;
-									return rl_completion_matches(text, completion_generator);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return (char**) NULL;
-}
-
-/*
- * Default readline rutine for printing list of possible matches breaks ncurses output.
- * More we have only one row for editing. I don't want to implement dynamic window for
- * completion. So pspg implements own method for printing completion menu.
- */
-static void
-pspg_display_match(char **matches, int num_matches, int max_length)
-{
-	int		common_length;
-	int		pos = 1;
-	char	c = 0;
-
-	UNUSED(max_length);
-
-	forward_complete = false;
-
-	common_length = strlen(matches[0]);
-
-	wbkgd(g_bottom_bar, input_attr);
-	werase(g_bottom_bar);
-
-	while (1)
-	{
-		if (handle_sigint)
-			break;
-
-		werase(g_bottom_bar);
-		wmove(g_bottom_bar, 0, 0);
-		wprintw(g_bottom_bar, "%s%s", readline_prompt, rl_line_buffer);
-
-		wattron(g_bottom_bar, A_BOLD);
-		wprintw(g_bottom_bar, "%s", matches[pos] + common_length);
-		wattroff(g_bottom_bar, A_BOLD);
-
-		wrefresh(g_bottom_bar);
-
-		noecho();
-		c = getch();
-		echo();
-
-		if (c == 10)
-		{
-			rl_insert_text(matches[pos] + common_length);
-			ungetch(10);
-			break;
-		}
-		else if (c == 7)
-		{
-			rl_insert_text(matches[pos] + common_length);
-			ungetch(127);
-			break;
-		}
-		else if (c == 3)
-			pos -= 1;
-		else if (c == 2 || c == 9)
-			pos += 1;
-		else if (c == 4 || c == 27)
-			break;
-		else if (c == 5)
-		{
-			rl_insert_text(matches[pos] + common_length);
-			break;
-		}
-		else if (g_tabcomplete_mode == 'c' && c == ' ')
-		{
-			rl_insert_text(matches[pos] + common_length);
-			rl_insert_text(" ");
-			break;
-		}
-		else if (g_tabcomplete_mode == 'c' && c == '"')
-		{
-			rl_insert_text(matches[pos] + common_length);
-			rl_insert_text("\" ");
-			break;
-		}
-		else
-		{
-			if (c != 9 && c != -1)
-			{
-				char	   str[2];
-				str[0] = c;
-				str[1] = '\0';
-
-				rl_insert_text(str);
-				forward_complete = true;
-				break;
-			}
-		}
-
-		if (pos > num_matches)
-			pos = 1;
-		if (pos < 1)
-			pos = num_matches;
-	}
-}
-
-#endif
-
-typedef struct
-{
-	PspgCommand command;
-	ClipboardFormat format;
-	int		rows;
-	double	percent;
-	char   *nullstr;
-	char   *pipecmd;
-} ExportedSpec;
-
-static char *
-parse_exported_spec(ScrDesc *scrdesc,
-					char *instr,
-					ExportedSpec *spec,
-					bool *is_valid)
-{
-	bool	format_is_specified_already = false;
-	bool	format_specified = false;
-	bool	range_is_specified_already = false;
-	bool	range_specified = false;
-	bool	null_is_specified_already = false;
-
-	bool	next_token_shouldbe_number = false;
-	char   *token;
-	int		n;
-
-	spec->command = cmd_CopyAllLines;
-	spec->format = CLIPBOARD_FORMAT_TEXT;
-	spec->rows = 0;
-	spec->percent = 0.0;
-	spec->nullstr = NULL;
-	spec->pipecmd = NULL;
-
-	*is_valid = false;
-
-	if (instr)
-	{
-		instr = get_token(instr, &token, &n);
-
-		while (token)
-		{
-			range_specified = false;
-			format_specified = false;
-			next_token_shouldbe_number = false;
-
-			if (n > 20)
-			{
-				show_info_wait(scrdesc,
-							   " Syntax error (too long token)",
-							   NULL, NULL, true, false, true);
-				return NULL;
-			}
-
-			if (IS_TOKEN(token, n, "top"))
-			{
-				spec->command = cmd_CopyTopLines;
-				range_specified = true;
-				next_token_shouldbe_number = true;
-			}
-			else if (IS_TOKEN(token, n, "bottom"))
-			{
-				spec->command = cmd_CopyBottomLines;
-				range_specified = true;
-				next_token_shouldbe_number = true;
-			}
-			else if (IS_TOKEN(token, n, "all"))
-			{
-				spec->command = cmd_CopyAllLines;
-				range_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "sel") ||
-					 IS_TOKEN(token, n, "selected"))
-			{
-				spec->command = cmd_CopySelected;
-				range_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "search") ||
-					 IS_TOKEN(token, n, "searched"))
-			{
-				spec->command = cmd_CopySearchedLines;
-				range_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "mark") ||
-					 IS_TOKEN(token, n, "marked"))
-			{
-				spec->command = cmd_CopyMarkedLines;
-				range_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "csv"))
-			{
-				spec->format = CLIPBOARD_FORMAT_CSV;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "tsvc"))
-			{
-				spec->format = CLIPBOARD_FORMAT_TSVC;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "sqlval") ||
-					 IS_TOKEN(token, n, "sqlvalues"))
-			{
-				spec->format = CLIPBOARD_FORMAT_SQL_VALUES;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "text"))
-			{
-				spec->format = CLIPBOARD_FORMAT_TEXT;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "pipesep") ||
-					 IS_TOKEN(token, n, "ps"))
-			{
-				spec->format = CLIPBOARD_FORMAT_PIPE_SEPARATED;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "insert"))
-			{
-				spec->format = CLIPBOARD_FORMAT_INSERT;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "cinsert"))
-			{
-				spec->format = CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS;
-				format_specified = true;
-			}
-			else if (IS_TOKEN(token, n, "null") ||
-					 IS_TOKEN(token, n, "nullstr"))
-			{
-				char	*ident;
-				int		ident_len;
-
-				if (null_is_specified_already)
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (null is specified already)",
-								   NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				while (*instr == ' ')
-					instr += 1;
-
-				if (*instr != '"')
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected '\"')",
-								    NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				instr = get_identifier(instr, &ident, &ident_len);
-				if (!ident)
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected closed quoted string)",
-								   NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				ident = trim_quoted_str(ident, &ident_len);
-
-				if (ident_len > 0)
-					spec->nullstr = sstrndup(ident, ident_len);
-			}
-			else
-			{
-				char buffer[255];
-
-				snprintf(buffer, 255, " Syntax error (unknown token \"%.*s\")", n, token);
-
-				show_info_wait(scrdesc,
-							   buffer,
-							   NULL, NULL, true, false, true);
-				return NULL;
-			}
-
-			if (format_is_specified_already && format_specified)
-			{
-				show_info_wait(scrdesc,
-							   " Syntax error (format specification is redundant)",
-							   NULL, NULL, true, false, true);
-				return NULL;
-			}
-
-			if (range_is_specified_already && range_specified)
-			{
-				show_info_wait(scrdesc,
-							   " Syntax error (range specification is redundant)",
-							   NULL, NULL, true, false, true);
-				return NULL;
-			}
-
-			if (format_specified)
-				format_is_specified_already = true;
-			if (range_specified)
-				range_is_specified_already = true;
-
-			if (next_token_shouldbe_number)
-			{
-				char	   *endptr = NULL;
-
-				errno = 0;
-
-				if (instr)
-					spec->percent = strtod(instr, &endptr);
-
-				if (!instr || instr == endptr || errno != 0)
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected number)",
-								   NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				if (endptr && *endptr != '%')
-				{
-					spec->rows = (int) spec->percent;
-					spec->percent = 0.0;
-					endptr += 1;
-				}
-
-				instr = endptr;
-			}
-
-			instr = get_token(instr, &token, &n);
-		}
-
-		if (instr && *instr)
-		{
-			if (*instr == '|')
-			{
-				spec->pipecmd = ++instr;
-				instr = NULL;
-			}
-			else if (*instr != '\\')
-			{
-				show_info_wait(scrdesc,
-							   " Syntax error (unexpected symbol)",
-							   NULL, NULL, true, false, true);
-				return NULL;
-			}
-		}
-	}
-
-	*is_valid = true;
-
-	return instr;
-}
-
-/*
- * Returns count of column names with pattern string
- */
-static int
-substr_column_name_search(DataDesc *desc,
-						  char *pattern,
-						  int len,
-						  int first_colno,
-						  int *colno)
-{
-	int		i;
-	int		count = 0;
-
-	*colno = -1;
-
-	for (i = first_colno; i <= desc->columns; i++)
-	{
-		char	   *name = desc->namesline + desc->cranges[i - 1].name_offset;
-		int			size = desc->cranges[i - 1].name_size;
-
-		if (use_utf8)
-		{
-			if (utf8_nstrstr_with_sizes(name, size, pattern, len))
-			{
-				if (*colno == -1)
-					*colno = i;
-
-				count += 1;
-			}
-		}
-		else
-		{
-			if (nstrstr_with_sizes(name, size, pattern, len))
-			{
-				if (*colno == -1)
-					*colno = i;
-
-				count += 1;
-			}
-		}
-	}
-
-	return count;
-}
-
-typedef struct
-{
-	bool		backward;
-	bool		selected;
-	int			colno;
-	char	   *pattern;
-} SearchSpec;
-
-static char *
-parse_search_spec(DataDesc *desc,
-				  ScrDesc *scrdesc,
-				  char *instr,
-				  SearchSpec *spec,
-				  bool *is_valid)
-{
-	bool	direction_is_specified_already = false;
-	bool	range_is_specified_already = false;
-	bool	pattern_is_specified_already = false;
-
-	spec->backward = false;
-	spec->selected = false;
-	spec->colno = 0;
-	spec->pattern = NULL;
-
-	*is_valid = false;
-
-	if (instr)
-	{
-		while (instr)
-		{
-			while (*instr == ' ')
-				instr += 1;
-
-			if (*instr == '"')
-			{
-				char	   *ident;
-				int			n;
-
-				instr = get_identifier(instr, &ident, &n);
-				if (!ident)
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected closed quoted string)",
-								   NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				spec->pattern = sstrndup(ident, n);
-
-				if (pattern_is_specified_already)
-				{
-					show_info_wait(scrdesc,
-								   " Syntax error (pattern is specified already)",
-								   NULL, NULL, true, false, true);
-					return NULL;
-				}
-
-				pattern_is_specified_already = true;
-				continue;
-			}
-			else
-			{
-				char   *token;
-				int		n;
-				char   *pattern = instr;
-				int		pattern_len;
-
-				instr = get_token(instr, &token, &n);
-				if (token)
-				{
-					if (IS_TOKEN(token, n, "back") ||
-						IS_TOKEN(token, n, "backward"))
-					{
-						spec->backward = true;
-
-						if (direction_is_specified_already)
-						{
-							show_info_wait(scrdesc,
-										   " Syntax error (direction is specified already)",
-										   NULL, NULL, true, false, true);
-							return NULL;
-						}
-
-						direction_is_specified_already = true;
-						continue;
-					}
-					else if (IS_TOKEN(token, n, "sel") ||
-							 IS_TOKEN(token, n, "selected")) 
-					{
-						spec->selected = true;
-
-						if (range_is_specified_already)
-						{
-							show_info_wait(scrdesc,
-										   " Syntax error (range specification is redundant)",
-										   NULL, NULL, true, false, true);
-							return NULL;
-						}
-
-						range_is_specified_already = true;
-						continue;
-					}
-					else if (IS_TOKEN(token, n, "colum") ||
-							 IS_TOKEN(token, n, "column"))
-					{
-						char	   *ident;
-						int			len;
-
-						if (range_is_specified_already)
-						{
-							show_info_wait(scrdesc,
-										   " Syntax error (range specification is redundant)",
-										   NULL, NULL, true, false, true);
-							return NULL;
-						}
-
-						instr = get_identifier(instr, &ident, &len);
-						if (len > 0)
-						{
-							int		count;
-
-							ident = trim_quoted_str(ident, &len);
-
-							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
-							{
-								show_info_wait(scrdesc,
-											   " Cannot to identify column",
-											   NULL, true, true, false, true);
-								return NULL;
-							}
-						}
-						else
-						{
-							show_info_wait(scrdesc,
-										   " Invalid identifier (expected column name)",
-										   NULL, true, true, false, true);
-							return NULL;
-						}
-
-						range_is_specified_already = true;
-						continue;
-					}
-				}
-
-				pattern_len = strlen(pattern);
-				pattern = trim_quoted_str(pattern, &pattern_len);
-
-				if (pattern_len > 0)
-				{
-					spec->pattern = sstrndup(pattern, pattern_len);
-
-					if (pattern_is_specified_already)
-					{
-						show_info_wait(scrdesc,
-									   " Syntax error (pattern is specified already)",
-									   NULL, NULL, true, false, true);
-						return NULL;
-					}
-				}
-
-				*is_valid = true;
-				return NULL;
-			}
-		}
-
-		*is_valid = true;
-	}
-
-	return instr;
 }
 
 /*
@@ -3818,12 +2574,7 @@ main(int argc, char *argv[])
 
 	/* Name of pspg config file */
 	const char *PSPG_CONF;
-
-#ifdef HAVE_LIBREADLINE
-
 	const char *PSPG_HISTORY;
-
-#endif
 
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
@@ -3862,14 +2613,9 @@ main(int argc, char *argv[])
 				PSPG_CONF,
 				strerror(errno));
 
-#ifdef HAVE_LIBREADLINE
-
 	PSPG_HISTORY = getenv("PSPG_HISTORY");
 	if (!PSPG_HISTORY)
 		PSPG_HISTORY = "~/.pspg_history";
-
-#endif
-
 
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
@@ -4352,13 +3098,7 @@ reinit_theme:
 				  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 				  NULL);
 
-		if (opts.xterm_mouse_mode)
-		{
-			xterm_mouse_mode_was_initialized = true;
-			enable_xterm_mouse_mode();
-
-			log_row("xterm mouse mode 1002 activated");
-		}
+		enable_xterm_mouse_mode(opts.xterm_mouse_mode);
 
 #else
 
@@ -4554,34 +3294,7 @@ reinit_theme:
 	last_nullstr[0] = '\0';
 
 	/* initialize readline if it is active */
-#ifdef HAVE_LIBREADLINE
-
-	rl_catch_signals = 0;
-	rl_catch_sigwinch = 0;
-	rl_deprep_term_function = NULL;
-	rl_prep_term_function = NULL;
-
-#if RL_READLINE_VERSION > 0x0603
-
-	rl_change_environment = 0;
-
-#endif
-
-	rl_inhibit_completion = 0;
-
-	rl_completion_display_matches_hook = pspg_display_match;
-	rl_attempted_completion_function = pspg_complete;
-
-#ifdef HAVE_READLINE_HISTORY
-
-	if (!reinit)
-		read_history(tilde(NULL, PSPG_HISTORY));
-
-	last_history[0] = '\0';
-
-#endif
-
-#endif
+	pspg_init_readline(PSPG_HISTORY);
 
 #ifdef COMPILE_MENU
 
@@ -5501,7 +4214,7 @@ hide_menu:
 							strncpy(last_nullstr, opts.nullstr, sizeof(256));
 					}
 
-					is_valid = get_string(&opts, &desc, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
+					is_valid = get_string(&desc, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
 					if (nullstr[0] != '\0')
 					{
 						free(opts.nullstr);
@@ -5774,9 +4487,71 @@ reset_search:
 			case cmd_SetTheme_Flatwhite:
 			case cmd_SetTheme_RelationalPipes:
 			case cmd_SetTheme_PaperColor:
-				opts.theme = cmd_get_theme(command);
-				reinit = true;
-				goto reinit_theme;
+				long_argument = cmd_get_theme(command);
+				long_argument_is_valid = true;
+				next_command = cmd_SetTheme;
+				break;
+
+			case cmd_SetTheme:
+				{
+					int		theme_num = -1;
+
+					if (long_argument_is_valid)
+					{
+						theme_num = (int) long_argument;
+						long_argument_is_valid = false;
+					}
+					else
+					{
+						char	theme_num_str[256];
+
+						get_string(&desc,  &scrdesc, "theme number: ", theme_num_str, sizeof(theme_num_str) - 1, last_line, 'u');
+						if (theme_num_str[0] != '\0')
+						{
+							char   *endptr;
+
+							errno = 0;
+							theme_num = strtol(theme_num_str, &endptr, 10);
+
+							if (endptr == theme_num_str)
+							{
+								show_info_wait(&scrdesc,
+											   " Cannot convert input string to number",
+											   NULL, true, true, false, true);
+								break;
+							}
+							else if (errno != 0)
+							{
+								show_info_wait(&scrdesc,
+											   " Cannot convert input string to number (%s)",
+											   strerror(errno), true, true, false, true);
+								break;
+							}
+						}
+						else
+							break;
+					}
+
+					if (theme_num != -1)
+					{
+						if (theme_num < 0 || theme_num > MAX_STYLE)
+						{
+							char	buffer[256];
+
+							sprintf(buffer, "only color schemas 0..%d are supported", MAX_STYLE);
+
+							show_info_wait(&scrdesc, buffer,
+											   strerror(errno), true, true, false, true);
+							break;
+						}
+
+						opts.theme = theme_num;
+						reinit = true;
+						goto reinit_theme;
+					}
+
+					break;
+				}
 
 			case cmd_BoldLabelsToggle:
 				opts.bold_labels = !opts.bold_labels;
@@ -5853,11 +4628,7 @@ reset_search:
 						mousemask(0, &prev_mousemask);
 						opts.no_mouse = true;
 
-						if (xterm_mouse_mode_was_initialized)
-						{
-							disable_xterm_mouse_mode();
-							xterm_mouse_mode_was_initialized = false;
-						}
+						(void) disable_xterm_mouse_mode();
 					}
 					else
 					{
@@ -5885,11 +4656,7 @@ reset_search:
 						else
 							mousemask(prev_mousemask, NULL);
 
-						if (opts.xterm_mouse_mode)
-						{
-							xterm_mouse_mode_was_initialized = true;
-							enable_xterm_mouse_mode();
-						}
+						enable_xterm_mouse_mode(opts.xterm_mouse_mode);
 
 						opts.no_mouse= false;
 					}
@@ -6691,7 +5458,7 @@ recheck_end:
 					{
 						char	linenotxt[256];
 
-						get_string(&opts, &desc,  &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
+						get_string(&desc,  &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
 						if (linenotxt[0] != '\0')
 						{
 							char   *endptr;
@@ -6939,7 +5706,7 @@ recheck_end:
 						string_argument_is_valid = false;
 					}
 					else
-						get_string(&opts, &desc, &scrdesc,
+						get_string(&desc, &scrdesc,
 								   isSelSearch ? "^/" : "/",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
@@ -7081,7 +5848,7 @@ recheck_end:
 						string_argument_is_valid = false;
 					}
 					else
-						get_string(&opts, &desc, &scrdesc,
+						get_string(&desc, &scrdesc,
 								   isSelSearch ? "^?" : "?",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
@@ -7270,7 +6037,7 @@ recheck_end:
 						bool	found = false;
 						bool	search_from_start = false;
 
-						get_string(&opts, &desc, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
+						get_string(&desc, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
 
 						if (locsearchterm[0] != '\0')
 						{
@@ -7395,324 +6162,22 @@ recheck_end:
 
 			case cmd_BsCommand:
 				{
-					char	   *endptr;
-
 					if (!cmdline_ptr || *cmdline_ptr == '\0')
 					{
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string(&opts, &desc, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
+						get_string(&desc, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
 						cmdline_ptr = cmdline;
 					}
 
-					while (*cmdline_ptr == ' ')
-						cmdline_ptr++;
-
-					/*
-					 * Leave when line is empty. This code can be duplicited, because the command
-					 * can start here, or we can continue in command line processing.
-					 */
-					if (*cmdline_ptr == '\0')
-					{
-						cmdline_ptr = NULL;
-						break;
-					}
-
-					if (*cmdline_ptr++ != '\\')
-					{
-						show_info_wait(&scrdesc,
-									   " Syntax error (expected \"\\\")",
-									   NULL, true, true, false, true);
-
-						cmdline_ptr = NULL;
-						break;
-					}
-
-					if (cmdline_ptr && *cmdline_ptr)
-					{
-						bool	next_is_num = false;
-						bool	sign_minus = false;
-						int		n;
-						char   *ptr;
-
-						if (*cmdline_ptr == '+')
-						{
-							/* ignore initial + */
-							next_is_num = true;
-							cmdline_ptr += 1;
-						}
-						else if (*cmdline_ptr == '-')
-						{
-							next_is_num = true;
-							sign_minus = true;
-							cmdline_ptr += 1;
-						}
-
-						if (isdigit(*cmdline_ptr))
-						{
-							long_argument = strtol(cmdline_ptr, &endptr, 10);
-
-							if (sign_minus)
-								long_argument = MAX_CURSOR_ROW - long_argument + 2;
-							else if (*endptr == '+')
-							{
-								long_argument = cursor_row + 1 + long_argument;
-								endptr += 1;
-							}
-							else if (*endptr == '-')
-							{
-								long_argument = cursor_row + 1 - long_argument;
-								endptr += 1;
-							}
-
-							cmdline_ptr = endptr;
-
-							long_argument_is_valid = true;
-
-							next_command = cmd_GotoLine;
-							continue;
-						}
-						else if (next_is_num)
-						{
-							show_info_wait(&scrdesc,
-										   " Syntax error (expected number)",
-										   NULL, true, true, false, true);
-
-							cmdline[0] = '\0';
-							cmdline_ptr = cmdline;
-							break;
-						}
-
-						n = 0;
-						ptr = cmdline_ptr;
-
-						while (isalpha(*ptr))
-						{
-							ptr += 1;
-							n += 1;
-						}
-
-						if (IS_TOKEN(cmdline_ptr, n, "q") ||
-							IS_TOKEN(cmdline_ptr, n, "quit"))
-						{
-							next_command = cmd_Quit;
-							continue;
-						}
-						else if (IS_TOKEN(cmdline_ptr, n, "the") ||
-								 IS_TOKEN(cmdline_ptr, n, "theme"))
-						{
-							cmdline_ptr += n;
-							long_argument = strtol(cmdline_ptr, &endptr, 10);
-
-							if (cmdline_ptr != endptr)
-							{
-								opts.theme = long_argument;
-								reinit = true;
-								cmdline_ptr = endptr;
-								goto reinit_theme;
-							}
-							else
-							{
-								show_info_wait(&scrdesc,
-											   " expected number",
-											   NULL, true, true, false, true);
-								cmdline[0] = '\0';
-								break;
-							}
-						}
-						else if (IS_TOKEN(cmdline_ptr, n, "search"))
-						{
-							SearchSpec		spec;
-							bool			is_valid;
-
-							free(string_argument);
-							string_argument = NULL;
-							string_argument_is_valid = false;
-
-							cmdline_ptr = parse_search_spec(&desc, &scrdesc,
-															cmdline_ptr + n,
-															&spec, &is_valid);
-
-							if (is_valid)
-							{
-								scrdesc.search_first_row = -1;
-								scrdesc.search_rows = 0;
-								scrdesc.search_first_column = -1;
-								scrdesc.search_columns = 0;
-								scrdesc.search_selected_mode = false;
-
-								if (spec.colno > 0)
-								{
-									scrdesc.search_first_column = desc.cranges[spec.colno - 1].xmin;
-									scrdesc.search_columns = desc.cranges[spec.colno - 1].xmax - scrdesc.search_first_column + 1;
-									scrdesc.search_selected_mode = true;
-								}
-								else if (spec.selected)
-								{
-									if (scrdesc.selected_first_row == -1 &&
-										  scrdesc.selected_first_column == -1)
-									{
-										show_info_wait(&scrdesc,
-													   " There are not selected area",
-													   NULL, true, true, true, false);
-										break;
-									}
-
-									scrdesc.search_first_row = scrdesc.selected_first_row;
-									scrdesc.search_rows = scrdesc.selected_rows;
-									scrdesc.search_first_column = scrdesc.selected_first_column;
-									scrdesc.search_columns = scrdesc.selected_columns;
-									scrdesc.search_selected_mode = true;
-								}
-
-								if (spec.pattern)
-								{
-									string_argument = spec.pattern;
-									string_argument_is_valid = true;
-								}
-
-								if (spec.backward)
-									next_command = cmd_BackwardSearch;
-								else
-									next_command = cmd_ForwardSearch;
-							}
-							else
-								free(spec.pattern);
-						}
-						else if (IS_TOKEN(cmdline_ptr, n, "ord") ||
-								 IS_TOKEN(cmdline_ptr, n, "order") ||
-								 IS_TOKEN(cmdline_ptr, n, "ordd") ||
-								 IS_TOKEN(cmdline_ptr, n, "orderd") ||
-								 IS_TOKEN(cmdline_ptr, n, "sort") ||
-								 IS_TOKEN(cmdline_ptr, n, "sortd"))
-						{
-							char   *ident;
-							int		len;
-							bool	is_desc;
-							PspgCommand OrderCommand;
-
-							is_desc = IS_TOKEN(cmdline_ptr, n, "ordd") ||
-									  IS_TOKEN(cmdline_ptr, n, "orderd");
-
-							OrderCommand = is_desc ? cmd_SortDesc : cmd_SortAsc;
-							cmdline_ptr = get_identifier(cmdline_ptr + n, &ident, &len);
-
-							if (len > 0)
-							{
-								if (isdigit(*ident))
-								{
-									/* entered column number */
-									long_argument = strtol(ident, NULL, 10);
-									long_argument_is_valid = true;
-
-									if (long_argument >= 1 && long_argument <= desc.columns)
-										next_command = OrderCommand;
-									else
-										show_info_wait(&scrdesc,
-													   " Column number is out of range",
-													   NULL, true, true, false, true);
-								}
-								else
-								{
-									int		count;
-									int		colno;
-
-									ident = trim_quoted_str(ident, &len);
-									count = substr_column_name_search(&desc, ident, len, 1, &colno);
-
-									long_argument = colno;
-
-									if (count > 0)
-									{
-										long_argument_is_valid = true;
-										next_command = OrderCommand;
-									}
-									else
-										show_info_wait(&scrdesc,
-													   " Cannot to identify column",
-													   NULL, true, true, false, true);
-								}
-							}
-							else
-								show_info_wait(&scrdesc,
-											   " Invalid identifier (expected column name)",
-											   NULL, true, true, false, true);
-						}
-						else if (IS_TOKEN(cmdline_ptr, n, "save"))
-						{
-							ExportedSpec expspec;
-							bool	is_valid;
-
-							cmdline_ptr = parse_exported_spec(&scrdesc,
-															  cmdline_ptr + n,
-															  &expspec,
-															  &is_valid);
-							if (is_valid)
-							{
-								Options loc_opts;
-
-								memcpy(&loc_opts, &opts, sizeof(Options));
-
-								loc_opts.copy_target = COPY_TARGET_FILE;
-								loc_opts.nullstr = expspec.nullstr;
-								loc_opts.empty_string_is_null = !expspec.nullstr;
-
-								export_to_file(expspec.command,
-											   expspec.format,
-											   &loc_opts, &scrdesc, &desc,
-											   0, 0,
-											   expspec.rows,
-											   expspec.percent,
-											   expspec.pipecmd,
-											   &refresh_clear);
-							}
-
-							free(expspec.nullstr);
-						}
-						else if (IS_TOKEN(cmdline_ptr, n, "copy"))
-						{
-							ExportedSpec expspec;
-							bool	is_valid;
-
-							cmdline_ptr = parse_exported_spec(&scrdesc,
-															  cmdline_ptr + n,
-															  &expspec,
-															  &is_valid);
-							if (is_valid)
-							{
-								Options loc_opts;
-
-								memcpy(&loc_opts, &opts, sizeof(Options));
-
-								loc_opts.copy_target = COPY_TARGET_CLIPBOARD;
-								loc_opts.nullstr = expspec.nullstr;
-								loc_opts.empty_string_is_null = !expspec.nullstr;
-
-								export_to_file(expspec.command,
-											   expspec.format,
-											   &loc_opts, &scrdesc, &desc,
-											   0, 0,
-											   expspec.rows,
-											   expspec.percent,
-											   expspec.pipecmd,
-											   &refresh_clear);
-							}
-
-							free(expspec.nullstr);
-						}
-						else
-						{
-							cmdline_ptr[n] = '\0';
-							show_info_wait(&scrdesc,
-										   " Unknown command \"%s\"",
-											   cmdline_ptr, true, true, false, true);
-
-							cmdline[0] = '\0';
-							cmdline_ptr = cmdline;
-						}
-					}
-
+					cmdline_ptr = parse_and_eval_bscommand(cmdline_ptr,
+														   &opts, &scrdesc, &desc,
+														   MAX_CURSOR_ROW, cursor_row,
+														   &next_command,
+														   &long_argument, &long_argument_is_valid,
+														   &string_argument, &string_argument_is_valid,
+														   &refresh_clear);
 					break;
 				}
 
@@ -8410,11 +6875,7 @@ refresh:
 				  footer_cursor_col, fix_rows_offset);
 	}
 
-#ifdef HAVE_READLINE_HISTORY
-
-	write_history(tilde(NULL, PSPG_HISTORY));
-
-#endif
+	pspg_save_history(PSPG_HISTORY);
 
 	if (state.inotify_fd >= 0)
 		close(state.inotify_fd);
@@ -8432,6 +6893,8 @@ refresh:
 		free(desc.headline_transl);
 		free(opts.pathname);
 	}
+
+	free(string_argument);
 
 	fclose(debug_pipe);
 

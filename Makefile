@@ -6,7 +6,9 @@ all:
 # override CFLAGS += -g -O2 -Werror-implicit-function-declaration -D_POSIX_SOURCE=1 -std=c99  -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wjump-misses-init -Wdouble-promotion -Wshadow -pedantic
 
 DEPS=$(wildcard *.d)
-PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o pgclient.o args.o infra.o file.o table.o string.o export.o linebuffer.o
+PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o pgclient.o args.o infra.o file.o \
+table.o string.o export.o linebuffer.o bscommands.o readline.o
+
 OBJS=$(PSPG_OFILES)
 
 ifdef COMPILE_MENU
@@ -69,6 +71,12 @@ export.o: src/pspg.h src/export.c
 
 linebuffer.o: src/pspg.h src/linebuffer.c
 	$(CC)  -c src/linebuffer.c -o linebuffer.o $(CPPFLAGS) $(CFLAGS)
+
+readline.o: src/pspg.h src/readline.c
+	$(CC)  src/readline.c -c $(CPPFLAGS) $(CFLAGS)
+
+bscommands.o: src/pspg.h src/bscommands.c
+	$(CC)  src/bscommands.c -c $(CPPFLAGS) $(CFLAGS)
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/pspg.c
 	$(CC)  -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)

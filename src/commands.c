@@ -172,6 +172,8 @@ cmd_string(int cmd)
 			return "SetThemeRelationalPipes";
 		case cmd_SetTheme_PaperColor:
 			return "SetTheme_PaperColor";
+		case cmd_SetTheme:
+			return "SetTheme";
 
 		case cmd_SaveSetup:
 			return "SaveSetup";
