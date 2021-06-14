@@ -1795,14 +1795,15 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		size_t		size = 0;
 		int			status;
 		bool		isokstr = false;
+		int			retval;
 
 		/* check wl-clipboard https://github.com/bugaevc/wl-clipboard.git */
 		errno = 0;
 		f = popen("wl-copy -v 2>/dev/null", "r");
 		if (f)
 		{
-			(void) getline(&line, &size, f);
-			if (line)
+			retval = getline(&line, &size, f);
+			if (retval >= 0 && line)
 			{
 				if (strncmp(line, "wl-clipboard", 12) == 0)
 					isokstr = true;
@@ -1826,8 +1827,8 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		f = popen("xclip -version 2>&1", "r");
 		if (f)
 		{
-			(void) getline(&line, &size, f);
-			if (line)
+			retval = getline(&line, &size, f);
+			if (retval >= 0 && line)
 			{
 				if (strncmp(line, "xclip", 5) == 0)
 					isokstr = true;
@@ -1849,8 +1850,8 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		f = popen("pbcopy", "r");
 		if (f)
 		{
-			(void) getline(&line, &size, f);
-			if (line)
+			retval = getline(&line, &size, f);
+			if (retval >= 0 && line)
 			{
 				/* there is not version option */
 				isokstr = true;
