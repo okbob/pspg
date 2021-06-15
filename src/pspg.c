@@ -5925,12 +5925,6 @@ recheck_end:
 
 					next_command = command == cmd_ForwardSearchInSelection ? cmd_ForwardSearch : cmd_BackwardSearch;
 
-					scrdesc.search_first_row = -1;
-					scrdesc.search_rows = 0;
-					scrdesc.search_first_column = -1;
-					scrdesc.search_columns = 0;
-					scrdesc.search_selected_mode = false;
-
 					scrdesc.search_first_row = scrdesc.selected_first_row;
 					scrdesc.search_rows = scrdesc.selected_rows;
 					scrdesc.search_first_column = scrdesc.selected_first_column;
