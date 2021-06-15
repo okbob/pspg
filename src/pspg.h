@@ -186,12 +186,6 @@ typedef struct
 	int		last_rec_title_y;		/* y of last displayed record title in expanded mode */
 	char	searchcolterm[256];		/* last searched column patterm */
 	int		searchcolterm_size;		/* length of searched column pattern in bytes */
-	char   *fmt;					/* format string for info when refresh first is required */
-	char   *par;					/* parameter for info when refresh first is required */
-	bool	beep;					/* beep for info when refresh is required */
-	bool	applytimeout;			/* true, when saved info should be close after timeout */
-	bool	is_error;				/* true, when saved info should be displayed as error */
-	bool	refresh_scr;			/* force rewrite screen */
 
 	int		scrollbar_maxy;			/* max y of horisontal scrollbar */
 	int		scrollbar_start_y;		/* start y dim of horisontal scrollbar */
@@ -294,9 +288,16 @@ typedef struct
 
 	int		inotify_fd;				/* inotify API access file descriptor */
 	int		inotify_wd;				/* inotify watched file descriptor */
+
+	DataDesc *desc;					/* used for input, for access to necessary data for tabcomplete */
+	char   *fmt;					/* format string for info when refresh first is required */
+	char   *par;					/* parameter for info when refresh first is required */
+	bool	beep;					/* beep for info when refresh is required */
+	bool	applytimeout;			/* true, when saved info should be close after timeout */
+	bool	is_error;				/* true, when saved info should be displayed as error */
+	bool	refresh_scr;			/* force rewrite screen */
 } StateData;
 
-extern StateData *current_state;
 
 typedef struct
 {
@@ -337,7 +338,7 @@ extern void export_to_file(PspgCommand command, ClipboardFormat format, Options 
 extern void throw_searching(ScrDesc *scrdesc, DataDesc *desc);
 extern void enable_xterm_mouse_mode(bool enable);
 extern bool disable_xterm_mouse_mode(void);
-extern void show_info_wait(ScrDesc *scrdesc, const char *fmt, const char *par, bool beep,
+extern void show_info_wait(const char *fmt, const char *par, bool beep,
 						   bool refresh_first, bool applytimeout, bool is_error);
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
@@ -454,7 +455,6 @@ extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 extern const char *get_token(const char *instr, const char **token, int *n);
 extern const char *get_identifier(const char *instr, const char **ident, int *n);
 extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, ScrDesc *scrdesc, DataDesc *desc,
-											int max_cursor_row, int cursor_row,
 											int *next_command, long *long_argument, bool *long_argument_is_valid,
 											char **string_argument, bool *string_argument_is_valid, bool *refresh_clear);
 
@@ -463,9 +463,7 @@ extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, 
 /* from readline.c */
 extern void pspg_init_readline(const char *histfile);
 extern void pspg_save_history(const char *histfile);
-extern bool get_string(DataDesc *desc, ScrDesc *scrdesc, char *prompt, char *buffer, int maxsize,
-					   char *defstr, char tabcomplete_mode);
-
+extern bool get_string(char *prompt, char *buffer, int maxsize, char *defstr, char tabcomplete_mode);
 
 /*
  * Global setting
@@ -477,6 +475,11 @@ extern bool quiet_mode;
  * Global variables
  */
 extern bool	handle_sigint;
+extern StateData *current_state;
+extern WINDOW *prompt_window;
+extern attr_t prompt_window_input_attr;
+extern attr_t prompt_window_error_attr;
+extern attr_t prompt_window_info_attr;
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

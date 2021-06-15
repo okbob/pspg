@@ -110,7 +110,7 @@ static int number_width(int num);
 static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
 static void unget_event(int key_code, bool alt, MEVENT *mevent);
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
-static bool check_visible_vertical_cursor(DataDesc *desc, ScrDesc *scrdesc, Options *opts, int vertical_cursor_column);
+static bool check_visible_vertical_cursor(DataDesc *desc, Options *opts, int vertical_cursor_column);
 
 StateData *current_state = NULL;
 
@@ -157,6 +157,10 @@ bool	quiet_mode = false;
  * Global state variables
  */
 bool	handle_sigint = false;
+WINDOW *prompt_window = NULL;
+attr_t  prompt_window_input_attr = 0;
+attr_t  prompt_window_error_attr = 0;
+attr_t  prompt_window_info_attr = 0;
 
 /*
  * Own signal handlers
@@ -704,6 +708,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	bottom_bar = subwin(stdscr, 1, 0, maxy - 1, 0);
 	w_bottom_bar(scrdesc) = bottom_bar;
 
+
 	/* When it is visible, clean content and set background */
 	if (opts->less_status_bar
 
@@ -744,6 +749,10 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		)
 		scrdesc->main_maxy -= 1;
 
+	/*
+	 * Store ref to bottom bar to global variable
+	 */
+	prompt_window = bottom_bar;
 }
 
 /*
@@ -1048,16 +1057,13 @@ make_beep(void)
  * It is used for result of action info
  */
 void
-show_info_wait(ScrDesc *scrdesc,
-			   const char *fmt,
+show_info_wait(const char *fmt,
 			   const char *par,
 			   bool beep,
 			   bool refresh_first,
 			   bool applytimeout,
 			   bool is_error)
 {
-	WINDOW	*bottom_bar = w_bottom_bar(scrdesc);
-	Theme	*t = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 	attr_t  att;
 	int		c;
 	int		timeout = -1;
@@ -1068,46 +1074,46 @@ show_info_wait(ScrDesc *scrdesc,
 	 * When refresh is required first, then store params and quit immediately.
 	 * Only once can be info moved after refresh
 	 */
-	if (refresh_first && scrdesc->fmt == NULL)
+	if (refresh_first && current_state->fmt == NULL)
 	{
 		if (fmt != NULL)
-			scrdesc->fmt = sstrdup(fmt);
+			current_state->fmt = sstrdup(fmt);
 		else
-			scrdesc->fmt = NULL;
+			current_state->fmt = NULL;
 
 		if (par != NULL)
-			scrdesc->par = sstrdup(par);
+			current_state->par = sstrdup(par);
 		else
-			scrdesc->par = NULL;
-		scrdesc->beep = beep;
-		scrdesc->applytimeout = applytimeout;
-		scrdesc->is_error = is_error;
+			current_state->par = NULL;
+		current_state->beep = beep;
+		current_state->applytimeout = applytimeout;
+		current_state->is_error = is_error;
 
 		return;
 	}
 
-	att = !is_error ? t->bottom_light_attr : t->error_attr;
+	att = !is_error ? prompt_window_info_attr : prompt_window_error_attr;
 
-	wattron(bottom_bar, att);
+	wattron(prompt_window, att);
 
 	if (par != NULL)
-		mvwprintw(bottom_bar, 0, 0, fmt, par);
+		mvwprintw(prompt_window, 0, 0, fmt, par);
 	else
-		mvwprintw(bottom_bar, 0, 0, "%s", fmt);
+		mvwprintw(prompt_window, 0, 0, "%s", fmt);
 
 	if (!applytimeout)
-		wprintw(bottom_bar, " (press any key)");
+		wprintw(prompt_window, " (press any key)");
 
 	if (par)
 		log_row(fmt, par);
 	else
 		log_row(fmt);
 
-	wclrtoeol(bottom_bar);
-	mvwchgat(bottom_bar, 0, 0, -1, att, PAIR_NUMBER(att), 0);
+	wclrtoeol(prompt_window);
+	mvwchgat(prompt_window, 0, 0, -1, att, PAIR_NUMBER(att), 0);
 
-	wattroff(bottom_bar,  att);
-	wnoutrefresh(bottom_bar);
+	wattroff(prompt_window,  att);
+	wnoutrefresh(prompt_window);
 
 	doupdate();
 
@@ -1122,7 +1128,7 @@ show_info_wait(ScrDesc *scrdesc,
 	/*
 	 * Screen should be refreshed after show any info.
 	 */
-	scrdesc->refresh_scr = true;
+	current_state->refresh_scr = true;
 
 	/* eat escape if pressed here */
 	if (!(c == 27 && press_alt))
@@ -1751,9 +1757,6 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 	new->found_start_bytes = old->found_start_bytes;
 	new->found_row = old->found_row;
 
-	new->fmt = old->fmt;
-	new->par = old->par;
-
 	new->selected_first_row = old->selected_first_row;
 	new->selected_rows = old->selected_rows;
 	new->selected_first_column = old->selected_first_column;
@@ -1982,16 +1985,14 @@ export_to_file(PspgCommand command,
 
 	if (command == cmd_CopyColumn)
 	{
-		if (!check_visible_vertical_cursor(desc, scrdesc, opts,
-										   cursor_column))
+		if (!check_visible_vertical_cursor(desc, opts, cursor_column))
 			return;
 	}
 
 	if ((command == cmd_CopyLine || command == cmd_CopyLineExtended) &&
 		opts->no_cursor)
 	{
-		show_info_wait(scrdesc,
-					   " Cursor is not visible",
+		show_info_wait(" Cursor is not visible",
 					   NULL, true, true, true, false);
 		return;
 	}
@@ -2000,8 +2001,7 @@ export_to_file(PspgCommand command,
 		!(scrdesc->selected_first_row != -1 ||
 		  scrdesc->selected_first_column != -1))
 	{
-		show_info_wait(scrdesc,
-					   " There are not selected data",
+		show_info_wait(" There are not selected data",
 					   NULL, true, true, true, false);
 		return;
 	}
@@ -2022,7 +2022,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		(void) get_string(desc, scrdesc, prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
+		(void) get_string(prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
 		if (buffer[0] == '\0')
 			return;
 
@@ -2038,7 +2038,7 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		(void) get_string(desc, scrdesc, "target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
+		(void) get_string("target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
 		if (table_name[0] == '\0')
 			return;
 	}
@@ -2050,7 +2050,7 @@ export_to_file(PspgCommand command,
 		{
 			char	   *endptr;
 
-			(void) get_string(desc, scrdesc, "rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
+			(void) get_string("rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
 			if (number[0] == '\0')
 				return;
 
@@ -2059,15 +2059,13 @@ export_to_file(PspgCommand command,
 
 			if (endptr == number)
 			{
-				show_info_wait(scrdesc,
-							   " Cannot convert input string to number",
+				show_info_wait(" Cannot convert input string to number",
 							   NULL, true, true, false, true);
 				return;
 			}
 			else if (errno != 0)
 			{
-				show_info_wait(scrdesc,
-							   " Cannot convert input string to number (%s)",
+				show_info_wait(" Cannot convert input string to number (%s)",
 							   strerror(errno), true, true, false, true);
 				return;
 			}
@@ -2125,8 +2123,7 @@ export_to_file(PspgCommand command,
 
 		if (!clipboard_application_id)
 		{
-			show_info_wait(scrdesc,
-						   " Cannot find clipboard application",
+			show_info_wait(" Cannot find clipboard application",
 						   NULL, true, true, false, true);
 
 				return;
@@ -2172,8 +2169,7 @@ export_to_file(PspgCommand command,
 			format_error("%s", strerror(errno));
 			log_row("open error (%s)", current_state->errstr);
 
-			show_info_wait(scrdesc,
-						   " Cannot to start clipboard application",
+			show_info_wait(" Cannot to start clipboard application",
 						   NULL, true, true, false, true);
 
 			/* err string is saved already, because refresh_first is used */
@@ -2246,8 +2242,7 @@ export_to_file(PspgCommand command,
 				format_error("%s", err_buffer);
 				log_row("write error (%s)", current_state->errstr);
 
-				show_info_wait(scrdesc,
-							   " Cannot write to clipboard (%s)",
+				show_info_wait(" Cannot write to clipboard (%s)",
 							   (char *) current_state->errstr, true, true, false, true);
 
 				/* err string is saved already, because refresh_first is used */
@@ -2276,8 +2271,7 @@ export_to_file(PspgCommand command,
 				strcpy(buffer, "clipboard");
 		}
 
-		show_info_wait(scrdesc,
-					   " Cannot write to %s",
+		show_info_wait(" Cannot write to %s",
 					   buffer, true, false, false, true);
 		*force_refresh = true;
 	}
@@ -2384,14 +2378,12 @@ throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *mark_mode)
 
 static bool
 check_visible_vertical_cursor(DataDesc *desc,
-							  ScrDesc *scrdesc,
 							  Options *opts,
 							  int vertical_cursor_column)
 {
 	if (desc->columns == 0)
 	{
-		show_info_wait(scrdesc,
-					   " Sort is available only for tables.",
+		show_info_wait(" Sort is available only for tables.",
 					   NULL, true, true, true, false);
 
 		return false;
@@ -2399,8 +2391,7 @@ check_visible_vertical_cursor(DataDesc *desc,
 
 	if (!opts->vertical_cursor || vertical_cursor_column == 0)
 	{
-		show_info_wait(scrdesc,
-					   " Vertical cursor is not visible",
+		show_info_wait(" Vertical cursor is not visible",
 					   NULL, true, true, true, false);
 
 		return false;
@@ -2638,6 +2629,8 @@ main(int argc, char *argv[])
 	state.last_position = -1;					/* unknown position */
 	state.inotify_fd = -1;						/* invalid filedescriptor */
 	state.inotify_wd = -1;						/* invalid file descriptor */
+
+	state.desc = &desc;							/* global reference used for readline's tabcomplete */
 
 #ifdef HAVE_INOTIFY
 
@@ -3154,6 +3147,10 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
 	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
 
+	prompt_window_input_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].input_attr;
+	prompt_window_error_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].error_attr;
+	prompt_window_info_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].bottom_light_attr;
+
 	if (size_is_valid)
 		resize_term(size.ws_row, size.ws_col);
 
@@ -3614,7 +3611,7 @@ reinit_theme:
 
 			if (no_doupdate)
 				no_doupdate = false;
-			else if (next_command == 0 || scrdesc.fmt != NULL)
+			else if (next_command == 0 || current_state->fmt != NULL)
 			{
 				time_t		current_sec;
 				long		current_ms;
@@ -3696,22 +3693,17 @@ reinit_theme:
 
 #endif
 
-			if (scrdesc.fmt != NULL)
+			if (current_state->fmt != NULL)
 			{
-				show_info_wait(&scrdesc,
-							   scrdesc.fmt, scrdesc.par, scrdesc.beep,
-							   false, scrdesc.applytimeout,
-							   scrdesc.is_error);
-				if (scrdesc.fmt != NULL)
-				{
-					free(scrdesc.fmt);
-					scrdesc.fmt = NULL;
-				}
-				if (scrdesc.par != NULL)
-				{
-					free(scrdesc.par);
-					scrdesc.par = NULL;
-				}
+				show_info_wait(current_state->fmt, current_state->par, current_state->beep,
+							   false, current_state->applytimeout,
+							   current_state->is_error);
+
+				free(current_state->fmt);
+				free(current_state->par);
+
+				current_state->fmt = NULL;
+				current_state->par = NULL;
 
 				refresh_aux_windows(&opts, &scrdesc);
 				continue;
@@ -3970,8 +3962,7 @@ reinit_theme:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&scrdesc,
-								   " For quit press \"q\" (or use on-sigint-exit option).",
+					show_info_wait(" For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
 		}
@@ -4148,8 +4139,7 @@ hide_menu:
 				if (opts.on_sigint_exit)
 					break;
 				else
-					show_info_wait(&scrdesc,
-								   " For quit press \"q\" (or use on-sigint-exit option).",
+					show_info_wait(" For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
 		}
@@ -4215,7 +4205,7 @@ hide_menu:
 							strncpy(last_nullstr, opts.nullstr, sizeof(256));
 					}
 
-					is_valid = get_string(&desc, &scrdesc, "nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
+					is_valid = get_string("nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
 					if (nullstr[0] != '\0')
 					{
 						free(opts.nullstr);
@@ -4449,19 +4439,15 @@ reset_search:
 						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s)",
 								PSPG_CONF, strerror(errno));
 
-						show_info_wait(&scrdesc,
-									   buffer1,
-									   strerror(errno), true, true, false, true);
+						show_info_wait(buffer1, strerror(errno), true, true, false, true);
 					}
 					else
-						show_info_wait(&scrdesc,
-									   " Cannot write to \"%s\"",
-									   PSPG_CONF, true, true, false, true);
+						show_info_wait(" Cannot write to \"%s\"", PSPG_CONF,
+									   true, true, false, true);
 				}
 				else
-					show_info_wait(&scrdesc,
-								   " Setup saved to \"%s\"",
-								   PSPG_CONF, true, true, true, false);
+					show_info_wait(" Setup saved to \"%s\"", PSPG_CONF,
+								   true, true, true, false);
 				break;
 
 			case cmd_SetTheme_MidnightBlack:
@@ -4506,7 +4492,7 @@ reset_search:
 					{
 						char	theme_num_str[256];
 
-						get_string(&desc,  &scrdesc, "theme number: ", theme_num_str, sizeof(theme_num_str) - 1, last_line, 'u');
+						get_string("theme number: ", theme_num_str, sizeof(theme_num_str) - 1, last_line, 'u');
 						if (theme_num_str[0] != '\0')
 						{
 							char   *endptr;
@@ -4516,15 +4502,13 @@ reset_search:
 
 							if (endptr == theme_num_str)
 							{
-								show_info_wait(&scrdesc,
-											   " Cannot convert input string to number",
+								show_info_wait(" Cannot convert input string to number",
 											   NULL, true, true, false, true);
 								break;
 							}
 							else if (errno != 0)
 							{
-								show_info_wait(&scrdesc,
-											   " Cannot convert input string to number (%s)",
+								show_info_wait(" Cannot convert input string to number (%s)",
 											   strerror(errno), true, true, false, true);
 								break;
 							}
@@ -4541,8 +4525,7 @@ reset_search:
 
 							sprintf(buffer, "only color schemas 0..%d are supported", MAX_STYLE);
 
-							show_info_wait(&scrdesc, buffer,
-											   strerror(errno), true, true, false, true);
+							show_info_wait(buffer, NULL, true, true, false, true);
 							break;
 						}
 
@@ -4579,7 +4562,7 @@ reset_search:
 
 			case cmd_MarkColumn:
 				{
-					if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
+					if (!check_visible_vertical_cursor(&desc, &opts,
 													   vertical_cursor_column))
 						break;
 
@@ -4662,8 +4645,7 @@ reset_search:
 						opts.no_mouse= false;
 					}
 
-					show_info_wait(&scrdesc,
-								   " mouse handling: %s ",
+					show_info_wait(" mouse handling: %s ",
 								   opts.no_mouse ? "off" : "on", false, true, true, false);
 					break;
 				}
@@ -4677,8 +4659,7 @@ reset_search:
 				{
 					if (desc.columns == 0)
 					{
-						show_info_wait(&scrdesc,
-									   " Vertical cursor is available only for tables.",
+						show_info_wait(" Vertical cursor is available only for tables.",
 									   NULL, true, true, true, false);
 						break;
 					}
@@ -5459,7 +5440,7 @@ recheck_end:
 					{
 						char	linenotxt[256];
 
-						get_string(&desc,  &scrdesc, "line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
+						get_string("line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
 						if (linenotxt[0] != '\0')
 						{
 							char   *endptr;
@@ -5469,15 +5450,13 @@ recheck_end:
 
 							if (endptr == linenotxt)
 							{
-								show_info_wait(&scrdesc,
-											   " Cannot convert input string to number",
+								show_info_wait(" Cannot convert input string to number",
 											   NULL, true, true, false, true);
 								break;
 							}
 							else if (errno != 0)
 							{
-								show_info_wait(&scrdesc,
-											   " Cannot convert input string to number (%s)",
+								show_info_wait(" Cannot convert input string to number (%s)",
 											   strerror(errno), true, true, false, true);
 								break;
 							}
@@ -5485,6 +5464,9 @@ recheck_end:
 						else
 							break;
 					}
+
+					if (lineno < 0)
+						lineno = MAX_CURSOR_ROW + lineno + 2;
 
 					cursor_row = lineno - 1;
 					if (cursor_row < 0)
@@ -5504,6 +5486,20 @@ recheck_end:
 					}
 
 					snprintf(last_line, sizeof(last_line), "%ld", lineno);
+					break;
+				}
+
+			case cmd_GotoLineRel:
+				{
+					if (long_argument_is_valid)
+					{
+						long_argument = long_argument + cursor_row + 1;
+						next_command = cmd_GotoLine;
+					}
+					else
+						show_info_wait(" Internal error - expected valid internal long argument",
+									   NULL, true, true, false, true);
+
 					break;
 				}
 
@@ -5536,8 +5532,7 @@ recheck_end:
 					}
 					else
 					{
-						if (!check_visible_vertical_cursor(&desc, &scrdesc, &opts,
-														   vertical_cursor_column))
+						if (!check_visible_vertical_cursor(&desc, &opts, vertical_cursor_column))
 							break;
 
 						sortedby_colno = vertical_cursor_column;
@@ -5707,8 +5702,7 @@ recheck_end:
 						string_argument_is_valid = false;
 					}
 					else
-						get_string(&desc, &scrdesc,
-								   isSelSearch ? "^/" : "/",
+						get_string(isSelSearch ? "^/" : "/",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
 								   'u');
@@ -5824,9 +5818,7 @@ recheck_end:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&scrdesc,
-									   " Not found",
-									   NULL, true, true, false, false);
+						show_info_wait(" Not found", NULL, true, true, false, false);
 					break;
 				}
 
@@ -5849,8 +5841,7 @@ recheck_end:
 						string_argument_is_valid = false;
 					}
 					else
-						get_string(&desc, &scrdesc,
-								   isSelSearch ? "^?" : "?",
+						get_string(isSelSearch ? "^?" : "?",
 								   locsearchterm, sizeof(locsearchterm) - 1,
 								   last_row_search,
 								   'u');
@@ -5992,9 +5983,7 @@ recheck_end:
 					}
 
 					if (!scrdesc.found)
-						show_info_wait(&scrdesc,
-									   " Not found",
-									   NULL, true, true, false, false);
+						show_info_wait(" Not found", NULL, true, true, false, false);
 
 					break;
 				}
@@ -6005,8 +5994,7 @@ recheck_end:
 					if (scrdesc.selected_first_row == -1 &&
 						scrdesc.selected_first_column == -1)
 					{
-						show_info_wait(&scrdesc,
-									   " There are not selected area",
+						show_info_wait(" There are not selected area",
 									   NULL, true, true, true, false);
 						break;
 					}
@@ -6038,7 +6026,7 @@ recheck_end:
 						bool	found = false;
 						bool	search_from_start = false;
 
-						get_string(&desc, &scrdesc, "c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
+						get_string("c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
 
 						if (locsearchterm[0] != '\0')
 						{
@@ -6125,8 +6113,7 @@ recheck_end:
 							if (found)
 							{
 								if (search_from_start)
-									show_info_wait(&scrdesc,
-												   " Search from first column",
+									show_info_wait(" Search from first column",
 												   NULL, true, true, true, false);
 
 								opts.vertical_cursor = true;
@@ -6136,18 +6123,15 @@ recheck_end:
 								last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 							}
 							else
-								show_info_wait(&scrdesc,
-											   " Not found",
+								show_info_wait(" Not found",
 											   NULL, true, true, false, false);
 						}
 						else
-							show_info_wait(&scrdesc,
-										   " Search pattern is a empty string",
+							show_info_wait(" Search pattern is a empty string",
 										   NULL, true, true, true, false);
 					}
 					else
-						show_info_wait(&scrdesc,
-									   " Columns names are not detected",
+						show_info_wait(" Columns names are not detected",
 									   NULL, true, true, true, false);
 
 					break;
@@ -6168,13 +6152,12 @@ recheck_end:
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string(&desc, &scrdesc, "", cmdline, sizeof(cmdline) - 1, NULL, 'c');
+						get_string("", cmdline, sizeof(cmdline) - 1, NULL, 'c');
 						cmdline_ptr = cmdline;
 					}
 
 					cmdline_ptr = parse_and_eval_bscommand(cmdline_ptr,
 														   &opts, &scrdesc, &desc,
-														   MAX_CURSOR_ROW, cursor_row,
 														   &next_command,
 														   &long_argument, &long_argument_is_valid,
 														   &string_argument, &string_argument_is_valid,
@@ -6775,7 +6758,7 @@ recheck_end:
 		}
 
 		if (refresh_scr ||
-			scrdesc.refresh_scr ||
+			current_state->refresh_scr ||
 			refresh_clear)
 		{
 			if (resize_scr)
@@ -6834,7 +6817,7 @@ refresh:
 #endif
 
 			refresh_scr = false;
-			scrdesc.refresh_scr = false;
+			current_state->refresh_scr = false;
 		}
 	}
 

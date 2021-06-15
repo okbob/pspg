@@ -63,10 +63,6 @@ static bool		forward_complete;
 static char	   *readline_prompt;
 static int		tabcomplete_mode;
 static const char **possible_tokens = NULL;
-static DataDesc *desc = NULL;
-
-static WINDOW *prompt_window = NULL;
-static attr_t prompt_input_attr = 0;
 
 #ifdef HAVE_READLINE_HISTORY
 
@@ -197,10 +193,10 @@ readline_redisplay()
 		cursor_col = strlen(rl_display_prompt) + min_int(strlen(rl_line_buffer), rl_point);
 	}
 
-	wbkgd(prompt_window, prompt_input_attr);
+	wbkgd(prompt_window, prompt_window_input_attr);
 	werase(prompt_window);
 	mvwprintw(prompt_window, 0, 0, "%s%s", rl_display_prompt, rl_line_buffer);
-	mvwchgat(prompt_window, 0, 0, -1, prompt_input_attr, PAIR_NUMBER(prompt_input_attr), 0);
+	mvwchgat(prompt_window, 0, 0, -1, prompt_window_input_attr, PAIR_NUMBER(prompt_window_input_attr), 0);
 
 	if (cursor_col >= (size_t) COLS)
 		curs_set(0);
@@ -241,7 +237,7 @@ tablename_generator(const char *text, int state)
 	const char *name;
 	int		name_len;
 
-	if (!desc->namesline)
+	if (!current_state->desc->namesline)
 		return NULL;
 
 	if (!state)
@@ -250,10 +246,10 @@ tablename_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-	while (list_index < desc->columns)
+	while (list_index < current_state->desc->columns)
 	{
-		name = desc->namesline + desc->cranges[list_index].name_offset;
-		name_len = desc->cranges[list_index].name_size;
+		name = current_state->desc->namesline + current_state->desc->cranges[list_index].name_offset;
+		name_len = current_state->desc->cranges[list_index].name_size;
 
 		list_index += 1;
 
@@ -413,7 +409,7 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 	common_length = strlen(matches[0]);
 
-	wbkgd(prompt_window, prompt_input_attr);
+	wbkgd(prompt_window, prompt_window_input_attr);
 	werase(prompt_window);
 
 	while (1)
@@ -492,9 +488,7 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 }
 
 bool
-get_string(DataDesc *_desc,
-		   ScrDesc *scrdesc,
-		   char *prompt,
+get_string(char *prompt,
 		   char *buffer,
 		   int maxsize,
 		   char *defstr,
@@ -509,12 +503,8 @@ get_string(DataDesc *_desc,
 
 	editation_completed = false;
 	tabcomplete_mode = _tabcomplete_mode;
-	desc = _desc;
 
-	prompt_window = w_bottom_bar(scrdesc);
-	prompt_input_attr = scrdesc->themes[WINDOW_BOTTOM_BAR].input_attr;
-
-	wattron(prompt_window, prompt_input_attr);
+	wattron(prompt_window, prompt_window_input_attr);
 	mvwprintw(prompt_window, 0, 0, "");
 	wclrtoeol(prompt_window);
 
@@ -690,7 +680,7 @@ finish_read:
 	/*
 	 * Screen should be refreshed after show any info.
 	 */
-	scrdesc->refresh_scr = true;
+	current_state->refresh_scr = true;
 
 	log_row("input string - \"%s\"", buffer);
 
@@ -757,9 +747,7 @@ pspg_save_history(const char *histfile)
 }
 
 bool
-get_string(DataDesc *_desc,
-		   ScrDesc *scrdesc,
-		   char *prompt,
+get_string(char *prompt,
 		   char *buffer,
 		   int maxsize,
 		   char *defstr,
@@ -767,9 +755,6 @@ get_string(DataDesc *_desc,
 {
 	mmask_t		prev_mousemask = 0;
 	bool	prev_xterm_mouse_mode;
-
-	prompt_window = w_bottom_bar(scrdesc);
-	prompt_input_attr = scrdesc->themes[WINDOW_BOTTOM_BAR].input_attr;
 
 	log_row("input string prompt - \"%s\"", prompt);
 

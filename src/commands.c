@@ -254,6 +254,8 @@ cmd_string(int cmd)
 			return "RowNumToggle";
 		case cmd_GotoLine:
 			return "GotoLine";
+		case cmd_GotoLineRel:
+			return "GotoLineRel";
 
 		case cmd_ShowCursor:
 			return "ShowCursor";

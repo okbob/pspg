@@ -123,8 +123,7 @@ get_identifier(const char *instr, const char **ident, int *n)
 
 
 static const char *
-parse_exported_spec(ScrDesc *scrdesc,
-					const char *instr,
+parse_exported_spec(const char *instr,
 					ExportedSpec *spec,
 					bool *is_valid)
 {
@@ -159,8 +158,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 
 			if (n > 20)
 			{
-				show_info_wait(scrdesc,
-							   " Syntax error (too long token)",
+				show_info_wait(" Syntax error (too long token)",
 							   NULL, NULL, true, false, true);
 				return NULL;
 			}
@@ -245,8 +243,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 
 				if (null_is_specified_already)
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (null is specified already)",
+					show_info_wait(" Syntax error (null is specified already)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -256,8 +253,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 
 				if (*instr != '"')
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected '\"')",
+					show_info_wait(" Syntax error (expected '\"')",
 								    NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -265,8 +261,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 				instr = get_identifier(instr, &ident, &ident_len);
 				if (!ident)
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected closed quoted string)",
+					show_info_wait(" Syntax error (expected closed quoted string)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -282,24 +277,20 @@ parse_exported_spec(ScrDesc *scrdesc,
 
 				snprintf(buffer, 255, " Syntax error (unknown token \"%.*s\")", n, token);
 
-				show_info_wait(scrdesc,
-							   buffer,
-							   NULL, NULL, true, false, true);
+				show_info_wait(buffer, NULL, NULL, true, false, true);
 				return NULL;
 			}
 
 			if (format_is_specified_already && format_specified)
 			{
-				show_info_wait(scrdesc,
-							   " Syntax error (format specification is redundant)",
+				show_info_wait(" Syntax error (format specification is redundant)",
 							   NULL, NULL, true, false, true);
 				return NULL;
 			}
 
 			if (range_is_specified_already && range_specified)
 			{
-				show_info_wait(scrdesc,
-							   " Syntax error (range specification is redundant)",
+				show_info_wait(" Syntax error (range specification is redundant)",
 							   NULL, NULL, true, false, true);
 				return NULL;
 			}
@@ -320,8 +311,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 
 				if (!instr || instr == endptr || errno != 0)
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected number)",
+					show_info_wait(" Syntax error (expected number)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -348,8 +338,7 @@ parse_exported_spec(ScrDesc *scrdesc,
 			}
 			else if (*instr != '\\')
 			{
-				show_info_wait(scrdesc,
-							   " Syntax error (unexpected symbol)",
+				show_info_wait(" Syntax error (unexpected symbol)",
 							   NULL, NULL, true, false, true);
 				return NULL;
 			}
@@ -409,7 +398,6 @@ substr_column_name_search(DataDesc *desc,
 
 static const char *
 parse_search_spec(DataDesc *desc,
-				  ScrDesc *scrdesc,
 				  const char *instr,
 				  SearchSpec *spec,
 				  bool *is_valid)
@@ -440,8 +428,7 @@ parse_search_spec(DataDesc *desc,
 				instr = get_identifier(instr, &ident, &n);
 				if (!ident)
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (expected closed quoted string)",
+					show_info_wait(" Syntax error (expected closed quoted string)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -450,8 +437,7 @@ parse_search_spec(DataDesc *desc,
 
 				if (pattern_is_specified_already)
 				{
-					show_info_wait(scrdesc,
-								   " Syntax error (pattern is specified already)",
+					show_info_wait(" Syntax error (pattern is specified already)",
 								   NULL, NULL, true, false, true);
 					return NULL;
 				}
@@ -476,8 +462,7 @@ parse_search_spec(DataDesc *desc,
 
 						if (direction_is_specified_already)
 						{
-							show_info_wait(scrdesc,
-										   " Syntax error (direction is specified already)",
+							show_info_wait(" Syntax error (direction is specified already)",
 										   NULL, NULL, true, false, true);
 							return NULL;
 						}
@@ -492,8 +477,7 @@ parse_search_spec(DataDesc *desc,
 
 						if (range_is_specified_already)
 						{
-							show_info_wait(scrdesc,
-										   " Syntax error (range specification is redundant)",
+							show_info_wait(" Syntax error (range specification is redundant)",
 										   NULL, NULL, true, false, true);
 							return NULL;
 						}
@@ -509,8 +493,7 @@ parse_search_spec(DataDesc *desc,
 
 						if (range_is_specified_already)
 						{
-							show_info_wait(scrdesc,
-										   " Syntax error (range specification is redundant)",
+							show_info_wait(" Syntax error (range specification is redundant)",
 										   NULL, NULL, true, false, true);
 							return NULL;
 						}
@@ -524,16 +507,14 @@ parse_search_spec(DataDesc *desc,
 
 							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
 							{
-								show_info_wait(scrdesc,
-											   " Cannot to identify column",
+								show_info_wait(" Cannot to identify column",
 											   NULL, true, true, false, true);
 								return NULL;
 							}
 						}
 						else
 						{
-							show_info_wait(scrdesc,
-										   " Invalid identifier (expected column name)",
+							show_info_wait(" Invalid identifier (expected column name)",
 										   NULL, true, true, false, true);
 							return NULL;
 						}
@@ -552,8 +533,7 @@ parse_search_spec(DataDesc *desc,
 
 					if (pattern_is_specified_already)
 					{
-						show_info_wait(scrdesc,
-									   " Syntax error (pattern is specified already)",
+						show_info_wait(" Syntax error (pattern is specified already)",
 									   NULL, NULL, true, false, true);
 						return NULL;
 					}
@@ -580,8 +560,6 @@ parse_and_eval_bscommand(const char *cmdline,
 						 Options *opts,
 						 ScrDesc *scrdesc,
 						 DataDesc *desc,
-						 int max_cursor_row,
-						 int cursor_row,
 						 int *next_command,
 						 long *long_argument,
 						 bool *long_argument_is_valid,
@@ -611,11 +589,17 @@ parse_and_eval_bscommand(const char *cmdline,
 
 	if (*cmdline++ != '\\')
 	{
-		show_info_wait(scrdesc,
-					   " Syntax error (expected \"\\\")",
+		show_info_wait(" Syntax error (expected \"\\\")",
 					   NULL, true, true, false, true);
 		return NULL;
 	}
+
+	/*
+	 * Ignore empty commands on the end command line.
+	 * It's probably some artefact of escape.
+	 */
+	if (*cmdline == '\0')
+		return NULL;
 
 	if (*cmdline == '+')
 	{
@@ -633,30 +617,32 @@ parse_and_eval_bscommand(const char *cmdline,
 	if (isdigit(*cmdline))
 	{
 		*long_argument = strtol(cmdline, &endptr, 10);
+		*next_command = cmd_GotoLine;
 
 		if (sign_minus)
-			*long_argument = max_cursor_row - *long_argument + 2;
+			*long_argument = - *long_argument;
+
 		else if (*endptr == '+')
 		{
-			*long_argument = cursor_row + 1 + *long_argument;
+			*long_argument = labs(*long_argument);
+			*next_command = cmd_GotoLineRel;
 			endptr += 1;
 		}
 		else if (*endptr == '-')
 		{
-			*long_argument = cursor_row + 1 - *long_argument;
+			*long_argument = - labs(*long_argument);
+			*next_command = cmd_GotoLineRel;
 			endptr += 1;
 		}
 
 		cmdline = endptr;
 		*long_argument_is_valid = true;
-		*next_command = cmd_GotoLine;
 
 		return cmdline;
 	}
 	else if (next_is_num)
 	{
-		show_info_wait(scrdesc,
-					   " Syntax error (expected number)",
+		show_info_wait(" Syntax error (expected number)",
 					   NULL, true, true, false, true);
 		return NULL;
 	}
@@ -690,8 +676,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		}
 		else
 		{
-			show_info_wait(scrdesc,
-						   " expected number",
+			show_info_wait(" expected number",
 						   NULL, true, true, false, true);
 			return NULL;
 		}
@@ -705,9 +690,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		*string_argument = NULL;
 		*string_argument_is_valid = false;
 
-		cmdline = parse_search_spec(desc, scrdesc,
-										cmdline + n,
-										&spec, &is_valid);
+		cmdline = parse_search_spec(desc, cmdline + n, &spec, &is_valid);
 
 		if (is_valid)
 		{
@@ -724,8 +707,7 @@ parse_and_eval_bscommand(const char *cmdline,
 				if (scrdesc->selected_first_row == -1 &&
 					  scrdesc->selected_first_column == -1)
 				{
-					show_info_wait(scrdesc,
-								   " There are not selected area",
+					show_info_wait(" There are not selected area",
 								   NULL, true, true, true, false);
 					return NULL;
 				}
@@ -781,8 +763,7 @@ parse_and_eval_bscommand(const char *cmdline,
 					*next_command = OrderCommand;
 				else
 				{
-					show_info_wait(scrdesc,
-								   " Column number is out of range",
+					show_info_wait(" Column number is out of range",
 								   NULL, true, true, false, true);
 					return NULL;
 				}
@@ -804,8 +785,7 @@ parse_and_eval_bscommand(const char *cmdline,
 				}
 				else
 				{
-					show_info_wait(scrdesc,
-								   " Cannot to identify column",
+					show_info_wait(" Cannot to identify column",
 								   NULL, true, true, false, true);
 					return NULL;
 				}
@@ -813,8 +793,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		}
 		else
 		{
-			show_info_wait(scrdesc,
-						   " Invalid identifier (expected column name)",
+			show_info_wait(" Invalid identifier (expected column name)",
 						   NULL, true, true, false, true);
 			return NULL;
 		}
@@ -824,10 +803,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		ExportedSpec expspec;
 		bool	is_valid;
 
-		cmdline = parse_exported_spec(scrdesc,
-									  cmdline + n,
-									  &expspec,
-									  &is_valid);
+		cmdline = parse_exported_spec(cmdline + n, &expspec, &is_valid);
 		if (is_valid)
 		{
 			Options loc_opts;
@@ -855,10 +831,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		ExportedSpec expspec;
 		bool	is_valid;
 
-		cmdline = parse_exported_spec(scrdesc,
-									  cmdline + n,
-									  &expspec,
-									  &is_valid);
+		cmdline = parse_exported_spec(cmdline + n, &expspec, &is_valid);
 		if (is_valid)
 		{
 			Options loc_opts;
@@ -883,8 +856,7 @@ parse_and_eval_bscommand(const char *cmdline,
 	}
 	else
 	{
-		show_info_wait(scrdesc,
-					   " Unknown command \"%s\"",
+		show_info_wait(" Unknown command \"%s\"",
 						   cmdline, true, true, false, true);
 		return NULL;
 	}

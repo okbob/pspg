@@ -111,6 +111,7 @@ typedef enum PspgCommand
 	cmd_ShowBottomBar,
 	cmd_RowNumToggle,
 	cmd_GotoLine,
+	cmd_GotoLineRel,
 	cmd_ShowCursor,
 	cmd_ShowVerticalCursor,
 	cmd_BoldLabelsToggle,
