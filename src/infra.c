@@ -10,6 +10,7 @@
  *
  *-------------------------------------------------------------------------
  */
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -448,4 +449,87 @@ ExtStrTrimEnd(ExtStr *estr, bool replace_nl)
 		ResetExtStr(estr);
 
 	return estr->len;
+}
+
+/*
+ * read write stderr poopen function
+ */
+int
+rwe_popen(char *command, int *fin, int *fout, int *ferr)
+{
+	int		in[2];
+	int		out[2];
+	int		err[2];
+	int		rc;
+	int		saved_errno;
+
+	errno = 0;
+	saved_errno = 0;
+
+	rc = pipe(in);
+	if (rc == 0)
+	{
+		rc = pipe(out);
+		if (rc == 0)
+		{
+			rc = pipe(err);
+			if (rc == 0)
+			{
+				int		pid = fork();
+
+				if (pid > 0)
+				{
+					/* parent */
+					close(in[0]);
+					close(out[1]);
+					close(err[1]);
+
+					*fin = in[1];
+					*fout = out[0];
+					*ferr = err[0];
+
+					return pid;
+				}
+				else if (pid == 0)
+				{
+					/* child */
+					close(in[1]);
+					close(out[0]);
+					close(err[0]);
+
+					dup2(in[0], 0);
+					dup2(out[1], 1);
+					dup2(err[1], 2);
+
+					close(in[0]);
+					close(out[1]);
+					close(err[1]);
+
+					execl("/bin/sh", "sh", "-c", command, NULL);
+					exit(127);
+				}
+				else
+					saved_errno = errno;
+
+				close(err[0]);
+				close(err[1]);
+			}
+			else
+				saved_errno = errno;
+
+			close(out[0]);
+			close(out[1]);
+		}
+		else
+			saved_errno = errno;
+
+		close(in[0]);
+		close(out[1]);
+	}
+	else
+		saved_errno = errno;
+
+	errno = saved_errno;
+
+	return -1;
 }

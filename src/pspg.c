@@ -794,17 +794,24 @@ is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 }
 
 static void
-print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
-						 int cursor_row, int cursor_col, int first_row, int fix_rows_offset,
-						 int vertical_cursor_column)
+print_status(Options *opts,
+			 ScrDesc *scrdesc,
+			 DataDesc *desc,
+			 int cursor_row,
+			 int cursor_col,
+			 int first_row,
+			 int fix_rows_offset,
+			 int vertical_cursor_column)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
 	char	buffer[200];
-	WINDOW   *top_bar = w_top_bar(scrdesc);
-	WINDOW   *bottom_bar = w_bottom_bar(scrdesc);
-	Theme	*top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
-	Theme	*bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+	WINDOW *top_bar = w_top_bar(scrdesc);
+	WINDOW *bottom_bar = w_bottom_bar(scrdesc);
+	Theme  *top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
+	Theme  *bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+
+	double	percent;
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
@@ -875,11 +882,10 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			}
 		}
 
-		if (opts->no_cursor)
+		if (desc->headline_transl)
 		{
-			double	percent;
-
-			if (desc->headline_transl)
+			/* tabular doc */
+			if (opts->no_cursor)
 			{
 				percent = (first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) /
 								((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0;
@@ -917,22 +923,6 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			}
 			else
 			{
-				percent = ((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0;
-				percent = percent > 100.0 ? 100.0 : percent;
-
-				snprintf(buffer, 199, "C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
-								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
-								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
-								number_width(desc->maxx), desc->maxx,
-								number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + scrdesc->main_maxy,
-								number_width(desc->last_row), desc->last_row + 1,
-								percent);
-			}
-		}
-		else
-		{
-			if (desc->headline_transl)
-			{
 				if (opts->vertical_cursor  && desc->columns > 0 && vertical_cursor_column > 0)
 				{
 					int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
@@ -966,6 +956,23 @@ print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 									number_width(desc->maxy - desc->fixed_rows - desc->title_rows), desc->maxy + 1 - desc->fixed_rows - desc->title_rows,
 									(cursor_row + 1) / ((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0);
 				}
+			}
+		}
+		else
+		{
+			/* txt doc */
+			if (opts->no_cursor)
+			{
+				percent = ((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0;
+				percent = percent > 100.0 ? 100.0 : percent;
+
+				snprintf(buffer, 199, "C:%*d..%*d/%*d  L:%*d/%*d %3.0f%%",
+								number_width(desc->maxx), cursor_col + scrdesc->fix_cols_cols + 1,
+								number_width(desc->maxx), min_int(smaxx + cursor_col, desc->maxx),
+								number_width(desc->maxx), desc->maxx,
+								number_width(desc->maxy - scrdesc->fix_rows_rows), first_row + scrdesc->main_maxy,
+								number_width(desc->last_row), desc->last_row + 1,
+								percent);
 			}
 			else
 			{
@@ -1872,89 +1879,6 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 			}
 		}
 	}
-}
-
-/*
- * read write stderr poopen function
- */
-static int
-rwe_popen(char *command, int *fin, int *fout, int *ferr)
-{
-	int		in[2];
-	int		out[2];
-	int		err[2];
-	int		rc;
-	int		saved_errno;
-
-	errno = 0;
-	saved_errno = 0;
-
-	rc = pipe(in);
-	if (rc == 0)
-	{
-		rc = pipe(out);
-		if (rc == 0)
-		{
-			rc = pipe(err);
-			if (rc == 0)
-			{
-				int		pid = fork();
-
-				if (pid > 0)
-				{
-					/* parent */
-					close(in[0]);
-					close(out[1]);
-					close(err[1]);
-
-					*fin = in[1];
-					*fout = out[0];
-					*ferr = err[0];
-
-					return pid;
-				}
-				else if (pid == 0)
-				{
-					/* child */
-					close(in[1]);
-					close(out[0]);
-					close(err[0]);
-
-					dup2(in[0], 0);
-					dup2(out[1], 1);
-					dup2(err[1], 2);
-
-					close(in[0]);
-					close(out[1]);
-					close(err[1]);
-
-					execl("/bin/sh", "sh", "-c", command, NULL);
-					exit(127);
-				}
-				else
-					saved_errno = errno;
-
-				close(err[0]);
-				close(err[1]);
-			}
-			else
-				saved_errno = errno;
-
-			close(out[0]);
-			close(out[1]);
-		}
-		else
-			saved_errno = errno;
-
-		close(in[0]);
-		close(out[1]);
-	}
-	else
-		saved_errno = errno;
-
-	errno = saved_errno;
-
-	return -1;
 }
 
 void

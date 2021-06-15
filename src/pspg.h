@@ -406,6 +406,8 @@ extern void ExtStrAppendNewLine(ExtStr *estr, char *str);
 extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, bool continuation_mark);
 extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 
+extern int rwe_popen(char *command, int *fin, int *fout, int *ferr);
+
 /* from file.c */
 extern bool open_data_file(Options *opts, StateData *state);
 extern char *tilde(char *dest, const char *path);
