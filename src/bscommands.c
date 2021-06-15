@@ -746,7 +746,8 @@ parse_and_eval_bscommand(const char *cmdline,
 		PspgCommand OrderCommand;
 
 		is_desc = IS_TOKEN(cmdline, n, "ordd") ||
-				  IS_TOKEN(cmdline, n, "orderd");
+				  IS_TOKEN(cmdline, n, "orderd") ||
+				  IS_TOKEN(cmdline, n, "sortd");
 
 		OrderCommand = is_desc ? cmd_SortDesc : cmd_SortAsc;
 		cmdline = get_identifier(cmdline + n, &ident, &len);
