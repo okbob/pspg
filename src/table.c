@@ -649,7 +649,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 				break;
 		}
 
-		clen = utf_string_dsplen(line, read);
+		clen = use_utf8 ? utf_string_dsplen(line, read) : read;
 
 		if (rows->nrows == LINEBUFFER_LINES)
 		{

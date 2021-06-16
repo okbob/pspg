@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef HAVE_LIBREADLINE
 
@@ -758,7 +759,7 @@ get_string(char *prompt,
 
 	log_row("input string prompt - \"%s\"", prompt);
 
-	wbkgd(prompt_window, prompt_input_attr);
+	wbkgd(prompt_window, prompt_window_input_attr);
 	werase(prompt_window);
 	mvwprintw(prompt_window, 0, 0, "%s", prompt);
 	curs_set(1);
@@ -769,7 +770,7 @@ get_string(char *prompt,
 
 	wgetnstr(prompt_window, buffer, maxsize);
 
-	if (tabcomplete_mode == 'f')
+	if (_tabcomplete_mode == 'f')
 	{
 		char	*tstr;
 		int		bytes;
@@ -790,17 +791,13 @@ get_string(char *prompt,
 	mousemask(prev_mousemask, NULL);
 	enable_xterm_mouse_mode(prev_xterm_mouse_mode);
 
-	else
-	{
-		if (defstr)
-			*defstr = '\0';
-		buffer[0] = '\0';
-	}
+	if (defstr)
+		strcpy(defstr, buffer);
 
 	/*
 	 * Screen should be refreshed after show any info.
 	 */
-	scrdesc->refresh_scr = true;
+	current_state->refresh_scr = true;
 
 	log_row("input string - \"%s\"", buffer);
 
