@@ -235,7 +235,7 @@ charlen(const char *str)
 inline int
 dsplen(const char *str)
 {
-	return use_utf8 ? utf_dsplen(str) : 1;
+	return *str == ' ' ? 1 : (use_utf8 ? utf_dsplen(str) : 1);
 }
 
 /*

@@ -6798,6 +6798,12 @@ refresh:
 
 	free(string_argument);
 
+	/*
+	 * Attention - this statement can raise warning "free(): invalid pointer"
+	 * although is all ok. I think so it is due setlinebuf usage. Because this
+	 * is only sometimes and only in debug mode, we can live with it. Maybe it
+	 * is glibc bug.
+	 */
 	fclose(debug_pipe);
 
 #endif
