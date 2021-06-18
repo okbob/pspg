@@ -270,7 +270,6 @@ typedef struct
 	char	pathname[MAXPATHLEN];		/* transformed path to input source */
 
 	FILE   *fp;						/* data input stream */
-	FILE   *logfile;				/* log output stream */
 	FILE   *tty;					/* ncurses stream */
 
 	bool	is_fifo;				/* true, when input is named pipe (can be reopened) */
@@ -482,6 +481,7 @@ extern WINDOW *prompt_window;
 extern attr_t prompt_window_input_attr;
 extern attr_t prompt_window_error_attr;
 extern attr_t prompt_window_info_attr;
+extern FILE *logfile;
 
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT

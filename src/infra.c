@@ -21,11 +21,13 @@
 #include "pspg.h"
 #include "unicode.h"
 
+FILE	   *logfile = NULL;
+
 /*
  * Print entry to log file
  */
 static void
-print_log_prefix(FILE *logfile)
+print_log_prefix(void)
 {
 	time_t		rawtime;
 	struct tm  *timeinfo;
@@ -47,24 +49,27 @@ log_row(const char *fmt, ...)
 {
 	va_list		args;
 
-	if (current_state && current_state->logfile)
+	if (logfile)
 	{
-		print_log_prefix(current_state->logfile);
+		print_log_prefix();
 
 		va_start(args, fmt);
-		vfprintf(current_state->logfile, fmt, args);
+		vfprintf(logfile, fmt, args);
 		va_end(args);
 
-		fputc('\n', current_state->logfile);
+		fputc('\n', logfile);
 	}
 
 #ifdef DEBUG_PIPE
 
-	va_start(args, fmt);
-	vfprintf(debug_pipe, fmt, args);
-	va_end(args);
+	if (debug_pipe)
+	{
+		va_start(args, fmt);
+		vfprintf(debug_pipe, fmt, args);
+		va_end(args);
 
-	fputc('\n', debug_pipe);
+		fputc('\n', debug_pipe);
+	}
 
 #endif
 
@@ -79,8 +84,12 @@ leave(const char *fmt, ...)
 
 	if (!fmt)
 	{
-		if (current_state && current_state->logfile)
-			fclose(current_state->logfile);
+		if (logfile)
+		{
+			fclose(logfile);
+			logfile = NULL;
+		}
+
 		exit(EXIT_FAILURE);
 	}
 
@@ -90,16 +99,18 @@ leave(const char *fmt, ...)
 
 	fputc('\n', stderr);
 
-	if (current_state && current_state->logfile)
+	if (logfile)
 	{
-		print_log_prefix(current_state->logfile);
+		print_log_prefix();
 
 		va_start(args, fmt);
-		vfprintf(current_state->logfile, fmt, args);
+		vfprintf(logfile, fmt, args);
 		va_end(args);
 
-		fputc('\n', current_state->logfile);
-		fclose(current_state->logfile);
+		fputc('\n', logfile);
+
+		fclose(logfile);
+		logfile = NULL;
 	}
 
 #ifdef DEBUG_PIPE

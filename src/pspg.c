@@ -196,8 +196,11 @@ SigsegvHandler (int sig)
 
 	fprintf(stderr, "pspg crashed by signal %d\n", sig);
 
-	if (current_state && current_state->logfile)
-		fclose(current_state->logfile);
+	if (logfile)
+	{
+		fclose(logfile);
+		logfile = NULL;
+	}
 
 	/* Call old sigsegv handler; may be default exit or third party one (e.g. ASAN) */
 	sigaction (SIGSEGV, &old_sigsegv_handler, NULL);
@@ -2599,11 +2602,11 @@ main(int argc, char *argv[])
 
 		pathname = tilde(NULL, opts.log_pathname);
 
-		state.logfile = fopen(pathname, "a");
-		if (!state.logfile)
+		logfile = fopen(pathname, "a");
+		if (!logfile)
 			leave("cannot to open log file \"%s\"", pathname);
 
-		setlinebuf(state.logfile);
+		setlinebuf(logfile);
 	}
 
 	if (state.boot_wait > 0)
@@ -2807,8 +2810,11 @@ main(int argc, char *argv[])
 		}
 
 		log_row("exit without start ncurses");
-		if (state.logfile)
-			fclose(state.logfile);
+		if (logfile)
+		{
+			fclose(logfile);
+			logfile = NULL;
+		}
 
 		return 0;
 	}
@@ -6788,23 +6794,12 @@ refresh:
 	 * Try to release all allocated memory in debug mode, for better
 	 * memory leak detection.
 	 */
-	if (0)
-	{
-		lb_free(&desc);
-		free(desc.cranges);
-		free(desc.headline_transl);
-		free(opts.pathname);
-	}
+	lb_free(&desc);
+	free(desc.cranges);
+	free(desc.headline_transl);
+	free(opts.pathname);
 
 	free(string_argument);
-
-	/*
-	 * Attention - this statement can raise warning "free(): invalid pointer"
-	 * although is all ok. I think so it is due setlinebuf usage. Because this
-	 * is only sometimes and only in debug mode, we can live with it. Maybe it
-	 * is glibc bug.
-	 */
-	fclose(debug_pipe);
 
 #endif
 
@@ -6821,11 +6816,28 @@ refresh:
 		fclose(stdin);
 	}
 
-	if (state.logfile)
+	if (logfile)
 	{
 		log_row("correct quit\n");
-		fclose(state.logfile);
+
+		fclose(logfile);
+		logfile = NULL;
 	}
+
+
+#ifdef DEBUG_PIPE
+
+	/*
+	 * Attention - this statement can raise warning "free(): invalid pointer"
+	 * although is all ok. I think so it is due setlinebuf usage. Because this
+	 * is only sometimes and only in debug mode, we can live with it. Maybe it
+	 * is glibc bug.
+	 */
+	fclose(debug_pipe);
+	debug_pipe = NULL;
+
+#endif
+
 
 	return 0;
 }

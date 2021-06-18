@@ -121,6 +121,8 @@ pspg_save_history(const char *histfile)
 
 	write_history(tilde(NULL, histfile));
 
+	rl_clear_history();
+
 #endif
 
 }
