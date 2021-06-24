@@ -91,6 +91,7 @@ typedef struct
 	bool	no_sleep;
 	bool	querystream;
 	bool	menu_always;
+	bool	last_row_search;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

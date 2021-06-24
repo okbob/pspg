@@ -2519,6 +2519,7 @@ main(int argc, char *argv[])
 	opts.no_sleep = false;
 	opts.menu_always = false;
 	opts.nullstr = NULL;
+	opts.last_row_search = true;
 
 	setup_sigsegv_handler();
 
@@ -5634,8 +5635,20 @@ recheck_end:
 					else
 						get_string(isSelSearch ? "^/" : "/",
 								   locsearchterm, sizeof(locsearchterm) - 1,
-								   last_row_search,
+								   (opts.last_row_search ? last_row_search : NULL),
 								   'u');
+
+					/*
+					 * If we don't automatically use the last pattern, use the
+					 * last pattern if no pattern was provided.
+					 */
+					if (!opts.last_row_search)
+					{
+						if (locsearchterm[0] != '\0')
+							memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+						else if (last_row_search[0] != '\0')
+							memcpy(locsearchterm, last_row_search, sizeof(last_row_search));
+					}
 
 					if (locsearchterm[0] != '\0')
 					{
@@ -5773,10 +5786,22 @@ recheck_end:
 					else
 						get_string(isSelSearch ? "^?" : "?",
 								   locsearchterm, sizeof(locsearchterm) - 1,
-								   last_row_search,
+								   (opts.last_row_search ? last_row_search : NULL),
 								   'u');
 
 					reset_searching_lineinfo(&desc);
+
+					/*
+					 * If we don't automatically use the last pattern, use the
+					 * last pattern if no pattern was provided.
+					 */
+					if (!opts.last_row_search)
+					{
+						if (locsearchterm[0] != '\0')
+							memcpy(last_row_search, locsearchterm, sizeof(last_row_search));
+						else if (last_row_search[0] != '\0')
+							memcpy(locsearchterm, last_row_search, sizeof(last_row_search));
+					}
 
 					if (locsearchterm[0] != '\0')
 					{

@@ -138,6 +138,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("show_scrollbar", opts->show_scrollbar);
 	SAFE_SAVE_BOOL_OPTION("menu_always", opts->menu_always);
 	SAFE_SAVE_BOOL_OPTION("empty_string_is_null", opts->empty_string_is_null);
+	SAFE_SAVE_BOOL_OPTION("last_row_search", opts->last_row_search);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -305,6 +306,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_str(key, &opts->nullstr, str_val, res);
 			else if (strcmp(key, "empty_string_is_null") == 0)
 				is_valid = assign_bool(key, &opts->empty_string_is_null, bool_val, res);
+			else if (strcmp(key, "last_row_search") == 0)
+				is_valid = assign_bool(key, &opts->last_row_search, bool_val, res);
 
 			free(line);
 			line = NULL;
