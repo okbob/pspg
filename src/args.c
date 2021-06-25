@@ -104,6 +104,7 @@ static struct option long_options[] =
 	{"no-sleep", no_argument, 0, 43},
 	{"querystream", no_argument, 0, 44},
 	{"menu-always", no_argument, 0, 45},
+	{"no-last-row-search", no_argument, 0, 46},
 	{0, 0, 0, 0}
 };
 
@@ -346,6 +347,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --no-bars, --no-commandbar, --no-topbar\n");
 					fprintf(stdout, "                           don't show bottom, top bar or both\n");
 					fprintf(stdout, "  --no-cursor              row cursor will be hidden\n");
+					fprintf(stdout, "  --no-last-row-search     don't use the last pattern when starting a new search\n");
 					fprintf(stdout, "  --no-scrollbar           don't show scrollbar\n");
 					fprintf(stdout, "  --no-sound               don't use beep when scroll is not possible\n");
 					fprintf(stdout, "  --tabular-cursor         cursor is visible only when data has table format\n");
@@ -664,6 +666,9 @@ readargs(char **argv,
 
 #endif
 
+			case 46:
+				opts->last_row_search = false;
+				break;
 			default:
 				{
 					format_error("Try %s --help\n", argv[0]);
