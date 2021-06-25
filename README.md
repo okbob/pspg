@@ -102,6 +102,7 @@ Interface options:
   --no-bars, --no-commandbar, --no-topbar
                            don't show bottom, top bar or both
   --no-cursor              row cursor will be hidden
+  --no-last-row-search     don't use the last pattern when starting a new search
   --no-scrollbar           don't show scrollbar
   --no-sound               don't use beep when scroll is not possible
   --tabular-cursor         cursor is visible only when data has table format
