@@ -918,7 +918,7 @@ window_fill(int window_identifier,
 				bool	is_selected_row;
 				bool	is_selected_columns;
 
-				is_selected_rows = is_selectable && scrdesc->selected_first_row;
+				is_selected_rows = is_selectable && scrdesc->selected_first_row != -1;
 				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
 								  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
 
