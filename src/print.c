@@ -914,6 +914,16 @@ window_fill(int window_identifier,
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
+				bool	is_selected_rows;
+				bool	is_selected_row;
+				bool	is_selected_columns;
+
+				is_selected_rows = is_selectable && scrdesc->selected_first_row;
+				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
+								  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
+
+				is_selected_columns = is_selectable && selected_xmin != -1;
+
 				while (i < maxx)
 				{
 					bool	is_cursor;
@@ -924,10 +934,9 @@ window_fill(int window_identifier,
 
 					is_in_range = false;
 
-					if (is_selectable && scrdesc->selected_first_row != -1)
+					if (is_selected_rows)
 					{
-						if (rowno >= scrdesc->selected_first_row + 1 &&
-							rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows)
+						if (is_selected_row)
 						{
 							if (selected_xmin != -1 && pos != -1)
 							{
@@ -938,7 +947,7 @@ window_fill(int window_identifier,
 								is_in_range = true;
 						}
 					}
-					else if (is_selectable && selected_xmin != -1 && pos != -1)
+					else if (is_selected_columns && pos != -1)
 					{
 						if (pos >= selected_xmin && pos <= selected_xmax)
 							is_in_range = true;
