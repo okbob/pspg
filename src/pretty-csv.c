@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "inputs.h"
 #include "pspg.h"
 #include "unicode.h"
 
@@ -1399,14 +1400,14 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 	memset(desc, 0, sizeof(DataDesc));
 
-	if (state->pathname[0])
-	{
-		char	   *name;
-
-		name = basename(state->pathname);
-		strncpy(desc->filename, name, 64);
-		desc->filename[64] = '\0';
-	}
+//	if (state->pathname[0])
+//	{
+//		char	   *name;
+//
+//		name = basename(state->pathname);
+//		strncpy(desc->filename, name, 64);
+//		desc->filename[64] = '\0';
+//	}
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1469,7 +1470,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		read_csv(&rowbuckets,
 				 &linebuf,
 				 opts->csv_separator,
-				 state->fp, opts->ignore_short_rows,
+				 f_data, opts->ignore_short_rows,
 				 opts);
 
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
@@ -1478,7 +1479,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	{
 		read_tsv(&rowbuckets,
 				 &linebuf,
-				 state->fp,
+				 f_data,
 				 opts->ignore_short_rows,
 				 opts);
 

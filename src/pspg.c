@@ -41,6 +41,8 @@
 #include <sys/wait.h>
 #include <poll.h>
 #include <stdint.h>
+
+#include <unistd.h>
 #include <fcntl.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
@@ -50,17 +52,14 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef HAVE_INOTIFY
-
-#include <sys/inotify.h>
-
-#endif
 
 #include "commands.h"
 #include "config.h"
+#include "inputs.h"
 #include "pspg.h"
 #include "themes.h"
 #include "unicode.h"
+
 
 #ifdef COMPILE_MENU
 
@@ -95,6 +94,8 @@ int		clipboard_application_id = 0;
 FILE *debug_pipe = NULL;
 int	debug_eventno = 0;
 
+static void print_memory_stats(bool enable_memory_debug);
+
 #endif
 
 static bool	got_sigint = false;
@@ -107,8 +108,6 @@ static bool active_ncurses = false;
 static bool xterm_mouse_mode_was_initialized = false;
 
 static int number_width(int num);
-static int get_event(MEVENT *mevent, bool *alt, bool *sigint, bool *timeout, bool *notify, bool *reopen, int timeoutval, int hold_stream);
-static void unget_event(int key_code, bool alt, MEVENT *mevent);
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 static bool check_visible_vertical_cursor(DataDesc *desc, Options *opts, int vertical_cursor_column);
 
@@ -120,32 +119,6 @@ static struct sigaction old_sigsegv_handler;
  * Global error buffer - used for building and storing a error messages
  */
 char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
-
-/*
- * Buffer of events. This buffer is used for two purposes:
- *
- * a) group processing of mouse events - usually pspg redraw
- *    output after processing of any input event, but mouse
- *    mouse events can be generated too frequently, and too
- *    frequent redraw can make latences on slower terminals or
- *    can make flickering on fast terminals (the image is repainted
- *    faster than is refresh rate of display).
- *
- * b) saving event that hides information text
- */
-typedef struct
-{
-	int		key_code;
-	bool	alt;
-	MEVENT	mevent;
-} PspgEvent;
-
-#define		PSPG_EVENT_BUFFER_SIZE			20
-
-static PspgEvent	pspg_event_buffer[PSPG_EVENT_BUFFER_SIZE];
-
-static int pspg_event_buffer_read = 0;
-static int pspg_event_buffer_write = 0;
 
 /*
  * Global setting
@@ -308,11 +281,12 @@ _wgetdelay(WINDOW *w)
 
 #else
 
-	return 1000;
+	return 0;
 
 #endif
 
 }
+
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
@@ -1075,10 +1049,9 @@ show_info_wait(const char *fmt,
 			   bool is_error)
 {
 	attr_t  att;
-	int		c;
+	int		event;
 	int		timeout = -1;
-	bool	press_alt;
-	MEVENT	mevent;
+	NCursesEventData nced;
 
 	/*
 	 * When refresh is required first, then store params and quit immediately.
@@ -1133,7 +1106,7 @@ show_info_wait(const char *fmt,
 	if (applytimeout)
 		timeout = strlen(fmt) < 50 ? 2000 : 6000;
 
-	c = get_event(&mevent, &press_alt, &got_sigint, NULL, NULL, NULL, timeout, 0);
+	event = get_pspg_event(&nced, true, timeout);
 
 	/*
 	 * Screen should be refreshed after show any info.
@@ -1141,8 +1114,9 @@ show_info_wait(const char *fmt,
 	current_state->refresh_scr = true;
 
 	/* eat escape if pressed here */
-	if (!(c == 27 && press_alt))
-		unget_event(c, press_alt, &mevent);
+	if (event == PSPG_NCURSES_EVENT &&
+		!(nced.keycode == 27 && nced.alt))
+		unget_pspg_event(&nced);
 }
 
 #define SEARCH_FORWARD			1
@@ -1247,475 +1221,6 @@ get_x_focus(int vertical_cursor_column,
 	int xmin = desc->cranges[vertical_cursor_column - 1].xmin;
 
 	return xmin > scrdesc->fix_cols_cols ? xmin - cursor_col : xmin;
-}
-
-/*
- * Routines for maintaining of buffered events
- */
-static void
-unget_event(int key_code, bool alt, MEVENT *mevent)
-{
-	if (pspg_event_buffer_read >= pspg_event_buffer_write)
-	{
-		pspg_event_buffer_read = 0;
-		pspg_event_buffer_write = 0;
-	}
-
-
-	if (key_code == 0 || key_code == ERR)
-		return;
-
-	if (pspg_event_buffer_write < PSPG_EVENT_BUFFER_SIZE)
-	{
-		PspgEvent *event = &pspg_event_buffer[pspg_event_buffer_write++];
-
-		event->key_code = key_code;
-		event->alt = alt;
-
-		if (key_code == KEY_MOUSE)
-			memcpy(&event->mevent, mevent, sizeof(MEVENT));
-	}
-	else
-		leave("internal event buffer is too short");
-
-#ifdef DEBUG_PIPE
-
-	fprintf(debug_pipe, "event buffer length: %d\n",
-				  pspg_event_buffer_write - pspg_event_buffer_read);
-
-#endif
-
-}
-
-static bool
-get_buffered_event(int *key_code, bool *alt, MEVENT *mevent)
-{
-	bool	result = false;
-
-	if (pspg_event_buffer_read < pspg_event_buffer_write)
-	{
-		PspgEvent *event = &pspg_event_buffer[pspg_event_buffer_read++];
-
-		*key_code = event->key_code;
-		*alt = event->alt;
-
-		if (event->key_code == KEY_MOUSE)
-			memcpy(mevent, &event->mevent, sizeof(MEVENT));
-
-		result = true;
-	}
-
-	if (pspg_event_buffer_read >= pspg_event_buffer_write)
-	{
-		pspg_event_buffer_read = 0;
-		pspg_event_buffer_write = 0;
-	}
-
-	return result;
-}
-
-static int
-event_buffer_count(void)
-{
-	if (pspg_event_buffer_read < pspg_event_buffer_write)
-		return pspg_event_buffer_write - pspg_event_buffer_read;
-	else
-		return 0;
-}
-
-/*
- * Reads keycode. When keycode is Esc - then read next keycode, and sets flag alt.
- * When keycode is related to mouse, then get mouse event details.
- */
-static int
-get_event(MEVENT *mevent,
-		  bool *alt,
-		  bool *sigint,
-		  bool *timeout,
-		  bool *file_event,
-		  bool *reopen_file,
-		  int timeoutval,
-		  int hold_stream)
-{
-	bool	first_event = true;
-	int		c;
-	int		loops = -1;
-	int		retry_count = 0;
-	bool	hungry_mouse_mode = false;
-	int		stdscr_delay = -1;
-
-#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
-
-	wint_t	ch;
-	int		ret;
-
-#endif
-
-#ifdef DEBUG_PIPE
-
-	char	buffer[20];
-
-	if (0)
-	{
-
-#ifdef __GNU_LIBRARY__
-
-/*
- * This test doesn't work well. Looks so HAVE_MALLINFO2 is undefined
- * although mallinfo2 function exists, and mallinfo is deprecated.
- * Maybe autoconf issue.
- */
-#if (__GLIBC__ == 2 &&  __GLIBC_MINOR__ >= 33) || __GLIBC__ > 2
-
-		struct mallinfo2 mi;
-
-		mi = mallinfo2();
-
-		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %ld\n", mi.arena);
-		fprintf(debug_pipe, "# of free chunks (ordblks):            %ld\n", mi.ordblks);
-		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %ld\n", mi.smblks);
-		fprintf(debug_pipe, "# of mapped regions (hblks):           %ld\n", mi.hblks);
-		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %ld\n", mi.hblkhd);
-		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %ld\n", mi.usmblks);
-		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %ld\n", mi.fsmblks);
-		fprintf(debug_pipe, "Total allocated space (uordblks):      %ld\n", mi.uordblks);
-		fprintf(debug_pipe, "Total free space (fordblks):           %ld\n", mi.fordblks);
-		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %ld\n", mi.keepcost);
-
-#else
-
-		struct mallinfo mi;
-
-		mi = mallinfo();
-
-		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
-		fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
-		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
-		fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
-		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
-		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
-		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
-		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
-		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
-		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
-
-#endif
-
-#endif
-
-	}
-
-#endif
-
-	/* returns buffered events if exists*/
-	if (get_buffered_event(&c, alt, mevent))
-	{
-		*sigint = false;
-
-		if (timeout)
-			*timeout = false;
-
-		if (file_event)
-			*file_event = false;
-
-		if (reopen_file)
-			*reopen_file = false;
-
-		goto throw_event;
-	}
-
-retry:
-
-	*alt = false;
-	*sigint = false;
-
-	if (timeout)
-		*timeout = false;
-
-	/* check file event when it is wanted, and when event is available */
-	if (file_event && current_state->fds[1].fd != -1)
-	{
-		int		poll_num;
-
-		*file_event = false;
-
-		if (reopen_file)
-			*reopen_file = false;
-
-		poll_num = poll(current_state->fds, 2, timeoutval);
-		if (poll_num == -1)
-		{
-			/* pool error is expected after sigint */
-			if (handle_sigint)
-			{
-				*sigint = true;
-				handle_sigint = false;
-
-				return 0;
-			}
-
-			log_row("poll error (%s)", strerror(errno));
-		}
-		else if (poll_num > 0)
-		{
-			/* process inotify event, but only when we can process it */
-			if (current_state->fds[1].revents)
-			{
-				short revents = current_state->fds[1].revents;
-				char		buff[64];
-				ssize_t		len;
-
-				*file_event = true;
-
-				/* handle implicit events */
-				if (revents & POLLHUP)
-				{
-					if (hold_stream == 1)
-					{
-						*reopen_file = true;
-						return 0;
-					}
-					else
-						leave("input stream was closed");
-				}
-
-				/* go out when we don't use inotify */
-				if (current_state->inotify_fd == -1)
-					return 0;
-
-				/* there are a events on monitored file */
-				len = read(current_state->inotify_fd, buff, sizeof(buff));
-
-				/*
-				 * read to end, it is notblocking IO, only one event and
-				 * one file is monitored
-				 */
-				while (len > 0)
-				{
-
-#ifdef HAVE_INOTIFY
-
-					const struct inotify_event *ino_event = (struct inotify_event *) buff;
-
-					while (len > 0 && 0)
-					{
-						if ((ino_event->mask & IN_CLOSE_WRITE))
-						{
-							if (reopen_file)
-								*reopen_file = true;
-						}
-
-						len -= sizeof (struct inotify_event) + ino_event->len;
-						ino_event += sizeof (struct inotify_event) + ino_event->len;
-					}
-
-#endif
-
-					len = read(current_state->inotify_fd, buff, sizeof(buff));
-				}
-
-				/*
-				 * wait 100ms - sometimes inotify is too fast, and file content
-				 * is buffered, and readfile reads only first line
-				 */
-				usleep(1000 * 100);
-
-				return 0;
-			}
-		}
-		else
-		{
-			/* timeout */
-			if (timeout)
-				*timeout = true;
-
-			return 0;
-		}
-	}
-
-repeat:
-
-	if (timeoutval != -1)
-		loops = timeoutval / 1000;
-
-	for (;;)
-	{
-		errno = 0;
-
-#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
-
-		ret = get_wch(&ch);
-		UNUSED(ret);
-
-		c = ch;
-
-#else
-
-		c = getch();
-
-#endif
-
-		/*
-		 * Mouse events can come too fast. The result of too frequent
-		 * updates can be unwanted flickering (the terminal is not
-		 * synchronized with screen refreshing). If we store too frequent
-		 * mouse events to own buffer, and we can skip screen refreshing
-		 * when we know so next event will come immediately.
-		 */
-		if (c == KEY_MOUSE)
-		{
-			int		ok;
-
-			/* activate unblocking mode */
-			if (!hungry_mouse_mode)
-			{
-				stdscr_delay = _wgetdelay(stdscr);
-
-				timeout(0);
-
-				hungry_mouse_mode = true;
-			}
-
-			ok = getmouse(mevent);
-			if (ok == OK)
-				unget_event(c, false, mevent);
-
-			/*
-			 * You can continue in hungry mode until buffer is full */
-			if (pspg_event_buffer_write + 1 < PSPG_EVENT_BUFFER_SIZE)
-				continue;
-			else
-				goto return_first_mouse_event;
-		}
-		else
-		{
-			if (hungry_mouse_mode)
-			{
-				/* disable unblocking mode */
-				timeout(stdscr_delay);
-				hungry_mouse_mode = false;
-
-				if (c != 0 && c != ERR)
-					unget_event(c, false, NULL);
-
-				*alt = false;
-				*sigint = false;
-				if (timeout)
-					*timeout = false;
-
-				if (file_event)
-					*file_event = false;
-
-				if (reopen_file)
-					*reopen_file = false;
-
-return_first_mouse_event:
-
-				if (get_buffered_event(&c, alt, mevent))
-					goto throw_event;
-
-				return 0;
-			}
-		}
-
-		if ((c == ERR && errno == EINTR) || handle_sigint)
-		{
-			*sigint = true;
-			handle_sigint = false;
-			return 0;
-		}
-
-		/*
-		 * Leave this cycle if there is some unexpected error.
-		 * Outer cycle is limited by 10 iteration.
-		 */
-		if (errno != 0)
-			break;
-
-		/*
-		 * On ncurses6 (Linux) get_wch returns zero on delay. But by man pages it
-		 * should to return ERR (CentOS 7 does it). So repead reading for both cases.
-		 */
-		if (c != 0 && c != ERR)
-			break;
-
-		if (loops >= 0)
-		{
-			if (--loops == 0)
-			{
-				if (timeout)
-					*timeout = true;
-
-				return 0;
-			}
-		}
-	}
-
-	if (c == KEY_MOUSE)
-	{
-		int	ok = getmouse(mevent);
-
-		if (ok != OK)
-		{
-
-#ifdef DEBUG_PIPE
-
-			/*
-			 * This is almost all problematic error, that can disable mouse
-			 * functionality. It is based on ncurses resets (endwin) or unwanted
-			 * mouse reconfigurations (mousemask).
-			 */
-			fprintf(debug_pipe, "Attention: error reading mouse event\n");
-
-#endif
-
-			goto repeat;
-		}
-	}
-
-	if (c == 27) /* Escape (before ALT chars) */
-	{
-		if (first_event)
-		{
-			first_event = false;
-			goto repeat;
-		}
-	}
-
-	*alt = !first_event;
-
-throw_event:
-
-#ifdef DEBUG_PIPE
-
-	debug_eventno += 1;
-	if (c == KEY_MOUSE)
-	{
-		sprintf(buffer, ", bstate: %08lx", (unsigned long) mevent->bstate);
-	}
-	else
-		buffer[0] = '\0';
-
-	fprintf(debug_pipe, "*** eventno: %d, key: %s%s%s ***\n",
-			  debug_eventno,
-			  *alt ? "Alt " : "",
-			  keyname(c),
-			  buffer);
-	fflush(debug_pipe);
-
-#endif
-
-	if (c == ERR)
-	{
-		log_row("ERR input - retry no: %d", retry_count);
-
-		if (++retry_count < 10)
-			goto retry;
-
-		log_row("ERR input - touch retry limit, stop");
-	}
-
-	return c;
 }
 
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
@@ -2418,7 +1923,6 @@ main(int argc, char *argv[])
 	mmask_t		prev_mousemask = 0;
 	int		search_direction = SEARCH_FORWARD;
 	bool	redirect_mode;
-	bool	noatty;					/* true, when cannot to get keys from stdin */
 	bool	fresh_found = false;
 	int		fresh_found_cursor_col = -1;
 	bool	reinit = false;
@@ -2439,9 +1943,6 @@ main(int argc, char *argv[])
 
 	WINDOW	   *win = NULL;
 	SCREEN	   *term = NULL;
-
-	bool	press_alt;
-	MEVENT	event;
 
 	char   *pspgenv;
 	bool	result;
@@ -2490,6 +1991,10 @@ main(int argc, char *argv[])
 	bool	string_argument_is_valid = false;
 	long	long_argument = 1;
 	bool	long_argument_is_valid = false;
+
+	bool	postpone_draw = false;
+	int		postponed_draws = 0;
+
 
 	/* Name of pspg config file */
 	const char *PSPG_CONF;
@@ -2554,18 +2059,11 @@ main(int argc, char *argv[])
 
 	state.reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
 	state.file_format_from_suffix = FILE_UNDEF;	/* input file is not defined */
-	state.last_position = -1;					/* unknown position */
-	state.inotify_fd = -1;						/* invalid filedescriptor */
-	state.inotify_wd = -1;						/* invalid file descriptor */
+//	state.last_position = -1;					/* unknown position */
+//	state.inotify_fd = -1;						/* invalid filedescriptor */
+//	state.inotify_wd = -1;						/* invalid file descriptor */
 
 	state.desc = &desc;							/* global reference used for readline's tabcomplete */
-
-#ifdef HAVE_INOTIFY
-
-	state.has_notify_support = true;
-
-#endif
-
 	current_state = &state;
 
 	pspgenv = getenv("PSPG");
@@ -2620,7 +2118,7 @@ main(int argc, char *argv[])
 	if (opts.watch_time || !opts.pathname)
 		opts.watch_file = false;
 
-	if (!open_data_file(&opts, &state))
+	if (!open_data_stream(&opts))
 	{
 		/* ncurses are not started yet */
 		if (state.errstr)
@@ -2631,33 +2129,6 @@ main(int argc, char *argv[])
 
 		if (!opts.watch_time)
 			exit(EXIT_FAILURE);
-	}
-
-	if (state.fp && !ferror(state.fp) &&
-		state.is_file &&
-		(opts.watch_file || state.stream_mode))
-	{
-
-#ifdef HAVE_INOTIFY
-
-		state.inotify_fd = inotify_init1(IN_NONBLOCK);
-		if (state.inotify_fd == -1)
-			leave("cannot initialize inotify (%s)", strerror(errno));
-
-		state.inotify_wd = inotify_add_watch(state.inotify_fd,
-											 state.pathname,
-											 IN_CLOSE_WRITE |
-											 (state.stream_mode ? IN_MODIFY : 0));
-
-		if (state.inotify_wd == -1)
-			leave("cannot watch file \"%s\" (%s)", state.pathname, strerror(errno));
-
-#else
-
-		leave("missing inotify support");
-
-#endif
-
 	}
 
 	if (opts.less_status_bar)
@@ -2703,11 +2174,11 @@ main(int argc, char *argv[])
 		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
 	}
 
-	if (state.fp && !state.stream_mode)
-	{
-		fclose(state.fp);
-		state.fp = NULL;
-	}
+//	if (state.fp && !state.stream_mode)
+//	{
+//		fclose(state.fp);
+//		state.fp = NULL;
+//	}
 
 	log_row("read input %d rows", desc.total_rows);
 
@@ -2820,107 +2291,22 @@ main(int argc, char *argv[])
 		return 0;
 	}
 
-	/*
-	 * Note: some shorter but for some environments not working
-	 * fragment:
-	 *
-	 * FILE *f = fopen("/dev/tty", "r+");
-	 * newterm(termname(), f, f);
-	 *
-	 */
-	if (state.fp == stdin && state.stream_mode)
-	{
-		/*
-		 * Try to protect current stdin, when input is stdin and user
-		 * want to stream mode. In this case try to open new tty stream
-		 * and start new ncurses terminal with specified input stream.
-		 */
-
-#ifndef __APPLE__
-
-		/* macOS can't use poll() on /dev/tty */
-		state.tty = fopen("/dev/tty", "r+");
-
-#endif
-
-		if (!state.tty)
-			state.tty = fopen(ttyname(fileno(stdout)), "r");
-
-		if (!state.tty)
-		{
-			if (!isatty(fileno(stderr)))
-				leave("missing a access to terminal device");
-
-			state.tty = stderr;
-		}
-
-		/* quiet compiler */
-		noatty = false;
-	}
-	else if (!isatty(fileno(stdin)))
-	{
-		if (freopen("/dev/tty", "r", stdin) != NULL)
-			noatty = false;
-		else if (freopen(ttyname(fileno(stdout)), "r", stdin) != NULL)
-			noatty = false;
-		else
-		{
-			/*
-			 * cannot to reopen terminal device. See discussion to issue #35
-			 * fallback solution - read keys directly from stderr. Just check
-			 * it it is possible.
-			 */
-			if (!isatty(fileno(stderr)))
-				leave("missing a access to terminal device");
-
-			noatty = true;
-			fclose(stdin);
-		}
-	}
-	else
-		noatty = false;
+	f_tty = fopen("/dev/tty", "r+");
 
 	signal(SIGINT, SigintHandler);
 	signal(SIGTERM, SigtermHandler);
 
 	atexit(exit_ncurses);
 
-	if (state.tty)
+	if (f_tty)
 		/* use created tty device for input */
-		term = newterm(termname(), stdout, state.tty);
-	else if (noatty)
+		term = newterm(termname(), stdout, f_tty);
+	else
 		/* use stderr like stdin. This is fallback solution used by less */
 		term = newterm(termname(), stdout, stderr);
-	else
-		win = initscr();
 
 	UNUSED(term);
 	UNUSED(win);
-
-	state.fds[0].fd = -1;
-	state.fds[1].fd = -1;
-	state.fds[0].events = POLLIN;
-	state.fds[1].events = POLLIN;
-
-	if (opts.watch_file && !state.is_fifo && !state.is_pipe)
-	{
-		state.fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-		state.fds[1].fd = state.inotify_fd;
-	}
-	else if (state.stream_mode)
-	{
-		if (state.is_pipe)
-		{
-			state.fds[0].fd = fileno(state.tty);
-			state.fds[1].fd = fileno(stdin);
-		}
-		else
-		{
-			/* state = is_fifo */
-			state.fds[0].fd = noatty ? STDERR_FILENO : STDIN_FILENO;
-			state.fds[1].fd = fileno(state.fp);
-		}
-	}
 
 	log_row("ncurses started");
 
@@ -2991,7 +2377,7 @@ reinit_theme:
 
 	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
 
-	timeout(1000);
+	timeout(0);
 
 	cbreak();
 	keypad(stdscr, TRUE);
@@ -3004,6 +2390,7 @@ reinit_theme:
 
 #ifdef NCURSES_EXT_FUNCS
 
+	/* nefunguje -- ponevadz mam timeout 0 */
 	set_escdelay(25);
 
 #endif
@@ -3250,10 +2637,19 @@ reinit_theme:
 		bool	recheck_vertical_cursor_visibility = false;
 		bool	force_refresh = false;
 
+		NCursesEventData nced;
+
+
 #ifdef DEBUG_PIPE
 
 		time_t	start_draw_sec;
 		long	start_draw_ms;
+
+		/*
+		 * Enable print memory statistics manually when you
+		 * need detailed memory usage statistics.
+		 */
+		print_memory_stats(false);
 
 #endif
 
@@ -3303,18 +2699,7 @@ reinit_theme:
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			bool	skip_update_after_mouse_event =
-						event_buffer_count() > 0
-
-#ifdef COMPILE_MENU
-
-						&& !menu_is_active
-#endif
-						;
-
-			if (!no_doupdate &&
-				!handle_timeout &&
-				!skip_update_after_mouse_event)
+			if (menu_is_active || (!no_doupdate && !postpone_draw))
 			{
 				int		vcursor_xmin_fix = -1;
 				int		vcursor_xmax_fix = -1;
@@ -3556,8 +2941,7 @@ reinit_theme:
 
 #endif
 
-				if (!opts.no_sleep &&
-					!skip_update_after_mouse_event)
+				if (!opts.no_sleep)
 				{
 					current_time(&current_sec, &current_ms);
 
@@ -3586,7 +2970,7 @@ reinit_theme:
 					}
 				}
 
-				if (!skip_update_after_mouse_event)
+				if (1)
 				{
 					doupdate();
 
@@ -3647,18 +3031,35 @@ reinit_theme:
 			}
 			else
 			{
-				bool		handle_file_event;
-				bool		reopen_file;
+				bool		handle_file_event = false;
+//				bool		reopen_file;
 
-				event_keycode = get_event(&event,
-										  &press_alt,
-										  &got_sigint,
-										  &handle_timeout,
-										  &handle_file_event,
-										  &reopen_file,
-										  opts.watch_time > 0 ? 1000 : -1,
-										  state.hold_stream);
+				int		event;
 
+				event = get_pspg_event(&nced, true, opts.watch_time > 0 ? 1000 : -1);
+				event_keycode = event == PSPG_NCURSES_EVENT ? nced.keycode : 0;
+
+/*
+fprintf(debug_pipe, "POSTPONED %d\n", postponed_draws);
+
+
+				if (event_keycode == KEY_MOUSE)
+				{
+					if (postpone_draw)
+					{
+						if (++postponed_draws > 4)
+							postpone_draw = false;
+					}
+					else
+					{
+						postpone_draw = true;
+						postponed_draws = 0;
+					}
+				}
+				else
+					postpone_draw = false;
+
+*/
 				/*
 				 * Immediately clean mouse state attributes when event is not
 				 * mouse event.
@@ -3677,7 +3078,7 @@ reinit_theme:
 						  event_keycode == KEY_SPREVIOUS ||
 						  event_keycode == KEY_LEFT ||
 						  event_keycode == KEY_RIGHT ||
-						  is_cmd_RowNumToggle(event_keycode, press_alt)))
+						  is_cmd_RowNumToggle(event_keycode, nced.alt)))
 					mark_mode = MARK_MODE_NONE;
 
 				/* Disable mark mouse mode immediately */
@@ -3707,35 +3108,35 @@ reinit_theme:
 
 						memset(&desc2, 0, sizeof(desc2));
 
-						if (state.pathname[0])
-						{
-							if (state.fp)
-							{
-								/* should be strem mode */
-								if (reopen_file)
-								{
-									fclose(state.fp);
-									state.fp = NULL;
-
-									fresh_data = open_data_file(&opts, &state);
-								}
-								else
-								{
-									clearerr(state.fp);
-									fresh_data = true;
-								}
-							}
-							else
-								fresh_data = open_data_file(&opts, &state);
-						}
-						else if (opts.query)
-							fresh_data = true;
-						else
-							/*
-							 * When we have a stream mode without watch file,
-							 * then we can read more times from stdin.
-							 */
-							fresh_data = state.stream_mode;
+//						if (state.pathname[0])
+//						{
+//							if (state.fp)
+//							{
+//								/* should be strem mode */
+//								if (reopen_file)
+//								{
+//									fclose(state.fp);
+//									state.fp = NULL;
+//
+//									fresh_data = open_data_file(&opts, &state);
+//								}
+//								else
+//								{
+//									clearerr(state.fp);
+//									fresh_data = true;
+//								}
+//							}
+//							else
+//								fresh_data = open_data_file(&opts, &state);
+//						}
+//						else if (opts.query)
+//							fresh_data = true;
+//						else
+//							/*
+//							 * When we have a stream mode without watch file,
+//							 * then we can read more times from stdin.
+//							 */
+//							fresh_data = state.stream_mode;
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -3752,11 +3153,11 @@ reinit_theme:
 							else
 								fresh_data = readfile(&opts, &desc2, &state);
 
-							if (!state.stream_mode && state.fp)
-							{
-								fclose(state.fp);
-								state.fp = NULL;
-							}
+//							if (!state.stream_mode && state.fp)
+//							{
+//								fclose(state.fp);
+//								state.fp = NULL;
+//							}
 						}
 
 						/* when we have fresh data */
@@ -3859,7 +3260,7 @@ reinit_theme:
 				if (ignore_mouse_release)
 				{
 					ignore_mouse_release = false;
-					if (event_keycode == KEY_MOUSE && event.bstate & event.bstate & BUTTON1_RELEASED)
+					if (event_keycode == KEY_MOUSE && nced.mevent.bstate & nced.mevent.bstate & BUTTON1_RELEASED)
 					{
 						no_doupdate = true;
 						continue;
@@ -3933,7 +3334,7 @@ reinit_theme:
 			ST_MENU_ITEM		*ami;
 			ST_CMDBAR_ITEM		*aci;
 
-			processed = st_menu_driver(menu, event_keycode, press_alt, &event);
+			processed = st_menu_driver(menu, event_keycode, nced.alt, &nced.mevent);
 			if (processed)
 			{
 				/*
@@ -4014,7 +3415,7 @@ hide_menu:
 				 * is button1 press, then we would to ignore button1 release.
 				 * The behave is consistent for this mouse click (press, release).
 				 */
-				if (event_keycode == KEY_MOUSE && event.bstate & event.bstate & BUTTON1_PRESSED)
+				if (event_keycode == KEY_MOUSE && nced.mevent.bstate & nced.mevent.bstate & BUTTON1_PRESSED)
 					ignore_mouse_release = true;
 
 				goto refresh;
@@ -4023,7 +3424,7 @@ hide_menu:
 			if (!processed)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
+				command = translate_event(event_keycode, nced.alt, &opts, &nested_command);
 				translated_command = command;
 			}
 			else
@@ -4034,7 +3435,7 @@ hide_menu:
 			if (!redirect_mode)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
+				command = translate_event(event_keycode, nced.alt, &opts, &nested_command);
 				translated_command = command;
 			}
 		}
@@ -6128,19 +5529,19 @@ recheck_end:
 
 #if NCURSES_MOUSE_VERSION > 1
 
-					if (event.bstate & BUTTON_ALT && event.bstate & BUTTON5_PRESSED)
+					if (nced.mevent.bstate & BUTTON_ALT && nced.mevent.bstate & BUTTON5_PRESSED)
 					{
 						next_command = cmd_MoveRight;
 						break;
 					}
 
-					if (event.bstate & BUTTON_ALT && event.bstate & BUTTON4_PRESSED)
+					if (nced.mevent.bstate & BUTTON_ALT && nced.mevent.bstate & BUTTON4_PRESSED)
 					{
 						next_command = cmd_MoveLeft;
 						break;
 					}
 
-					if (event.bstate & BUTTON5_PRESSED)
+					if (nced.mevent.bstate & BUTTON5_PRESSED)
 					{
 						int		max_cursor_row;
 						int		offset = 1;
@@ -6175,7 +5576,7 @@ recheck_end:
 							if (!opts.no_sleep)
 								usleep(30 * 1000);
 					}
-					else if (event.bstate & BUTTON4_PRESSED)
+					else if (nced.mevent.bstate & BUTTON4_PRESSED)
 					{
 						int		offset = 1;
 						int		prev_row = first_row;
@@ -6215,11 +5616,11 @@ recheck_end:
 
 #endif
 
-					if (event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_RELEASED
+					if (nced.mevent.bstate & BUTTON1_PRESSED || nced.mevent.bstate & BUTTON1_RELEASED
 
 #if NCURSES_MOUSE_VERSION > 1
 
-						|| event.bstate & REPORT_MOUSE_POSITION
+						|| nced.mevent.bstate & REPORT_MOUSE_POSITION
 
 #endif
 
@@ -6232,9 +5633,9 @@ recheck_end:
 
 						/*
 						 * Own double click implentation. We need it, because we need
-						 * waster BUTTON1_PRESSED event.
+						 * waster BUTTON1_PRESSED nced.mevent.
 						 */
-						if (event.bstate & BUTTON1_RELEASED)
+						if (nced.mevent.bstate & BUTTON1_RELEASED)
 						{
 							current_time(&sec, &ms);
 
@@ -6255,7 +5656,7 @@ recheck_end:
 						 * leave modes, that needs holding mouse (scrollbar mode and
 						 * mark mode) when mouse button is released
 						 */
-						if (event.bstate & BUTTON1_RELEASED &&
+						if (nced.mevent.bstate & BUTTON1_RELEASED &&
 							!is_double_click &&
 							(scrdesc.scrollbar_mode ||
 							 mark_mode == MARK_MODE_MOUSE ||
@@ -6271,28 +5672,28 @@ recheck_end:
 #if NCURSES_MOUSE_VERSION > 1
 
 						/* mouse move breaks double click cycle */
-						if (event.bstate & REPORT_MOUSE_POSITION)
+						if (nced.mevent.bstate & REPORT_MOUSE_POSITION)
 							last_sec = 0;
 
 #endif
 
 						/* scrollbar events implementation */
 						if (scrdesc.scrollbar_mode ||
-							(event.x == scrdesc.scrollbar_x &&
-							 event.y >= scrdesc.scrollbar_start_y &&
-							 event.y <= scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy))
+							(nced.mevent.x == scrdesc.scrollbar_x &&
+							 nced.mevent.y >= scrdesc.scrollbar_start_y &&
+							 nced.mevent.y <= scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy))
 						{
 							if (!scrdesc.scrollbar_mode)
 							{
-								if (event.bstate & BUTTON1_PRESSED)
+								if (nced.mevent.bstate & BUTTON1_PRESSED)
 								{
-									if (event.y == scrdesc.scrollbar_start_y)
+									if (nced.mevent.y == scrdesc.scrollbar_start_y)
 									{
 										next_command = cmd_CursorUp;
 										last_sec = 0;
 										break;
 									}
-									else if (event.y == scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - 1)
+									else if (nced.mevent.y == scrdesc.scrollbar_start_y + scrdesc.scrollbar_maxy - 1)
 									{
 										next_command = cmd_CursorDown;
 										last_sec = 0;
@@ -6302,13 +5703,13 @@ recheck_end:
 									{
 										if (scrdesc.slider_min_y != -1)
 										{
-											if (event.y  < scrdesc.slider_min_y + scrdesc.scrollbar_start_y)
+											if (nced.mevent.y  < scrdesc.slider_min_y + scrdesc.scrollbar_start_y)
 											{
 												next_command = cmd_PageUp;
 												last_sec = 0;
 												break;
 											}
-											else if (event.y  > scrdesc.slider_min_y + scrdesc.slider_size)
+											else if (nced.mevent.y  > scrdesc.slider_min_y + scrdesc.slider_size)
 											{
 												next_command = cmd_PageDown;
 												last_sec = 0;
@@ -6322,7 +5723,7 @@ recheck_end:
 #if NCURSES_MOUSE_VERSION > 1
 
 										scrollbar_mode_initial_slider_mouse_offset_y =
-														  event.y - scrdesc.scrollbar_start_y - scrdesc.slider_min_y;
+														  nced.mevent.y - scrdesc.scrollbar_start_y - scrdesc.slider_min_y;
 
 #endif
 
@@ -6333,7 +5734,7 @@ recheck_end:
 #if NCURSES_MOUSE_VERSION > 1
 
 
-							if (scrdesc.scrollbar_mode && event.bstate & REPORT_MOUSE_POSITION &&
+							if (scrdesc.scrollbar_mode && nced.mevent.bstate & REPORT_MOUSE_POSITION &&
 								scrdesc.scrollbar_maxy - 2 > scrdesc.slider_size)
 							{
 								int		new_slider_min_y;
@@ -6347,7 +5748,7 @@ recheck_end:
 
 								new_slider_min_y =
 										trim_to_range(
-													  event.y - scrdesc.scrollbar_start_y
+													  nced.mevent.y - scrdesc.scrollbar_start_y
 															  - scrollbar_mode_initial_slider_mouse_offset_y,
 													  1, max_slider_min_y);
 
@@ -6395,21 +5796,21 @@ recheck_end:
 #if NCURSES_MOUSE_VERSION > 1
 
 						if (mark_mode == MARK_MODE_MOUSE_COLUMNS &&
-							event.bstate & REPORT_MOUSE_POSITION &&
-							event.bstate & BUTTON_CTRL)
+							nced.mevent.bstate & REPORT_MOUSE_POSITION &&
+							nced.mevent.bstate & BUTTON_CTRL)
 						{
 							mouse_col  = mousex_get_colno(&desc, &scrdesc, &opts,
 														  &cursor_col, default_freezed_cols,
-														  event.x);
+														  nced.mevent.x);
 							break;
 						}
 
 #endif
 
-						if (event.y == 0 && scrdesc.top_bar_rows > 0)
+						if (nced.mevent.y == 0 && scrdesc.top_bar_rows > 0)
 						{
 							/* Activate menu only on BUTTON1_PRESS event */
-							if (event.bstate & BUTTON1_PRESSED)
+							if (nced.mevent.bstate & BUTTON1_PRESSED)
 							{
 								next_command = cmd_ShowMenu;
 								reuse_event = true;
@@ -6418,7 +5819,7 @@ recheck_end:
 							}
 						}
 
-						if (event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows)
+						if (nced.mevent.y >= scrdesc.top_bar_rows && nced.mevent.y <= scrdesc.fix_rows_rows)
 						{
 							if (is_double_click)
 							{
@@ -6433,11 +5834,11 @@ recheck_end:
 								}
 							}
 
-							if (event.bstate & BUTTON_CTRL && event.bstate & BUTTON1_PRESSED)
+							if (nced.mevent.bstate & BUTTON_CTRL && nced.mevent.bstate & BUTTON1_PRESSED)
 							{
 								mouse_col  = mousex_get_colno(&desc, &scrdesc, &opts,
 															  &cursor_col, default_freezed_cols,
-															  event.x);
+															  nced.mevent.x);
 
 								throw_selection(&scrdesc, &desc, &mark_mode);
 
@@ -6448,11 +5849,11 @@ recheck_end:
 							}
 
 							_is_footer_cursor = false;
-							last_x_focus = event.x;
+							last_x_focus = nced.mevent.x;
 						}
 						else
 						{
-							mouse_row = event.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
+							mouse_row = nced.mevent.y - scrdesc.fix_rows_rows - scrdesc.top_bar_rows + first_row - fix_rows_offset;
 
 							/* ignore invalid event */
 							if (mouse_row < 0 ||
@@ -6471,19 +5872,19 @@ recheck_end:
 							 * vertical cursor. But only if cursor is not in footer area.
 							 */
 							if (!_is_footer_cursor)
-								last_x_focus = event.x;
+								last_x_focus = nced.mevent.x;
 						}
 
-						if (event.bstate & BUTTON_ALT && is_double_click)
+						if (nced.mevent.bstate & BUTTON_ALT && is_double_click)
 						{
 							next_command = cmd_ToggleBookmark;
 							throw_selection(&scrdesc, &desc, &mark_mode);
 							break;
 						}
-						else if (!(event.bstate & BUTTON_ALT || event.bstate & BUTTON_CTRL) &&
+						else if (!(nced.mevent.bstate & BUTTON_ALT || nced.mevent.bstate & BUTTON_CTRL) &&
 								 opts.vertical_cursor && !_is_footer_cursor)
 						{
-							int		xpoint = event.x - scrdesc.main_start_x;
+							int		xpoint = nced.mevent.x - scrdesc.main_start_x;
 							int		vertical_cursor_column_orig = vertical_cursor_column;
 							int		i;
 
@@ -6502,7 +5903,7 @@ recheck_end:
 										vertical_cursor_column = i + 1;
 
 										if (vertical_cursor_column != vertical_cursor_column_orig &&
-											event.y >= scrdesc.top_bar_rows && event.y <= scrdesc.fix_rows_rows) 
+											nced.mevent.y >= scrdesc.top_bar_rows && nced.mevent.y <= scrdesc.fix_rows_rows) 
 										{
 											vertical_cursor_changed_mouse_event = mouse_event;
 										}
@@ -6528,8 +5929,8 @@ recheck_end:
 
 #if NCURSES_MOUSE_VERSION > 1
 
-						if (event.bstate & BUTTON_CTRL &&
-							event.bstate & BUTTON1_PRESSED)
+						if (nced.mevent.bstate & BUTTON_CTRL &&
+							nced.mevent.bstate & BUTTON1_PRESSED)
 						{
 							throw_selection(&scrdesc, &desc, &mark_mode);
 
@@ -6538,21 +5939,21 @@ recheck_end:
 						}
 
 						if (!_is_footer_cursor &&
-							event.bstate & BUTTON_ALT &&
-							(event.bstate & BUTTON1_PRESSED ||
-							 event.bstate & REPORT_MOUSE_POSITION))
+							nced.mevent.bstate & BUTTON_ALT &&
+							(nced.mevent.bstate & BUTTON1_PRESSED ||
+							 nced.mevent.bstate & REPORT_MOUSE_POSITION))
 						{
 							int		colno;
 
 							colno  = mousex_get_colno(&desc, &scrdesc, &opts,
 													  &cursor_col, default_freezed_cols,
-													  event.x);
+													  nced.mevent.x);
 
 							if (colno != -1)
 							{
 								mouse_col = colno;
 
-								if (event.bstate & BUTTON1_PRESSED)
+								if (nced.mevent.bstate & BUTTON1_PRESSED)
 								{
 									throw_selection(&scrdesc, &desc, &mark_mode);
 
@@ -6810,8 +6211,8 @@ refresh:
 
 	pspg_save_history(PSPG_HISTORY);
 
-	if (state.inotify_fd >= 0)
-		close(state.inotify_fd);
+//	if (state.inotify_fd >= 0)
+//		close(state.inotify_fd);
 
 #ifdef DEBUG_PIPE
 
@@ -6829,17 +6230,17 @@ refresh:
 #endif
 
 	/* close file in streaming mode */
-	if (state.fp && !state.is_pipe)
-		fclose(state.fp);
+//	if (state.fp && !state.is_pipe)
+//		fclose(state.fp);
 
-	if (state.tty)
-	{
-		/* stream mode against stdin */
-		fclose(state.tty);
-
-		/* close input too, send SIGPIPE to producent */
-		fclose(stdin);
-	}
+//	if (state.tty)
+//	{
+//		/* stream mode against stdin */
+//		fclose(state.tty);
+//
+//		/* close input too, send SIGPIPE to producent */
+//		fclose(stdin);
+//	}
 
 	if (logfile)
 	{
@@ -6863,6 +6264,63 @@ refresh:
 
 #endif
 
-
 	return 0;
 }
+
+#ifdef DEBUG_PIPE
+
+static void
+print_memory_stats(bool enable_memory_debug)
+{
+	if (enable_memory_debug)
+	{
+
+#ifdef __GNU_LIBRARY__
+
+/*
+ * This test doesn't work well. Looks so HAVE_MALLINFO2 is undefined
+ * although mallinfo2 function exists, and mallinfo is deprecated.
+ * Maybe autoconf issue.
+ */
+#if (__GLIBC__ == 2 &&  __GLIBC_MINOR__ >= 33) || __GLIBC__ > 2
+
+		struct mallinfo2 mi;
+
+		mi = mallinfo2();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %ld\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %ld\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %ld\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %ld\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %ld\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %ld\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %ld\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %ld\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %ld\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %ld\n", mi.keepcost);
+
+#else
+
+		struct mallinfo mi;
+
+		mi = mallinfo();
+
+		fprintf(debug_pipe, "Total non-mmapped bytes (arena):       %d\n", mi.arena);
+		fprintf(debug_pipe, "# of free chunks (ordblks):            %d\n", mi.ordblks);
+		fprintf(debug_pipe, "# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+		fprintf(debug_pipe, "# of mapped regions (hblks):           %d\n", mi.hblks);
+		fprintf(debug_pipe, "Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+		fprintf(debug_pipe, "Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+		fprintf(debug_pipe, "Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+		fprintf(debug_pipe, "Total allocated space (uordblks):      %d\n", mi.uordblks);
+		fprintf(debug_pipe, "Total free space (fordblks):           %d\n", mi.fordblks);
+		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+
+#endif
+
+	}
+}
+
+#endif
+
+#endif

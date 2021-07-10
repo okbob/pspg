@@ -544,3 +544,47 @@ rwe_popen(char *command, int *fin, int *fout, int *ferr)
 
 	return -1;
 }
+
+/*
+ * Replace tilde by HOME dir
+ */
+char *
+tilde(char *dest, const char *path)
+{
+	static char buffer[MAXPATHLEN];
+
+	int			chars = 0;
+	char	   *w;
+
+	if (!dest)
+		dest = buffer;
+
+	w = dest;
+
+	while (*path && chars < MAXPATHLEN - 1)
+	{
+		if (*path == '~')
+		{
+			char *home = getenv("HOME");
+
+			if (home == NULL)
+				leave("HOME directory is not defined");
+
+			while (*home && chars < MAXPATHLEN - 1)
+			{
+				*w++ = *home++;
+				chars += 1;
+			}
+			path++;
+		}
+		else
+		{
+			*w++ = *path++;
+			chars += 1;
+		}
+	}
+
+	*w = '\0';
+
+	return dest;
+}

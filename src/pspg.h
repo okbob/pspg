@@ -260,33 +260,14 @@ typedef struct
 	bool	stream_mode;
 	bool	no_alternate_screen;
 	bool	quit_if_one_screen;
-	bool	has_notify_support;
 
 	int		reserved_rows;			/* used by dbcli */
 	int		boot_wait;
 	int		hold_stream;
 	int		file_format_from_suffix;
 
-	char	pathname[MAXPATHLEN];		/* transformed path to input source */
-
-	FILE   *fp;						/* data input stream */
-	FILE   *tty;					/* ncurses stream */
-
-	bool	is_fifo;				/* true, when input is named pipe (can be reopened) */
-	bool	is_pipe;				/* true, when input is pipe (cannot be reopened) */
-	bool	is_file;				/* true, when input is file (can be reopened) */
-	bool	is_blocking;			/* true, when input is in block mode */
-
-	struct pollfd fds[2];
-
 	const char *errstr;				/* ptr to error string */
 	int		_errno;					/* saved errno */
-
-	bool	detect_truncation;		/* true, when input source can be truncated */
-	long int last_position;			/* saved position for truncation file check */
-
-	int		inotify_fd;				/* inotify API access file descriptor */
-	int		inotify_wd;				/* inotify watched file descriptor */
 
 	DataDesc *desc;					/* used for input, for access to necessary data for tabcomplete */
 	char   *fmt;					/* format string for info when refresh first is required */
@@ -407,8 +388,6 @@ extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 
 extern int rwe_popen(char *command, int *fin, int *fout, int *ferr);
 
-/* from file.c */
-extern bool open_data_file(Options *opts, StateData *state);
 extern char *tilde(char *dest, const char *path);
 
 /* from table.c */
@@ -486,9 +465,9 @@ extern FILE *logfile;
 /*
  * REMOVE THIS COMMENT FOR DEBUG OUTPUT
  * and modify a path.
- *
-#define DEBUG_PIPE				"/home/pavel/debug"
  */
+#define DEBUG_PIPE				"/home/pavel/debug"
+ //*/
 
 #ifdef DEBUG_PIPE
 

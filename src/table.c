@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "inputs.h"
 #include "pspg.h"
 #include "unicode.h"
 
@@ -593,30 +594,16 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		desc->filename[64] = '\0';
 	}
 
-	if (!state->fp)
+	if (!f_data)
 		return false;
 
-	clearerr(state->fp);
+	clearerr(f_data);
 
 	/* detection truncating */
-	if (state->detect_truncation)
-	{
-		struct stat stats;
-
-		if (fstat(fileno(state->fp), &stats) == 0)
-		{
-			if (stats.st_size < state->last_position)
-			{
-				log_row("file \"%s\" was truncated", opts->pathname);
-				fseek(state->fp,0L, SEEK_SET);
-			}
-		}
-		else
-			log_row("cannot to stat file: %s (%s)", opts->pathname, strerror(errno));
-	}
+	detect_file_truncation();
 
 	errno = 0;
-	read = _getline(&line, &len, state->fp, state->is_blocking, false);
+	read = _getline(&line, &len, f_data, f_data_opts & !(STREAM_IS_IN_NONBLOCKING_MODE), false);
 	if (read == -1)
 		return false;
 
@@ -741,7 +728,7 @@ next_row:
 
 		line = NULL;
 
-		read = _getline(&line, &len, state->fp, state->is_blocking, true);
+		read = _getline(&line, &len, f_data, !(f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE), true);
 	} while (read != -1);
 
 	if (errno && errno != EAGAIN)
@@ -751,8 +738,8 @@ next_row:
 		return false;
 	}
 
-	if (state->detect_truncation)
-		state->last_position = ftell(state->fp);
+	/* used for file truncation detection */
+	save_file_position();
 
 	desc->total_rows = nrows;
 
@@ -817,9 +804,9 @@ broken_format:
 
 #endif
 
-	/* clean event buffer */
-	if (state->inotify_fd >= 0)
-		lseek(state->inotify_fd, 0, SEEK_END);
+//	/* clean event buffer */
+//	if (state->inotify_fd >= 0)
+//		lseek(state->inotify_fd, 0, SEEK_END);
 
 	return true;
 }
