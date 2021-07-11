@@ -47,6 +47,8 @@ static int inotify_wd = -1;
 static NCursesEventData saved_event;
 static bool saved_event_is_valid = false;
 
+static bool close_f_tty = false;
+
 
 /*************************************
  * Events processing
@@ -144,6 +146,9 @@ _get_pspg_event(NCursesEventData *nced,
 {
 	bool	sigint;
 	bool	first_event = true;
+	bool	first_loop = true;
+	bool	without_timeout = timeout == -1;
+	bool	zero_timeout = timeout == 0;
 
 	/*
 	 * Return saved events.
@@ -171,7 +176,7 @@ _get_pspg_event(NCursesEventData *nced,
 	 * This will be used after any ncurses event to get all buffered
 	 * ncurses events before refreshing screen. 
 	 */
-	if (only_tty_events && timeout == 0)
+	if (only_tty_events && zero_timeout)
 	{
 		if (get_ncurses_event(nced, &sigint))
 			return PSPG_NCURSES_EVENT;
@@ -192,11 +197,27 @@ _get_pspg_event(NCursesEventData *nced,
 	fds[0].fd = fileno(f_tty);
 	fds[0].events = POLLIN;
 
-	while (timeout > 0 || timeout == -1)
+	while (timeout >= 0 || without_timeout)
 	{
+		/*
+		 * When timeout is 0, then we allow only one iteration, and
+		 * returns PSPG_NOTHING_VALID_EVENT if there are not any valid
+		 * event. When timeout is higher or there is not timeout, then
+		 * we can wait to valid event or to timeout.
+		 */
+		if (!first_loop)
+		{
+			if (zero_timeout)
+				return PSPG_NOTHING_VALID_EVENT;
+		}
+		else
+			first_loop = false;
+
 		if (1)
 		{
 			int		poll_num;
+			time_t	t1_sec, t2_sec;
+			long	t1_ms, t2_ms;
 
 			/*
 			 * ESCAPE key is used (by ncurses applications) like switcher to alternative
@@ -208,22 +229,32 @@ _get_pspg_event(NCursesEventData *nced,
 			 */
 repeat_reading:
 
-			poll_num = poll(fds, 1, timeout);
+			/*
+			 * take time of waitin inside poll function.
+			 */
+			if (!without_timeout && !zero_timeout)
+				current_time(&t1_sec, &t1_ms);
+
+			poll_num = poll(fds, 1, without_timeout ? -1 : timeout);
+
+			if (!without_timeout && !zero_timeout)
+			{
+				current_time(&t2_sec, &t2_ms);
+				timeout -= (int) (time_diff(t2_sec, t2_ms, t1_sec, t1_ms));
+			}
 
 			if (poll_num == -1)
 			{
 				/* pool error is expected after sigint */
 				if (handle_sigint)
 				{
-					if (only_tty_events)
-					{
-						return PSPG_NOTHING_VALID_EVENT;
-					}
-					else
+					if (!only_tty_events)
 					{
 						handle_sigint = false;
 						return PSPG_SIGINT_EVENT;
 					}
+					else
+						continue;
 				}
 				else if (handle_sigwinch)
 				{
@@ -261,8 +292,12 @@ repeat_reading:
 
 					return PSPG_NCURSES_EVENT;
 				}
-				else if (sigint)
-					return PSPG_SIGINT_EVENT;
+
+				if (sigint)
+				{
+					if (!only_tty_events)
+						return PSPG_SIGINT_EVENT;
+				}
 			}
 			else
 			{
@@ -273,13 +308,7 @@ repeat_reading:
 					nced->keycode = PSPG_ESC_CODE;
 					return PSPG_NCURSES_EVENT;
 				}
-
-				break;
 			}
-		}
-
-		if (timeout != -1 && timeout > 0)
-		{
 		}
 	}
 
@@ -375,6 +404,11 @@ unget_pspg_event(NCursesEventData *nced)
 	saved_event_is_valid = true;
 }
 
+/*************************************
+ * Prepare an access to input streams
+ *
+ *************************************
+ */
 
 bool
 open_data_stream(Options *opts)
@@ -521,15 +555,47 @@ close_data_stream(void)
 }
 
 bool
-open_tty_stream(Options *opts)
+open_tty_stream(void)
 {
-	return false;
+
+#ifndef __APPLE__
+
+	f_tty = fopen("/dev/tty", "r+");
+
+#endif
+
+	if (!f_tty)
+	{
+		f_tty = fopen(ttyname(fileno(stdout)), "r");
+		if (!f_tty)
+		{
+			if (isatty(fileno(stderr)))
+				f_tty = stderr;
+		}
+		else
+			close_f_tty = true;
+	}
+	else
+		close_f_tty = true;
+
+	return f_tty != NULL;
 }
 
 void
 close_tty_stream(void)
 {
+	if (close_f_tty)
+		fclose(f_tty);
+
+	f_tty = NULL;
+	close_f_tty = false;
 }
+
+/*************************************
+ * File truncation detection
+ *
+ *************************************
+ */
 
 void
 detect_file_truncation(void)

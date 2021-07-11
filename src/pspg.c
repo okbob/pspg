@@ -233,7 +233,7 @@ trim_to_range(int v, int a, int b)
 	return v;
 }
 
-static void
+void
 current_time(time_t *sec, long *ms)
 {
 	struct timespec spec;
@@ -299,8 +299,6 @@ _wgetdelay(WINDOW *w)
 
 }
 
-
-#define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
 #ifdef DEBUG_PIPE
 
@@ -1247,6 +1245,8 @@ exit_ncurses(void)
 		endwin();
 
 	(void) disable_xterm_mouse_mode();
+
+	close_tty_stream();
 }
 
 static void
@@ -2068,9 +2068,6 @@ main(int argc, char *argv[])
 
 	state.reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
 	state.file_format_from_suffix = FILE_UNDEF;	/* input file is not defined */
-//	state.last_position = -1;					/* unknown position */
-//	state.inotify_fd = -1;						/* invalid filedescriptor */
-//	state.inotify_wd = -1;						/* invalid file descriptor */
 
 	state.desc = &desc;							/* global reference used for readline's tabcomplete */
 	current_state = &state;
@@ -2291,7 +2288,7 @@ main(int argc, char *argv[])
 		}
 
 		log_row("exit without start ncurses");
-		if (logfile)
+  		if (logfile)
 		{
 			fclose(logfile);
 			logfile = NULL;
@@ -2300,7 +2297,12 @@ main(int argc, char *argv[])
 		return 0;
 	}
 
-	f_tty = fopen("/dev/tty", "r+");
+	if (!open_tty_stream())
+		leave("missing a access to terminal device");
+
+	term = newterm(termname(), stdout, f_tty);
+	if (!term)
+		leave("cannot to initialize new terminal");
 
 	signal(SIGINT, SigintHandler);
 	signal(SIGTERM, SigtermHandler);
@@ -2308,14 +2310,6 @@ main(int argc, char *argv[])
 
 	atexit(exit_ncurses);
 
-	if (f_tty)
-		/* use created tty device for input */
-		term = newterm(termname(), stdout, f_tty);
-	else
-		/* use stderr like stdin. This is fallback solution used by less */
-		term = newterm(termname(), stdout, stderr);
-
-	UNUSED(term);
 	UNUSED(win);
 
 	log_row("ncurses started");
@@ -6186,6 +6180,8 @@ refresh:
 #endif
 
 	endwin();
+	disable_xterm_mouse_mode();
+	close_tty_stream();
 
 	log_row("ncurses ended");
 
@@ -6225,14 +6221,6 @@ refresh:
 //	if (state.fp && !state.is_pipe)
 //		fclose(state.fp);
 
-//	if (state.tty)
-//	{
-//		/* stream mode against stdin */
-//		fclose(state.tty);
-//
-//		/* close input too, send SIGPIPE to producent */
-//		fclose(stdin);
-//	}
 
 	if (logfile)
 	{

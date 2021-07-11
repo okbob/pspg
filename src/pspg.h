@@ -15,6 +15,7 @@
 #define PSPG_PSPG_H
 
 #include <poll.h>
+#include <sys/types.h>
 #include <stdio.h>
 
 #include "commands.h"
@@ -320,6 +321,10 @@ extern void enable_xterm_mouse_mode(bool enable);
 extern bool disable_xterm_mouse_mode(void);
 extern void show_info_wait(const char *fmt, const char *par, bool beep,
 						   bool refresh_first, bool applytimeout, bool is_error);
+
+extern void current_time(time_t *sec, long *ms);
+
+#define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 

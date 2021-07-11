@@ -29,19 +29,6 @@
 #include <time.h>
 #include <math.h>
 
-
-static void
-current_time(time_t *sec, long *ms)
-{
-	struct timespec spec;
-
-	clock_gettime(CLOCK_MONOTONIC, &spec);
-	*ms = roundl(spec.tv_nsec / 1.0e6);
-	*sec = spec.tv_sec;
-}
-
-#define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
-
 static void
 print_duration(time_t start_sec, long start_ms, const char *label)
 {

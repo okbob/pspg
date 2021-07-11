@@ -74,5 +74,8 @@ extern void detect_file_truncation(void);
 extern void save_file_position(void);
 extern bool open_data_stream(Options *opts);
 
+extern bool open_tty_stream(void);
+extern void close_tty_stream(void);
+
 #endif
 
