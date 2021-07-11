@@ -14,6 +14,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -153,6 +154,10 @@ save_config(char *path, Options *opts)
 		return false;
 
 	result = fprintf(f, "clipboard_app = %d\n", opts->clipboard_app);
+	if (result < 0)
+		return false;
+
+	result = fprintf(f, "hist_size = %d\n", opts->hist_size);
 	if (result < 0)
 		return false;
 
@@ -308,6 +313,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->empty_string_is_null, bool_val, res);
 			else if (strcmp(key, "last_row_search") == 0)
 				is_valid = assign_bool(key, &opts->last_row_search, bool_val, res);
+			else if (strcmp(key, "hist_size") == 0)
+				is_valid = assign_int(key, (int *) &opts->hist_size, int_val, res, 0, INT_MAX);
 
 			free(line);
 			line = NULL;

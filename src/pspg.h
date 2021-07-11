@@ -442,8 +442,14 @@ extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, 
 
 /* from readline.c */
 extern void pspg_init_readline(const char *histfile);
-extern void pspg_save_history(const char *histfile);
+extern void pspg_save_history(const char *histfile, Options *opts);
 extern bool get_string(char *prompt, char *buffer, int maxsize, char *defstr, char tabcomplete_mode);
+
+/*
+ * Global constants
+ */
+#define PSPG_ESC_CODE							27
+#define PSPG_NOTASSIGNED_CODE					0
 
 /*
  * Global setting
@@ -455,6 +461,8 @@ extern bool quiet_mode;
  * Global variables
  */
 extern bool	handle_sigint;
+extern bool handle_sigwinch;
+
 extern StateData *current_state;
 extern WINDOW *prompt_window;
 extern attr_t prompt_window_input_attr;

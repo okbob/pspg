@@ -92,6 +92,7 @@ typedef struct
 	bool	querystream;
 	bool	menu_always;
 	bool	last_row_search;
+	int		hist_size;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

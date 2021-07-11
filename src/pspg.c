@@ -98,8 +98,6 @@ static void print_memory_stats(bool enable_memory_debug);
 
 #endif
 
-static bool	got_sigint = false;
-
 static long	last_watch_ms = 0;
 static time_t	last_watch_sec = 0;					/* time when we did last refresh */
 static bool	paused = false;							/* true, when watch mode is paused */
@@ -130,6 +128,8 @@ bool	quiet_mode = false;
  * Global state variables
  */
 bool	handle_sigint = false;
+bool	handle_sigwinch = false;
+
 WINDOW *prompt_window = NULL;
 attr_t  prompt_window_input_attr = 0;
 attr_t  prompt_window_error_attr = 0;
@@ -147,6 +147,18 @@ SigintHandler(int sig_num)
 
 	handle_sigint = true;
 }
+
+
+static void
+SigwinchHandler(int sig_num)
+{
+	UNUSED(sig_num);
+
+	signal(SIGWINCH, SigwinchHandler);
+
+	handle_sigwinch = true;
+}
+
 
 static void
 SigtermHandler(int sig_num)
@@ -1961,7 +1973,7 @@ main(int argc, char *argv[])
 	struct winsize size;
 	bool		size_is_valid = false;
 	int			ioctl_result;
-	bool		handle_timeout = false;
+//	bool		handle_timeout = false;
 
 #ifdef COMPILE_MENU
 
@@ -1992,10 +2004,6 @@ main(int argc, char *argv[])
 	long	long_argument = 1;
 	bool	long_argument_is_valid = false;
 
-	bool	postpone_draw = false;
-	int		postponed_draws = 0;
-
-
 	/* Name of pspg config file */
 	const char *PSPG_CONF;
 	const char *PSPG_HISTORY;
@@ -2025,6 +2033,7 @@ main(int argc, char *argv[])
 	opts.menu_always = false;
 	opts.nullstr = NULL;
 	opts.last_row_search = true;
+	opts.hist_size = 500;
 
 	setup_sigsegv_handler();
 
@@ -2295,6 +2304,7 @@ main(int argc, char *argv[])
 
 	signal(SIGINT, SigintHandler);
 	signal(SIGTERM, SigtermHandler);
+	signal(SIGWINCH, SigwinchHandler);
 
 	atexit(exit_ncurses);
 
@@ -2311,6 +2321,7 @@ main(int argc, char *argv[])
 	log_row("ncurses started");
 
 	active_ncurses = true;
+
 
 	/* xterm mouse mode recheck */
 	if (opts.xterm_mouse_mode)
@@ -2379,6 +2390,16 @@ reinit_theme:
 
 	timeout(0);
 
+#if NCURSES_EXT_FUNCS
+
+	set_escdelay(1);
+
+#else
+
+	ESCDELAY = 1;
+
+#endif
+
 	cbreak();
 	keypad(stdscr, TRUE);
 	curs_set(0);
@@ -2387,13 +2408,6 @@ reinit_theme:
 	leaveok(stdscr, TRUE);
 
 	wbkgdset(stdscr, COLOR_PAIR(1));
-
-#ifdef NCURSES_EXT_FUNCS
-
-	/* nefunguje -- ponevadz mam timeout 0 */
-	set_escdelay(25);
-
-#endif
 
 	initialize_special_keycodes();
 
@@ -2638,6 +2652,7 @@ reinit_theme:
 		bool	force_refresh = false;
 
 		NCursesEventData nced;
+		int		event = PSPG_NOTHING_VALID_EVENT;
 
 
 #ifdef DEBUG_PIPE
@@ -2699,7 +2714,7 @@ reinit_theme:
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			if (menu_is_active || (!no_doupdate && !postpone_draw))
+			if (menu_is_active || !no_doupdate)
 			{
 				int		vcursor_xmin_fix = -1;
 				int		vcursor_xmax_fix = -1;
@@ -3034,32 +3049,9 @@ reinit_theme:
 				bool		handle_file_event = false;
 //				bool		reopen_file;
 
-				int		event;
-
-				event = get_pspg_event(&nced, true, opts.watch_time > 0 ? 1000 : -1);
+				event = get_pspg_event(&nced, false, opts.watch_time > 0 ? 1000 : -1);
 				event_keycode = event == PSPG_NCURSES_EVENT ? nced.keycode : 0;
 
-/*
-fprintf(debug_pipe, "POSTPONED %d\n", postponed_draws);
-
-
-				if (event_keycode == KEY_MOUSE)
-				{
-					if (postpone_draw)
-					{
-						if (++postponed_draws > 4)
-							postpone_draw = false;
-					}
-					else
-					{
-						postpone_draw = true;
-						postponed_draws = 0;
-					}
-				}
-				else
-					postpone_draw = false;
-
-*/
 				/*
 				 * Immediately clean mouse state attributes when event is not
 				 * mouse event.
@@ -3237,7 +3229,7 @@ fprintf(debug_pipe, "POSTPONED %d\n", postponed_draws);
 							refresh_scr = true;
 						}
 
-						handle_timeout = false;
+//						handle_timeout = false;
 					}
 
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
@@ -3279,7 +3271,7 @@ fprintf(debug_pipe, "POSTPONED %d\n", postponed_draws);
 		}
 
 		/* Exit immediately on F10 or input error */
-		if (got_sigint)
+		if (event == PSPG_SIGINT_EVENT)
 		{
 			if (!opts.no_sigint_search_reset &&
 				  (*scrdesc.searchterm || *scrdesc.searchcolterm ||
@@ -6209,7 +6201,7 @@ refresh:
 				  footer_cursor_col, fix_rows_offset);
 	}
 
-	pspg_save_history(PSPG_HISTORY);
+	pspg_save_history(PSPG_HISTORY, &opts);
 
 //	if (state.inotify_fd >= 0)
 //		close(state.inotify_fd);

@@ -17,6 +17,8 @@
 #include <string.h>
 #include <fcntl.h>
 
+#define PSPG_ESC_DELAY					2000
+
 #ifdef HAVE_INOTIFY
 
 #include <sys/inotify.h>
@@ -46,91 +48,22 @@ static NCursesEventData saved_event;
 static bool saved_event_is_valid = false;
 
 
-void
-detect_file_truncation(void)
-{
-	/* detection truncating */
-	if (last_data_pos != -1)
-	{
-		struct stat stats;
-
-		if (fstat(fileno(f_data), &stats) == 0)
-		{
-			if (stats.st_size < last_data_pos)
-			{
-				log_row("file \"%s\" was truncated", pathname);
-
-				/* read from start of file */
-				fseek(f_data, 0L, SEEK_SET);
-			}
-		}
-		else
-			log_row("cannot to stat file: %s (%s)", pathname, strerror(errno));
-	}
-}
-
-void
-save_file_position(void)
-{
-	if (current_state->stream_mode && f_data_opts & STREAM_IS_FILE)
-		last_data_pos = ftell(f_data);
-}
-
-void
-unget_pspg_event(NCursesEventData *nced)
-{
-	if (saved_event_is_valid)
-		log_row("attention - saved ncurses event is overwritten");
-
-	memcpy(&saved_event, nced, sizeof(NCursesEventData));
-	saved_event_is_valid = true;
-}
-
+/*************************************
+ * Events processing
+ *
+ *************************************
+ */
 
 /*
- * Print info about ncurses info to debug output
+ * Read one ncurses event
  */
-static void
-describe_ncurses_event(NCursesEventData *nced)
-{
-
-#ifdef DEBUG_PIPE
-
-	char	buffer[20];
-
-	static int debug_eventno = 0;
-
-	debug_eventno += 1;
-
-	if (nced->keycode == KEY_MOUSE)
-	{
-		sprintf(buffer, ", bstate: %08lx", (unsigned long) nced->mevent.bstate);
-	}
-	else
-		buffer[0] = '\0';
-
-	fprintf(debug_pipe, "*** eventno: %d, key: %s%s%s (%d)***\n",
-			  debug_eventno,
-			  nced->alt ? "Alt " : "",
-			  keyname(nced->keycode),
-			  buffer,
-			  nced->keycode);
-	fflush(debug_pipe);
-
-#endif
-
-}
-
-
-static bool
+static int
 get_ncurses_event(NCursesEventData *nced, bool *sigint)
 {
 	bool	first_event = true;
 	int		ok = true;
 
 	*sigint = false;
-
-fprintf(debug_pipe, ">>>>get_ncurses_event <<<<\n");
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
@@ -139,6 +72,10 @@ fprintf(debug_pipe, ">>>>get_ncurses_event <<<<\n");
 
 #endif
 
+	/*
+	 * When ALT key is used, then ncurses generates two keycodes. And then
+	 * we have to read input 2x times.
+	 */
 repeat:
 
 	errno = 0;
@@ -162,7 +99,7 @@ repeat:
 		{
 			ok = getmouse(&nced->mevent) == OK;
 		}
-		else if (nced->keycode == 27) /* Escape (before ALT chars) */
+		else if (nced->keycode == PSPG_ESC_CODE) /* Escape (before ALT chars) */
 		{
 			if (first_event)
 			{
@@ -172,16 +109,25 @@ repeat:
 		}
 	}
 
-	if ((nced->keycode == ERR && errno == EINTR) || handle_sigint)
+	if ((nced->keycode == ERR && errno == EINTR) ||
+		 handle_sigint || handle_sigwinch)
 	{
-		*sigint = true;
-		handle_sigint = false;
+		if (handle_sigwinch)
+		{
+			nced->keycode = KEY_RESIZE;
+			return true;
+		}
+		else if (handle_sigint)
+		{
+			*sigint = true;
+			handle_sigint = false;
+			return false;
+		}
+
 		return false;
 	}
 
 	nced->alt = !first_event;
-
-	describe_ncurses_event(nced);
 
 	return ok;
 }
@@ -192,23 +138,31 @@ repeat:
  * Timeout -1 (timeout is infinity), 0 (no any wait), else timeout in ms.
  */
 int
-get_pspg_event(NCursesEventData *nced,
-			   bool only_tty_events,
-			   int timeout)
+_get_pspg_event(NCursesEventData *nced,
+			    bool only_tty_events,
+			    int timeout)
 {
 	bool	sigint;
-	static int	eventno = 0;
+	bool	first_event = true;
 
-
-
-fprintf(debug_pipe, "GET_PSPG_EVENT %d %d\n", eventno++, timeout);
-
+	/*
+	 * Return saved events.
+	 */
 	if (saved_event_is_valid)
 	{
 		memcpy(nced, &saved_event, sizeof(NCursesEventData));
 		saved_event_is_valid = false;
-		describe_ncurses_event(nced);
-
+		return PSPG_NCURSES_EVENT;
+	}
+	else if (!only_tty_events && handle_sigint)
+	{
+		handle_sigint = false;
+		return PSPG_SIGINT_EVENT;
+	}
+	else if (handle_sigwinch)
+	{
+		handle_sigwinch = false;
+		nced->keycode = KEY_RESIZE;
 		return PSPG_NCURSES_EVENT;
 	}
 
@@ -222,7 +176,15 @@ fprintf(debug_pipe, "GET_PSPG_EVENT %d %d\n", eventno++, timeout);
 		if (get_ncurses_event(nced, &sigint))
 			return PSPG_NCURSES_EVENT;
 		else if (sigint)
+		{
+			if (only_tty_events)
+			{
+				handle_sigint = true;
+				return PSPG_NOTHING_VALID_EVENT;
+			}
+
 			return PSPG_SIGINT_EVENT;
+		}
 		else
 			return PSPG_NOTHING_VALID_EVENT;
 	}
@@ -232,18 +194,42 @@ fprintf(debug_pipe, "GET_PSPG_EVENT %d %d\n", eventno++, timeout);
 
 	while (timeout > 0 || timeout == -1)
 	{
-		if (only_tty_events)
+		if (1)
 		{
 			int		poll_num;
 
+			/*
+			 * ESCAPE key is used (by ncurses applications) like switcher to alternative
+			 * keyboard. The escape event is forced by 2x press of ESCAPE key. The ESCAPE
+			 * key signalize start of seqence. The length of this sequnce is limmited by
+			 * timeout PSPG_ESC_DELAY (default 2000). So when ESCAPE is pressed, we have
+			 * repeat reading to get second key of key's sequance.
+			 *
+			 */
+repeat_reading:
+
 			poll_num = poll(fds, 1, timeout);
+
 			if (poll_num == -1)
 			{
 				/* pool error is expected after sigint */
 				if (handle_sigint)
 				{
-					handle_sigint = false;
-					return PSPG_SIGINT_EVENT;
+					if (only_tty_events)
+					{
+						return PSPG_NOTHING_VALID_EVENT;
+					}
+					else
+					{
+						handle_sigint = false;
+						return PSPG_SIGINT_EVENT;
+					}
+				}
+				else if (handle_sigwinch)
+				{
+					handle_sigwinch = false;
+					nced->keycode = KEY_RESIZE;
+					return PSPG_NCURSES_EVENT;
 				}
 
 				log_row("poll error (%s)", strerror(errno));
@@ -251,22 +237,144 @@ fprintf(debug_pipe, "GET_PSPG_EVENT %d %d\n", eventno++, timeout);
 			else if (poll_num > 0)
 			{
 				if (get_ncurses_event(nced, &sigint))
+				{
+					if (nced->alt && nced->keycode == PSPG_NOTASSIGNED_CODE && first_event && timeout != 0)
+					{
+						first_event = false;
+
+						/*
+						 * own implementation of escape delay. For fast escape - press
+						 * 2x escape.
+						 */
+						timeout = PSPG_ESC_DELAY;
+						goto repeat_reading;
+					}
+
+					if (!first_event)
+					{
+						/* double escpae */
+						if (nced->alt && nced->keycode == PSPG_NOTASSIGNED_CODE)
+							nced->keycode = PSPG_ESC_CODE;
+						else if (nced->keycode != KEY_MOUSE)
+							nced->alt = true;
+					}
+
 					return PSPG_NCURSES_EVENT;
+				}
 				else if (sigint)
 					return PSPG_SIGINT_EVENT;
 			}
 			else
+			{
+				/* timeout */
+				if (!first_event)
+				{
+					nced->alt = false;
+					nced->keycode = PSPG_ESC_CODE;
+					return PSPG_NCURSES_EVENT;
+				}
+
 				break;
+			}
 		}
 
 		if (timeout != -1 && timeout > 0)
 		{
-			/* break */
 		}
 	}
 
 	return PSPG_TIMEOUT_EVENT;
 }
+
+#ifdef DEBUG_PIPE
+
+int
+get_pspg_event(NCursesEventData *nced,
+			   bool only_tty_events,
+			   int timeout)
+{
+	static int eventno = 0;
+	const char *event_name;
+	int		result;
+
+	fprintf(debug_pipe, "*** waiting on event no: %d (%stimeout: %d) ***\n",
+			++eventno, only_tty_events ? "only tty, " : "", timeout);
+
+	fflush(debug_pipe);
+
+	result = _get_pspg_event(nced, only_tty_events, timeout);
+
+	switch (result)
+	{
+		case PSPG_NCURSES_EVENT:
+			event_name = "NCURSES";
+			break;
+		case PSPG_READ_DATA_EVENT:
+			event_name = "READ DATA";
+			break;
+		case PSPG_TIMEOUT_EVENT:
+			event_name = "TIMEOUT";
+			break;
+		case PSPG_SIGINT_EVENT:
+			event_name = "SIGINT";
+			break;
+		case PSPG_FATAL_EVENT:
+			event_name = "FATAL";
+			break;
+		case PSPG_ERROR_EVENT:
+			event_name = "ERROR";
+			break;
+		case PSPG_NOTHING_VALID_EVENT:
+			event_name = "NOTHING VALID EVENT";
+			break;
+		default:
+			event_name = "undefined event";
+	}
+
+	fprintf(debug_pipe, "*** event no: %d = %s ***\n", eventno, event_name);
+	if (result == PSPG_NCURSES_EVENT)
+	{
+		char	buffer[20];
+
+		if (nced->keycode == KEY_MOUSE)
+			sprintf(buffer, ", bstate: %08lx", (unsigned long) nced->mevent.bstate);
+		else
+			buffer[0] = '\0';
+
+		fprintf(debug_pipe, "*** ncurses event %s%s%s (%d) ***\n",
+			  nced->alt ? "Alt " : "",
+			  keyname(nced->keycode),
+			  buffer,
+			  nced->keycode);
+	}
+
+	fflush(debug_pipe);
+
+	return result;
+}
+
+#else
+
+int
+get_pspg_event(NCursesEventData *nced,
+			   bool only_tty_events,
+			   int timeout)
+{
+	return _get_pspg_event(nced, only_tty_events, timeout);
+}
+
+#endif
+
+void
+unget_pspg_event(NCursesEventData *nced)
+{
+	if (saved_event_is_valid)
+		log_row("attention - saved ncurses event is overwritten");
+
+	memcpy(&saved_event, nced, sizeof(NCursesEventData));
+	saved_event_is_valid = true;
+}
+
 
 bool
 open_data_stream(Options *opts)
@@ -421,5 +529,35 @@ open_tty_stream(Options *opts)
 void
 close_tty_stream(void)
 {
+}
+
+void
+detect_file_truncation(void)
+{
+	/* detection truncating */
+	if (last_data_pos != -1)
+	{
+		struct stat stats;
+
+		if (fstat(fileno(f_data), &stats) == 0)
+		{
+			if (stats.st_size < last_data_pos)
+			{
+				log_row("file \"%s\" was truncated", pathname);
+
+				/* read from start of file */
+				fseek(f_data, 0L, SEEK_SET);
+			}
+		}
+		else
+			log_row("cannot to stat file: %s (%s)", pathname, strerror(errno));
+	}
+}
+
+void
+save_file_position(void)
+{
+	if (current_state->stream_mode && f_data_opts & STREAM_IS_FILE)
+		last_data_pos = ftell(f_data);
 }
 

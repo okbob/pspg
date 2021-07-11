@@ -69,6 +69,9 @@ static const char **possible_tokens = NULL;
 
 static char		last_history[256];
 
+static const char *saved_histfile = NULL;
+static bool		history_loaded = false;
+
 #endif
 
 static const char *bscommands[] = {
@@ -114,14 +117,20 @@ static const char *search_opts[] = {
  * Save history to hist file
  */
 void
-pspg_save_history(const char *histfile)
+pspg_save_history(const char *histfile, Options *opts)
 {
 
 #ifdef HAVE_READLINE_HISTORY
 
-	write_history(tilde(NULL, histfile));
+	if (history_loaded)
+	{
+		if (opts->hist_size >= 0)
+			stifle_history(opts->hist_size);
 
-	rl_clear_history();
+		write_history(tilde(NULL, histfile));
+
+		rl_clear_history();
+	}
 
 #endif
 
@@ -502,6 +511,22 @@ get_string(char *prompt,
 	mmask_t		prev_mousemask = 0;
 	bool	prev_xterm_mouse_mode;
 
+#ifdef HAVE_READLINE_HISTORY
+
+	/*
+	 * Lazy history loading. Loading history can be slow, so use it, only
+	 * when string is wanted.
+	 */
+	if (!history_loaded)
+	{
+		read_history(tilde(NULL, saved_histfile));
+		history_loaded = true;
+
+		last_history[0] = '\0';
+	}
+
+#endif
+
 	log_row("input string prompt - \"%s\"", prompt);
 
 	editation_completed = false;
@@ -724,8 +749,8 @@ pspg_init_readline(const char *histfile)
 
 #ifdef HAVE_READLINE_HISTORY
 
-	read_history(tilde(NULL, histfile));
-
+	saved_histfile = histfile;
+	history_loaded = false;
 	last_history[0] = '\0';
 
 #endif
