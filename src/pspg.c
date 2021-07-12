@@ -3014,11 +3014,9 @@ reinit_theme:
 			}
 			else
 			{
-				bool		handle_file_event = false;
-//				bool		reopen_file;
-
 				event = get_pspg_event(&nced, false, opts.watch_time > 0 ? 1000 : -1);
-				event_keycode = event == PSPG_NCURSES_EVENT ? nced.keycode : 0;
+
+				event_keycode = (event == PSPG_NCURSES_EVENT) ? nced.keycode : 0;
 
 				/*
 				 * Immediately clean mouse state attributes when event is not
@@ -3050,7 +3048,7 @@ reinit_theme:
 
 				if (force_refresh ||
 					opts.watch_time ||
-					((opts.watch_file || state.stream_mode) && handle_file_event))
+					((opts.watch_file || state.stream_mode) && (event == PSPG_READ_DATA_EVENT)))
 				{
 					long	ms;
 					time_t	sec;
@@ -3061,7 +3059,7 @@ reinit_theme:
 
 					if (force_refresh ||
 						(ct > next_watch && !paused) ||
-						((opts.watch_file || state.stream_mode) && handle_file_event))
+						((opts.watch_file || state.stream_mode) && (event == PSPG_READ_DATA_EVENT)))
 					{
 						DataDesc	desc2;
 						bool		fresh_data = false;
@@ -3097,6 +3095,9 @@ reinit_theme:
 //							 * then we can read more times from stdin.
 //							 */
 //							fresh_data = state.stream_mode;
+
+						if (f_data_opts & STREAM_IS_PIPE)
+							fresh_data = true;
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -6208,6 +6209,12 @@ refresh:
 //	if (state.fp && !state.is_pipe)
 //		fclose(state.fp);
 
+
+	if (f_data)
+	{
+		fclose(f_data);
+		f_data = NULL;
+	}
 
 	if (logfile)
 	{

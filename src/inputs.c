@@ -150,6 +150,7 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	first_loop = true;
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
+	int		nfds;
 
 	/*
 	 * Return saved events.
@@ -195,11 +196,27 @@ _get_pspg_event(NCursesEventData *nced,
 			return PSPG_NOTHING_VALID_EVENT;
 	}
 
+
 	fds[0].fd = fileno(f_tty);
 	fds[0].events = POLLIN;
+	nfds = 1;
+
+	if (!only_tty_events)
+	{
+		if (current_state->stream_mode && !(f_data_opts & STREAM_IS_FILE))
+		{
+			fds[1].fd = fileno(f_data);
+			fds[1].events = POLLIN;
+			nfds = 2;
+		}
+	}
 
 	while (timeout >= 0 || without_timeout)
 	{
+		int		poll_num;
+		time_t	t1_sec, t2_sec;
+		long	t1_ms, t2_ms;
+
 		/*
 		 * When timeout is 0, then we allow only one iteration, and
 		 * returns PSPG_NOTHING_VALID_EVENT if there are not any valid
@@ -214,59 +231,56 @@ _get_pspg_event(NCursesEventData *nced,
 		else
 			first_loop = false;
 
-		if (1)
-		{
-			int		poll_num;
-			time_t	t1_sec, t2_sec;
-			long	t1_ms, t2_ms;
-
-			/*
-			 * ESCAPE key is used (by ncurses applications) like switcher to alternative
-			 * keyboard. The escape event is forced by 2x press of ESCAPE key. The ESCAPE
-			 * key signalize start of seqence. The length of this sequnce is limmited by
-			 * timeout PSPG_ESC_DELAY (default 2000). So when ESCAPE is pressed, we have
-			 * repeat reading to get second key of key's sequance.
-			 *
-			 */
+		/*
+		 * ESCAPE key is used (by ncurses applications) like switcher to alternative
+		 * keyboard. The escape event is forced by 2x press of ESCAPE key. The ESCAPE
+		 * key signalize start of seqence. The length of this sequnce is limmited by
+		 * timeout PSPG_ESC_DELAY (default 2000). So when ESCAPE is pressed, we have
+		 * repeat reading to get second key of key's sequance.
+		 *
+		 */
 repeat_reading:
 
-			/*
-			 * take time of waitin inside poll function.
-			 */
-			if (!without_timeout && !zero_timeout)
-				current_time(&t1_sec, &t1_ms);
+		/*
+		 * take time of waitin inside poll function.
+		 */
+		if (!without_timeout && !zero_timeout)
+			current_time(&t1_sec, &t1_ms);
 
-			poll_num = poll(fds, 1, without_timeout ? -1 : timeout);
+		poll_num = poll(fds, nfds, without_timeout ? -1 : timeout);
 
-			if (!without_timeout && !zero_timeout)
+		if (!without_timeout && !zero_timeout)
+		{
+			current_time(&t2_sec, &t2_ms);
+			timeout -= (int) (time_diff(t2_sec, t2_ms, t1_sec, t1_ms));
+		}
+
+		if (poll_num == -1)
+		{
+			/* pool error is expected after sigint */
+			if (handle_sigint)
 			{
-				current_time(&t2_sec, &t2_ms);
-				timeout -= (int) (time_diff(t2_sec, t2_ms, t1_sec, t1_ms));
+				if (!only_tty_events)
+				{
+					handle_sigint = false;
+					return PSPG_SIGINT_EVENT;
+				}
+				else
+					continue;
+			}
+			else if (handle_sigwinch)
+			{
+				handle_sigwinch = false;
+				nced->keycode = KEY_RESIZE;
+				return PSPG_NCURSES_EVENT;
 			}
 
-			if (poll_num == -1)
-			{
-				/* pool error is expected after sigint */
-				if (handle_sigint)
-				{
-					if (!only_tty_events)
-					{
-						handle_sigint = false;
-						return PSPG_SIGINT_EVENT;
-					}
-					else
-						continue;
-				}
-				else if (handle_sigwinch)
-				{
-					handle_sigwinch = false;
-					nced->keycode = KEY_RESIZE;
-					return PSPG_NCURSES_EVENT;
-				}
+			log_row("poll error (%s)", strerror(errno));
+		}
+		else if (poll_num > 0)
+		{
 
-				log_row("poll error (%s)", strerror(errno));
-			}
-			else if (poll_num > 0)
+			if (fds[0].revents)
 			{
 				if (get_ncurses_event(nced, &sigint))
 				{
@@ -300,15 +314,22 @@ repeat_reading:
 						return PSPG_SIGINT_EVENT;
 				}
 			}
-			else
+			else if (fds[1].revents)
 			{
-				/* timeout */
-				if (!first_event)
-				{
-					nced->alt = false;
-					nced->keycode = PSPG_ESC_CODE;
-					return PSPG_NCURSES_EVENT;
-				}
+				short revents = fds[1].revents;
+
+				if (revents & POLLIN)
+					return PSPG_READ_DATA_EVENT;
+			}
+		}
+		else
+		{
+			/* timeout */
+			if (!first_event)
+			{
+				nced->alt = false;
+				nced->keycode = PSPG_ESC_CODE;
+				return PSPG_NCURSES_EVENT;
 			}
 		}
 	}
