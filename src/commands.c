@@ -340,6 +340,8 @@ cmd_string(int cmd)
 
 		case cmd_BsCommand:
 			return "BsCommand";
+		case cmd_ShowPrimaryScreen:
+			return "ShowPrimaryScreen";
 
 		default:
 			return "unknown command";
@@ -514,6 +516,8 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 			case 'R':
 			case 12:	/* CTRL L */
 				return cmd_Refresh;
+			case 15:	/* CTRL O */
+				return cmd_ShowPrimaryScreen;
 
 			case '\\':
 				return cmd_BsCommand;

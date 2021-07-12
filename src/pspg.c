@@ -278,28 +278,6 @@ disable_xterm_mouse_mode(void)
 	}
 }
 
-/*
- * ncurses in RHEL 7 doesn't support wgetdelay function  This function
- * was introduced in ncurses 6.0. See build issue #174.
- *
- */
-static inline int
-_wgetdelay(WINDOW *w)
-{
-
-#if NCURSES_VERSION_MAJOR >= 6
-
-	return wgetdelay(w);
-
-#else
-
-	return 0;
-
-#endif
-
-}
-
-
 #ifdef DEBUG_PIPE
 
 static void
@@ -1638,7 +1616,6 @@ export_to_file(PspgCommand command,
 
 		if (use_pipe)
 		{
-			int		stdscr_delay = _wgetdelay(stdscr);
 			int		res;
 
 			res = pclose(fp);
@@ -1655,11 +1632,8 @@ export_to_file(PspgCommand command,
 
 			signal(SIGPIPE, SIG_DFL);
 
-			fprintf(stderr, "press enter");
-
-			timeout(-1);
-			(void) getch();
-			timeout(stdscr_delay);
+			fprintf(stderr, "\033[7mpress any key\033[m");
+			(void) wait_on_press_any_key();
 		}
 		else if (copy_to_file)
 			fclose(fp);
@@ -5498,6 +5472,19 @@ recheck_end:
 														   &long_argument, &long_argument_is_valid,
 														   &string_argument, &string_argument_is_valid,
 														   &refresh_clear);
+					break;
+				}
+
+			case cmd_ShowPrimaryScreen:
+				{
+					endwin();
+					disable_xterm_mouse_mode();
+
+					(void) wait_on_press_any_key();
+
+					enable_xterm_mouse_mode(opts.xterm_mouse_mode);
+					refresh_clear = true;
+
 					break;
 				}
 

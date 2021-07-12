@@ -230,7 +230,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | <kbd>shift</kbd>+<kbd>cursor...</kbd>                                    | define range                                                        |
 | <kbd>F3</kbd>                                                            | start/finish of selection rows                                      |
 | <kbd>shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
-| <kbd>Ctrl</kbd> + <kbd>drag mouse</kbd>                                  | defines rows selection, on column header defines column selection   |
+| <kbd>Ctrl</kbd>+<kbd>drag mouse</kbd>                                    | defines rows selection, on column header defines column selection   |
+| <kbd>Ctrl</kbd>+<kbd>o</kbd>                                             | show primary screen, press any key to return to pager again         |
 
 
 ## Backslash commands

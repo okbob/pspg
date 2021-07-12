@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <termios.h>
 
 #define PSPG_ESC_DELAY					2000
 
@@ -627,3 +628,32 @@ save_file_position(void)
 		last_data_pos = ftell(f_data);
 }
 
+/*************************************
+ * Utility
+ *
+ *************************************
+ */
+
+/*
+ * Disable echo and buffering on terminal, read one char,
+ * and returns original settings.
+ */
+int
+wait_on_press_any_key(void)
+{
+	struct termios current;
+	struct termios orig_termios;
+	int		result;
+
+	tcgetattr(fileno(f_tty), &orig_termios);
+	tcgetattr(fileno(f_tty), &current);
+
+	current.c_lflag &= ~(ECHO | ICANON);
+	tcsetattr(fileno(f_tty), TCSAFLUSH, &current);
+
+	result = fgetc(f_tty);
+
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+
+	return result;
+}

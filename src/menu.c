@@ -135,6 +135,7 @@ ST_MENU_ITEM _command[] = {
 	{"Unmar~k~", cmd_Unmark, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Refres~h~ screen", cmd_Refresh, "R, C-l", 0, 0, 0, NULL},
+	{"Show primar~y~ screen", cmd_ShowPrimaryScreen, "C-o", 0, 0, 0, NULL},
 	{NULL, 0, NULL, 0, 0, 0, NULL}
 };
 

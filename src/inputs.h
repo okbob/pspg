@@ -77,5 +77,7 @@ extern bool open_data_stream(Options *opts);
 extern bool open_tty_stream(void);
 extern void close_tty_stream(void);
 
+extern int wait_on_press_any_key(void);
+
 #endif
 

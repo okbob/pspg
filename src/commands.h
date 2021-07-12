@@ -151,7 +151,8 @@ typedef enum PspgCommand
 	cmd_Unmark,
 	cmd_Mark_NestedCursorCommand,
 
-	cmd_BsCommand
+	cmd_BsCommand,
+	cmd_ShowPrimaryScreen
 } PspgCommand;
 
 extern void initialize_special_keycodes();
