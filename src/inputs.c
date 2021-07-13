@@ -17,6 +17,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <libgen.h>
 
 #define PSPG_ESC_DELAY					2000
 
@@ -642,6 +643,17 @@ save_file_position(void)
 {
 	if (current_state->stream_mode && f_data_opts & STREAM_IS_FILE)
 		last_data_pos = ftell(f_data);
+}
+
+const char *
+get_input_file_basename(void)
+{
+	if (pathname[0])
+	{
+		return  basename(pathname);
+	}
+
+	return NULL;
 }
 
 /*************************************

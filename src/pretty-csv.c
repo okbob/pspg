@@ -1367,6 +1367,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	PrintbufType	printbuf;
 	PrintDataDesc	pdesc;
 	char	   *query = opts->query;
+	char	   *name;
 
 	state->errstr = NULL;
 	state->_errno = 0;
@@ -1400,14 +1401,12 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 	memset(desc, 0, sizeof(DataDesc));
 
-//	if (state->pathname[0])
-//	{
-//		char	   *name;
-//
-//		name = basename(state->pathname);
-//		strncpy(desc->filename, name, 64);
-//		desc->filename[64] = '\0';
-//	}
+	name = (char *) get_input_file_basename();
+	if ((name = (char *) get_input_file_basename()))
+	{
+		strncpy(desc->filename, name, 64);
+		desc->filename[64] = '\0';
+	}
 
 	desc->title[0] = '\0';
 	desc->title_rows = 0;
@@ -1467,6 +1466,12 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	}
 	else if (opts->csv_format)
 	{
+		if (!f_data)
+		{
+			format_error("missing data");
+			return false;
+		}
+
 		read_csv(&rowbuckets,
 				 &linebuf,
 				 opts->csv_separator,
@@ -1477,6 +1482,12 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	}
 	else if (opts->tsv_format)
 	{
+		if (!f_data)
+		{
+			format_error("missing data");
+			return false;
+		}
+
 		read_tsv(&rowbuckets,
 				 &linebuf,
 				 f_data,
