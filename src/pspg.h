@@ -264,7 +264,6 @@ typedef struct
 
 	int		reserved_rows;			/* used by dbcli */
 	int		boot_wait;
-	int		hold_stream;
 	int		file_format_from_suffix;
 
 	const char *errstr;				/* ptr to error string */

@@ -91,7 +91,6 @@ static struct option long_options[] =
 	{"stream", no_argument, 0, 34},
 	{"quit-on-f3", no_argument, 0, 35},
 	{"wait", required_argument, 0, 36},
-	{"hold-stream", required_argument, 0, 37},
 	{"skip-columns-like", required_argument, 0, 38},
 	{"pgcli-fix", no_argument, 0, 39},
 	{"style", required_argument, 0, 's'},
@@ -305,7 +304,6 @@ readargs(char **argv,
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
 					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)\n");
-					fprintf(stdout, "  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)\n");
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 					fprintf(stdout, "  --ni                     not interactive mode (only for csv and query)\n");
@@ -543,14 +541,6 @@ readargs(char **argv,
 				if (state->boot_wait < 0 || state->boot_wait > 120)
 				{
 					state->errstr = "wait should be between 1 and 120 (sec)";
-					return false;
-				}
-				break;
-			case 37:
-				state->hold_stream = atoi(optarg);
-				if (state->hold_stream < 0 || state->hold_stream > 2)
-				{
-					state->errstr = "hold-stream should be 0, 1 or 2";
 					return false;
 				}
 				break;

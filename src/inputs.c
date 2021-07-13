@@ -491,22 +491,10 @@ open_data_stream(Options *opts)
 		 * FIFO doesn't work well in non stream mode, it's more pipe, than file.
 		 * So when we know, so input is FIFO, we force stream mode.
 		 */
-		if ((f_data_opts & STREAM_IS_FIFO) && !(f_data_opts & STREAM_IS_PIPE))
+		if ((f_data_opts & STREAM_IS_FIFO))
 		{
 			log_row("force stream mode because input is FIFO");
 			current_state->stream_mode = true;
-
-			/*
-			 * when source is FIFO and not pipe, then we can protect source
-			 * against POLLHUP sugnal. One possibility how to do it is reopening
-			 * stream with write acess. Then POLLHUP signal is never raised.
-			 */
-			if (current_state->hold_stream == 2)
-			{
-				f_data = freopen(NULL, "a+", f_data);
-				if (!f_data)
-					leave("cannot to reopen file \"%s\" to hold stream (%s)", pathname, strerror(errno));
-			}
 		}
 
 		if (current_state->stream_mode)
@@ -576,8 +564,8 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
-	if (close_f_data)
-		fclose(f_data);
+//	if (close_f_data)
+//		fclose(f_data);
 
 	f_data = NULL;
 	close_f_data = false;

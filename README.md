@@ -57,7 +57,6 @@ General options:
   -F, --quit-if-one-screen
                            quit if content is one screen
   --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
-  --hold-stream=NUM        can reopen closed FIFO (0, 1, 2)
   --interactive            force interactive mode
   --ignore_file_suffix     don't try to deduce format from file suffix
   --ni                     not interactive mode (only for csv and query)
@@ -340,18 +339,6 @@ possible vertical cursor, possible ordering. The refreshing should be paused by 
 `pspg` uses inotify API when it is available, and when input file is changed, then
 `pspg` reread file immediately. This behave can be disabled by option `--no-watch-file`
 or by specification watch time by option `--watch`.
-
-
-# Special options for reading from stream (file or FIFO)
-
-`pspg` can continually read from file or FIFO (named pipe). This behave should
-should be forced by option `--stream`.
-
-When last writer to FIFO is ending, then `pspg` is ending too. This behave can be
-changed by option `--hold-stream`. Default value is 0. When `--hold-stream=1` then
-`pspg` will try to reopen FIFO and will hang until the FIFO will be opened for
-writing. `--hold-stream=2` is different strategy. The `pspg` reopen FIFO in write
-mode, and then FIFO will be opened until `pspg` is running.
 
 
 # Streaming modes
