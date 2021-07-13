@@ -588,8 +588,6 @@ get_string(char *prompt,
 		wrefresh(prompt_window);
 	}
 
-	wtimeout(prompt_window, 100);
-
 	while (!editation_completed)
 	{
 		do
@@ -769,7 +767,7 @@ pspg_init_readline(const char *histfile)
 }
 
 void
-pspg_save_history(const char *histfile)
+pspg_save_history(const char *histfile, Options *opts)
 {
 	return;
 }

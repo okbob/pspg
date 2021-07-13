@@ -718,6 +718,12 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	 * Store ref to bottom bar to global variable
 	 */
 	prompt_window = bottom_bar;
+
+	/*
+	 * Readline requires disabled keypad
+	 */
+	keypad(prompt_window, FALSE);
+	wtimeout(prompt_window, 250);
 }
 
 /*
@@ -2373,6 +2379,13 @@ reinit_theme:
 	keypad(stdscr, TRUE);
 	curs_set(0);
 	noecho();
+
+	/*
+	 * For pspg is better to nonl mode - without it, ncurses is not able
+	 * to detect ENTER key (that is required by safety of usage of readline.
+	 * see issue #178.
+	 */
+	nonl();
 
 	leaveok(stdscr, TRUE);
 
