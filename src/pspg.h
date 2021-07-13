@@ -312,7 +312,7 @@ typedef struct
 } ExtStr;
 
 /* from pspg.c */
-extern void exit_ncurses(void);
+extern void exit_handler(void);
 extern void export_to_file(PspgCommand command, ClipboardFormat format, Options *opts, ScrDesc *scrdesc,
 						   DataDesc *desc, int cursor_row, int cursor_column, int rows, double percent,
 						   const char *pipecmd, bool *force_refresh);

@@ -73,6 +73,7 @@ extern void unget_pspg_event(NCursesEventData *nced);
 extern void detect_file_truncation(void);
 extern void save_file_position(void);
 extern bool open_data_stream(Options *opts);
+extern void close_data_stream(void);
 
 extern bool open_tty_stream(void);
 extern void close_tty_stream(void);

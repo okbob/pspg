@@ -80,7 +80,8 @@ leave(const char *fmt, ...)
 {
 	va_list		args;
 
-	exit_ncurses();
+	/* close ncurses and input streams */
+	exit_handler();
 
 	if (!fmt)
 	{

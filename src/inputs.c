@@ -49,7 +49,7 @@ static NCursesEventData saved_event;
 static bool saved_event_is_valid = false;
 
 static bool close_f_tty = false;
-
+static bool close_f_data = false;
 
 /*************************************
  * Events processing
@@ -457,6 +457,8 @@ open_data_stream(Options *opts)
 			format_error("cannot to open file \"%s\" (%s)", pathname, strerror(errno));
 			return false;
 		}
+
+		close_f_data = true;
 	}
 	else
 	{
@@ -574,6 +576,11 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
+	if (close_f_data)
+		fclose(f_data);
+
+	f_data = NULL;
+	close_f_data = false;
 }
 
 bool

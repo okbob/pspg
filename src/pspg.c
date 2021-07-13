@@ -167,7 +167,7 @@ SigtermHandler(int sig_num)
 
 	signal(SIGTERM, SigtermHandler);
 
-	/* force own exit_ncurses routine */
+	/* force own exit_handler routine */
 	exit(EXIT_FAILURE);
 }
 
@@ -175,7 +175,7 @@ SigtermHandler(int sig_num)
 void
 SigsegvHandler (int sig)
 {
-	exit_ncurses();
+	exit_handler();
 
 	log_row("pspg crashed by Sig %d\n", sig);
 
@@ -1217,7 +1217,7 @@ get_x_focus(int vertical_cursor_column,
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
 void
-exit_ncurses(void)
+exit_handler(void)
 {
 	if (active_ncurses)
 		endwin();
@@ -1225,6 +1225,7 @@ exit_ncurses(void)
 	(void) disable_xterm_mouse_mode();
 
 	close_tty_stream();
+	close_data_stream();
 }
 
 static void
@@ -2282,7 +2283,7 @@ main(int argc, char *argv[])
 	signal(SIGTERM, SigtermHandler);
 	signal(SIGWINCH, SigwinchHandler);
 
-	atexit(exit_ncurses);
+	atexit(exit_handler);
 
 	UNUSED(win);
 
@@ -6170,7 +6171,6 @@ refresh:
 	endwin();
 	disable_xterm_mouse_mode();
 	close_tty_stream();
-
 	log_row("ncurses ended");
 
 	active_ncurses = false;
@@ -6209,12 +6209,7 @@ refresh:
 //	if (state.fp && !state.is_pipe)
 //		fclose(state.fp);
 
-
-	if (f_data)
-	{
-		fclose(f_data);
-		f_data = NULL;
-	}
+	close_data_stream();
 
 	if (logfile)
 	{
