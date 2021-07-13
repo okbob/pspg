@@ -3118,15 +3118,10 @@ reinit_theme:
 //							 */
 //							fresh_data = state.stream_mode;
 
-//						if (opts.query)
-//						if (f_data_opts & STREAM_IS_PIPE)
-						fresh_data = true;
-
 						if (opts.query)
 							fresh_data = true;
 						else if (state.stream_mode)
 							fresh_data = f_data_opts & (STREAM_IS_PIPE | STREAM_IS_FIFO);
-
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -3142,12 +3137,6 @@ reinit_theme:
 							}
 							else
 								fresh_data = readfile(&opts, &desc2, &state);
-
-//							if (!state.stream_mode && state.fp)
-//							{
-//								fclose(state.fp);
-//								state.fp = NULL;
-//							}
 						}
 
 						/* when we have fresh data */
