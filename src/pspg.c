@@ -2175,12 +2175,6 @@ main(int argc, char *argv[])
 		next_watch = last_watch_sec * 1000 + last_watch_ms + opts.watch_time * 1000;
 	}
 
-//	if (state.fp && !state.stream_mode)
-//	{
-//		fclose(state.fp);
-//		state.fp = NULL;
-//	}
-
 	log_row("read input %d rows", desc.total_rows);
 
 	if ((opts.csv_format || opts.tsv_format || opts.query) &&
@@ -3124,8 +3118,15 @@ reinit_theme:
 //							 */
 //							fresh_data = state.stream_mode;
 
-						if (f_data_opts & STREAM_IS_PIPE)
+//						if (opts.query)
+//						if (f_data_opts & STREAM_IS_PIPE)
+						fresh_data = true;
+
+						if (opts.query)
 							fresh_data = true;
+						else if (state.stream_mode)
+							fresh_data = f_data_opts & (STREAM_IS_PIPE | STREAM_IS_FIFO);
+
 
 						/* when we wanted fresh data */
 						if (fresh_data)
