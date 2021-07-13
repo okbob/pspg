@@ -723,7 +723,21 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	 * Readline requires disabled keypad
 	 */
 	keypad(prompt_window, FALSE);
-	wtimeout(prompt_window, 250);
+
+	/*
+	 * This is obscure code, but without it - ncurses doesn't process
+	 * well first cursor key event. Looks like ncurses bug, and this is
+	 * just workaround.
+	 */
+	keypad(stdscr, TRUE);
+
+	/*
+	 * Used for detection of terminal resize in edit time. The terminal
+	 * resize interrupts editing. I have not possibility how to force
+	 * refresh layout from get_string routine. Canceling editing is most
+	 * simply and good enough solution.
+	 */
+	wtimeout(prompt_window, 1000);
 }
 
 /*
