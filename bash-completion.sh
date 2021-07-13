@@ -1,82 +1,33 @@
-_pspg_completion() {
-       local w0 w1 w2 w3
+_pspg()
+{
+    local cur prev words cword
+    _init_completion || return
 
-       COMPREPLY=()
-       w0=${COMP_WORDS[COMP_CWORD]}
-       w1=${COMP_WORDS[COMP_CWORD-1]}
-       w2=${COMP_WORDS[COMP_CWORD-2]}
-       w3=${COMP_WORDS[COMP_CWORD-3]}
+    case $prev in
+        -f | --file | --log)
+           _filedir
+           return
+           ;;
+        --csv-header)
+           COMPREPLY=($(compgen -W 'on off' -- "$cur"))
+           return
+           ;;
+        --hold-stream)
+           COMPREPLY=($(compgen -W '1 2 3' -- "$cur"))
+           return
+           ;;
+        --border)
+           COMPREPLY=($(compgen -W '0 1 2' -- "$cur"))
+           return
+           ;;
+    esac
 
-       BOOLEAN_VALUES=(
-               "on"
-               "off"
-       )
+    if [[ $cur == -* ]]; then
+       COMPREPLY=($(compgen -W '$(_parse_help "$1" --help)' -- "$cur"))
+       return
+    fi
 
-         if [[ "$w1" == "--csv-header"                                     ]];    then COMPREPLY=($(compgen -W "${BOOLEAN_VALUES[*]}" -- "$w0"))
+    _filedir
 
-       else
-               OPTIONS=(
-                       "--about"
-                       "--ascii"
-                       "--blackwhite"
-                       "--help"
-                       "--version"
-                       "--file="
-                       "--freezecols"
-                       "--quit-if-one-screen"
-                       "--hold-stream="
-                       "--interactive"
-                       "--ignore_file_suffix"
-                       "--ni"
-                       "--no-watch-file"
-                       "--no-mouse"
-                       "--no-sigint-search-reset"
-                       "--only-for-tables"
-                       "--no-sigint-exit"
-                       "--pgcli-fix"
-                       "--quit-on-f3"
-                       "--reprint-on-exit"
-                       "--rr="
-                       "--stream"
-                       "--style"
-                       "--bold-labels"
-                       "--bold-cursor"
-                       "--border"
-                       "--double-header"
-                       "--force-uniborder"
-                       "--ignore-bad-rows"
-                       "--null="
-                       "--hlite-search"
-                       "--ignore-case"
-                       "--IGNORE-CASE"
-                       "--less-status-bar"
-                       "--line-numbers"
-                       "--no-bars"
-                       "--no-commandbar"
-                       "--no-topbar"
-                       "--no-cursor"
-                       "--no-sound"
-                       "--tabular-cursor"
-                       "--vertical-cursor"
-                       "--clipboard_app"
-                       "--csv"
-                       "--csv-separator"
-                       "--csv-header"
-                       "--skip-columns-like="
-                       "--tsv"
-                       "--query="
-                       "--watch"
-                       "--dbname="
-                       "--host="
-                       "--port="
-                       "--username="
-                       "--password"
-                       "--log="
-                       "--wait="
-
-               )
-               COMPREPLY=($(compgen -W "${OPTIONS[*]}" -- "$w0"))
-       fi
-}
-
-complete -F _pspg_completion pspg
+} &&
+    complete -F _pspg pspg
