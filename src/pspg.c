@@ -1935,7 +1935,6 @@ main(int argc, char *argv[])
 	bool	reinit = false;
 
 	bool	ignore_mouse_release = false;		/* after leave menu by press ignore release too */
-	bool	no_doupdate = false;				/* when we sure stdstr refresh is useless */
 	bool	raw_output_quit = false;
 
 	bool	mouse_was_initialized = false;
@@ -2704,216 +2703,212 @@ reinit_theme:
 		 */
 		if (next_command == cmd_Invalid)
 		{
-			if (menu_is_active || !no_doupdate)
+			int		vcursor_xmin_fix = -1;
+			int		vcursor_xmax_fix = -1;
+			int		vcursor_xmin_data = -1;
+			int		vcursor_xmax_data = -1;
+			int		selected_xmin = -1;
+			int		selected_xmax = -1;
+			int		i;
+
+			if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
 			{
-				int		vcursor_xmin_fix = -1;
-				int		vcursor_xmax_fix = -1;
-				int		vcursor_xmin_data = -1;
-				int		vcursor_xmax_data = -1;
-				int		selected_xmin = -1;
-				int		selected_xmax = -1;
-				int		i;
+				int		vcursor_xmin = desc.cranges[vertical_cursor_column - 1].xmin;
+				int		vcursor_xmax = desc.cranges[vertical_cursor_column - 1].xmax;
 
-				if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
+				if (vcursor_xmin < scrdesc.fix_cols_cols)
 				{
-					int		vcursor_xmin = desc.cranges[vertical_cursor_column - 1].xmin;
-					int		vcursor_xmax = desc.cranges[vertical_cursor_column - 1].xmax;
-
-					if (vcursor_xmin < scrdesc.fix_cols_cols)
-					{
-						vcursor_xmin_fix = vcursor_xmin;
-						vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols;
-					}
-					else
-					{
-						vcursor_xmin_fix = vcursor_xmin - cursor_col;
-						vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols - cursor_col;
-					}
-
-					if (vcursor_xmax < scrdesc.fix_cols_cols)
-					{
-						vcursor_xmax_fix = vcursor_xmax;
-						vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols;
-					}
-					else
-					{
-						vcursor_xmax_fix = vcursor_xmax - cursor_col;
-						vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols - cursor_col;
-					}
-
-					/*
-					 * When vertical cursor is not in freezed columns, then it cannot to
-					 * overwrite fixed col cols. Only last char position can be shared.
-					 */
-					if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
-						if (vcursor_xmin_fix < scrdesc.fix_cols_cols - 1)
-							vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
+					vcursor_xmin_fix = vcursor_xmin;
+					vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols;
+				}
+				else
+				{
+					vcursor_xmin_fix = vcursor_xmin - cursor_col;
+					vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols - cursor_col;
 				}
 
-				/* Calculate selected range in mark mode */
-				if (mark_mode != MARK_MODE_NONE)
+				if (vcursor_xmax < scrdesc.fix_cols_cols)
 				{
-					int		ref_row;
-					int		ref_col;
-
-					switch (mark_mode)
-					{
-						case MARK_MODE_MOUSE:
-						case MARK_MODE_MOUSE_BLOCK:
-							ref_row = mouse_row;
-							break;
-						case MARK_MODE_ROWS:
-						case MARK_MODE_BLOCK:
-						case MARK_MODE_CURSOR:
-							ref_row = cursor_row;
-							break;
-
-						default:
-							ref_row = -1;
-					}
-
-					if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
-							mark_mode == MARK_MODE_MOUSE_COLUMNS)
-						ref_col = mouse_col;
-					else if (mark_mode == MARK_MODE_BLOCK)
-						ref_col = vertical_cursor_column;
-					else
-						ref_col = -1;
-
-					if (ref_row != -1)
-					{
-						if (ref_row > mark_mode_start_row)
-						{
-							scrdesc.selected_first_row = mark_mode_start_row;
-							scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
-						}
-						else
-						{
-							scrdesc.selected_first_row = ref_row;
-							scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
-						}
-					}
-
-					if (ref_col != -1)
-					{
-						int		xmin, xmax;
-
-						if (ref_col > mark_mode_start_col)
-						{
-							xmin = desc.cranges[mark_mode_start_col - 1].xmin;
-							xmax = desc.cranges[ref_col - 1].xmax;
-						}
-						else
-						{
-							xmax = desc.cranges[mark_mode_start_col - 1].xmax;
-							xmin = desc.cranges[ref_col - 1].xmin;
-						}
-
-						scrdesc.selected_first_column = xmin;
-						scrdesc.selected_columns = xmax - xmin + 1;
-					}
+					vcursor_xmax_fix = vcursor_xmax;
+					vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols;
 				}
-
-				if (scrdesc.selected_first_column != -1)
+				else
 				{
-					selected_xmin = scrdesc.selected_first_column;
-					selected_xmax = selected_xmin + scrdesc.selected_columns - 1;
+					vcursor_xmax_fix = vcursor_xmax - cursor_col;
+					vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols - cursor_col;
 				}
 
 				/*
-				 * fix of unwanted visual artefact on an border between
-				 * fix_cols window and row window, because there are
-				 * overlap of columns on vertical column decoration.
+				 * When vertical cursor is not in freezed columns, then it cannot to
+				 * overwrite fixed col cols. Only last char position can be shared.
 				 */
-				if (selected_xmin == scrdesc.fix_cols_cols - 1 &&
-						selected_xmax < scrdesc.fix_cols_cols + cursor_col)
-					selected_xmin += 1;
+				if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
+					if (vcursor_xmin_fix < scrdesc.fix_cols_cols - 1)
+						vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
+			}
 
-				else if (selected_xmin >= scrdesc.fix_cols_cols && 
-						 selected_xmin < scrdesc.fix_cols_cols + cursor_col &&
-						 selected_xmax >= scrdesc.fix_cols_cols + cursor_col)
-					selected_xmin = scrdesc.fix_cols_cols - 1;
+			/* Calculate selected range in mark mode */
+			if (mark_mode != MARK_MODE_NONE)
+			{
+				int		ref_row;
+				int		ref_col;
 
-#ifdef DEBUG_PIPE
-
-				current_time(&start_draw_sec, &start_draw_ms);
-
-#endif
-
-				window_fill(WINDOW_LUC,
-							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-							0,
-							-1,
-							vcursor_xmin_fix, vcursor_xmax_fix,
-							selected_xmin, selected_xmax,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_ROWS,
-							first_data_row + first_row - fix_rows_offset,
-							scrdesc.fix_cols_cols + cursor_col,
-							cursor_row - first_row + fix_rows_offset,
-							vcursor_xmin_data, vcursor_xmax_data,
-							selected_xmin, selected_xmax,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_FIX_COLS,
-							first_data_row + first_row - fix_rows_offset,
-							0,
-							cursor_row - first_row + fix_rows_offset,
-							vcursor_xmin_fix, vcursor_xmax_fix,
-							selected_xmin, selected_xmax,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_FIX_ROWS,
-							desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-							scrdesc.fix_cols_cols + cursor_col,
-							-1,
-							vcursor_xmin_data, vcursor_xmax_data,
-							selected_xmin, selected_xmax,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_FOOTER,
-							first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
-							footer_cursor_col,
-							cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
-							-1, -1, -1, -1,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_ROWNUM_LUC,
-							0,
-							0,
-							0,
-							-1, -1, -1, -1,
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_ROWNUM,
-							first_data_row + first_row - fix_rows_offset,
-							0,
-							cursor_row - first_row + fix_rows_offset,
-							-1, -1, -1, -1, 
-							&desc, &scrdesc, &opts);
-
-				window_fill(WINDOW_VSCROLLBAR,
-							0, 0, cursor_row, -1, -1, -1, -1,
-							&desc, &scrdesc, &opts);
-
-				for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+				switch (mark_mode)
 				{
-					if (i != WINDOW_TOP_BAR &&
-						i != WINDOW_BOTTOM_BAR)
+					case MARK_MODE_MOUSE:
+					case MARK_MODE_MOUSE_BLOCK:
+						ref_row = mouse_row;
+						break;
+					case MARK_MODE_ROWS:
+					case MARK_MODE_BLOCK:
+					case MARK_MODE_CURSOR:
+						ref_row = cursor_row;
+						break;
+
+					default:
+						ref_row = -1;
+				}
+
+				if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
+						mark_mode == MARK_MODE_MOUSE_COLUMNS)
+					ref_col = mouse_col;
+				else if (mark_mode == MARK_MODE_BLOCK)
+					ref_col = vertical_cursor_column;
+				else
+					ref_col = -1;
+
+				if (ref_row != -1)
+				{
+					if (ref_row > mark_mode_start_row)
 					{
-						if (scrdesc.wins[i])
-							wnoutrefresh(scrdesc.wins[i]);
+						scrdesc.selected_first_row = mark_mode_start_row;
+						scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
+					}
+					else
+					{
+						scrdesc.selected_first_row = ref_row;
+						scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
 					}
 				}
 
+				if (ref_col != -1)
+				{
+					int		xmin, xmax;
+
+					if (ref_col > mark_mode_start_col)
+					{
+						xmin = desc.cranges[mark_mode_start_col - 1].xmin;
+						xmax = desc.cranges[ref_col - 1].xmax;
+					}
+					else
+					{
+						xmax = desc.cranges[mark_mode_start_col - 1].xmax;
+						xmin = desc.cranges[ref_col - 1].xmin;
+					}
+
+					scrdesc.selected_first_column = xmin;
+					scrdesc.selected_columns = xmax - xmin + 1;
+				}
+			}
+
+			if (scrdesc.selected_first_column != -1)
+			{
+				selected_xmin = scrdesc.selected_first_column;
+				selected_xmax = selected_xmin + scrdesc.selected_columns - 1;
+			}
+
+			/*
+			 * fix of unwanted visual artefact on an border between
+			 * fix_cols window and row window, because there are
+			 * overlap of columns on vertical column decoration.
+			 */
+			if (selected_xmin == scrdesc.fix_cols_cols - 1 &&
+					selected_xmax < scrdesc.fix_cols_cols + cursor_col)
+				selected_xmin += 1;
+
+			else if (selected_xmin >= scrdesc.fix_cols_cols && 
+					 selected_xmin < scrdesc.fix_cols_cols + cursor_col &&
+					 selected_xmax >= scrdesc.fix_cols_cols + cursor_col)
+				selected_xmin = scrdesc.fix_cols_cols - 1;
+
 #ifdef DEBUG_PIPE
 
-				print_duration(start_draw_sec, start_draw_ms, "draw time");
+			current_time(&start_draw_sec, &start_draw_ms);
 
 #endif
 
-			} /* !no_doupdate */
+			window_fill(WINDOW_LUC,
+						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+						0,
+						-1,
+						vcursor_xmin_fix, vcursor_xmax_fix,
+						selected_xmin, selected_xmax,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_ROWS,
+						first_data_row + first_row - fix_rows_offset,
+						scrdesc.fix_cols_cols + cursor_col,
+						cursor_row - first_row + fix_rows_offset,
+						vcursor_xmin_data, vcursor_xmax_data,
+						selected_xmin, selected_xmax,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_FIX_COLS,
+						first_data_row + first_row - fix_rows_offset,
+						0,
+						cursor_row - first_row + fix_rows_offset,
+						vcursor_xmin_fix, vcursor_xmax_fix,
+						selected_xmin, selected_xmax,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_FIX_ROWS,
+						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
+						scrdesc.fix_cols_cols + cursor_col,
+						-1,
+						vcursor_xmin_data, vcursor_xmax_data,
+						selected_xmin, selected_xmax,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_FOOTER,
+						first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
+						footer_cursor_col,
+						cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
+						-1, -1, -1, -1,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_ROWNUM_LUC,
+						0,
+						0,
+						0,
+						-1, -1, -1, -1,
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_ROWNUM,
+						first_data_row + first_row - fix_rows_offset,
+						0,
+						cursor_row - first_row + fix_rows_offset,
+						-1, -1, -1, -1, 
+						&desc, &scrdesc, &opts);
+
+			window_fill(WINDOW_VSCROLLBAR,
+						0, 0, cursor_row, -1, -1, -1, -1,
+						&desc, &scrdesc, &opts);
+
+			for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+			{
+				if (i != WINDOW_TOP_BAR &&
+					i != WINDOW_BOTTOM_BAR)
+				{
+					if (scrdesc.wins[i])
+						wnoutrefresh(scrdesc.wins[i]);
+				}
+			}
+
+#ifdef DEBUG_PIPE
+
+			print_duration(start_draw_sec, start_draw_ms, "draw time");
+
+#endif
 
 #ifdef COMPILE_MENU
 
@@ -2930,9 +2925,7 @@ reinit_theme:
 
 #endif
 
-			if (no_doupdate)
-				no_doupdate = false;
-			else if (next_command == 0 || current_state->fmt != NULL)
+			if (next_command == 0 || current_state->fmt != NULL)
 			{
 				time_t		current_sec;
 				long		current_ms;
@@ -2975,25 +2968,18 @@ reinit_theme:
 					}
 				}
 
-				if (1)
-				{
-					doupdate();
+				doupdate();
 
-					current_time(&current_sec, &current_ms);
+				current_time(&current_sec, &current_ms);
 
-					last_doupdate_sec = current_sec;
-					last_doupdate_ms = current_ms;
-
+				last_doupdate_sec = current_sec;
+				last_doupdate_ms = current_ms;
 
 #ifdef DEBUG_PIPE
 
-					print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
+				print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
 
 #endif
-
-				}
-				else
-					usleep(2 * 1000);
 
 				current_time(&current_sec, &current_ms);
 
@@ -3005,11 +2991,11 @@ reinit_theme:
 
 #ifdef DEBUG_PIPE
 
-				if (first_doupdate)
-				{
-					first_doupdate = false;
-					print_duration(start_app_sec, start_app_ms, "first view");
-				}
+			if (first_doupdate)
+			{
+				first_doupdate = false;
+				print_duration(start_app_sec, start_app_ms, "first view");
+			}
 
 #endif
 
@@ -3120,8 +3106,16 @@ reinit_theme:
 
 						if (opts.query)
 							fresh_data = true;
-						else if (state.stream_mode)
-							fresh_data = f_data_opts & (STREAM_IS_PIPE | STREAM_IS_FIFO);
+						else if (opts.watch_time)
+						{
+							if (f_data_opts & STREAM_IS_FILE)
+							{
+								close_data_stream();
+								fresh_data = open_data_stream(&opts);
+							}
+						}
+						else if (event == PSPG_READ_DATA_EVENT)
+							fresh_data = true;
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -3215,8 +3209,6 @@ reinit_theme:
 							clear();
 							refresh_scr = true;
 						}
-
-//						handle_timeout = false;
 					}
 
 					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
@@ -3239,11 +3231,9 @@ reinit_theme:
 				if (ignore_mouse_release)
 				{
 					ignore_mouse_release = false;
-					if (event_keycode == KEY_MOUSE && nced.mevent.bstate & nced.mevent.bstate & BUTTON1_RELEASED)
-					{
-						no_doupdate = true;
+					if (event_keycode == KEY_MOUSE &&
+							nced.mevent.bstate & nced.mevent.bstate & BUTTON1_RELEASED)
 						continue;
-					}
 				}
 			}
 
@@ -3254,7 +3244,6 @@ reinit_theme:
 			command = next_command;
 			next_command = cmd_Invalid;
 			redirect_mode = true;
-			no_doupdate = false;
 		}
 
 		/* Exit immediately on F10 or input error */
