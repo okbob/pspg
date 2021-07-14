@@ -2653,6 +2653,7 @@ reinit_theme:
 		 * Enable print memory statistics manually when you
 		 * need detailed memory usage statistics.
 		 */
+		/* TODO  je tam asi 100bytes leak */
 		print_memory_stats(false);
 
 #endif
@@ -3067,55 +3068,42 @@ reinit_theme:
 
 					if (force_refresh ||
 						(ct > next_watch && !paused) ||
-						((opts.watch_file || state.stream_mode) && (event == PSPG_READ_DATA_EVENT)))
+						((opts.watch_file || state.stream_mode) &&
+						 (event == PSPG_READ_DATA_EVENT)))
 					{
 						DataDesc	desc2;
 						bool		fresh_data = false;
 
 						memset(&desc2, 0, sizeof(desc2));
 
-//						if (state.pathname[0])
-//						{
-//							if (state.fp)
-//							{
-//								/* should be strem mode */
-//								if (reopen_file)
-//								{
-//									fclose(state.fp);
-//									state.fp = NULL;
-//
-//									fresh_data = open_data_file(&opts, &state);
-//								}
-//								else
-//								{
-//									clearerr(state.fp);
-//									fresh_data = true;
-//								}
-//							}
-//							else
-//								fresh_data = open_data_file(&opts, &state);
-//						}
-//						else if (opts.query)
-//							fresh_data = true;
-//						else
-//							/*
-//							 * When we have a stream mode without watch file,
-//							 * then we can read more times from stdin.
-//							 */
-//							fresh_data = state.stream_mode;
-
+						/*
+						 * The query doesn't need reopen, and are available every
+						 * time.
+						 */
 						if (opts.query)
 							fresh_data = true;
-						else if (opts.watch_time)
+						/*
+						 * force open stream, where there are not an valid input
+						 * stream. The stream can be closed inside event handler,
+						 * and NULL f_data is an signal of necessity of reopen.
+						 */
+						else if (f_data)
 						{
-							if (f_data_opts & STREAM_IS_FILE)
+							/*
+							 * Without stream mode here, we have to reopen file
+							 * every time. This is implementation of watching
+							 * and reloading after any change of file.
+							 */
+							if (!state.stream_mode)
 							{
 								close_data_stream();
 								fresh_data = open_data_stream(&opts);
 							}
+							else
+								fresh_data = true;
 						}
-						else if (event == PSPG_READ_DATA_EVENT)
-							fresh_data = true;
+						else
+							fresh_data = open_data_stream(&opts);
 
 						/* when we wanted fresh data */
 						if (fresh_data)
@@ -6193,9 +6181,6 @@ refresh:
 
 	pspg_save_history(PSPG_HISTORY, &opts);
 
-//	if (state.inotify_fd >= 0)
-//		close(state.inotify_fd);
-
 #ifdef DEBUG_PIPE
 
 	/*
@@ -6210,10 +6195,6 @@ refresh:
 	free(string_argument);
 
 #endif
-
-	/* close file in streaming mode */
-//	if (state.fp && !state.is_pipe)
-//		fclose(state.fp);
 
 	close_data_stream();
 

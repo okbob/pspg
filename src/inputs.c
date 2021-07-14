@@ -151,6 +151,7 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	first_loop = true;
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
+	bool	stream_has_notification = false;
 	int		nfds;
 
 	/*
@@ -209,6 +210,16 @@ _get_pspg_event(NCursesEventData *nced,
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
 			nfds = 2;
+		}
+		else if ((f_data_opts & STREAM_IS_FILE) &&
+				 (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT))
+		{
+			fds[1].fd = inotify_fd;
+			fds[1].events = POLLIN;
+			nfds = 2;
+
+fprintf(debug_pipe, "HAS INOTIFY\n");
+
 		}
 	}
 
@@ -320,7 +331,58 @@ repeat_reading:
 				short revents = fds[1].revents;
 
 				if (revents & POLLIN)
+				{
+					if (stream_has_notification)
+					{
+						ssize_t		len;
+						char		buff[64];
+						bool		stream_closed = false;
+
+						/* there are a events on monitored file */
+						len = read(inotify_fd, buff, sizeof(buff));
+
+fprintf(debug_pipe, "INOTIFY EVENT\n");
+
+						/*
+						 * read to end, it is notblocking IO, only one event and
+						 * one file is monitored
+						 */
+						while (len > 0)
+						{
+
+#ifdef HAVE_INOTIFY
+
+							const struct inotify_event *ino_event = (struct inotify_event *) buff;
+
+							while (len > 0 && 0)
+							{
+								if ((ino_event->mask & IN_CLOSE_WRITE))
+									stream_closed = true;
+
+								len -= sizeof (struct inotify_event) + ino_event->len;
+								ino_event += sizeof (struct inotify_event) + ino_event->len;
+							}
+
+#endif
+
+							len = read(inotify_fd, buff, sizeof(buff));
+						}
+
+						if (stream_closed)
+						{
+							log_row("detected CLOSE WRITE by inotify");
+							close_data_stream();
+						}
+
+						/*
+						 * wait 100ms - sometimes inotify is too fast, and file content
+						 * is buffered, and readfile reads only first line
+						 */
+						usleep(1000 * 100);
+					}
+
 					return PSPG_READ_DATA_EVENT;
+				}
 			}
 		}
 		else
@@ -550,6 +612,8 @@ open_data_stream(Options *opts)
 		if (inotify_wd == -1)
 			leave("cannot watch file \"%s\" (%s)", pathname, strerror(errno));
 
+		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
+
 #else
 
 		leave("missing inotify support");
@@ -565,11 +629,27 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
-//	if (close_f_data)
-//		fclose(f_data);
+	if (close_f_data)
+	{
+		fclose(f_data);
 
-	f_data = NULL;
-	close_f_data = false;
+		f_data = NULL;
+		f_data_opts = 0;
+
+		close_f_data = false;
+
+		if (inotify_wd >= 0)
+		{
+			inotify_rm_watch(inotify_fd, inotify_wd);
+			inotify_wd = -1;
+		}
+
+		if (inotify_fd >= 0)
+		{
+			close(inotify_fd);
+			inotify_fd = -1;
+		}
+	}
 }
 
 bool
@@ -607,6 +687,9 @@ close_tty_stream(void)
 
 	f_tty = NULL;
 	close_f_tty = false;
+
+
+
 }
 
 /*************************************
