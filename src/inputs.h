@@ -79,8 +79,8 @@ extern bool open_tty_stream(void);
 extern void close_tty_stream(void);
 
 extern int wait_on_press_any_key(void);
-const char *get_input_file_basename(void);
-
+extern const char *get_input_file_basename(void);
+extern void clean_inotify_poll(void);
 
 #endif
 

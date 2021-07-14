@@ -342,12 +342,12 @@ is_cmdtag(char *str)
 #define STATBUF_SIZE		(10 * 1024)
 
 static size_t
-_getline(char **lineptr, size_t *n, FILE *fp, bool is_blocking, bool wait_on_data)
+_getline(char **lineptr, size_t *n, FILE *fp, bool is_nonblocking, bool wait_on_data)
 {
 	int			_errno;
 	ssize_t		result;
 
-	if (is_blocking)
+	if (!is_nonblocking)
 	{
 		result = getline(lineptr, n, fp);
 		_errno = errno;
@@ -590,7 +590,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	detect_file_truncation();
 
 	errno = 0;
-	read = _getline(&line, &len, f_data, f_data_opts & !(STREAM_IS_IN_NONBLOCKING_MODE), false);
+	read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, false);
 	if (read == -1)
 		return false;
 
@@ -791,9 +791,8 @@ broken_format:
 
 #endif
 
-//	/* clean event buffer */
-//	if (state->inotify_fd >= 0)
-//		lseek(state->inotify_fd, 0, SEEK_END);
+	if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) /* clean event buffer */
+		clean_inotify_poll();
 
 	return true;
 }

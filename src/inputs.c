@@ -151,7 +151,7 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	first_loop = true;
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
-	bool	stream_has_notification = false;
+	bool	poll_inotify_fd = false;
 	int		nfds;
 
 	/*
@@ -209,17 +209,15 @@ _get_pspg_event(NCursesEventData *nced,
 		{
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
+			poll_inotify_fd = false;
 			nfds = 2;
 		}
-		else if ((f_data_opts & STREAM_IS_FILE) &&
-				 (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT))
+		else if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT)
 		{
 			fds[1].fd = inotify_fd;
 			fds[1].events = POLLIN;
+			poll_inotify_fd = true;
 			nfds = 2;
-
-fprintf(debug_pipe, "HAS INOTIFY\n");
-
 		}
 	}
 
@@ -332,7 +330,7 @@ repeat_reading:
 
 				if (revents & POLLIN)
 				{
-					if (stream_has_notification)
+					if (poll_inotify_fd)
 					{
 						ssize_t		len;
 						char		buff[64];
@@ -340,8 +338,6 @@ repeat_reading:
 
 						/* there are a events on monitored file */
 						len = read(inotify_fd, buff, sizeof(buff));
-
-fprintf(debug_pipe, "INOTIFY EVENT\n");
 
 						/*
 						 * read to end, it is notblocking IO, only one event and
@@ -687,9 +683,6 @@ close_tty_stream(void)
 
 	f_tty = NULL;
 	close_f_tty = false;
-
-
-
 }
 
 /*************************************
@@ -767,4 +760,11 @@ wait_on_press_any_key(void)
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
 
 	return result;
+}
+
+void
+clean_inotify_poll(void)
+{
+	if (inotify_fd >= 0)
+		lseek(inotify_fd, 0, SEEK_END);
 }
