@@ -715,7 +715,14 @@ next_row:
 
 		line = NULL;
 
-		read = _getline(&line, &len, f_data, !(f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE), true);
+		if (!(f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE) &&
+				nrows % 1000 == 0)
+		{
+			log_row("sleep 10ms per 1000 rows");
+			usleep(1000 * 10);
+		}
+
+		read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, true);
 	} while (read != -1);
 
 	if (errno && errno != EAGAIN)

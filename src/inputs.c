@@ -333,7 +333,7 @@ repeat_reading:
 					if (poll_inotify_fd)
 					{
 						ssize_t		len;
-						char		buff[64];
+						char		buff[640];
 						bool		stream_closed = false;
 
 						/* there are a events on monitored file */
@@ -350,7 +350,7 @@ repeat_reading:
 
 							const struct inotify_event *ino_event = (struct inotify_event *) buff;
 
-							while (len > 0 && 0)
+							while (len > 0)
 							{
 								if ((ino_event->mask & IN_CLOSE_WRITE))
 									stream_closed = true;
@@ -371,10 +371,10 @@ repeat_reading:
 						}
 
 						/*
-						 * wait 100ms - sometimes inotify is too fast, and file content
-						 * is buffered, and readfile reads only first line
+						 * wait 200ms - sometimes inotify is too fast, and the content
+						 * of is not ready for pspg and we get too prematurely.
 						 */
-						usleep(1000 * 100);
+						usleep(1000 * 250);
 					}
 
 					return PSPG_READ_DATA_EVENT;
@@ -603,13 +603,17 @@ open_data_stream(Options *opts)
 				leave("cannot initialize inotify (%s)", strerror(errno));
 		}
 
-		inotify_wd = inotify_add_watch(inotify_fd,
-											 pathname,
-											 IN_CLOSE_WRITE |
-											 (current_state->stream_mode ? IN_MODIFY : 0));
-
 		if (inotify_wd == -1)
-			leave("cannot watch file \"%s\" (%s)", pathname, strerror(errno));
+		{
+			inotify_wd = inotify_add_watch(inotify_fd,
+												 pathname,
+												 IN_CLOSE_WRITE |
+												 (current_state->stream_mode ? IN_MODIFY : 0));
+
+
+			if (inotify_wd == -1)
+				leave("cannot watch file \"%s\" (%s)", pathname, strerror(errno));
+		}
 
 		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
 
@@ -636,13 +640,6 @@ close_data_stream(void)
 		f_data_opts = 0;
 
 		close_f_data = false;
-
-		if (inotify_wd >= 0)
-		{
-			inotify_rm_watch(inotify_fd, inotify_wd);
-			inotify_wd = -1;
-		}
-
 	}
 }
 
@@ -684,6 +681,12 @@ close_tty_stream(void)
 
 	f_tty = NULL;
 	close_f_tty = false;
+
+	if (inotify_wd >= 0)
+	{
+		inotify_rm_watch(inotify_fd, inotify_wd);
+		inotify_wd = -1;
+	}
 
 	if (inotify_fd >= 0)
 	{
@@ -772,6 +775,8 @@ wait_on_press_any_key(void)
 void
 clean_inotify_poll(void)
 {
+	char buff[640];
+
 	if (inotify_fd >= 0)
-		lseek(inotify_fd, 0, SEEK_END);
+		read(inotify_fd, buff, sizeof(buff));
 }

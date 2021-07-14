@@ -3099,7 +3099,10 @@ reinit_theme:
 								fresh_data = open_data_stream(&opts);
 							}
 							else
+							{
 								fresh_data = true;
+								clearerr(f_data);
+							}
 						}
 						else
 							fresh_data = open_data_stream(&opts);
