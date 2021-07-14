@@ -596,9 +596,12 @@ open_data_stream(Options *opts)
 
 #ifdef HAVE_INOTIFY
 
-		inotify_fd = inotify_init1(IN_NONBLOCK);
 		if (inotify_fd == -1)
-			leave("cannot initialize inotify (%s)", strerror(errno));
+		{
+			inotify_fd = inotify_init1(IN_NONBLOCK);
+			if (inotify_fd == -1)
+				leave("cannot initialize inotify (%s)", strerror(errno));
+		}
 
 		inotify_wd = inotify_add_watch(inotify_fd,
 											 pathname,
@@ -640,11 +643,6 @@ close_data_stream(void)
 			inotify_wd = -1;
 		}
 
-		if (inotify_fd >= 0)
-		{
-			close(inotify_fd);
-			inotify_fd = -1;
-		}
 	}
 }
 
@@ -675,6 +673,9 @@ open_tty_stream(void)
 	return f_tty != NULL;
 }
 
+/*
+ * ending pspg
+ */
 void
 close_tty_stream(void)
 {
@@ -683,6 +684,12 @@ close_tty_stream(void)
 
 	f_tty = NULL;
 	close_f_tty = false;
+
+	if (inotify_fd >= 0)
+	{
+		close(inotify_fd);
+		inotify_fd = -1;
+	}
 }
 
 /*************************************
