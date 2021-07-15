@@ -550,7 +550,7 @@ open_data_stream(Options *opts)
 		 * FIFO doesn't work well in non stream mode, it's more pipe, than file.
 		 * So when we know, so input is FIFO, we force stream mode.
 		 */
-		if ((f_data_opts & STREAM_IS_FIFO))
+		if ((f_data_opts & STREAM_IS_FIFO) && !(f_data_opts & STREAM_IS_PIPE))
 		{
 			log_row("force stream mode because input is FIFO");
 			current_state->stream_mode = true;
