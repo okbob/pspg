@@ -779,5 +779,5 @@ clean_inotify_poll(void)
 	char buff[640];
 
 	if (inotify_fd >= 0)
-		read(inotify_fd, buff, sizeof(buff));
+		(void) read(inotify_fd, buff, sizeof(buff));
 }
