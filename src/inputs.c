@@ -776,8 +776,10 @@ wait_on_press_any_key(void)
 void
 clean_inotify_poll(void)
 {
-	char buff[640];
+	char buff[64];
 
 	if (inotify_fd >= 0)
-		(void) read(inotify_fd, buff, sizeof(buff));
+	{
+		while (read(inotify_fd, buff, sizeof(buff)) >= 0) {};
+	}
 }
