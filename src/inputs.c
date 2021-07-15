@@ -372,9 +372,10 @@ repeat_reading:
 
 						/*
 						 * wait 200ms - sometimes inotify is too fast, and the content
-						 * of is not ready for pspg and we get too prematurely.
+						 * of is not ready for pspg and we get inotify event too prematurely.
+						 * Use longer waiting in streaming mode, because detected event is MODIFY
 						 */
-						usleep(1000 * 250);
+						usleep(1000 * (stream_closed ? 100 : 250));
 					}
 
 					return PSPG_READ_DATA_EVENT;

@@ -1445,8 +1445,11 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	pconfig.header_mode = opts->csv_header;
 	pconfig.ignore_short_rows = opts->ignore_short_rows;
 
+	memset(&rowbuckets, 0, sizeof(RowBucketType));
+
 	rowbuckets.allocated = false;
 	rowbuckets.nrows = 0;
+	rowbuckets.next_bucket = NULL;
 
 	if (query)
 	{
