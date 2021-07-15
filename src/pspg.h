@@ -269,13 +269,16 @@ typedef struct
 	const char *errstr;				/* ptr to error string */
 	int		_errno;					/* saved errno */
 
-	DataDesc *desc;					/* used for input, for access to necessary data for tabcomplete */
 	char   *fmt;					/* format string for info when refresh first is required */
 	char   *par;					/* parameter for info when refresh first is required */
 	bool	beep;					/* beep for info when refresh is required */
 	bool	applytimeout;			/* true, when saved info should be close after timeout */
 	bool	is_error;				/* true, when saved info should be displayed as error */
 	bool	refresh_scr;			/* force rewrite screen */
+
+	ScrDesc *scrdesc;				/* used for redraw */
+	DataDesc *desc;					/* used for input, for access to necessary data for tabcomplete */
+	Options *opts;					/* used for redraw */
 } StateData;
 
 
@@ -322,6 +325,8 @@ extern void show_info_wait(const char *fmt, const char *par, bool beep,
 						   bool refresh_first, bool applytimeout, bool is_error);
 
 extern void current_time(time_t *sec, long *ms);
+extern void refresh_layout_after_terminal_resize(void);
+extern void redraw_screen(void);
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 

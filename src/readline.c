@@ -601,7 +601,25 @@ get_string(char *prompt,
 				c = wgetch(prompt_window);
 
 			if (c == ERR && errno == EINTR)
-				goto finish_read;
+			{
+				if (handle_sigwinch)
+				{
+					handle_sigwinch = false;
+
+					refresh_layout_after_terminal_resize();
+					redraw_screen();
+
+					wattron(prompt_window, prompt_window_input_attr);
+					mvwprintw(prompt_window, 0, 0, "");
+					wclrtoeol(prompt_window);
+
+					rl_forced_update_display();
+
+					wrefresh(prompt_window);
+				}
+
+				continue;
+			}
 
 			if (handle_sigint)
 				goto finish_read;

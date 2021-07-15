@@ -109,6 +109,9 @@ static int number_width(int num);
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 static bool check_visible_vertical_cursor(DataDesc *desc, Options *opts, int vertical_cursor_column);
 
+static void print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int cursor_row,
+						 int cursor_col, int first_row, int fix_rows_offset, int vertical_cursor_column);
+
 StateData *current_state = NULL;
 
 static struct sigaction old_sigsegv_handler;
@@ -134,6 +137,57 @@ WINDOW *prompt_window = NULL;
 attr_t  prompt_window_input_attr = 0;
 attr_t  prompt_window_error_attr = 0;
 attr_t  prompt_window_info_attr = 0;
+
+typedef enum
+{
+	MARK_MODE_NONE,
+	MARK_MODE_ROWS,			/* activated by F3 */
+	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
+	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
+	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
+	MARK_MODE_MOUSE_COLUMNS,/* activated by CTRL + MOUSE on column headers */
+	MARK_MODE_MOUSE_BLOCK,	/* activated by ALT + MOUSE */
+} MarkModeType;
+
+/*
+ * Static variables
+ */
+static int		vertical_cursor_column = -1;			/* table columns are counted from one */
+static int		cursor_col = 0;
+static int		cursor_row = 0;
+static int		footer_cursor_col = 0;
+
+static int		first_row = 0;
+static int		first_data_row;
+static int		mouse_row = -1;
+static int		mouse_col = -1;
+
+static int		default_freezed_cols = 1;
+static int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
+
+static int		fix_rows_offset = 0;
+
+static MarkModeType	mark_mode = MARK_MODE_NONE;
+static int		mark_mode_start_row = 0;
+static int		mark_mode_start_col = 0;
+
+static bool	recheck_vertical_cursor_visibility = false;
+
+#ifdef COMPILE_MENU
+
+static bool	menu_is_active = false;
+static struct ST_MENU		*menu = NULL;
+static struct ST_CMDBAR	*cmdbar = NULL;
+
+#endif
+
+
+#ifdef DEBUG_PIPE
+
+static time_t	start_app_sec;
+static long		start_app_ms;
+
+#endif
 
 /*
  * Own signal handlers
@@ -737,8 +791,376 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	 * refresh layout from get_string routine. Canceling editing is most
 	 * simply and good enough solution.
 	 */
-	wtimeout(prompt_window, 1000);
+	wtimeout(prompt_window, 10000);
 }
+
+void
+refresh_layout_after_terminal_resize(void)
+{
+	ScrDesc  *scrdesc;
+	DataDesc *desc;
+	Options	 *opts;
+	struct winsize size;
+	int		maxy, maxx;
+
+	scrdesc = current_state->scrdesc;
+	desc = current_state->desc;
+	opts = current_state->opts;
+
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
+	{
+		resize_term(size.ws_row, size.ws_col);
+		clear();
+	}
+
+	getmaxyx(stdscr, maxy, maxx);
+
+	refresh_aux_windows(opts, scrdesc);
+
+	create_layout_dimensions(opts, scrdesc, desc, opts->freezed_cols != -1 ? opts->freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
+	create_layout(opts, scrdesc, desc, first_data_row, first_row);
+
+	/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
+	if (recheck_vertical_cursor_visibility && vertical_cursor_column > 0)
+	{
+		int		vminx = desc->cranges[vertical_cursor_column - 1].xmin;
+		int		left_border = scrdesc->fix_cols_cols + cursor_col - 1;
+
+			if (vminx < left_border)
+				cursor_col = vminx -  scrdesc->fix_cols_cols + 1;
+	}
+
+#ifdef COMPILE_MENU
+
+	if (cmdbar)
+		cmdbar = init_cmdbar(cmdbar, opts);
+
+#endif
+
+	print_status(opts, scrdesc, desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
+	set_scrollbar(scrdesc, desc, first_row);
+}
+
+/*
+ * This rotine is separated from event loop, because it should be
+ * called from edit string routine (when terminal is resized). It
+ * uses lot of global variables. These variables are state variables,
+ * and it is more simply use as global, then passing to state var or
+ * somwhere else.
+ */
+void
+redraw_screen(void)
+{
+	ScrDesc  *scrdesc;
+	DataDesc *desc;
+	Options	 *opts;
+	int		vcursor_xmin_fix = -1;
+	int		vcursor_xmax_fix = -1;
+	int		vcursor_xmin_data = -1;
+	int		vcursor_xmax_data = -1;
+	int		selected_xmin = -1;
+	int		selected_xmax = -1;
+	int		i;
+
+	time_t		current_sec;
+	long		current_ms;
+	static time_t last_doupdate_sec = -1;
+	static long last_doupdate_ms = -1;
+
+#ifdef DEBUG_PIPE
+
+	time_t	start_doupdate_sec;
+	long	start_doupdate_ms;
+	time_t	start_draw_sec;
+	long	start_draw_ms;
+
+	static bool first_doupdate = true;
+
+#endif
+
+	scrdesc = current_state->scrdesc;
+	desc = current_state->desc;
+	opts = current_state->opts;
+
+	if (opts->vertical_cursor && desc->columns > 0 && vertical_cursor_column > 0)
+	{
+		int		vcursor_xmin = desc->cranges[vertical_cursor_column - 1].xmin;
+		int		vcursor_xmax = desc->cranges[vertical_cursor_column - 1].xmax;
+
+		if (vcursor_xmin < scrdesc->fix_cols_cols)
+		{
+			vcursor_xmin_fix = vcursor_xmin;
+			vcursor_xmin_data = vcursor_xmin - scrdesc->fix_cols_cols;
+		}
+		else
+		{
+			vcursor_xmin_fix = vcursor_xmin - cursor_col;
+			vcursor_xmin_data = vcursor_xmin - scrdesc->fix_cols_cols - cursor_col;
+		}
+
+		if (vcursor_xmax < scrdesc->fix_cols_cols)
+		{
+			vcursor_xmax_fix = vcursor_xmax;
+			vcursor_xmax_data = vcursor_xmax - scrdesc->fix_cols_cols;
+		}
+		else
+		{
+			vcursor_xmax_fix = vcursor_xmax - cursor_col;
+			vcursor_xmax_data = vcursor_xmax - scrdesc->fix_cols_cols - cursor_col;
+		}
+
+		/*
+		 * When vertical cursor is not in freezed columns, then it cannot to
+		 * overwrite fixed col cols. Only last char position can be shared.
+		 */
+		if (vertical_cursor_column > (opts->freezed_cols > -1 ? opts->freezed_cols : default_freezed_cols))
+			if (vcursor_xmin_fix < scrdesc->fix_cols_cols - 1)
+				vcursor_xmin_fix = scrdesc->fix_cols_cols - 1;
+	}
+
+	/* Calculate selected range in mark mode */
+	if (mark_mode != MARK_MODE_NONE)
+	{
+		int		ref_row;
+		int		ref_col;
+
+		switch (mark_mode)
+		{
+			case MARK_MODE_MOUSE:
+			case MARK_MODE_MOUSE_BLOCK:
+				ref_row = mouse_row;
+				break;
+			case MARK_MODE_ROWS:
+			case MARK_MODE_BLOCK:
+			case MARK_MODE_CURSOR:
+				ref_row = cursor_row;
+				break;
+
+			default:
+				ref_row = -1;
+		}
+
+		if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
+				mark_mode == MARK_MODE_MOUSE_COLUMNS)
+			ref_col = mouse_col;
+		else if (mark_mode == MARK_MODE_BLOCK)
+			ref_col = vertical_cursor_column;
+		else
+			ref_col = -1;
+
+		if (ref_row != -1)
+		{
+			if (ref_row > mark_mode_start_row)
+			{
+				scrdesc->selected_first_row = mark_mode_start_row;
+				scrdesc->selected_rows = ref_row - mark_mode_start_row + 1;
+			}
+			else
+			{
+				scrdesc->selected_first_row = ref_row;
+				scrdesc->selected_rows = mark_mode_start_row - ref_row + 1;
+			}
+		}
+
+		if (ref_col != -1)
+		{
+			int		xmin, xmax;
+
+			if (ref_col > mark_mode_start_col)
+			{
+				xmin = desc->cranges[mark_mode_start_col - 1].xmin;
+				xmax = desc->cranges[ref_col - 1].xmax;
+			}
+			else
+			{
+				xmax = desc->cranges[mark_mode_start_col - 1].xmax;
+				xmin = desc->cranges[ref_col - 1].xmin;
+			}
+
+			scrdesc->selected_first_column = xmin;
+			scrdesc->selected_columns = xmax - xmin + 1;
+		}
+	}
+
+	if (scrdesc->selected_first_column != -1)
+	{
+		selected_xmin = scrdesc->selected_first_column;
+		selected_xmax = selected_xmin + scrdesc->selected_columns - 1;
+	}
+
+	/*
+	 * fix of unwanted visual artefact on an border between
+	 * fix_cols window and row window, because there are
+	 * overlap of columns on vertical column decoration.
+	 */
+	if (selected_xmin == scrdesc->fix_cols_cols - 1 &&
+			selected_xmax < scrdesc->fix_cols_cols + cursor_col)
+		selected_xmin += 1;
+
+	else if (selected_xmin >= scrdesc->fix_cols_cols &&
+			 selected_xmin < scrdesc->fix_cols_cols + cursor_col &&
+			 selected_xmax >= scrdesc->fix_cols_cols + cursor_col)
+		selected_xmin = scrdesc->fix_cols_cols - 1;
+
+#ifdef DEBUG_PIPE
+
+	current_time(&start_draw_sec, &start_draw_ms);
+
+#endif
+
+	window_fill(WINDOW_LUC,
+				desc->title_rows + desc->fixed_rows - scrdesc->fix_rows_rows,
+				0,
+				-1,
+				vcursor_xmin_fix, vcursor_xmax_fix,
+				selected_xmin, selected_xmax,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_ROWS,
+				first_data_row + first_row - fix_rows_offset,
+				scrdesc->fix_cols_cols + cursor_col,
+				cursor_row - first_row + fix_rows_offset,
+				vcursor_xmin_data, vcursor_xmax_data,
+				selected_xmin, selected_xmax,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_FIX_COLS,
+				first_data_row + first_row - fix_rows_offset,
+				0,
+				cursor_row - first_row + fix_rows_offset,
+				vcursor_xmin_fix, vcursor_xmax_fix,
+				selected_xmin, selected_xmax,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_FIX_ROWS,
+				desc->title_rows + desc->fixed_rows - scrdesc->fix_rows_rows,
+				scrdesc->fix_cols_cols + cursor_col,
+				-1,
+				vcursor_xmin_data, vcursor_xmax_data,
+				selected_xmin, selected_xmax,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_FOOTER,
+				first_data_row + first_row + scrdesc->rows_rows - fix_rows_offset,
+				footer_cursor_col,
+				cursor_row - first_row - scrdesc->rows_rows + fix_rows_offset,
+				-1, -1, -1, -1,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_ROWNUM_LUC,
+				0,
+				0,
+				0,
+				-1, -1, -1, -1,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_ROWNUM,
+				first_data_row + first_row - fix_rows_offset,
+				0,
+				cursor_row - first_row + fix_rows_offset,
+				-1, -1, -1, -1,
+				desc, scrdesc, opts);
+
+	window_fill(WINDOW_VSCROLLBAR,
+				0, 0, cursor_row, -1, -1, -1, -1,
+				desc, scrdesc, opts);
+
+	for (i = 0; i < PSPG_WINDOW_COUNT; i++)
+	{
+		if (i != WINDOW_TOP_BAR &&
+			i != WINDOW_BOTTOM_BAR)
+		{
+			if (scrdesc->wins[i])
+				wnoutrefresh(scrdesc->wins[i]);
+		}
+	}
+
+#ifdef DEBUG_PIPE
+
+	print_duration(start_draw_sec, start_draw_ms, "draw time");
+
+#endif
+
+#ifdef COMPILE_MENU
+
+	if (cmdbar)
+		st_cmdbar_post(cmdbar);
+
+	if (menu != NULL && menu_is_active)
+	{
+		st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
+		st_menu_post(menu);
+	}
+	else if (opts->menu_always)
+		st_menu_post(menu);
+
+#endif
+
+#ifdef DEBUG_PIPE
+
+	current_time(&start_doupdate_sec, &start_doupdate_ms);
+
+#endif
+
+	if (!opts->no_sleep)
+	{
+		current_time(&current_sec, &current_ms);
+
+		/*
+		 * We don't want do UPDATE too quickly.
+		 */
+		if (
+
+#ifdef COMPILE_MENU
+
+			!menu_is_active &&
+
+#endif
+
+			last_doupdate_sec != -1 &&
+			!opts->no_mouse &&
+			!(mark_mode == MARK_MODE_MOUSE ||
+			 mark_mode == MARK_MODE_MOUSE_BLOCK ||
+			 mark_mode == MARK_MODE_MOUSE_COLUMNS))
+		{
+			long	td = time_diff(current_sec, current_ms,
+								   last_doupdate_sec, last_doupdate_ms);
+
+			if (td < 15)
+				usleep((15 - td) * 1000);
+		}
+	}
+
+	doupdate();
+
+	current_time(&current_sec, &current_ms);
+
+	last_doupdate_sec = current_sec;
+	last_doupdate_ms = current_ms;
+
+#ifdef DEBUG_PIPE
+
+	print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
+
+#endif
+
+	current_time(&current_sec, &current_ms);
+
+	last_doupdate_sec = current_sec;
+	last_doupdate_ms = current_ms;
+
+#ifdef DEBUG_PIPE
+
+	if (first_doupdate)
+	{
+		first_doupdate = false;
+		print_duration(start_app_sec, start_app_ms, "first view");
+	}
+
+#endif
+
+}
+
 
 /*
  * Returns width of number
@@ -1767,16 +2189,6 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 							((double) max_slider_min_y - 3) + 2;
 }
 
-typedef enum
-{
-	MARK_MODE_NONE,
-	MARK_MODE_ROWS,			/* activated by F3 */
-	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
-	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
-	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
-	MARK_MODE_MOUSE_COLUMNS,/* activated by CTRL + MOUSE on column headers */
-	MARK_MODE_MOUSE_BLOCK,	/* activated by ALT + MOUSE */
-} MarkModeType;
 
 /*
  * Trivial functions reduce redundant code.
@@ -1910,22 +2322,13 @@ main(int argc, char *argv[])
 	long	next_watch = 0;
 	int		next_command = cmd_Invalid;
 	bool	reuse_event = false;
-	int		cursor_row = 0;
-	int		cursor_col = 0;
-	int		footer_cursor_col = 0;
-	int		vertical_cursor_column = -1;			/* table columns are counted from one */
 	int		last_x_focus = -1;						/* it is used for repeated vertical cursor display */
-	int		first_row = 0;
 	int		prev_first_row;
-	int		first_data_row;
-	int		default_freezed_cols = 1;
 	DataDesc		desc;
 	ScrDesc			scrdesc;
 	Options			opts;
 	StateData		state;
-	int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 	bool	detected_format = false;
-	int		fix_rows_offset = 0;
 
 	mmask_t		prev_mousemask = 0;
 	int		search_direction = SEARCH_FORWARD;
@@ -1953,41 +2356,15 @@ main(int argc, char *argv[])
 	char   *pspgenv;
 	bool	result;
 
-#ifdef DEBUG_PIPE
-
-	time_t	start_app_sec;
-	long	start_app_ms;
-	bool	first_doupdate = true;
-
-#endif
-
-	time_t	last_doupdate_sec = -1;
-	long	last_doupdate_ms = -1;
-
 	struct winsize size;
 	bool		size_is_valid = false;
 	int			ioctl_result;
-
-#ifdef COMPILE_MENU
-
-	bool	menu_is_active = false;
-	struct ST_MENU		*menu = NULL;
-	struct ST_CMDBAR	*cmdbar = NULL;
-
-#endif
 
 #if NCURSES_MOUSE_VERSION > 1
 
 	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
 
 #endif
-
-	MarkModeType	mark_mode = MARK_MODE_NONE;
-	int		mark_mode_start_row = 0;
-	int		mark_mode_start_col = 0;
-
-	int		mouse_row = -1;
-	int		mouse_col = -1;
 
 	/*
 	 * Arguments of forwarded commands
@@ -2000,6 +2377,24 @@ main(int argc, char *argv[])
 	/* Name of pspg config file */
 	const char *PSPG_CONF;
 	const char *PSPG_HISTORY;
+
+	/* static variables reinitialization */
+	vertical_cursor_column = -1;
+	cursor_col = 0;
+	mark_mode = MARK_MODE_NONE;
+	menu_is_active = false;
+	menu = NULL;
+	cmdbar = NULL;
+	first_row = 0;
+	mouse_row = -1;
+	mouse_col = -1;
+	mark_mode_start_row = 0;
+	mark_mode_start_col = 0;
+	cursor_row = 0;
+	footer_cursor_col = 0;
+	default_freezed_cols = 1;
+	fix_rows_offset = 0;
+	fixedRows = -1;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.theme = 1;
@@ -2063,6 +2458,8 @@ main(int argc, char *argv[])
 	state.file_format_from_suffix = FILE_UNDEF;	/* input file is not defined */
 
 	state.desc = &desc;							/* global reference used for readline's tabcomplete */
+	state.scrdesc = &scrdesc;
+	state.opts = &opts;
 	current_state = &state;
 
 	pspgenv = getenv("PSPG");
@@ -2636,26 +3033,22 @@ reinit_theme:
 		bool	refresh_clear = false;
 		bool	resize_scr = false;
 		bool	after_freeze_signal = false;
-		bool	recheck_vertical_cursor_visibility = false;
 		bool	force_refresh = false;
 
 		NCursesEventData nced;
 		int		event = PSPG_NOTHING_VALID_EVENT;
 
-
 #ifdef DEBUG_PIPE
-
-		time_t	start_draw_sec;
-		long	start_draw_ms;
 
 		/*
 		 * Enable print memory statistics manually when you
 		 * need detailed memory usage statistics.
 		 */
-		/* TODO  je tam asi 100bytes leak */
 		print_memory_stats(false);
 
 #endif
+
+		recheck_vertical_cursor_visibility = false;
 
 		fix_rows_offset = desc.fixed_rows - scrdesc.fix_rows_rows;
 
@@ -2701,303 +3094,9 @@ reinit_theme:
 		 * Draw windows, only when function (key) redirect was not forced.
 		 * Redirect emmit immediate redraw.
 		 */
-		if (next_command == cmd_Invalid)
+		if (next_command == cmd_Invalid || current_state->fmt != NULL)
 		{
-			int		vcursor_xmin_fix = -1;
-			int		vcursor_xmax_fix = -1;
-			int		vcursor_xmin_data = -1;
-			int		vcursor_xmax_data = -1;
-			int		selected_xmin = -1;
-			int		selected_xmax = -1;
-			int		i;
-
-			if (opts.vertical_cursor && desc.columns > 0 && vertical_cursor_column > 0)
-			{
-				int		vcursor_xmin = desc.cranges[vertical_cursor_column - 1].xmin;
-				int		vcursor_xmax = desc.cranges[vertical_cursor_column - 1].xmax;
-
-				if (vcursor_xmin < scrdesc.fix_cols_cols)
-				{
-					vcursor_xmin_fix = vcursor_xmin;
-					vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols;
-				}
-				else
-				{
-					vcursor_xmin_fix = vcursor_xmin - cursor_col;
-					vcursor_xmin_data = vcursor_xmin - scrdesc.fix_cols_cols - cursor_col;
-				}
-
-				if (vcursor_xmax < scrdesc.fix_cols_cols)
-				{
-					vcursor_xmax_fix = vcursor_xmax;
-					vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols;
-				}
-				else
-				{
-					vcursor_xmax_fix = vcursor_xmax - cursor_col;
-					vcursor_xmax_data = vcursor_xmax - scrdesc.fix_cols_cols - cursor_col;
-				}
-
-				/*
-				 * When vertical cursor is not in freezed columns, then it cannot to
-				 * overwrite fixed col cols. Only last char position can be shared.
-				 */
-				if (vertical_cursor_column > (opts.freezed_cols > -1 ? opts.freezed_cols : default_freezed_cols))
-					if (vcursor_xmin_fix < scrdesc.fix_cols_cols - 1)
-						vcursor_xmin_fix = scrdesc.fix_cols_cols - 1;
-			}
-
-			/* Calculate selected range in mark mode */
-			if (mark_mode != MARK_MODE_NONE)
-			{
-				int		ref_row;
-				int		ref_col;
-
-				switch (mark_mode)
-				{
-					case MARK_MODE_MOUSE:
-					case MARK_MODE_MOUSE_BLOCK:
-						ref_row = mouse_row;
-						break;
-					case MARK_MODE_ROWS:
-					case MARK_MODE_BLOCK:
-					case MARK_MODE_CURSOR:
-						ref_row = cursor_row;
-						break;
-
-					default:
-						ref_row = -1;
-				}
-
-				if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
-						mark_mode == MARK_MODE_MOUSE_COLUMNS)
-					ref_col = mouse_col;
-				else if (mark_mode == MARK_MODE_BLOCK)
-					ref_col = vertical_cursor_column;
-				else
-					ref_col = -1;
-
-				if (ref_row != -1)
-				{
-					if (ref_row > mark_mode_start_row)
-					{
-						scrdesc.selected_first_row = mark_mode_start_row;
-						scrdesc.selected_rows = ref_row - mark_mode_start_row + 1;
-					}
-					else
-					{
-						scrdesc.selected_first_row = ref_row;
-						scrdesc.selected_rows = mark_mode_start_row - ref_row + 1;
-					}
-				}
-
-				if (ref_col != -1)
-				{
-					int		xmin, xmax;
-
-					if (ref_col > mark_mode_start_col)
-					{
-						xmin = desc.cranges[mark_mode_start_col - 1].xmin;
-						xmax = desc.cranges[ref_col - 1].xmax;
-					}
-					else
-					{
-						xmax = desc.cranges[mark_mode_start_col - 1].xmax;
-						xmin = desc.cranges[ref_col - 1].xmin;
-					}
-
-					scrdesc.selected_first_column = xmin;
-					scrdesc.selected_columns = xmax - xmin + 1;
-				}
-			}
-
-			if (scrdesc.selected_first_column != -1)
-			{
-				selected_xmin = scrdesc.selected_first_column;
-				selected_xmax = selected_xmin + scrdesc.selected_columns - 1;
-			}
-
-			/*
-			 * fix of unwanted visual artefact on an border between
-			 * fix_cols window and row window, because there are
-			 * overlap of columns on vertical column decoration.
-			 */
-			if (selected_xmin == scrdesc.fix_cols_cols - 1 &&
-					selected_xmax < scrdesc.fix_cols_cols + cursor_col)
-				selected_xmin += 1;
-
-			else if (selected_xmin >= scrdesc.fix_cols_cols && 
-					 selected_xmin < scrdesc.fix_cols_cols + cursor_col &&
-					 selected_xmax >= scrdesc.fix_cols_cols + cursor_col)
-				selected_xmin = scrdesc.fix_cols_cols - 1;
-
-#ifdef DEBUG_PIPE
-
-			current_time(&start_draw_sec, &start_draw_ms);
-
-#endif
-
-			window_fill(WINDOW_LUC,
-						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-						0,
-						-1,
-						vcursor_xmin_fix, vcursor_xmax_fix,
-						selected_xmin, selected_xmax,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_ROWS,
-						first_data_row + first_row - fix_rows_offset,
-						scrdesc.fix_cols_cols + cursor_col,
-						cursor_row - first_row + fix_rows_offset,
-						vcursor_xmin_data, vcursor_xmax_data,
-						selected_xmin, selected_xmax,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_FIX_COLS,
-						first_data_row + first_row - fix_rows_offset,
-						0,
-						cursor_row - first_row + fix_rows_offset,
-						vcursor_xmin_fix, vcursor_xmax_fix,
-						selected_xmin, selected_xmax,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_FIX_ROWS,
-						desc.title_rows + desc.fixed_rows - scrdesc.fix_rows_rows,
-						scrdesc.fix_cols_cols + cursor_col,
-						-1,
-						vcursor_xmin_data, vcursor_xmax_data,
-						selected_xmin, selected_xmax,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_FOOTER,
-						first_data_row + first_row + scrdesc.rows_rows - fix_rows_offset,
-						footer_cursor_col,
-						cursor_row - first_row - scrdesc.rows_rows + fix_rows_offset,
-						-1, -1, -1, -1,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_ROWNUM_LUC,
-						0,
-						0,
-						0,
-						-1, -1, -1, -1,
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_ROWNUM,
-						first_data_row + first_row - fix_rows_offset,
-						0,
-						cursor_row - first_row + fix_rows_offset,
-						-1, -1, -1, -1, 
-						&desc, &scrdesc, &opts);
-
-			window_fill(WINDOW_VSCROLLBAR,
-						0, 0, cursor_row, -1, -1, -1, -1,
-						&desc, &scrdesc, &opts);
-
-			for (i = 0; i < PSPG_WINDOW_COUNT; i++)
-			{
-				if (i != WINDOW_TOP_BAR &&
-					i != WINDOW_BOTTOM_BAR)
-				{
-					if (scrdesc.wins[i])
-						wnoutrefresh(scrdesc.wins[i]);
-				}
-			}
-
-#ifdef DEBUG_PIPE
-
-			print_duration(start_draw_sec, start_draw_ms, "draw time");
-
-#endif
-
-#ifdef COMPILE_MENU
-
-			if (cmdbar)
-				st_cmdbar_post(cmdbar);
-
-			if (menu != NULL && menu_is_active)
-			{
-				st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
-				st_menu_post(menu);
-			}
-			else if (opts.menu_always)
-				st_menu_post(menu);
-
-#endif
-
-			if (next_command == 0 || current_state->fmt != NULL)
-			{
-				time_t		current_sec;
-				long		current_ms;
-
-#ifdef DEBUG_PIPE
-
-				time_t	start_doupdate_sec;
-				long	start_doupdate_ms;
-
-				current_time(&start_doupdate_sec, &start_doupdate_ms);
-
-#endif
-
-				if (!opts.no_sleep)
-				{
-					current_time(&current_sec, &current_ms);
-
-					/*
-					 * We don't want do UPDATE too quickly.
-					 */
-					if (
-
-#ifdef COMPILE_MENU
-
-					!menu_is_active &&
-
-#endif
-
-						last_doupdate_sec != -1 &&
-						!opts.no_mouse &&
-						!(mark_mode == MARK_MODE_MOUSE ||
-						 mark_mode == MARK_MODE_MOUSE_BLOCK ||
-						 mark_mode == MARK_MODE_MOUSE_COLUMNS))
-					{
-						long	td = time_diff(current_sec, current_ms,
-											   last_doupdate_sec, last_doupdate_ms);
-
-						if (td < 15)
-							usleep((15 - td) * 1000);
-					}
-				}
-
-				doupdate();
-
-				current_time(&current_sec, &current_ms);
-
-				last_doupdate_sec = current_sec;
-				last_doupdate_ms = current_ms;
-
-#ifdef DEBUG_PIPE
-
-				print_duration(start_doupdate_sec, start_doupdate_ms, "doupdate");
-
-#endif
-
-				current_time(&current_sec, &current_ms);
-
-				last_doupdate_sec = current_sec;
-				last_doupdate_ms = current_ms;
-
-
-			}
-
-#ifdef DEBUG_PIPE
-
-			if (first_doupdate)
-			{
-				first_doupdate = false;
-				print_duration(start_app_sec, start_app_ms, "first view");
-			}
-
-#endif
+			redraw_screen();
 
 			if (current_state->fmt != NULL)
 			{
