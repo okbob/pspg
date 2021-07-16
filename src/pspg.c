@@ -1842,7 +1842,7 @@ export_to_file(PspgCommand command,
 	char   *path = NULL;
 	bool	isok = false;
 	int		fin = -1, fout = -1, ferr = -1;
-	pid_t	pid;
+	pid_t	pid = -1;
 	bool	copy_to_file = false;
 	bool	use_pipe = false;
 
