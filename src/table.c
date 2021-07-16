@@ -798,8 +798,12 @@ broken_format:
 
 #endif
 
+#ifdef HAVE_INOTIFY
+
 	if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) /* clean event buffer */
 		clean_inotify_poll();
+
+#endif
 
 	return true;
 }

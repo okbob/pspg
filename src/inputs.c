@@ -43,8 +43,12 @@ static struct pollfd fds[2];
 
 static long last_data_pos = -1;
 
+#ifdef HAVE_INOTIFY
+
 static int inotify_fd = -1;
 static int inotify_wd = -1;
+
+#endif
 
 static NCursesEventData saved_event;
 static bool saved_event_is_valid = false;
@@ -151,7 +155,13 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	first_loop = true;
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
+
+#ifdef HAVE_INOTIFY
+
 	bool	poll_inotify_fd = false;
+
+#endif
+
 	int		nfds;
 
 	/*
@@ -209,9 +219,18 @@ _get_pspg_event(NCursesEventData *nced,
 		{
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
+
+#ifdef HAVE_INOTIFY
+
 			poll_inotify_fd = false;
+
+#endif
+
 			nfds = 2;
 		}
+
+#ifdef HAVE_INOTIFY
+
 		else if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT)
 		{
 			fds[1].fd = inotify_fd;
@@ -219,6 +238,9 @@ _get_pspg_event(NCursesEventData *nced,
 			poll_inotify_fd = true;
 			nfds = 2;
 		}
+
+#endif
+
 	}
 
 	while (timeout >= 0 || without_timeout)
@@ -289,7 +311,6 @@ repeat_reading:
 		}
 		else if (poll_num > 0)
 		{
-
 			if (fds[0].revents)
 			{
 				if (get_ncurses_event(nced, &sigint))
@@ -330,6 +351,9 @@ repeat_reading:
 
 				if (revents & POLLIN)
 				{
+
+#ifdef HAVE_INOTIFY
+
 					if (poll_inotify_fd)
 					{
 						ssize_t		len;
@@ -346,7 +370,6 @@ repeat_reading:
 						while (len > 0)
 						{
 
-#ifdef HAVE_INOTIFY
 
 							const struct inotify_event *ino_event = (struct inotify_event *) buff;
 
@@ -358,8 +381,6 @@ repeat_reading:
 								len -= sizeof (struct inotify_event) + ino_event->len;
 								ino_event += sizeof (struct inotify_event) + ino_event->len;
 							}
-
-#endif
 
 							len = read(inotify_fd, buff, sizeof(buff));
 						}
@@ -377,6 +398,8 @@ repeat_reading:
 						 */
 						usleep(1000 * (stream_closed ? 100 : 250));
 					}
+
+#endif
 
 					return PSPG_READ_DATA_EVENT;
 				}
@@ -683,6 +706,8 @@ close_tty_stream(void)
 	f_tty = NULL;
 	close_f_tty = false;
 
+#ifdef HAVE_INOTIFY
+
 	if (inotify_wd >= 0)
 	{
 		inotify_rm_watch(inotify_fd, inotify_wd);
@@ -694,6 +719,9 @@ close_tty_stream(void)
 		close(inotify_fd);
 		inotify_fd = -1;
 	}
+
+#endif
+
 }
 
 /*************************************
@@ -773,6 +801,8 @@ wait_on_press_any_key(void)
 	return result;
 }
 
+#ifdef HAVE_INOTIFY
+
 void
 clean_inotify_poll(void)
 {
@@ -783,3 +813,5 @@ clean_inotify_poll(void)
 		while (read(inotify_fd, buff, sizeof(buff)) >= 0) {};
 	}
 }
+
+#endif
