@@ -449,12 +449,6 @@ to
 gcc pager.c -o pspg -ggdb -lncursesw
 </pre>
 
-On some old systems a compilation fails with error
-<pre>
-/home/user/Src/pspg-0.6/src/pspg.c:2403: undefined reference to `set_escdelay`
-</pre>
-In this case comment line with function set_escdelay
-
 If you want to use `pspg` as Postgres client, then you need run
 `configure --with-postgresql=yes`. On Fedora with own Postgres build
 I had to install `openssl-devel` package and I had to set

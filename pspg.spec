@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.0.5
+Version: 	5.1.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,10 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Fri Jul 16 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- new functionality "Ctrl O" - temp switch to primary screen
+- total rewrite input events processing
+
 * Sat Jun 26 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - new option --no-last-row-search
 - code cleaning
