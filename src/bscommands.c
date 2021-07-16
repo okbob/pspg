@@ -738,7 +738,9 @@ parse_and_eval_bscommand(const char *cmdline,
 			 IS_TOKEN(cmdline, n, "ordd") ||
 			 IS_TOKEN(cmdline, n, "orderd") ||
 			 IS_TOKEN(cmdline, n, "sort") ||
-			 IS_TOKEN(cmdline, n, "sortd"))
+			 IS_TOKEN(cmdline, n, "sortd") ||
+			 IS_TOKEN(cmdline, n, "dsort") ||
+			 IS_TOKEN(cmdline, n, "rsort"))
 	{
 		const char   *ident;
 		int		len;
@@ -747,7 +749,9 @@ parse_and_eval_bscommand(const char *cmdline,
 
 		is_desc = IS_TOKEN(cmdline, n, "ordd") ||
 				  IS_TOKEN(cmdline, n, "orderd") ||
-				  IS_TOKEN(cmdline, n, "sortd");
+				  IS_TOKEN(cmdline, n, "sortd") ||
+				  IS_TOKEN(cmdline, n, "dsort") ||
+				  IS_TOKEN(cmdline, n, "rsort");
 
 		OrderCommand = is_desc ? cmd_SortDesc : cmd_SortAsc;
 		cmdline = get_identifier(cmdline + n, &ident, &len);

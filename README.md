@@ -247,6 +247,8 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 | `\orderd [N\|colum name]`                                     | desc sort by column        |
 | `\sort [N\|colum name]`                                       | sort by colum              |
 | `\sortd [N\|colum name]`                                      | desc sort by column        |
+| `\dsort [N\|colum name]`                                      | desc sort by column (alias)|
+| `\rsort [N\|colum name]`                                      | desc sort by column (alias)|
 | `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
 
 ```

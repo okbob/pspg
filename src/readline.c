@@ -84,6 +84,8 @@ static const char *bscommands[] = {
 	"search",
 	"sort",
 	"sortd",
+	"rsort",
+	"dsort",
 	NULL
 };
 
@@ -376,7 +378,9 @@ pspg_complete(const char *text, int start, int end)
 									 IS_TOKEN(token, n, "ord") ||
 									 IS_TOKEN(token, n, "order") ||
 									 IS_TOKEN(token, n, "sort") ||
-									 IS_TOKEN(token, n, "sortd"))
+									 IS_TOKEN(token, n, "sortd") ||
+									 IS_TOKEN(token, n, "dsort") ||
+									 IS_TOKEN(token, n, "rsort"))
 							{
 								return rl_completion_matches(text, tablename_generator);
 							}
