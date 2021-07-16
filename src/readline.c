@@ -129,7 +129,16 @@ pspg_save_history(const char *histfile, Options *opts)
 
 		write_history(tilde(NULL, histfile));
 
+#if RL_READLINE_VERSION >= 0x0603
+
 		rl_clear_history();
+
+#else
+
+		clear_history();
+
+#endif
+
 	}
 
 #endif
