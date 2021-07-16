@@ -456,10 +456,10 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 		c = getch();
 		echo();
 
-		if (c == 10 || c == 13)
+		if (c == 13)
 		{
 			rl_insert_text(matches[pos] + common_length);
-			ungetch(c);
+			ungetch(13);
 			break;
 		}
 		else if (c == 7)
