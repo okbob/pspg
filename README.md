@@ -345,9 +345,7 @@ or by specification watch time by option `--watch`.
 
 `pspg` can read a stream of tabular data from pipe or from file (with an option
 `--stream` or it can read a stream of queries from pipe or from file (with an
-option `--querystream`). It is good to use these option with option `--hold-stream`.
-
-Without this option, there are possible unwanted issues when pipe will be closed.
+option `--querystream`).
 
 The query stream mode is an sequence of SQL statements separated by char GS (Group
 separator - 0x1D on separated line.
@@ -458,7 +456,7 @@ On some old systems a compilation fails with error
 In this case comment line with function set_escdelay
 
 If you want to use `pspg` as Postgres client, then you need run
-`configure --with-postgres=yes`. On Fedora with own Postgres build
+`configure --with-postgresql=yes`. On Fedora with own Postgres build
 I had to install `openssl-devel` package and I had to set
 `export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
 
