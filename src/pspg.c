@@ -2591,10 +2591,13 @@ main(int argc, char *argv[])
 		default_freezed_cols = 2;
 
 	/*
-	 * just try to use this function, to check if it is
-	 * widely supported.
+	 * looks so it is not supported only on mac os (build without homebrew).
 	 */
+#if NCURSES_VERSION_PATCH >= 20120714
+
 	use_tioctl(true);
+
+#endif
 
 	/*
 	 * The issue #75 - COLUMNS, LINES are not correctly initialized.
