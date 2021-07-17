@@ -1534,7 +1534,7 @@ show_info_wait(const char *fmt,
 		make_beep();
 
 	if (applytimeout)
-		timeout = strlen(fmt) < 50 ? 2000 : 6000;
+		timeout = strlen(fmt) < 50 ? 4000 : 6000;
 
 	event = get_pspg_event(&nced, true, timeout);
 
@@ -4916,6 +4916,8 @@ recheck_end:
 			case cmd_SortDesc:
 				{
 					int		sortedby_colno;
+					char	column_name[65];
+					bool	have_name = false;
 
 					if (long_argument_is_valid)
 					{
@@ -4930,6 +4932,22 @@ recheck_end:
 						sortedby_colno = vertical_cursor_column;
 					}
 
+					if (desc.cranges)
+					{
+						char	   *name = desc.namesline + desc.cranges[sortedby_colno - 1].name_offset;
+						int			size = desc.cranges[sortedby_colno - 1].name_size;
+
+						if (size > 0)
+						{
+							memset(column_name, 0, sizeof(column_name));
+							strncpy(column_name, name, min_int(64, size));
+							have_name = true;
+						}
+					}
+
+					if (!have_name)
+						snprintf(column_name, 65, "%d", sortedby_colno);
+
 					update_order_map(&scrdesc,
 									 &desc,
 									 sortedby_colno,
@@ -4939,6 +4957,11 @@ recheck_end:
 					last_order_desc = command == cmd_SortDesc;
 
 					throw_selection(&scrdesc, &desc, &mark_mode);
+
+					if (command == cmd_SortDesc)
+						show_info_wait(" Sorted by column \"%s\" descentdly", column_name, false, true, true, false);
+					else
+						show_info_wait(" Sorted by column \"%s\"", column_name, false, true, true, false);
 
 					break;
 				}
