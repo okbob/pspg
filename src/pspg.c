@@ -794,6 +794,21 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	wtimeout(prompt_window, 10000);
 }
 
+/*
+ * Refresh ncurses internal metric when terminal was resized
+ */
+void
+refresh_terminal_size(void)
+{
+	struct winsize size;
+
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
+	{
+		resize_term(size.ws_row, size.ws_col);
+		log_row("new terminal size %d %d", size.ws_row, size.ws_col);
+	}
+}
+
 void
 refresh_layout_after_terminal_resize(void)
 {
@@ -3034,7 +3049,6 @@ reinit_theme:
 	{
 		bool	refresh_scr = false;
 		bool	refresh_clear = false;
-		bool	resize_scr = false;
 		bool	after_freeze_signal = false;
 		bool	force_refresh = false;
 
@@ -4723,8 +4737,17 @@ recheck_right:
 				break;
 
 			case cmd_RESIZE_EVENT:
-				refresh_scr = true;
-				resize_scr = true;
+				refresh_terminal_size();
+				refresh_clear = true;
+
+				if (!opts.no_cursor)
+				{
+					long_argument = cursor_row + 1;
+					long_argument_is_valid = true;
+
+					next_command = cmd_GotoLine;
+				}
+
 				break;
 
 			case cmd_ShowFirstCol:
@@ -4865,15 +4888,28 @@ recheck_end:
 						cursor_row = 0;
 
 					max_cursor_row = MAX_CURSOR_ROW;
-  					if (cursor_row > max_cursor_row)
+					if (cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
 						make_beep();
 					}
 
-					if (cursor_row < first_row || cursor_row - first_row > VISIBLE_DATA_ROWS)
+					if (cursor_row < first_row)
 					{
-						first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+						if (first_row - cursor_row <= 5)
+							first_row = cursor_row;
+						else
+							first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+
+						first_row = adjust_first_row(first_row, &desc, &scrdesc);
+					}
+					else if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+					{
+						if (cursor_row - first_row + 1 - VISIBLE_DATA_ROWS <= 5)
+							first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
+						else
+							first_row = cursor_row - VISIBLE_DATA_ROWS / 2;
+
 						first_row = adjust_first_row(first_row, &desc, &scrdesc);
 					}
 
@@ -5616,7 +5652,11 @@ recheck_end:
 					(void) wait_on_press_any_key();
 
 					enable_xterm_mouse_mode(opts.xterm_mouse_mode);
-					refresh_clear = true;
+
+					clearok(curscr, TRUE);
+					refresh();
+
+					next_command = cmd_RESIZE_EVENT;
 
 					break;
 				}
@@ -6217,20 +6257,6 @@ recheck_end:
 			current_state->refresh_scr ||
 			refresh_clear)
 		{
-			if (resize_scr)
-			{
-				/*
-				 * Workaround - the variables COLS, LINES are not refreshed
-				 * when pager is resized and executed inside psql.
-				 */
-				if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
-				{
-					resize_term(size.ws_row, size.ws_col);
-					clear();
-				}
-
-				resize_scr = false;
-			}
 
 #ifdef COMPILE_MENU
 
@@ -6239,6 +6265,7 @@ refresh:
 #endif
 
 			getmaxyx(stdscr, maxy, maxx);
+			log_row("new screen size %d %d", maxy, maxx);
 
 			if (refresh_clear)
 			{

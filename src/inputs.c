@@ -181,6 +181,7 @@ _get_pspg_event(NCursesEventData *nced,
 	else if (handle_sigwinch)
 	{
 		handle_sigwinch = false;
+		nced->alt = false;
 		nced->keycode = KEY_RESIZE;
 		return PSPG_NCURSES_EVENT;
 	}
@@ -303,6 +304,7 @@ repeat_reading:
 			else if (handle_sigwinch)
 			{
 				handle_sigwinch = false;
+				nced->alt = false;
 				nced->keycode = KEY_RESIZE;
 				return PSPG_NCURSES_EVENT;
 			}

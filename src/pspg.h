@@ -325,6 +325,7 @@ extern void show_info_wait(const char *fmt, const char *par, bool beep,
 						   bool refresh_first, bool applytimeout, bool is_error);
 
 extern void current_time(time_t *sec, long *ms);
+extern void refresh_terminal_size(void);
 extern void refresh_layout_after_terminal_resize(void);
 extern void redraw_screen(void);
 
