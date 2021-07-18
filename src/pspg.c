@@ -27,23 +27,20 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <math.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <libgen.h>
 #include <limits.h>
 #include <locale.h>
+#include <math.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <poll.h>
-#include <stdint.h>
-
-#include <unistd.h>
-#include <fcntl.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
 #include <termios.h>
@@ -2802,7 +2799,7 @@ reinit_theme:
 	noecho();
 
 	/*
-	 * For pspg is better to nonl mode - without it, ncurses is not able
+	 * For pspg is better to use nonl mode - without it, ncurses is not able
 	 * to detect ENTER key (that is required by safety of usage of readline.
 	 * see issue #178.
 	 */

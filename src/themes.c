@@ -1253,5 +1253,4 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 		t->pattern_data_attr = t->data_attr;
 		t->pattern_line_attr = t->line_attr;
 	}
-
 }
