@@ -848,16 +848,6 @@ get_string(char *prompt,
 
 	log_row("input string - \"%s\"", buffer);
 
-	/*
-	 * Keypad is an feature of an screen, not of an window. In this routine
-	 * I read from window without keypad flag, because I redirect events to
-	 * readline. But next reading from stdin looks partialy broken (like
-	 * without keypad flag), although the reading is related to stdscr with
-	 * keypad flag. I found dirty workaround - call keypad(stdscr, TRUE)
-	 * again.
-	 */
-	keypad(stdscr, TRUE);
-
 	return true;
 }
 
