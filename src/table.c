@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <libgen.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>

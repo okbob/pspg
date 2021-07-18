@@ -14,7 +14,6 @@
 #ifndef PSPG_PSPG_H
 #define PSPG_PSPG_H
 
-#include <poll.h>
 #include <sys/types.h>
 #include <stdio.h>
 

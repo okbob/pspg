@@ -10,14 +10,15 @@
  *
  *-------------------------------------------------------------------------
  */
+#include <errno.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <poll.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <fcntl.h>
 #include <termios.h>
-#include <libgen.h>
+#include <unistd.h>
 
 #define PSPG_ESC_DELAY					2000
 
