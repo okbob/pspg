@@ -716,7 +716,7 @@ next_row:
 
 		line = NULL;
 
-		if (!(f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE) &&
+		if ((f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) &&
 				nrows % 1000 == 0)
 		{
 			log_row("sleep 10ms per 1000 rows");
