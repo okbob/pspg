@@ -776,9 +776,15 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	keypad(prompt_window, FALSE);
 
 	/*
-	 * This is obscure code, but without it - ncurses doesn't process
-	 * well first cursor key event. Looks like ncurses bug, and this is
-	 * just workaround.
+	 * This looks like obscure code, but it is necessary. The key processing
+	 * is terminal feature, and ncurses switches the terminal mode by commands
+	 * smkx and rmkx. keypad function sends these codes. The wgetch function
+	 * sendes these codes too in dependency on window configuration. But because
+	 * pspg uses own instance of poll function, then wgetch function is called
+	 * after of moment when terminal generates input sequence related to keyboard
+	 * event. So because last sent command to terminal was rmkx (related to
+	 * keypad(win, FALSE), its is need to activate keypad on terminal again, so
+	 * first keypad event will be processed with activated keypad.
 	 */
 	keypad(stdscr, TRUE);
 
