@@ -1540,7 +1540,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	struct winsize size;
 	int		i;
 
-	if (ioctl(0, TIOCGWINSZ, (char *) &size) >= 0)
+	if (ioctl(fileno(stdout), TIOCGWINSZ, (char *) &size) >= 0)
 	{
 		int		expected_rows = min_int(size.ws_row - 1 - scrdesc->top_bar_rows,
 										desc->last_row + 1);

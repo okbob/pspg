@@ -6331,7 +6331,6 @@ refresh:
 
 	endwin();
 	disable_xterm_mouse_mode();
-	close_tty_stream();
 	log_row("ncurses ended");
 
 	active_ncurses = false;
@@ -6345,6 +6344,8 @@ refresh:
 		draw_data(&opts, &scrdesc, &desc, first_data_row, first_row, cursor_col,
 				  footer_cursor_col, fix_rows_offset);
 	}
+
+	close_tty_stream();
 
 	pspg_save_history(PSPG_HISTORY, &opts);
 
