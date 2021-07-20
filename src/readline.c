@@ -380,7 +380,8 @@ pspg_complete(const char *text, int start, int end)
 									 IS_TOKEN(token, n, "sort") ||
 									 IS_TOKEN(token, n, "sortd") ||
 									 IS_TOKEN(token, n, "dsort") ||
-									 IS_TOKEN(token, n, "rsort"))
+									 IS_TOKEN(token, n, "rsort") ||
+									 IS_TOKEN(token, n, "rs"))
 							{
 								return rl_completion_matches(text, tablename_generator);
 							}
