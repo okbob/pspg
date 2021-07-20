@@ -41,6 +41,15 @@
 #include "pspg.h"
 #include "unicode.h"
 
+static inline void
+wrepeatspace(WINDOW *win, int n)
+{
+	int		i;
+
+	for (i = 0; i < n; i++)
+		waddch(win, ' ');
+}
+
 /*
  * Flush data to window. When row is a decoration, then
  * replace ascii decoration by special terminal decoration.
@@ -215,7 +224,7 @@ print_column_names(WINDOW *win,
 
 		if (pos + chars > srcx)
 		{
-			wprintw(win, "%*s", pos + chars - srcx, "");
+			wrepeatspace(win, pos + chars - srcx);
 
 			pos += chars;
 			ptr += bytes;
@@ -276,11 +285,11 @@ print_column_names(WINDOW *win,
 			if (desc->linestyle == 'a' && opts->force_uniborder)
 				waddch(win, ACS_VLINE);
 			else
-				wprintw(win, "%.*s", bytes, ptr);
+				waddnstr(win, ptr, bytes);
 		}
 		else
 			/* clean background of colum names */
-			wprintw(win, "%*s", chars, "");
+			wrepeatspace(win, chars);
 
 		headline_ptr += chars;
 		ptr += bytes;
@@ -389,7 +398,7 @@ print_column_names(WINDOW *win,
 		}
 
 		wattron(win, new_attr);
-		mvwprintw(win, cy, act_xmin, "%.*s", colname_size, colname);
+		mvwaddnstr(win, cy, act_xmin, colname, colname_size);
 		wattroff(win, new_attr);
 	}
 }
@@ -506,6 +515,19 @@ set_line_info(Options *opts,
 	return linfo;
 }
 
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
+
+static void
+pspg_mvwadd_wchar(WINDOW *win, int y, int x, wchar_t wchr, attr_t attr)
+{
+	cchar_t		cchr;
+
+	setcchar(&cchr, &wchr, attr, PAIR_NUMBER(attr), NULL);
+	mvwadd_wch(win, y, x, &cchr);
+}
+
+#endif
+
 /*
  * Draw scrollbar to related window.
  */
@@ -525,37 +547,56 @@ draw_scrollbar_win(WINDOW *win,
 		waddch(win, ACS_CKBOARD);
 
 	wattroff(win, t->scrollbar_attr);
-	wattron(win, t->scrollbar_arrow_attr);
+
+#if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
 	if (t->scrollbar_use_arrows)
 	{
 		if (!use_utf8 || opts->force_ascii_art)
 		{
+			wattron(win, t->scrollbar_arrow_attr);
+
 			mvwaddch(win, 0, 0, ACS_UARROW);
 			mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+
+			wattroff(win, t->scrollbar_arrow_attr);
 		}
 		else
 		{
 			/* 🠕 🠗 */
-			mvwprintw(win, 0, 0, "%lc", L'\x1F815');
-			mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x1F817');
+			pspg_mvwadd_wchar(win, 0, 0, L'\x1F815', t->scrollbar_arrow_attr);
+			pspg_mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L'\x1F817', t->scrollbar_arrow_attr);
+
+			/*
+			 * Note: wchar can be printed by wprintw with "%lc" placeholder
+			 */
 		}
 	}
 	else
 	{
 		/* ▲ ▼ */
-		mvwprintw(win, 0, 0, "%lc", L'\x25b2');
-		mvwprintw(win, scrdesc->scrollbar_maxy - 1, 0, "%lc", L'\x25bc');
+		pspg_mvwadd_wchar(win, 0, 0, L'\x25b2', t->scrollbar_arrow_attr);
+		pspg_mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L'\x25bc', t->scrollbar_arrow_attr);
 	}
 
+#else
+
+	wattron(win, t->scrollbar_arrow_attr);
+
+	mvwaddch(win, 0, 0, ACS_UARROW);
+	mvwaddch(win, scrdesc->scrollbar_maxy - 1, 0, ACS_DARROW);
+
 	wattroff(win, t->scrollbar_arrow_attr);
+
+#endif
+
 	wattron(win, scrdesc->scrollbar_mode ? t->scrollbar_active_slider_attr : t->scrollbar_slider_attr);
 
 	if (!t->scrollbar_slider_symbol)
 	{
 		/* draw slider */
 		for (i = 0; i < scrdesc->slider_size; i++)
-			mvwprintw(win, scrdesc->slider_min_y + i, 0, " ");
+			mvwaddch(win, scrdesc->slider_min_y + i, 0, ' ');
 	}
 	else
 		mvwaddch(win, scrdesc->slider_min_y, 0, t->scrollbar_slider_symbol);
@@ -1197,7 +1238,7 @@ window_fill(int window_identifier,
 			/* print trailing spaces necessary for correct vertical cursor */
 			if (trailing_spaces > 0)
 			{
-				wprintw(win, "%*s", trailing_spaces, "");
+				wrepeatspace(win, trailing_spaces);
 				i += trailing_spaces;
 			}
 
