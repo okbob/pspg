@@ -517,6 +517,9 @@ set_line_info(Options *opts,
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
+/*
+ * Two examples how to print wide char correctly
+ */
 static void
 pspg_mvwadd_wchar(WINDOW *win, int y, int x, wchar_t wchr, attr_t attr)
 {
@@ -524,6 +527,12 @@ pspg_mvwadd_wchar(WINDOW *win, int y, int x, wchar_t wchr, attr_t attr)
 
 	setcchar(&cchr, &wchr, attr, PAIR_NUMBER(attr), NULL);
 	mvwadd_wch(win, y, x, &cchr);
+}
+
+static void
+mvwadd_wchar(WINDOW *win, int y, int x, wchar_t wchr)
+{
+	mvwaddnwstr(win, y, x, &wchr, 1);
 }
 
 #endif
@@ -564,12 +573,12 @@ draw_scrollbar_win(WINDOW *win,
 		else
 		{
 			/* 🠕 🠗 */
-			pspg_mvwadd_wchar(win, 0, 0, L'\x1F815', t->scrollbar_arrow_attr);
-			pspg_mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L'\x1F817', t->scrollbar_arrow_attr);
+			wattron(win, t->scrollbar_arrow_attr);
 
-			/*
-			 * Note: wchar can be printed by wprintw with "%lc" placeholder
-			 */
+			mvwadd_wchar(win, 0, 0,  L'\x1F815');
+			mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L'\x1F817');
+
+			wattroff(win, t->scrollbar_arrow_attr);
 		}
 	}
 	else
