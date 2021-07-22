@@ -373,7 +373,7 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_nonblocking, bool wait_on_
 
 		for (;;)
 		{
-			char   *str;
+			char	*str;
 			int	len = 0;
 
 			errno = 0;
@@ -426,13 +426,9 @@ endline_exit:
 				errno = _errno;
 			}
 
-			if (errno)
+			if (errno || feof(fp))
 			{
-				if (feof(fp))
-				{
-					goto endline_exit;
-				}
-				else if (errno == EAGAIN)
+				if (errno == EAGAIN)
 				{
 					struct pollfd fds[1];
 
@@ -452,6 +448,10 @@ endline_exit:
 
 					clearerr(fp);
 					continue;
+				}
+				else if (feof(fp))
+				{
+					goto endline_exit;
 				}
 				else
 				{

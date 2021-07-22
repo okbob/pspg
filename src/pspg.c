@@ -3140,6 +3140,9 @@ reinit_theme:
 			{
 				event = get_pspg_event(&nced, false, opts.watch_time > 0 ? 1000 : -1);
 
+				if (event == PSPG_FATAL_EVENT)
+					break;
+
 				event_keycode = (event == PSPG_NCURSES_EVENT) ? nced.keycode : 0;
 
 				/*

@@ -352,7 +352,23 @@ repeat_reading:
 			{
 				short revents = fds[1].revents;
 
-				if (revents & POLLIN)
+				if (revents & POLLHUP)
+				{
+					/* The pipe cannot be reopened */
+					if (f_data_opts & STREAM_IS_PIPE)
+					{
+						log_row("detected POLLHUP on pipe");
+						return PSPG_FATAL_EVENT;
+					}
+
+					log_row("force close stream after POLLHUP");
+					close_data_stream();
+
+					/* we don't want to reopen stream too quickly, sleep 100ms */
+					usleep(1000 * 100);
+					return PSPG_READ_DATA_EVENT;
+				}
+				else if (revents & POLLIN)
 				{
 
 #ifdef HAVE_INOTIFY
@@ -372,8 +388,6 @@ repeat_reading:
 						 */
 						while (len > 0)
 						{
-
-
 							const struct inotify_event *ino_event = (struct inotify_event *) buff;
 
 							while (len > 0)
