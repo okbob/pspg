@@ -65,6 +65,8 @@ static char	   *readline_prompt;
 static int		tabcomplete_mode;
 static const char **possible_tokens = NULL;
 
+static bool		readline_initized = false;
+
 #ifdef HAVE_READLINE_HISTORY
 
 static char		last_history[256];
@@ -533,6 +535,7 @@ get_string(char *prompt,
 	 */
 	if (!history_loaded)
 	{
+		log_row("history loaded");
 		read_history(tilde(NULL, saved_histfile));
 		history_loaded = true;
 
@@ -633,11 +636,11 @@ get_string(char *prompt,
 					wrefresh(prompt_window);
 				}
 
+				else if (handle_sigint)
+					goto finish_read;
+
 				continue;
 			}
-
-			if (handle_sigint)
-				goto finish_read;
 		}
 		while (c == ERR || c == 0);
 
@@ -752,6 +755,14 @@ finish_read:
 void
 pspg_init_readline(const char *histfile)
 {
+	/*
+	 * Don't repeat readline initialization
+	 */
+	if (readline_initized)
+		return;
+
+	readline_initized = true;
+
 	rl_catch_signals = 0;
 	rl_catch_sigwinch = 0;
 	rl_deprep_term_function = NULL;
