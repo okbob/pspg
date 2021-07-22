@@ -807,8 +807,14 @@ refresh_terminal_size(void)
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
 	{
+		int		maxy, maxx;
+
 		resize_term(size.ws_row, size.ws_col);
 		log_row("new terminal size %d %d", size.ws_row, size.ws_col);
+		log_row("info: LINES: %d, COLS: %d", LINES, COLS);
+
+		getmaxyx(stdscr, maxy, maxx);
+		log_row("info: stdscr - maxy: %d, maxx: %d", maxy, maxx);
 	}
 }
 
@@ -2609,29 +2615,24 @@ main(int argc, char *argv[])
 		default_freezed_cols = 2;
 
 	/*
-	 * looks so it is not supported only on mac os (build without homebrew).
-	 */
-#if NCURSES_VERSION_PATCH >= 20120714
-
-	use_tioctl(true);
-
-#endif
-
-	/*
-	 * The issue #75 - COLUMNS, LINES are not correctly initialized.
-	 * Get real terminal size, and refresh ncurses data.
-	 *
-	 * This issue should be solved by use_tioctl(true).
+	 * When parent application doesn't handle SIGWINCH signal, then the
+	 * environment variables COLUMNS and LINES should not be up to date.
+	 * ncurses uses these variables for initial sizing stdstr. This issue
+	 * can be fixed by reread terminal (device) parameters. The overhead
+	 * is neglecting. See issue #75
 	 */
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
+		resize_term(size.ws_row, size.ws_col);
+
 		size_is_valid = true;
 		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
+
 	}
 	else
-		log_row("cannot to detect terminal size via TIOCGWINSZ: res: %d", ioctl_result);
+		log_row("cannot to detect terminal size via TIOCGWINSZ (%s)", strerror(errno));
 
-	/* When we know terminal dimensions */
+	/* Only when we are sure about terminal dimensions */
 	if (size_is_valid && state.quit_if_one_screen)
 	{
 		int		available_rows = size.ws_row;
@@ -2693,7 +2694,7 @@ main(int argc, char *argv[])
 		}
 
 		log_row("exit without start ncurses");
-  		if (logfile)
+		if (logfile)
 		{
 			fclose(logfile);
 			logfile = NULL;
@@ -2720,7 +2721,6 @@ main(int argc, char *argv[])
 	log_row("ncurses started");
 
 	active_ncurses = true;
-
 
 	/* xterm mouse mode recheck */
 	if (opts.xterm_mouse_mode)
@@ -2889,16 +2889,13 @@ reinit_theme:
 	prompt_window_error_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].error_attr;
 	prompt_window_info_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].bottom_light_attr;
 
-	if (size_is_valid)
-		resize_term(size.ws_row, size.ws_col);
-
 	clear();
 
 	refresh_aux_windows(&opts, &scrdesc);
 
 	getmaxyx(stdscr, maxy, maxx);
 
-	log_row("screen size - maxy: %d, maxx: %d", maxy, maxx);
+	log_row("initial stdscr size - maxy: %d, maxx: %d", maxy, maxx);
 
 	if (state.quit_if_one_screen)
 	{
