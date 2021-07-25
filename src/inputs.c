@@ -157,6 +157,8 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
 
+	log_row("_get_pspg_event(only_tty: %d, timeout: %d", only_tty_events, timeout);
+
 #ifdef HAVE_INOTIFY
 
 	bool	poll_inotify_fd = false;

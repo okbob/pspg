@@ -529,6 +529,9 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	size_t		len;
 	ssize_t		read;
 	int			nrows = 0;
+	int			stop_after_nrows = 0;
+	bool		completed = true;
+	bool		initial_run = false;
 	LineBuffer *rows;
 
 #ifdef DEBUG_PIPE
@@ -541,35 +544,50 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 #endif
 
-	desc->title[0] = '\0';
-	desc->title_rows = 0;
-	desc->border_top_row = -1;
-	desc->border_head_row = -1;
-	desc->border_bottom_row = -1;
-	desc->first_data_row = -1;
-	desc->last_data_row = -1;
-	desc->is_expanded_mode = false;
-	desc->headline_transl = NULL;
-	desc->cranges = NULL;
-	desc->columns = 0;
-	desc->footer_row = -1;
-	desc->alt_footer_row = -1;
-	desc->is_pgcli_fmt = false;
-	desc->namesline = NULL;
-	desc->order_map = NULL;
-	desc->total_rows = 0;
+	if (!desc->initialized)
+	{
+		desc->title[0] = '\0';
+		desc->title_rows = 0;
+		desc->border_top_row = -1;
+		desc->border_head_row = -1;
+		desc->border_bottom_row = -1;
+		desc->first_data_row = -1;
+		desc->last_data_row = -1;
+		desc->is_expanded_mode = false;
+		desc->headline_transl = NULL;
+		desc->cranges = NULL;
+		desc->columns = 0;
+		desc->footer_row = -1;
+		desc->alt_footer_row = -1;
+		desc->is_pgcli_fmt = false;
+		desc->namesline = NULL;
+		desc->order_map = NULL;
+		desc->total_rows = 0;
 
-	desc->maxbytes = -1;
-	desc->maxx = -1;
+		desc->maxbytes = -1;
+		desc->maxx = -1;
 
-	memset(&desc->rows, 0, sizeof(LineBuffer));
-	rows = &desc->rows;
-	desc->rows.prev = NULL;
-	desc->oid_name_table = false;
-	desc->multilines_already_tested = false;
+		memset(&desc->rows, 0, sizeof(LineBuffer));
+		desc->rows.prev = NULL;
+		desc->oid_name_table = false;
+		desc->multilines_already_tested = false;
+		desc->last_buffer = &desc->rows;
 
-	/* safe reset */
-	desc->filename[0] = '\0';
+		/* safe reset */
+		desc->filename[0] = '\0';
+
+		/* progress load mode */
+		desc->initialized = true;
+
+		if (opts->progressive_load_mode)
+			desc->completed = false;
+		else
+			desc->completed = true;
+	}
+
+	nrows = desc->total_rows;
+	rows = desc->last_buffer;
+
 	state->errstr = NULL;
 	state->_errno = 0;
 
@@ -587,8 +605,22 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	clearerr(f_data);
 
-	/* detection truncating */
-	detect_file_truncation();
+	if (nrows == 0)
+	{
+		/* detection truncating */
+		detect_file_truncation();
+		initial_run = true;
+	}
+
+	if (opts->progressive_load_mode)
+	{
+		if (nrows == 0)
+			stop_after_nrows = max_int(2 * LINES, 500);
+		else
+			stop_after_nrows = nrows + 2000;
+	}
+	else
+		stop_after_nrows = -1;
 
 	errno = 0;
 	read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, false);
@@ -716,6 +748,13 @@ next_row:
 
 		line = NULL;
 
+		if (stop_after_nrows > 0 && nrows >= stop_after_nrows)
+		{
+			completed = false;
+			log_row("progressive load stop on %d row", nrows);
+			break;
+		}
+
 		if ((f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) &&
 				nrows % 1000 == 0)
 		{
@@ -725,6 +764,10 @@ next_row:
 
 		read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, true);
 	} while (read != -1);
+
+	desc->total_rows = nrows;
+	desc->last_buffer = rows;
+	desc->completed = completed;
 
 	if (errno && errno != EAGAIN)
 	{
@@ -736,24 +779,25 @@ next_row:
 	/* used for file truncation detection */
 	save_file_position();
 
-	desc->total_rows = nrows;
-
 	log_row("read rows %d", nrows);
 
-	/*
-	 * border headline cannot be higher than 1000, to simply find it
-	 * in first row block. Higher number is surelly wrong, probably
-	 * some comment.
-	 */
-	if (desc->border_top_row >= 1000)
-		desc->border_top_row = -1;
-	if (desc->border_head_row >= 1000)
-		desc->border_head_row = -1;
+	if (initial_run)
+	{
+		/*
+		 * border headline cannot be higher than 1000, to simply find it
+		 * in first row block. Higher number is surelly wrong, probably
+		 * some comment.
+		 */
+		if (desc->border_top_row >= 100)
+			desc->border_top_row = -1;
+		if (desc->border_head_row >= 100)
+			desc->border_head_row = -1;
+
+		desc->headline_char_size = 0;
+	}
 
 	if (desc->last_row != -1)
 		desc->maxy = desc->last_row;
-
-	desc->headline_char_size = 0;
 
 	if (desc->border_head_row != -1)
 	{
@@ -772,7 +816,6 @@ next_row:
 
 		if (desc->border_head_row >= 1)
 			desc->namesline = desc->rows.rows[desc->border_head_row - 1];
-
 	}
 	else if (desc->is_expanded_mode && desc->border_top_row != -1)
 	{
@@ -801,7 +844,7 @@ broken_format:
 
 #ifdef HAVE_INOTIFY
 
-	if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) /* clean event buffer */
+	if (completed && f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) /* clean event buffer */
 		clean_inotify_poll();
 
 #endif

@@ -773,5 +773,9 @@ args_are_consistent(Options *opts, StateData *state)
 			opts->tsv_format = true;
 	}
 
+	/* use progressive load mode only for data */
+	if (opts->querystream)
+		opts->progressive_load_mode = false;
+
 	return true;
 }

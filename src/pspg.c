@@ -261,6 +261,12 @@ min_int(int a, int b)
 	return a < b ? a : b;
 }
 
+inline int
+max_int(int a, int b)
+{
+	return a > b ? a : b;
+}
+
 /*
  * The argument "b" should be >= "a" or it should be ignored
  * and "a" is used instead "b".
@@ -2446,6 +2452,7 @@ main(int argc, char *argv[])
 	opts.nullstr = NULL;
 	opts.last_row_search = true;
 	opts.hist_size = 500;
+	opts.progressive_load_mode = true;
 
 	setup_sigsegv_handler();
 
@@ -3138,7 +3145,24 @@ reinit_theme:
 			}
 			else
 			{
-				event = get_pspg_event(&nced, false, opts.watch_time > 0 ? 1000 : -1);
+				int		timeout = opts.watch_time > 0 ? 1000 : -1;
+				bool	only_tty = false;
+
+				if (!desc.completed)
+				{
+					(void) readfile(&opts, &desc, &state);
+
+					timeout = 10;
+					only_tty = true;
+
+					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
+					if (scrdesc.wins[WINDOW_TOP_BAR])
+						wnoutrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
+
+					set_scrollbar(&scrdesc, &desc, first_row);
+				}
+
+				event = get_pspg_event(&nced, only_tty, timeout);
 
 				if (event == PSPG_FATAL_EVENT)
 					break;

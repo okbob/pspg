@@ -93,6 +93,7 @@ typedef struct
 	bool	menu_always;
 	bool	last_row_search;
 	int		hist_size;
+	bool	progressive_load_mode;
 } Options;
 
 extern bool save_config(char *path, Options *opts);
