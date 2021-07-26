@@ -150,6 +150,8 @@ typedef struct
 									   in progress mode */
 	bool	completed;				/* true, when last input row was processed */
 	LineBuffer *last_buffer;		/* pointer to last LineBuffer */
+
+	bool	load_data_rows;			/* true, when loaded rows holds data */
 } DataDesc;
 
 #define		PSPG_WINDOW_COUNT		10

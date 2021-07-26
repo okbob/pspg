@@ -72,10 +72,14 @@ isHeadLeftChar(char *str)
 {
 	const char *u1 = "\342\224\200";
 	const char *u2 = "\342\225\220";
-	const char *u3 = "\342\225\236";
-	const char *u4 = "\342\224\234";
-	const char *u5 = "\342\225\240";
-	const char *u6 = "\342\225\237";
+
+	const char *u3 = "\342\225\236"; /* ╞ */
+	const char *u4 = "\342\224\234"; /* ├ */
+	const char *u5 = "\342\225\240"; /* ╠ */
+	const char *u6 = "\342\225\237"; /* ╟ */
+
+	const char *u7 = "\342\224\214"; /* ┌ */
+	const char *u8 = "\342\225\224"; /* ╔ */
 
 	/* ascii */
 	if ((str[0] == '+' || str[0] == '-') && str[1] == '-')
@@ -97,6 +101,9 @@ isHeadLeftChar(char *str)
 	if (str[0] == '+' && str[1] == '=')
 		return true;
 
+	if (str[0] != '\342')
+		return false;
+
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
@@ -108,6 +115,39 @@ isHeadLeftChar(char *str)
 	if (strncmp(str, u5, 3) == 0)
 		return true;
 	if (strncmp(str, u6, 3) == 0)
+		return true;
+	if (strncmp(str, u7, 3) == 0)
+		return true;
+	if (strncmp(str, u8, 3) == 0)
+		return true;
+
+	return false;
+}
+
+static bool
+isUnicodeHeadLeftCharBorder2(char *str)
+{
+	const char *u3 = "\342\225\236"; /* ╞ */
+	const char *u4 = "\342\224\234"; /* ├ */
+	const char *u5 = "\342\225\240"; /* ╠ */
+	const char *u6 = "\342\225\237"; /* ╟ */
+	const char *u7 = "\342\224\214"; /* ┌ */
+	const char *u8 = "\342\225\224"; /* ╔ */
+
+	if (str[0] != '\342')
+		return false;
+
+	if (strncmp(str, u3, 3) == 0)
+		return true;
+	if (strncmp(str, u4, 3) == 0)
+		return true;
+	if (strncmp(str, u5, 3) == 0)
+		return true;
+	if (strncmp(str, u6, 3) == 0)
+		return true;
+	if (strncmp(str, u7, 3) == 0)
+		return true;
+	if (strncmp(str, u8, 3) == 0)
 		return true;
 
 	return false;
@@ -534,6 +574,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	bool		initial_run;
 	bool		progressive_load_mode;
 	LineBuffer *rows;
+	int		clen = -1;
 
 #ifdef DEBUG_PIPE
 
@@ -566,6 +607,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		desc->namesline = NULL;
 		desc->order_map = NULL;
 		desc->total_rows = 0;
+		desc->load_data_rows = false;
 
 		desc->maxbytes = -1;
 		desc->maxx = -1;
@@ -634,8 +676,6 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	do
 	{
-		int		clen;
-
 		if (line && line[read - 1] == '\n')
 		{
 			line[read - 1] = '\0';
@@ -661,7 +701,13 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 				break;
 		}
 
-		clen = use_utf8 ? utf_string_dsplen(line, read) : read;
+		/*
+		 * When Unicode border 2 is used, then we can save CPU cycles,
+		 * becase we can very well detect begin and end of table. Inside
+		 * the table we don't need to check display width.
+		 */
+		if (clen == -1 || !desc->load_data_rows)
+			clen = use_utf8 ? utf_string_dsplen(line, read) : read;
 
 		if (rows->nrows == LINEBUFFER_LINES)
 		{
@@ -700,6 +746,12 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		{
 			desc->border_head_row = nrows;
 
+			if (isUnicodeHeadLeftCharBorder2(line))
+			{
+				desc->load_data_rows = true;
+				log_row("next row will be data row");
+			}
+
 			if (!desc->is_expanded_mode)
 				desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
 
@@ -715,6 +767,9 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		{
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+			desc->load_data_rows = false;
+			log_row("next row will be desc row");
+
 		}
 		else if (!desc->is_expanded_mode && desc->border_bottom_row != -1 && desc->footer_row == -1)
 		{
@@ -725,6 +780,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			/* Outer border is repeated in expanded mode, use last detected row */
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+			log_row("next row will be desc row");
 		}
 
 		if (!desc->is_expanded_mode && desc->border_head_row != -1 && desc->border_head_row < nrows
