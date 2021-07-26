@@ -104,6 +104,7 @@ static struct option long_options[] =
 	{"querystream", no_argument, 0, 44},
 	{"menu-always", no_argument, 0, 45},
 	{"no-last-row-search", no_argument, 0, 46},
+	{"no-progressive-load", no_argument, 0, 47},
 	{0, 0, 0, 0}
 };
 
@@ -309,6 +310,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --ni                     not interactive mode (only for csv and query)\n");
 					fprintf(stdout, "  --no-watch-file          don't watch inotify event of file\n");
 					fprintf(stdout, "  --no-mouse               don't use own mouse handling\n");
+					fprintf(stdout, "  --no-progressive-load    don't use progressive data load\n");
 					fprintf(stdout, "  --no-sigint-search-reset\n");
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
 					fprintf(stdout, "  --no-sleep               without waits against flickering\n");
@@ -659,6 +661,9 @@ readargs(char **argv,
 			case 46:
 				opts->last_row_search = false;
 				break;
+			case 47:
+				opts->progressive_load_mode = false;
+				break;
 			default:
 				{
 					format_error("Try %s --help\n", argv[0]);
@@ -772,6 +777,10 @@ args_are_consistent(Options *opts, StateData *state)
 		else if (state->file_format_from_suffix == FILE_TSV)
 			opts->tsv_format = true;
 	}
+
+	/* use progressive load mode only for data */
+	if (opts->querystream)
+		opts->progressive_load_mode = false;
 
 	return true;
 }

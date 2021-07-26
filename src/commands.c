@@ -678,3 +678,27 @@ cmd_get_theme(int cmd)
 
 	return 1;
 }
+
+/*
+ * This is initial simple design. It can be much
+ * smarter, but it is good enough for start.
+ */
+bool
+require_complete_load(int cmd)
+{
+	switch (cmd)
+	{
+		case cmd_CursorLastRow:
+		case cmd_SortAsc:
+		case cmd_SortDesc:
+		case cmd_OriginalSort:
+		case cmd_SaveData:
+		case cmd_Copy:
+		case cmd_GotoLine:
+		case cmd_ForwardSearch:
+			return true;
+
+		default:
+			return false;
+	}
+}

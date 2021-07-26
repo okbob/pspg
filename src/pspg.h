@@ -145,6 +145,11 @@ typedef struct
 	bool	oid_name_table;			/* detected system table with first oid column */
 	bool	multilines_already_tested;	/* true, when we know where are multilines */
 	bool	has_multilines;			/* true, when some field contains more lines */
+
+	bool	initialized;			/* used as protection against unwanted initialization
+									   in progress mode */
+	bool	completed;				/* true, when last input row was processed */
+	LineBuffer *last_buffer;		/* pointer to last LineBuffer */
 } DataDesc;
 
 #define		PSPG_WINDOW_COUNT		10
@@ -327,6 +332,8 @@ extern void current_time(time_t *sec, long *ms);
 extern void refresh_terminal_size(void);
 extern void refresh_layout_after_terminal_resize(void);
 extern void redraw_screen(void);
+extern int min_int(int a, int b);
+extern int max_int(int a, int b);
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 

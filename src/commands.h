@@ -158,6 +158,7 @@ typedef enum PspgCommand
 extern void initialize_special_keycodes();
 extern const char *cmd_string(int cmd);
 extern int translate_event(int c, bool alt, Options *opts, int *nested_command);
+extern bool require_complete_load(int cmd);
 
 extern bool is_cmd_RowNumToggle(int c, bool alt);
 

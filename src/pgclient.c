@@ -129,12 +129,6 @@ field_info(char *str, bool *multiline)
 		return utf_string_dsplen_multiline(str, strlen(str), multiline, false, &digits, &others);
 }
 
-static int
-max_int(int a, int b)
-{
-	return a > b ? a : b;
-}
-
 /*
  * Returns true, when some column should be hidden.
  */

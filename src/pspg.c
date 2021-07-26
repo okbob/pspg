@@ -106,8 +106,7 @@ static int number_width(int num);
 static void set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row);
 static bool check_visible_vertical_cursor(DataDesc *desc, Options *opts, int vertical_cursor_column);
 
-static void print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc, int cursor_row,
-						 int cursor_col, int first_row, int fix_rows_offset, int vertical_cursor_column);
+static void print_status(Options *opts, ScrDesc *scrdesc, DataDesc *desc);
 
 StateData *current_state = NULL;
 
@@ -259,6 +258,12 @@ inline int
 min_int(int a, int b)
 {
 	return a < b ? a : b;
+}
+
+inline int
+max_int(int a, int b)
+{
+	return a > b ? a : b;
 }
 
 /*
@@ -418,6 +423,68 @@ trim_footer_rows(DataDesc *desc)
 		desc->footer_char_size = desc->maxx;
 }
 
+static void
+set_scrollbar_dimensions(Options *opts, DataDesc *desc, ScrDesc *scrdesc)
+{
+	if (opts->show_scrollbar)
+	{
+		int		saved_slider_min_y = 0;
+
+		/*
+		 * The relayout can be invoked in scrollbar mode too (when we try
+		 * to change visibility of footer window (data)). Unfortunatelly,
+		 * inside layout initialization we init slider position to. In
+		 * this case we want to preserve an slider position.
+		 */
+		if (scrdesc->scrollbar_mode)
+			saved_slider_min_y = scrdesc->slider_min_y;
+
+		/* show scrollbar only when display is less than data */
+		if (scrdesc->main_maxy < desc->last_row + 1)
+		{
+			Theme	   *t;
+
+			scrdesc->main_maxx -= 1;
+
+			t = &scrdesc->themes[WINDOW_VSCROLLBAR];
+
+			scrdesc->scrollbar_x = scrdesc->maxx - 1;
+			scrdesc->scrollbar_start_y = scrdesc->main_start_y;
+			scrdesc->scrollbar_maxy = scrdesc->main_maxy;
+
+			if (t->scrollbar_slider_symbol)
+				scrdesc->slider_size = 1;
+			else if (scrdesc->scrollbar_maxy > 4)
+			{
+				scrdesc->slider_size
+					= round(((double) scrdesc->main_maxy - scrdesc->fix_rows_rows) *
+							((double) scrdesc->main_maxy - 2) /
+							((double) desc->last_row - desc->fixed_rows + 1));
+
+				if (scrdesc->slider_size < 2)
+					scrdesc->slider_size = 2;
+			}
+			else
+			{
+				scrdesc->slider_size = scrdesc->scrollbar_maxy - 4;
+				if (scrdesc->slider_size < 1)
+					scrdesc->slider_size = 1;
+			}
+
+			scrdesc->slider_min_y = 1;
+		}
+		else
+			scrdesc->scrollbar_x = -1;
+
+		/* restore saved slider position */
+		if (scrdesc->scrollbar_mode)
+			scrdesc->slider_min_y = saved_slider_min_y;
+	}
+	else
+		scrdesc->scrollbar_x = -1;
+}
+
+
 /*
  * Prepare dimensions of windows layout
  */
@@ -483,70 +550,14 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 	desc->fixed_rows = scrdesc->fix_rows_rows;
 
-	if (opts->show_scrollbar)
-	{
-		int		saved_slider_min_y = 0;
-
-		/*
-		 * The relayout can be invoked in scrollbar mode too (when we try
-		 * to change visibility of footer window (data)). Unfortunatelly,
-		 * inside layout initialization we init slider position to. In
-		 * this case we want to preserve an slider position.
-		 */
-		if (scrdesc->scrollbar_mode)
-			saved_slider_min_y = scrdesc->slider_min_y;
-
-		/* show scrollbar only when display is less than data */
-		if (scrdesc->main_maxy < desc->last_row + 1)
-		{
-			Theme	   *t;
-
-			scrdesc->main_maxx -= 1;
-
-			t = &scrdesc->themes[WINDOW_VSCROLLBAR];
-
-			scrdesc->scrollbar_x = scrdesc->maxx - 1;
-			scrdesc->scrollbar_start_y = scrdesc->main_start_y;
-			scrdesc->scrollbar_maxy = scrdesc->main_maxy;
-
-			if (t->scrollbar_slider_symbol)
-				scrdesc->slider_size = 1;
-			else if (scrdesc->scrollbar_maxy > 4)
-			{
-				scrdesc->slider_size
-					= round(((double) scrdesc->main_maxy - scrdesc->fix_rows_rows) *
-							((double) scrdesc->main_maxy - 2) /
-							((double) desc->last_row - desc->fixed_rows + 1));
-
-				if (scrdesc->slider_size < 2)
-					scrdesc->slider_size = 2;
-			}
-			else
-			{
-				scrdesc->slider_size = scrdesc->scrollbar_maxy - 4;
-				if (scrdesc->slider_size < 1)
-					scrdesc->slider_size = 1;
-			}
-
-			scrdesc->slider_min_y = 1;
-		}
-		else
-			scrdesc->scrollbar_x = -1;
-
-		/* restore saved slider position */
-		if (scrdesc->scrollbar_mode)
-			scrdesc->slider_min_y = saved_slider_min_y;
-	}
-	else
-		scrdesc->scrollbar_x = -1;
+	set_scrollbar_dimensions(opts, desc, scrdesc);
 }
 
 static void
 create_layout(Options *opts,
 			  ScrDesc *scrdesc,
 			  DataDesc *desc,
-			  int first_data_row,
-			  int first_row)
+			  int _first_data_row)
 {
 	int		i;
 
@@ -565,7 +576,7 @@ create_layout(Options *opts,
 
 	if (desc->headline_transl != NULL && desc->footer_row > 0)
 	{
-		int		rows_rows = desc->footer_row - first_row - first_data_row;
+		int		rows_rows = desc->footer_row - first_row - _first_data_row;
 		int		data_rows;
 
 		/* desc->footer_row == desc->first_data_row when result is empty */
@@ -842,7 +853,7 @@ refresh_layout_after_terminal_resize(void)
 	refresh_aux_windows(opts, scrdesc);
 
 	create_layout_dimensions(opts, scrdesc, desc, opts->freezed_cols != -1 ? opts->freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
-	create_layout(opts, scrdesc, desc, first_data_row, first_row);
+	create_layout(opts, scrdesc, desc, first_data_row);
 
 	/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
 	if (recheck_vertical_cursor_visibility && vertical_cursor_column > 0)
@@ -861,7 +872,6 @@ refresh_layout_after_terminal_resize(void)
 
 #endif
 
-	print_status(opts, scrdesc, desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 	set_scrollbar(scrdesc, desc, first_row);
 }
 
@@ -1105,6 +1115,12 @@ redraw_screen(void)
 
 #endif
 
+	print_status(opts, scrdesc, desc);
+
+	if (scrdesc->wins[WINDOW_TOP_BAR])
+		wnoutrefresh(scrdesc->wins[WINDOW_TOP_BAR]);
+
+
 #ifdef COMPILE_MENU
 
 	if (cmdbar)
@@ -1214,25 +1230,20 @@ number_width(int num)
  * returns true when cursor is on footer window
  */
 static bool
-is_footer_cursor(int cursor_row, ScrDesc *scrdesc, DataDesc *desc)
+is_footer_cursor(int _cursor_row, ScrDesc *scrdesc, DataDesc *desc)
 {
 	if (w_footer(scrdesc) == NULL)
 		return false;
 	else if (scrdesc->rows_rows == 0)
 		return true;
 
-	return cursor_row + scrdesc->fix_rows_rows + desc->title_rows + 1 > desc->footer_row;
+	return _cursor_row + scrdesc->fix_rows_rows + desc->title_rows + 1 > desc->footer_row;
 }
 
 static void
 print_status(Options *opts,
 			 ScrDesc *scrdesc,
-			 DataDesc *desc,
-			 int cursor_row,
-			 int cursor_col,
-			 int first_row,
-			 int fix_rows_offset,
-			 int vertical_cursor_column)
+			 DataDesc *desc)
 {
 	int		maxy, maxx;
 	int		smaxy, smaxx;
@@ -1624,42 +1635,42 @@ reset_searching_lineinfo(DataDesc *desc)
 }
 
 /*
- * Set cursor_col to ensure visibility of vertical column
+ * get cursor_col to ensure visibility of vertical column
  */
 static int
-get_cursor_col_for_vertical_column(int vertical_cursor_column,
-								   int cursor_col,
+get_cursor_col_for_vertical_column(int _vertical_cursor_column,
+								   int _cursor_col,
 								   DataDesc *desc,
 								   ScrDesc *scrdesc)
 {
-	int		xmin = desc->cranges[vertical_cursor_column - 1].xmin;
-	int		xmax = desc->cranges[vertical_cursor_column - 1].xmax;
+	int		xmin = desc->cranges[_vertical_cursor_column - 1].xmin;
+	int		xmax = desc->cranges[_vertical_cursor_column - 1].xmax;
 
 	/* Do nothing if vertical cursor is visible already */
 	if (xmax < scrdesc->fix_cols_cols)
 		return 0;
-	else if (xmin > scrdesc->fix_cols_cols && xmax < scrdesc->main_maxx + cursor_col)
-		return cursor_col;
+	else if (xmin > scrdesc->fix_cols_cols && xmax < scrdesc->main_maxx + _cursor_col)
+		return _cursor_col;
 	else
 	{
 		int		max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
 		int		column_center = (xmin + xmax) / 2;
 		int		cursor_fixed;
 
-		cursor_col = column_center - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
-		cursor_col = cursor_col < max_cursor_col ? cursor_col : max_cursor_col;
+		_cursor_col = column_center - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
+		_cursor_col = _cursor_col < max_cursor_col ? _cursor_col : max_cursor_col;
 
-		cursor_col = cursor_col > 0 ? cursor_col : 0;
+		_cursor_col = _cursor_col > 0 ? _cursor_col : 0;
 
 		/* try to show starts chars when it is possible */
-		if (xmin < scrdesc->fix_cols_cols + cursor_col)
+		if (xmin < scrdesc->fix_cols_cols + _cursor_col)
 		{
 			cursor_fixed = xmin - scrdesc->fix_cols_cols + 1;
 			if (column_center < scrdesc->main_maxx + cursor_fixed)
-				cursor_col = cursor_fixed;
+				_cursor_col = cursor_fixed;
 		}
 
-		return cursor_col;
+		return _cursor_col;
 	}
 }
 
@@ -1667,14 +1678,14 @@ get_cursor_col_for_vertical_column(int vertical_cursor_column,
  * Calculate focus point from left border of selected columns.
  */
 static int
-get_x_focus(int vertical_cursor_column,
-			int cursor_col,
+get_x_focus(int _vertical_cursor_column,
+			int _cursor_col,
 			DataDesc *desc,
 			ScrDesc *scrdesc)
 {
-	int xmin = desc->cranges[vertical_cursor_column - 1].xmin;
+	int xmin = desc->cranges[_vertical_cursor_column - 1].xmin;
 
-	return xmin > scrdesc->fix_cols_cols ? xmin - cursor_col : xmin;
+	return xmin > scrdesc->fix_cols_cols ? xmin - _cursor_col : xmin;
 }
 
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
@@ -1739,17 +1750,17 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
  * Ensure so first_row is in correct range
  */
 static int
-adjust_first_row(int first_row, DataDesc *desc, ScrDesc *scrdesc)
+adjust_first_row(int _first_row, DataDesc *desc, ScrDesc *scrdesc)
 {
 	int		max_first_row;
 
-	if (first_row < 0)
-		first_row = 0;
+	if (_first_row < 0)
+		_first_row = 0;
 
 	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
 	max_first_row = max_first_row < 0 ? 0 : max_first_row;
 
-	return first_row > max_first_row ? max_first_row : first_row;
+	return _first_row > max_first_row ? max_first_row : _first_row;
 }
 
 /*
@@ -1852,7 +1863,7 @@ export_to_file(PspgCommand command,
 			  Options *opts,
 			  ScrDesc *scrdesc,
 			  DataDesc *desc,
-			  int cursor_row,
+			  int _cursor_row,
 			  int cursor_column,
 			  int rows,
 			  double percent,
@@ -2076,7 +2087,7 @@ export_to_file(PspgCommand command,
 	if (fp)
 	{
 		isok = export_data(opts, scrdesc, desc,
-						   cursor_row, cursor_column,
+						   _cursor_row, cursor_column,
 						   fp,
 						   rows, percent, table_name,
 						   command, format);
@@ -2169,7 +2180,7 @@ export_to_file(PspgCommand command,
  * From "first_row" calculate position of slider of vertical scrollbar
  */
 static void
-set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
+set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int _first_row)
 {
 	int		max_first_row;
 	int		max_slider_min_y;
@@ -2195,13 +2206,13 @@ set_scrollbar(ScrDesc *scrdesc, DataDesc *desc, int first_row)
 	 *    first_row (max_first_row - 1) -> slider_min_y (max_slider_min_y - 1)
 	 *
 	 */
-	if (first_row == 0)
+	if (_first_row == 0)
 	{
 		scrdesc->slider_min_y = 1;
 
 		return;
 	}
-	else if (first_row == max_first_row)
+	else if (_first_row == max_first_row)
 	{
 		scrdesc->slider_min_y = max_slider_min_y;
 
@@ -2238,14 +2249,14 @@ throw_searching(ScrDesc *scrdesc, DataDesc *desc)
 }
 
 static void
-throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *mark_mode)
+throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *_mark_mode)
 {
 	scrdesc->selected_first_row = -1;
 	scrdesc->selected_rows = 0;
 	scrdesc->selected_first_column = -1;
 	scrdesc->selected_columns = 0;
 
-	*mark_mode = MARK_MODE_NONE;
+	*_mark_mode = MARK_MODE_NONE;
 
 	if (scrdesc->search_selected_mode)
 		throw_searching(scrdesc, desc);
@@ -2254,7 +2265,7 @@ throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *mark_mode)
 static bool
 check_visible_vertical_cursor(DataDesc *desc,
 							  Options *opts,
-							  int vertical_cursor_column)
+							  int _vertical_cursor_column)
 {
 	if (desc->columns == 0)
 	{
@@ -2264,7 +2275,7 @@ check_visible_vertical_cursor(DataDesc *desc,
 		return false;
 	}
 
-	if (!opts->vertical_cursor || vertical_cursor_column == 0)
+	if (!opts->vertical_cursor || _vertical_cursor_column == 0)
 	{
 		show_info_wait(" Vertical cursor is not visible",
 					   NULL, true, true, true, false);
@@ -2279,15 +2290,15 @@ static int
 mousex_get_colno(DataDesc *desc,
 				 ScrDesc *scrdesc,
 				 Options *opts,
-				 int *cursor_col,
-				 int default_freezed_cols,
+				 int *_cursor_col,
+				 int _default_freezed_cols,
 				 int mousex)
 {
 	int		colno = -1;
 	int		xpoint = mousex - scrdesc->main_start_x;
 
 	if (xpoint > scrdesc->fix_cols_cols - 1)
-		xpoint += *cursor_col;
+		xpoint += *_cursor_col;
 
 	if (xpoint >= 0)
 	{
@@ -2302,12 +2313,12 @@ mousex_get_colno(DataDesc *desc,
 
 				colno = i + 1;
 
-				if (colno > (opts->freezed_cols != -1 ? opts->freezed_cols : default_freezed_cols))
+				if (colno > (opts->freezed_cols != -1 ? opts->freezed_cols : _default_freezed_cols))
 				{
-					if (xmax > scrdesc->main_maxx + *cursor_col)
-						*cursor_col = xmax - scrdesc->main_maxx;
-					else if (xmin < scrdesc->fix_cols_cols + *cursor_col)
-						*cursor_col = xmin - scrdesc->fix_cols_cols + 1;
+					if (xmax > scrdesc->main_maxx + *_cursor_col)
+						*_cursor_col = xmax - scrdesc->main_maxx;
+					else if (xmin < scrdesc->fix_cols_cols + *_cursor_col)
+						*_cursor_col = xmin - scrdesc->fix_cols_cols + 1;
 				}
 
 				break;
@@ -2345,6 +2356,7 @@ main(int argc, char *argv[])
 	time_t	last_sec = 0;							/* time of last mouse release in sec */
 	long	next_watch = 0;
 	int		next_command = cmd_Invalid;
+	int		deffered_command = cmd_Invalid;
 	bool	reuse_event = false;
 	int		last_x_focus = -1;						/* it is used for repeated vertical cursor display */
 	int		prev_first_row;
@@ -2446,6 +2458,7 @@ main(int argc, char *argv[])
 	opts.nullstr = NULL;
 	opts.last_row_search = true;
 	opts.hist_size = 500;
+	opts.progressive_load_mode = true;
 
 	setup_sigsegv_handler();
 
@@ -3003,7 +3016,7 @@ reinit_theme:
 	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
 
 	create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
-	create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+	create_layout(&opts, &scrdesc, &desc, first_data_row);
 
 	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
 	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_ROWS]);
@@ -3013,7 +3026,6 @@ reinit_theme:
 
 	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_VSCROLLBAR]);
 
-	print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, 0, vertical_cursor_column);
 	set_scrollbar(&scrdesc, &desc, first_row);
 
 	cmdline[0] = '\0';
@@ -3138,7 +3150,36 @@ reinit_theme:
 			}
 			else
 			{
-				event = get_pspg_event(&nced, false, opts.watch_time > 0 ? 1000 : -1);
+				int		timeout = opts.watch_time > 0 ? 1000 : -1;
+				bool	only_tty = false;
+
+				if (!desc.completed)
+				{
+					(void) readfile(&opts, &desc, &state);
+
+					timeout = 10;
+					only_tty = true;
+
+					set_scrollbar_dimensions(&opts, &desc, &scrdesc);
+					set_scrollbar(&scrdesc, &desc, first_row);
+				}
+
+				/*
+				 * we forced repeated readfile until load is completed, when
+				 * some deferred command requires complete load.
+				 */
+				if (deffered_command != cmd_Invalid)
+				{
+					if (desc.completed)
+					{
+						next_command = deffered_command;
+						deffered_command = cmd_Invalid;
+					}
+
+					continue;
+				}
+
+				event = get_pspg_event(&nced, only_tty, timeout);
 
 				if (event == PSPG_FATAL_EVENT)
 					break;
@@ -3284,7 +3325,7 @@ reinit_theme:
 
 							/* create_layout requires correct first_row */
 							first_row = adjust_first_row(first_row, &desc, &scrdesc);
-							create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+							create_layout(&opts, &scrdesc, &desc, first_data_row);
 
 							MergeScrDesc(&scrdesc, &aux);
 
@@ -3319,10 +3360,6 @@ reinit_theme:
 							refresh_scr = true;
 						}
 					}
-
-					print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
-					if (scrdesc.wins[WINDOW_TOP_BAR])
-						wnoutrefresh(scrdesc.wins[WINDOW_TOP_BAR]);
 
 					set_scrollbar(&scrdesc, &desc, first_row);
 
@@ -3551,6 +3588,18 @@ hide_menu:
 					show_info_wait(" For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
+		}
+
+		/*
+		 * When some commands requires complete load, then save
+		 * the command and complete load before.
+		 */
+		if ((require_complete_load(command) ||
+			require_complete_load(nested_command)) &&
+			!desc.completed)
+		{
+			deffered_command = command;
+			continue;
 		}
 
 		switch (command)
@@ -4993,12 +5042,12 @@ recheck_end:
 						if (desc.cranges)
 						{
 							char	   *name = desc.namesline + desc.cranges[sortedby_colno - 1].name_offset;
-							int			size = desc.cranges[sortedby_colno - 1].name_size;
+							int			label_size = desc.cranges[sortedby_colno - 1].name_size;
 
-							if (size > 0)
+							if (label_size > 0)
 							{
 								memset(column_name, 0, sizeof(column_name));
-								strncpy(column_name, name, min_int(64, size));
+								strncpy(column_name, name, min_int(64, label_size));
 								have_name = true;
 							}
 						}
@@ -6235,7 +6284,6 @@ recheck_end:
 				fresh_found = false;
 		}
 
-		print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 		set_scrollbar(&scrdesc, &desc, first_row);
 
 		if (first_row != prev_first_row)
@@ -6280,7 +6328,7 @@ refresh:
 			refresh_aux_windows(&opts, &scrdesc);
 
 			create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
-			create_layout(&opts, &scrdesc, &desc, first_data_row, first_row);
+			create_layout(&opts, &scrdesc, &desc, first_data_row);
 
 			/* recheck visibility of vertical cursor. now we have fresh fix_cols_cols data */
 			if (recheck_vertical_cursor_visibility && vertical_cursor_column > 0)
@@ -6292,7 +6340,6 @@ refresh:
 					cursor_col = vminx -  scrdesc.fix_cols_cols + 1;
 			}
 
-			print_status(&opts, &scrdesc, &desc, cursor_row, cursor_col, first_row, fix_rows_offset, vertical_cursor_column);
 			set_scrollbar(&scrdesc, &desc, first_row);
 
 #ifdef COMPILE_MENU
