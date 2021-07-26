@@ -44,7 +44,7 @@ CFLAGS="$RPM_OPT_FLAGS"
 
 %changelog
 * Mon Jul 26 2021 Pavel Stehule <pavel.stehule@gmail.com>
-- progressive load - instead complete load on star, now
+- progressive load - instead complete load on start, now
   pspg loads 500 rows, 2000 rows, 2000 rows, ... so first
   rows can be displayed quickly.
 - now, pspg can format texts produced by psql's help
