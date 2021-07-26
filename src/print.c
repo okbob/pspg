@@ -41,6 +41,8 @@
 #include "pspg.h"
 #include "unicode.h"
 
+#include <ctype.h>
+
 static inline void
 wrepeatspace(WINDOW *win, int n)
 {
@@ -645,6 +647,101 @@ is_in_searched_pattern(int pos,
 	return false;
 }
 
+typedef struct
+{
+	int		start_pos;
+	int		end_pos;
+	int		typ;
+} SpecialWord;
+
+
+static int
+parse_line(char *line, SpecialWord *words, int maxwords)
+{
+	int		nwords = 0;
+	int		pos = 0;
+	bool	first_nonspace = true;
+
+	while (*line)
+	{
+		while (*line == ' ')
+		{
+			line += 1;
+			pos += 1;
+		}
+
+		if (*line == '\\')
+		{
+			words[nwords].start_pos = pos;
+			words[nwords].typ = 1;
+
+			while (*line != ' ' && *line != '\0')
+			{
+				line += 1;
+				pos += 1;
+			}
+		}
+		else if (isalpha(*line))
+		{
+			bool	only_upper = true;
+			char   *start = line;
+
+			words[nwords].start_pos = pos;
+
+			while (isalnum(*line) || *line == '_')
+			{
+				if (islower(*line))
+					only_upper = false;
+
+				line += 1;
+				pos += 1;
+			}
+
+			if (!only_upper)
+			{
+				if (first_nonspace && words[nwords].start_pos == 2 && *line == '\0')
+				{
+					words[nwords].typ = 2;
+					goto fin;
+				}
+				else if (isupper(*start) && *line == ':')
+				{
+					words[nwords].typ = 3;
+					goto fin;
+				}
+
+				continue;
+			}
+
+			if (strncmp(start, "SQL", pos - words[nwords].start_pos) == 0)
+				continue;
+
+			if (*line == ':')
+				continue;
+
+			words[nwords].typ = 2;
+
+
+		}
+		else
+		{
+			line += 1;
+			pos += 1;
+			first_nonspace = false;
+			continue;
+		}
+
+fin:
+
+		words[nwords].end_pos = pos - 1;
+
+		if (++nwords == maxwords)
+			return nwords;
+	}
+
+	return nwords;
+}
+
 void
 window_fill(int window_identifier,
 			int srcy,
@@ -668,6 +765,8 @@ window_fill(int window_identifier,
 	char		*free_row;
 	WINDOW		*win;
 	Theme		*t;
+	SpecialWord specwords[30];
+	int			nspecwords;
 
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
@@ -680,6 +779,8 @@ window_fill(int window_identifier,
 								window_identifier == WINDOW_FIX_COLS ||
 								window_identifier == WINDOW_FIX_ROWS ||
 								window_identifier == WINDOW_FOOTER;
+	bool		is_text = window_identifier == WINDOW_FOOTER && desc->headline_transl == NULL;
+
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
@@ -863,6 +964,11 @@ window_fill(int window_identifier,
 			bool	is_bottom_deco = false;
 			int		trailing_spaces = 0;
 
+			if (is_text)
+				nspecwords = parse_line(rowstr, specwords, 30);
+			else
+				nspecwords = 0;
+
 			is_top_deco = effective_row == desc->border_top_row;
 			is_head_deco = effective_row == desc->border_head_row;
 			is_bottom_deco = effective_row == desc->border_bottom_row;
@@ -967,6 +1073,7 @@ window_fill(int window_identifier,
 				bool	is_selected_rows;
 				bool	is_selected_row;
 				bool	is_selected_columns;
+				int		specword_typ;
 
 				is_selected_rows = is_selectable && scrdesc->selected_first_row != -1;
 				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
@@ -981,6 +1088,21 @@ window_fill(int window_identifier,
 					bool	is_vertical_cursor = false;
 					int		pos = (i != -1) ? srcx + i : -1;
 					bool	skip_char = false;
+					specword_typ = 0;
+
+					if (nspecwords > 0)
+					{
+						int		j;
+
+						for (j = 0; j < nspecwords; j++)
+						{
+							if (pos >= specwords[j].start_pos && pos <= specwords[j].end_pos)
+							{
+								specword_typ = specwords[j].typ;
+								break;
+							}
+						}
+					}
 
 					is_in_range = false;
 
@@ -1102,6 +1224,11 @@ window_fill(int window_identifier,
 							else
 								new_attr = column_format == 'd' ? t->data_attr : t->line_attr;
 						}
+
+						if (specword_typ == 1 || specword_typ == 2)
+							new_attr |= A_BOLD;
+						else if (specword_typ == 3)
+							new_attr |= A_ITALIC | A_UNDERLINE;
 
 						if (is_cursor || is_cross_cursor)
 						{
