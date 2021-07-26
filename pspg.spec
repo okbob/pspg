@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.1.3
+Version: 	5.2.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,13 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Mon Jul 26 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- progressive load - instead complete load on star, now
+  pspg loads 500 rows, 2000 rows, 2000 rows, ... so first
+  rows can be displayed quickly.
+- now, pspg can format texts produced by psql's help
+- fix few bugs
+  
 * Fri Jul 16 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - new functionality "Ctrl O" - temp switch to primary screen
 - total rewrite input events processing
