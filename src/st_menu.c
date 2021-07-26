@@ -2005,7 +2005,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 	}
 
 	/* enter has sense only on selectable menu item */
-	if (c == 10 && menu->cursor_row != -1)
+	if ((c == 10 || c == 13) && menu->cursor_row != -1)
 		press_enter = true;
 
 	/*
@@ -2015,7 +2015,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 	if (press_accelerator || 
 			  (c == KEY_DOWN && is_menubar) ||
 			  (c == KEY_RIGHT && !is_menubar) ||
-			  c == 10 || post_menu)
+			  (c == 10) || (c == 13) || post_menu)
 	{
 		menu->active_submenu = menu->submenus[menu->cursor_row - 1];
 		if (menu->active_submenu)
@@ -2031,7 +2031,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		 * this event as processed event. Valid accelerator is processed
 		 * always. Enter (c == 10) is processed always too.
 		 */
-		if (press_accelerator || c == 10)
+		if (press_accelerator || c == 10 || c == 13)
 			processed = true;
 		else
 			processed = menu->active_submenu != NULL;
