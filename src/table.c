@@ -531,7 +531,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	int			nrows = 0;
 	int			stop_after_nrows = 0;
 	bool		completed = true;
-	bool		initial_run = false;
+	bool		initial_run;
+	bool		progressive_load_mode;
 	LineBuffer *rows;
 
 #ifdef DEBUG_PIPE
@@ -543,6 +544,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	current_time(&start_sec, &start_ms);
 
 #endif
+
+	progressive_load_mode = opts->progressive_load_mode;
 
 	if (!desc->initialized)
 	{
@@ -578,11 +581,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 		/* progress load mode */
 		desc->initialized = true;
-
-		if (opts->progressive_load_mode)
-			desc->completed = false;
-		else
-			desc->completed = true;
+		desc->completed = false;
 	}
 
 	nrows = desc->total_rows;
@@ -605,14 +604,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	clearerr(f_data);
 
-	if (nrows == 0)
-	{
-		/* detection truncating */
-		detect_file_truncation();
-		initial_run = true;
-	}
 
-	if (opts->progressive_load_mode)
+	if (progressive_load_mode)
 	{
 		if (nrows == 0)
 			stop_after_nrows = max_int(2 * LINES, 500);
@@ -620,7 +613,19 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			stop_after_nrows = nrows + 2000;
 	}
 	else
+	{
 		stop_after_nrows = -1;
+		desc->completed = true;
+	}
+
+	if (nrows == 0)
+	{
+		/* detection truncating */
+		detect_file_truncation();
+		initial_run = true;
+	}
+	else
+		initial_run = false;
 
 	errno = 0;
 	read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, false);

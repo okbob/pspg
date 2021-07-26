@@ -2351,6 +2351,7 @@ main(int argc, char *argv[])
 	time_t	last_sec = 0;							/* time of last mouse release in sec */
 	long	next_watch = 0;
 	int		next_command = cmd_Invalid;
+	int		deffered_command = cmd_Invalid;
 	bool	reuse_event = false;
 	int		last_x_focus = -1;						/* it is used for repeated vertical cursor display */
 	int		prev_first_row;
@@ -3162,6 +3163,21 @@ reinit_theme:
 					set_scrollbar(&scrdesc, &desc, first_row);
 				}
 
+				/*
+				 * we forced repeated readfile until load is completed, when
+				 * some deferred command requires complete load.
+				 */
+				if (deffered_command != cmd_Invalid)
+				{
+					if (desc.completed)
+					{
+						next_command = deffered_command;
+						deffered_command = cmd_Invalid;
+					}
+
+					continue;
+				}
+
 				event = get_pspg_event(&nced, only_tty, timeout);
 
 				if (event == PSPG_FATAL_EVENT)
@@ -3575,6 +3591,18 @@ hide_menu:
 					show_info_wait(" For quit press \"q\" (or use on-sigint-exit option).",
 								   NULL, true, true, true, false);
 			}
+		}
+
+		/*
+		 * When some commands requires complete load, then save
+		 * the command and complete load before.
+		 */
+		if ((require_complete_load(command) ||
+			require_complete_load(nested_command)) &&
+			!desc.completed)
+		{
+			deffered_command = command;
+			continue;
 		}
 
 		switch (command)
