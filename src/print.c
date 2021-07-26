@@ -655,12 +655,66 @@ typedef struct
 } SpecialWord;
 
 
+static bool
+is_upper_char(char *chr)
+{
+	if (use_utf8)
+		return utf8_isupper(chr);
+
+	return isupper(*chr);
+}
+
+static bool
+is_ascii_alnum(char chr)
+{
+	if (use_utf8 && (chr & 0x80))
+		return false;
+
+	return isalnum(chr);
+}
+
+static bool
+is_ascii_alpha(char chr)
+{
+	if (use_utf8 && (chr & 0x80))
+		return false;
+
+	return isalpha(chr);
+}
+
 static int
 parse_line(char *line, SpecialWord *words, int maxwords)
 {
 	int		nwords = 0;
 	int		pos = 0;
 	bool	first_nonspace = true;
+
+	if (is_upper_char(line) || strncmp(line, "psql", 4) == 0)
+	{
+		char   *aux_line = line;
+
+		words[0].start_pos = 0;
+		words[0].typ = 3;
+
+		while (*line != '\0' && *line != ':')
+		{
+			pos += dsplen(line);
+			line += charlen(line);
+		}
+
+		if (!is_upper_char(aux_line + 1))
+		{
+			words[0].end_pos = pos - 1;
+			words[0].typ = 3;
+			nwords = 1;
+			first_nonspace = false;
+		}
+		else
+		{
+			line = aux_line;
+			pos = 0;
+		}
+	}
 
 	while (*line)
 	{
@@ -677,18 +731,18 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 
 			while (*line != ' ' && *line != '\0')
 			{
-				line += 1;
-				pos += 1;
+				pos += dsplen(line);
+				line += charlen(line);
 			}
 		}
-		else if (isalpha(*line))
+		else if (is_ascii_alpha(*line))
 		{
 			bool	only_upper = true;
 			char   *start = line;
 
 			words[nwords].start_pos = pos;
 
-			while (isalnum(*line) || *line == '_')
+			while (is_ascii_alnum(*line) || *line == '_')
 			{
 				if (islower(*line))
 					only_upper = false;
@@ -720,13 +774,11 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 				continue;
 
 			words[nwords].typ = 2;
-
-
 		}
 		else
 		{
-			line += 1;
-			pos += 1;
+			pos += dsplen(line);
+			line += charlen(line);
 			first_nonspace = false;
 			continue;
 		}
