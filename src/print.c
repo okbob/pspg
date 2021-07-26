@@ -773,6 +773,9 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 			if (*line == ':')
 				continue;
 
+			if ((pos - words[nwords].start_pos) == 1)
+				continue;
+
 			words[nwords].typ = 2;
 		}
 		else
