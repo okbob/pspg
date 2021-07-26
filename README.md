@@ -62,6 +62,7 @@ General options:
   --ni                     not interactive mode (only for csv and query)
   --no-watch-file          don't watch inotify event of file
   --no-mouse               don't use own mouse handling
+  --no-progressive-load    don't use progressive data load
   --no-sigint-search-reset
                            without reset searching on sigint (CTRL C)
   --no-sleep               without waits against flickering
