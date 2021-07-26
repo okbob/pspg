@@ -772,7 +772,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			init_pair(5, 235, 136);
 			init_pair(6, 235, 136);
 			init_pair(7, 17, 244);
-			init_pair(8, 17, 235);
+			init_pair(8, 17, 244);
 			init_pair(9, 17, 245);
 			init_pair(10, 235, 136);
 			init_pair(11, 235, 136);
@@ -988,7 +988,7 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
 			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
 			set_colour(7, COLOR_RED, COLOR_BLACK, true, 0);
-			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
+			set_colour(8, COLOR_RED, COLOR_BLACK, false, 0);
 			set_colour(9, COLOR_YELLOW, COLOR_BLACK, false, 0);
 			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
 			set_colour(11, COLOR_GREEN, COLOR_CYAN, true, 0);
