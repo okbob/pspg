@@ -654,7 +654,6 @@ typedef struct
 	int		typ;
 } SpecialWord;
 
-
 static bool
 is_upper_char(char *chr)
 {
@@ -682,6 +681,10 @@ is_ascii_alpha(char chr)
 	return isalpha(chr);
 }
 
+/*
+ * Try to identify words in line that should be highlighted
+ *
+ */
 static int
 parse_line(char *line, SpecialWord *words, int maxwords)
 {
@@ -689,6 +692,12 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 	int		pos = 0;
 	bool	first_nonspace = true;
 
+	/*
+	 * When text starts on line start and first char is upper
+	 * char, then mark this text until double colon.
+	 *
+	 * like "Usage:"
+	 */
 	if (is_upper_char(line) || strncmp(line, "psql", 4) == 0)
 	{
 		char   *aux_line = line;
@@ -724,6 +733,7 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 			pos += 1;
 		}
 
+		/* psql's backslash commands */
 		if (*line == '\\')
 		{
 			words[nwords].start_pos = pos;
@@ -735,6 +745,34 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 				line += charlen(line);
 			}
 		}
+		/* psql's shell options */
+		else if (*line == '-')
+		{
+			words[nwords].start_pos = pos;
+			words[nwords].typ = 1;
+
+			while (*line == '-')
+			{
+				line += 1;
+				pos += 1;
+			}
+
+			if (pos - words[nwords].start_pos > 2)
+				continue;
+
+			if (!is_ascii_alnum(*line))
+				continue;
+
+			while (is_ascii_alnum(*line) || *line == '-')
+			{
+				line += 1;
+				pos += 1;
+			}
+
+			words[nwords].typ = 1;
+			goto fin;
+		}
+		/* psql's variables and \pset variables */
 		else if (is_ascii_alpha(*line))
 		{
 			bool	only_upper = true;
