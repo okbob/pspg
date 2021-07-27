@@ -5751,6 +5751,8 @@ recheck_end:
 
 						if (desc.headline_transl != NULL)
 							offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
+						else
+							offset = 2;
 
 						if (first_row + offset > max_first_row)
 							offset = 1;
@@ -5781,6 +5783,8 @@ recheck_end:
 
 						if (desc.headline_transl != NULL)
 							offset = (scrdesc.main_maxy - scrdesc.fix_rows_rows) / 3;
+						else
+							offset = 2;
 
 						if (first_row <= offset)
 							offset = 1;
