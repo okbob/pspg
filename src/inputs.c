@@ -535,6 +535,9 @@ unget_pspg_event(NCursesEventData *nced)
 bool
 open_data_stream(Options *opts)
 {
+	struct stat statbuf;
+	const char *mode = "r";
+
 	current_state->_errno = 0;
 	current_state->errstr = NULL;
 
@@ -545,11 +548,30 @@ open_data_stream(Options *opts)
 		errno = 0;
 
 		/*
+		 * Try to detect if source is file or pipe
+		 */
+		if (stat(locpathname, &statbuf) == 0)
+		{
+			if (S_ISFIFO(statbuf.st_mode))
+			{
+				log_row("data source is FIFO");
+
+				/*
+				 * Without mode="rw+", fopen over FIFO is very blocking,
+				 * if FIFO is not currently opened by some process for
+				 * write. We can protect self by open FIFO directly with
+				 * rw+ mode.
+				 */
+				mode = "rw+";
+			}
+		}
+
+		/*
 		 * fopen can be blocking operation on FIFO. It is known limit. Theoretically
 		 * it can be fixed by using open fce instead fopen and setting RW and NONBLOCK
 		 * in open time. But it doesn't look like robust solution.
 		 */
-		f_data = fopen(locpathname, "r");
+		f_data = fopen(locpathname, mode);
 		if (!f_data)
 		{
 			/* save errno, and prepare error message */
@@ -575,8 +597,6 @@ open_data_stream(Options *opts)
 
 	if (f_data)
 	{
-		struct stat statbuf;
-
 		if (fstat(fileno(f_data), &statbuf) != 0)
 		{
 			current_state->_errno = errno;
