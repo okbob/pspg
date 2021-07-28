@@ -664,8 +664,15 @@ open_data_stream(Options *opts)
 
 #endif
 
+	/*
+	 * Progressive load should to load in streaming mode too.
+	 * Currently, it doesn't work. Should be fixed.
+	 * Just for now, disable progressive load, when streaming
+	 * mode is used.
+	 */
+	if (current_state->stream_mode)
+		opts->progressive_load_mode = false;
 	}
-
 
 	return true;
 }
