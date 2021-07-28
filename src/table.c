@@ -590,6 +590,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	if (!desc->initialized)
 	{
+		log_row("DataDesc is initialized\n");
+
 		desc->title[0] = '\0';
 		desc->title_rows = 0;
 		desc->border_top_row = -1;
@@ -616,7 +618,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		desc->rows.prev = NULL;
 		desc->oid_name_table = false;
 		desc->multilines_already_tested = false;
-		desc->last_buffer = &desc->rows;
+		desc->last_buffer = 0;
 
 		/* safe reset */
 		desc->filename[0] = '\0';
@@ -627,7 +629,14 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	}
 
 	nrows = desc->total_rows;
-	rows = desc->last_buffer;
+
+	/*
+	 * DataDesc struct can be copied, and then has not
+	 * contain any self reference. So instead to set
+	 * last_buffer to &desc->rows, I use NULL as signal,
+	 * so no other line buffer was created (and used).
+	 */
+	rows = desc->last_buffer ? desc->last_buffer : &desc->rows;
 
 	state->errstr = NULL;
 	state->_errno = 0;
@@ -645,7 +654,6 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		return false;
 
 	clearerr(f_data);
-
 
 	if (progressive_load_mode)
 	{
@@ -827,7 +835,7 @@ next_row:
 	} while (read != -1);
 
 	desc->total_rows = nrows;
-	desc->last_buffer = rows;
+	desc->last_buffer = rows != &desc->rows ? rows : NULL;
 	desc->completed = completed;
 
 	if (errno && errno != EAGAIN)

@@ -665,12 +665,13 @@ open_data_stream(Options *opts)
 #endif
 
 	/*
-	 * Progressive load should to load in streaming mode too.
-	 * Currently, it doesn't work. Should be fixed.
-	 * Just for now, disable progressive load, when streaming
-	 * mode is used.
+	 * In streaming mode, when input stream is file, then is
+	 * high risk of desynchronization. Until we will have some
+	 * synchronization mark in protocol, we should not to
+	 * allow progressive load.
 	 */
-	if (current_state->stream_mode)
+	if (current_state->stream_mode &&
+		(f_data_opts & STREAM_IS_FILE))
 		opts->progressive_load_mode = false;
 	}
 

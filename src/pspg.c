@@ -3155,13 +3155,50 @@ reinit_theme:
 
 				if (!desc.completed)
 				{
-					(void) readfile(&opts, &desc, &state);
+					bool	res;
+					int		total_rows_before = desc.total_rows;
 
-					timeout = 10;
-					only_tty = true;
+					/*
+					 * When pspg is used in streaming mode, then in this moment,
+					 * the data should not be available. readfile fails quckly.
+					 * We can easy detect empty data desc. In this case, we should
+					 * to wait to data usually way.
+					 * In other case, when we load data already, then we want to
+					 * read data quckly, so timeout is only short, and we check
+					 * just tty.
+					 */
+					res = readfile(&opts, &desc, &state);
+					if (res && desc.total_rows > 0)
+					{
+						timeout = 10;
+						only_tty = true;
+					}
+					else
+					{
+						timeout = -1;
+						only_tty = false;
+					}
 
-					set_scrollbar_dimensions(&opts, &desc, &scrdesc);
-					set_scrollbar(&scrdesc, &desc, first_row);
+					/*
+					 * We loaded some data, and then we need refresh.
+					 * so enforce short timeout.
+					 */
+					if (total_rows_before != desc.total_rows)
+					{
+						timeout = 10;
+						only_tty = true;
+
+						/*
+						 * maybe layout should be recreated, if
+						 * before was calculated for too small
+						 * rows.
+						 */
+						if (total_rows_before < LINES)
+							refresh_layout_after_terminal_resize();
+
+						set_scrollbar_dimensions(&opts, &desc, &scrdesc);
+						set_scrollbar(&scrdesc, &desc, first_row);
+					}
 				}
 
 				/*
@@ -5814,7 +5851,7 @@ recheck_end:
 							if (!opts.no_sleep)
 								usleep(30 * 1000);
 					}
-					else
+//					else
 
 #endif
 
