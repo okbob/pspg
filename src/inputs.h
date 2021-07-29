@@ -61,6 +61,7 @@ enum
 	STREAM_CAN_BE_REOPENED			= 1 << 4,
 	STREAM_IS_IN_NONBLOCKING_MODE	= 1 << 5,
 	STREAM_HAS_NOTIFY_SUPPORT		= 1 << 6,
+	STREAM_IS_CLOSED				= 1 << 7,
 };
 
 extern FILE	   *f_data;

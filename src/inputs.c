@@ -217,7 +217,9 @@ _get_pspg_event(NCursesEventData *nced,
 
 	if (!only_tty_events)
 	{
-		if (current_state->stream_mode && !(f_data_opts & STREAM_IS_FILE))
+		if (current_state->stream_mode &&
+			!(f_data_opts & STREAM_IS_FILE) &&
+			!(f_data_opts & STREAM_IS_CLOSED))
 		{
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
@@ -357,8 +359,9 @@ repeat_reading:
 					/* The pipe cannot be reopened */
 					if (f_data_opts & STREAM_IS_PIPE)
 					{
+						f_data_opts |= STREAM_IS_CLOSED;
 						log_row("detected POLLHUP on pipe");
-						return PSPG_FATAL_EVENT;
+						return PSPG_NOTHING_VALID_EVENT;
 					}
 
 					log_row("force close stream after POLLHUP");
@@ -693,6 +696,18 @@ open_data_stream(Options *opts)
 	if (current_state->stream_mode &&
 		(f_data_opts & STREAM_IS_FILE))
 		opts->progressive_load_mode = false;
+	}
+
+	/*
+	 * The pspg over PIPE with streaming mode can be used as PSQL_PAGER
+	 * or as PSQL_WATCH_PAGER. Without streaming mode can be used only
+	 * as PSQL_PAGER. Then from user's perspective is better to use
+	 * streaming mode by default.
+	 */
+	if ((f_data_opts & STREAM_IS_PIPE) && !opts->no_implicit_stream)
+	{
+		log_row("force stream mode because input is PIPE");
+		current_state->stream_mode = true;
 	}
 
 	return true;

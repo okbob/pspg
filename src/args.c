@@ -105,6 +105,7 @@ static struct option long_options[] =
 	{"menu-always", no_argument, 0, 45},
 	{"no-last-row-search", no_argument, 0, 46},
 	{"no-progressive-load", no_argument, 0, 47},
+	{"no-implicit-stream", no_argument, 0, 48},
 	{0, 0, 0, 0}
 };
 
@@ -308,10 +309,11 @@ readargs(char **argv,
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 					fprintf(stdout, "  --ni                     not interactive mode (only for csv and query)\n");
-					fprintf(stdout, "  --no-watch-file          don't watch inotify event of file\n");
+					fprintf(stdout, "  --no-implicit-stream      block implicit stream mode\n");
 					fprintf(stdout, "  --no-mouse               don't use own mouse handling\n");
 					fprintf(stdout, "  --no-progressive-load    don't use progressive data load\n");
 					fprintf(stdout, "  --no-sigint-search-reset\n");
+					fprintf(stdout, "  --no-watch-file          don't watch inotify event of file\n");
 					fprintf(stdout, "                           without reset searching on sigint (CTRL C)\n");
 					fprintf(stdout, "  --no-sleep               without waits against flickering\n");
 					fprintf(stdout, "  --no-xterm-mouse-mode    don't use optional xterm mouse mode\n");
@@ -663,6 +665,9 @@ readargs(char **argv,
 				break;
 			case 47:
 				opts->progressive_load_mode = false;
+				break;
+			case 48:
+				opts->no_implicit_stream = true;
 				break;
 			default:
 				{

@@ -94,6 +94,7 @@ typedef struct
 	bool	last_row_search;
 	int		hist_size;
 	bool	progressive_load_mode;
+	bool	no_implicit_stream;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

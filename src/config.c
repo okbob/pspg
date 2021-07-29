@@ -140,6 +140,8 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("menu_always", opts->menu_always);
 	SAFE_SAVE_BOOL_OPTION("empty_string_is_null", opts->empty_string_is_null);
 	SAFE_SAVE_BOOL_OPTION("last_row_search", opts->last_row_search);
+	SAFE_SAVE_BOOL_OPTION("progressive_load_mode", opts->progressive_load_mode);
+	SAFE_SAVE_BOOL_OPTION("no_implicit_stream", opts->no_implicit_stream);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -315,6 +317,10 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->last_row_search, bool_val, res);
 			else if (strcmp(key, "hist_size") == 0)
 				is_valid = assign_int(key, (int *) &opts->hist_size, int_val, res, 0, INT_MAX);
+			else if (strcmp(key, "progressive_load_mode") == 0)
+				is_valid = assign_bool(key, &opts->progressive_load_mode, bool_val, res);
+			else if (strcmp(key, "no_implicit_stream") == 0)
+				is_valid = assign_bool(key, &opts->no_implicit_stream, bool_val, res);
 
 			free(line);
 			line = NULL;
