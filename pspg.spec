@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.3.0
+Version: 	5.3.1
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,7 +43,11 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
-* Thu Jul 29  2021 Pavel Stehule <pavel.stehule@gmail.com>
+* Fri Jul 30 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- using stream mode as default for PIPE source was bad idea.
+  I reverted it.
+
+* Thu Jul 29 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - the option --stream is implicit for PIPE. If you use
   pspg as page for PSQL_WATCH_PAGER, there is not necessity
   to explicitly use option --stream
