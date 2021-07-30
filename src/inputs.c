@@ -698,18 +698,6 @@ open_data_stream(Options *opts)
 		opts->progressive_load_mode = false;
 	}
 
-	/*
-	 * The pspg over PIPE with streaming mode can be used as PSQL_PAGER
-	 * or as PSQL_WATCH_PAGER. Without streaming mode can be used only
-	 * as PSQL_PAGER. Then from user's perspective is better to use
-	 * streaming mode by default.
-	 */
-	if ((f_data_opts & STREAM_IS_PIPE) && !opts->no_implicit_stream)
-	{
-		log_row("force stream mode because input is PIPE");
-		current_state->stream_mode = true;
-	}
-
 	return true;
 }
 

@@ -346,9 +346,10 @@ or by specification watch time by option `--watch`.
 
 # Streaming modes
 
-`pspg` can read a stream of tabular data from pipe or from file (with an option
-`--stream` or it can read a stream of queries from pipe or from file (with an
-option `--querystream`).
+`pspg` can read a continuous stream of tabular data from pipe, named pipe or from file
+(with an option `--stream` or it can read a stream of queries from pipe or from file
+(with an option `--querystream`). In stream mode, only data in table format can be
+processed, because `pspg` uses empty line as separator between tables.
 
 The query stream mode is an sequence of SQL statements separated by char GS (Group
 separator - 0x1D on separated line.

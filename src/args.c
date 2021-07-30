@@ -309,7 +309,6 @@ readargs(char **argv,
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 					fprintf(stdout, "  --ni                     not interactive mode (only for csv and query)\n");
-					fprintf(stdout, "  --no-implicit-stream      block implicit stream mode\n");
 					fprintf(stdout, "  --no-mouse               don't use own mouse handling\n");
 					fprintf(stdout, "  --no-progressive-load    don't use progressive data load\n");
 					fprintf(stdout, "  --no-sigint-search-reset\n");
@@ -665,9 +664,6 @@ readargs(char **argv,
 				break;
 			case 47:
 				opts->progressive_load_mode = false;
-				break;
-			case 48:
-				opts->no_implicit_stream = true;
 				break;
 			default:
 				{

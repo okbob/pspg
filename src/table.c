@@ -482,8 +482,20 @@ endline_exit:
 					if (rc == -1)
 					{
 						log_row("poll error (%s)",  strerror(errno));
+						if (handle_sigint)
+						{
+							free(dynbuf);
+							handle_sigint = false;
+							return -1;
+						}
 
 						usleep(1000);
+					}
+
+					if (fds[0].revents & POLLHUP)
+					{
+						free(dynbuf);
+						return -1;
 					}
 
 					clearerr(fp);
@@ -684,13 +696,29 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	do
 	{
-		if (line && line[read - 1] == '\n')
+		if (line && read > 0 && line[read - 1] == '\n')
 		{
 			line[read - 1] = '\0';
 			read -= 1;
 		}
 
-		/* In streaming mode exit when you find empty row */
+		/*
+		 * In streaming mode go out when you find empty row.
+		 *
+		 * Attention: streaming mode can be used only for tabular data!!!
+		 * on nontabular data (plain text) we have not a possibility
+		 * to detect end of block. In theory we can wait sone time to
+		 * data, and after timeout we can alert end of block, but it
+		 * increase the time of data load (and complexity).
+		 *
+		 * So until we get more possibilities (some marks in stream),
+		 * it is better to hold stream mode as special case. I had an
+		 * idea to set stream mode as default, but it doesn't work with
+		 * non tabular data.
+		 *
+		 * Note: psql helps with it - it redirects only tabular data.
+		 *
+		 */
 		if (state->stream_mode && read == 0)
 		{
 			free(line);
