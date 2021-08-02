@@ -570,6 +570,7 @@ parse_and_eval_bscommand(const char *cmdline,
 {
 	bool		next_is_num = false;
 	bool		sign_minus = false;
+	bool		sign_plus = false;
 	const char	   *ptr;
 	char	   *endptr;
 	int			n;
@@ -605,6 +606,7 @@ parse_and_eval_bscommand(const char *cmdline,
 	{
 		/* ignore initial + */
 		next_is_num = true;
+		sign_plus = true;
 		cmdline += 1;
 	}
 	else if (*cmdline == '-')
@@ -617,22 +619,30 @@ parse_and_eval_bscommand(const char *cmdline,
 	if (isdigit(*cmdline))
 	{
 		*long_argument = strtol(cmdline, &endptr, 10);
-		*next_command = cmd_GotoLine;
 
-		if (sign_minus)
-			*long_argument = - *long_argument;
-
-		else if (*endptr == '+')
+		if (sign_plus)
 		{
 			*long_argument = labs(*long_argument);
 			*next_command = cmd_GotoLineRel;
-			endptr += 1;
+		}
+		else if (sign_minus)
+		{
+			*long_argument = - labs(*long_argument);
+			*next_command = cmd_GotoLineRel;
 		}
 		else if (*endptr == '-')
 		{
 			*long_argument = - labs(*long_argument);
-			*next_command = cmd_GotoLineRel;
+			*next_command = cmd_GotoLine;
 			endptr += 1;
+		}
+		else /* \N or \N+ */
+		{
+			*long_argument = labs(*long_argument);
+			*next_command = cmd_GotoLine;
+
+			if (*endptr == '+')
+				endptr += 1;
 		}
 
 		cmdline = endptr;

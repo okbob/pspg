@@ -237,10 +237,11 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 ## Backslash commands
 | Command                                                      | Description                |
 |--------------------------------------------------------------|----------------------------|
-| `\[+]N`                                                      | go to line number          |
-| `\-N`                                                        | go to line number from end |
-| `\N+`                                                        | go to N lines forward      |
-| `\N-`                                                        | go to N lines backward     |
+| `\N`                                                         | go to line number          |
+| `\+N`                                                        | go to N lines forward      |
+| `\-N`                                                        | go to N lines backward     |
+| `\N+`                                                        | go to line number          |
+| `\N-`                                                        | go to line number from end |
 | `\theme N`                                                   | set theme number           |
 | `\copy [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text\|pipesep\|sqlvalues]` | copy data to clipboard     |
 | `\save [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text\|pipesep\|sqlvalues]` | copy data to clipboard     |
