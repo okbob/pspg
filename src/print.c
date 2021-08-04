@@ -43,6 +43,10 @@
 
 #include <ctype.h>
 
+#ifndef A_ITALIC
+#define A_ITALIC	A_DIM
+#endif
+
 static inline void
 wrepeatspace(WINDOW *win, int n)
 {

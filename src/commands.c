@@ -19,8 +19,6 @@ int		CTRL_END;
 int		CTRL_SHIFT_HOME;
 int		CTRL_SHIFT_END;
 
-#ifdef NCURSES_EXT_FUNCS
-
 static int
 get_code(const char *capname, int fallback)
 {
@@ -45,8 +43,6 @@ get_code(const char *capname, int fallback)
 #endif
 
 }
-
-#endif
 
 /*
  * Set a value of CTRL_HOME and CTRL_END key codes. These codes
