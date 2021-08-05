@@ -168,6 +168,22 @@ readline_getc(FILE *dummy)
 {
 	UNUSED(dummy);
 
+#if RL_READLINE_VERSION < 0x0603
+
+	/*
+	 * readline uses this routine for reading one char. When
+	 * rl_input_available_hook is not available, readline try
+	 * to read multibyte char by repeated call of readline_getc,
+	 * until multibyte char is completed or this function returns
+	 * EOF. In this case, probably the most simple solution
+	 * is direct reading from input stream. These old versions
+	 * of readline can be on RH7 and Solaris.
+	 */
+	if (!readline_ncurses_proxy_char_is_available)
+		c = wgetch(prompt_window);
+
+#endif
+
     readline_ncurses_proxy_char_is_available = false;
     return readline_ncurses_proxy_char;
 }
