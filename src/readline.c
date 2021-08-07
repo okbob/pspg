@@ -180,7 +180,7 @@ readline_getc(FILE *dummy)
 	 * of readline can be on RH7 and Solaris.
 	 */
 	if (!readline_ncurses_proxy_char_is_available)
-		c = wgetch(prompt_window);
+		return wgetch(prompt_window);
 
 #endif
 
