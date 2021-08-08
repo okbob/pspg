@@ -360,12 +360,19 @@ ExtStrAppendNewLine(ExtStr *estr, char *str)
 	estr->len += size;
 }
 
+/*
+ * continuation_mark is related to new line symbol in text.
+ * continuation_mark is related to line break created by
+ * wrapped mode. continuation_mark2 is equal to previous
+ * continuous_mark
+ */
 void
 ExtStrAppendLine(ExtStr *estr,
 				 char *str,
 				 int size,
 				 char linestyle,
-				 bool continuation_mark)
+				 bool continuation_mark,
+				 bool continuation_mark2)
 {
 	bool	insert_nl = false;
 
@@ -377,6 +384,7 @@ ExtStrAppendLine(ExtStr *estr,
 	if (continuation_mark)
 	{
 		int		continuation_mark_size = 0;
+		bool	wrapped_mode = false;
 
 		/* try to detect continuation marks at end of line */
 		if (linestyle == 'a')
@@ -387,7 +395,10 @@ ExtStrAppendLine(ExtStr *estr,
 				insert_nl = true;
 			}
 			else if (str[size - 1] == '.')
+			{
 				continuation_mark_size = 1;
+				wrapped_mode = true;
+			}
 		}
 		else
 		{
@@ -404,7 +415,10 @@ ExtStrAppendLine(ExtStr *estr,
 					insert_nl = true;
 				}
 				else if (strncmp(ptr, u2, 3) == 0)
+				{
 					continuation_mark_size = 3;
+					wrapped_mode = true;
+				}
 			}
 		}
 
@@ -412,7 +426,45 @@ ExtStrAppendLine(ExtStr *estr,
 		{
 			size -= continuation_mark_size;
 
-			str = trim_str(str, &size);
+			/*
+			 * Trimming right end of string can eats spaces. In normal mode, it
+			 * should not  be problem, because there is new line symbol, but in
+			 * wrapped mode we can trim space that is used as word separator.
+			 * So don't trim in wrapped mode.
+			 */
+			if (!wrapped_mode)
+				str = trim_str(str, &size);
+		}
+	}
+
+	/*
+	 * continuation mark can be on left side to (wrapped mode).
+	 * We should to skip it.
+	 */
+	if (continuation_mark2)
+	{
+		int		cms = 0;		/* continuation mark size */
+
+		if (linestyle == 'a')
+		{
+			if (*str == '.')
+				cms = 1;
+		}
+		else
+		{
+			const char *u1 = "\342\200\246";	/* … */
+
+			if (size > 3)
+			{
+				if (strncmp(str, u1, 3) == 0)
+					cms = 3;
+			}
+		}
+
+		if (cms > 0)
+		{
+			str += cms;
+			size -= cms;
 		}
 	}
 

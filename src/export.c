@@ -356,7 +356,8 @@ static bool
 process_item(ExportState *expstate,
 			 char typ, char *field, int size,
 			 int xpos, bool is_colname,
-			 bool has_continue_mark)
+			 bool has_continue_mark,
+			 bool has_continue_mark2)
 {
 	if (typ == 'd')
 	{
@@ -374,7 +375,8 @@ process_item(ExportState *expstate,
 
 			ExtStrAppendLine(estr, field, size,
 							 expstate->linestyle,
-							 has_continue_mark);
+							 has_continue_mark,
+							 has_continue_mark2);
 
 			expstate->colno += 1;
 
@@ -388,7 +390,8 @@ process_item(ExportState *expstate,
 			{
 				ExtStrAppendLine(estr, field, size,
 								 expstate->linestyle,
-								 has_continue_mark);
+								 has_continue_mark,
+								 has_continue_mark2);
 
 				size = ExtStrTrimEnd(estr,
 									 expstate->format == CLIPBOARD_FORMAT_TSVC);
@@ -746,6 +749,8 @@ export_data(Options *opts,
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_row;
 
+	bool	prev_continuation_mark = false;
+
 	bool	isok = true;
 
 	ExportState expstate;
@@ -1030,7 +1035,8 @@ export_data(Options *opts,
 				isok = process_item(&expstate, 'd',
 									field, field_size, field_xpos,
 									is_colname,
-									continuation_mark);
+									continuation_mark,
+									prev_continuation_mark);
 				if (!isok)
 					goto exit_export;
 
@@ -1040,7 +1046,8 @@ export_data(Options *opts,
 			isok = process_item(&expstate, typ,
 								ptr, size, xpos,
 								is_colname,
-								continuation_mark);
+								continuation_mark,
+								prev_continuation_mark);
 
 			if (!isok)
 				goto exit_export;
@@ -1054,16 +1061,20 @@ export_data(Options *opts,
 			isok = process_item(&expstate, 'd',
 								field, field_size, field_xpos,
 								is_colname,
-								continuation_mark);
+								continuation_mark,
+								prev_continuation_mark);
 			if (!isok)
 				goto exit_export;
 		}
 
 		isok = process_item(&expstate, 'N',
 							NULL, 0, -1, is_colname,
-							continuation_mark);
+							continuation_mark,
+							prev_continuation_mark);
 		if (!isok)
 			goto exit_export;
+
+		prev_continuation_mark = continuation_mark;
 	}
 
 exit_export:
