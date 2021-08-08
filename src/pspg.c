@@ -443,8 +443,14 @@ set_scrollbar_dimensions(Options *opts, DataDesc *desc, ScrDesc *scrdesc)
 		if (scrdesc->main_maxy < desc->last_row + 1)
 		{
 			Theme	   *t;
+			int			num_width;
 
-			scrdesc->main_maxx -= 1;
+			/*
+			 * This calculation can be processed repeatedly, so we need to
+			 * calculate main_maxx absolutely.
+			 */
+			num_width = opts->show_rownum ? number_width(desc->maxy) + 2 : 0;
+			scrdesc->main_maxx = scrdesc->maxx - num_width - 1;
 
 			t = &scrdesc->themes[WINDOW_VSCROLLBAR];
 
