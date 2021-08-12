@@ -1430,6 +1430,12 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	desc->maxbytes = -1;
 	desc->maxx = -1;
 
+	/*
+	 * This format doesn't support progressive load
+	 */
+	desc->initialized = true;
+	desc->completed = true;
+
 	memset(&desc->rows, 0, sizeof(LineBuffer));
 	desc->rows.prev = NULL;
 
