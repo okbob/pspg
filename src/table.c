@@ -211,20 +211,23 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 	if (strncmp(str, "[ ", 2) != 0)
 		return false;
 
-	if (ei_minx != NULL && ei_maxx != NULL)
-	{
-		pos += 2;
-		str += 2;
+	pos += 2;
+	str += 2;
+
+	if (ei_minx)
 		*ei_minx = pos - 1;
 
-		while (*str != ']' && *str != '\0')
-		{
-			pos += 1;
-			str += charlen(str);
-		}
-
-		*ei_maxx = pos - 1;
+	while (*str != ']' && *str != '\0')
+	{
+		pos += 1;
+		str += charlen(str);
 	}
+
+	if (*str != ']')
+		return false;
+
+	if (ei_maxx)
+		*ei_maxx = pos - 1;
 
 	return true;
 }
@@ -777,6 +780,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		{
 			desc->border_top_row = nrows;
 			desc->is_expanded_mode = is_expanded_header(line, NULL, NULL);
+			if (desc->is_expanded_mode)
+				desc->border_head_row = nrows;
 		}
 		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
 		{
