@@ -223,7 +223,7 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 		str += charlen(str);
 	}
 
-	if (*str != ']')
+	if (strncmp(str - 1, " ]", 2) != 0)
 		return false;
 
 	if (ei_maxx)
