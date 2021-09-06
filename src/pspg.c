@@ -6443,11 +6443,10 @@ refresh:
 
 	pspg_save_history(PSPG_HISTORY, &opts);
 
-#ifdef DEBUG_PIPE
-
 	/*
 	 * Try to release all allocated memory in debug mode, for better
-	 * memory leak detection.
+	 * memory leak detection. Although this is not necessary, it helps
+	 * with debugging.
 	 */
 	lb_free(&desc);
 	free(desc.cranges);
@@ -6455,8 +6454,6 @@ refresh:
 	free(opts.pathname);
 
 	free(string_argument);
-
-#endif
 
 	close_data_stream();
 

@@ -2442,8 +2442,10 @@ _st_menu_free(struct ST_MENU *menu)
 			free(menu->submenus);
 		}
 
-		if (menu->accelerators)
-			free(menu->accelerators);
+		for (i = 0; i < menu->naccelerators; i++)
+			free(menu->accelerators[i].c);
+
+		free(menu->accelerators);
 
 		if (menu->shadow_panel)
 			del_panel(menu->shadow_panel);
@@ -2452,6 +2454,10 @@ _st_menu_free(struct ST_MENU *menu)
 
 		del_panel(menu->panel);
 		delwin(menu->window);
+
+		free(menu->bar_fields_x_pos);
+		free(menu->options);
+		free(menu->refvals);
 
 		free(menu);
 	}
