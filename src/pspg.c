@@ -6452,6 +6452,7 @@ refresh:
 	lb_free(&desc);
 	free(desc.cranges);
 	free(desc.headline_transl);
+	free(desc.order_map);
 
 	free(opts.pathname);
 	free(opts.nullstr);
