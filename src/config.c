@@ -219,7 +219,7 @@ assign_str(char *key, char **target, char *value, int type)
 		return false;
 	}
 
-	*target = value;
+	*target = sstrdup(value);
 
 	return true;
 }
@@ -319,13 +319,12 @@ load_config(char *path, Options *opts)
 			else if (strcmp(key, "progressive_load_mode") == 0)
 				is_valid = assign_bool(key, &opts->progressive_load_mode, bool_val, res);
 
-			free(line);
-			line = NULL;
-
 			if (!is_valid || res == -1)
 				break;
 		}
 	}
+
+	free(line);
 
 	fclose(f);
 
