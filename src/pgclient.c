@@ -404,6 +404,7 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 
 	(void) rb;
 	(void) pdesc;
+	(void) opts;
 
 	*err = "Query cannot be executed. The Postgres library was not available at compile time.";
 
