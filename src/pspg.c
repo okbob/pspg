@@ -1269,7 +1269,7 @@ print_status(Options *opts,
 
 		UNUSED(maxy);
 
-		wbkgd(top_bar, current_state->errstr ? bottom_bar_theme->error_attr : COLOR_PAIR(2));
+		wbkgd(top_bar, current_state->errstr ? bottom_bar_theme->error_attr : top_bar_theme->status_bar_attr);
 		werase(top_bar);
 
 		if ((desc->title[0] != '\0' || desc->filename[0] != '\0') && !current_state->errstr)
@@ -2907,7 +2907,7 @@ reinit_theme:
 
 	prompt_window_input_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].input_attr;
 	prompt_window_error_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].error_attr;
-	prompt_window_info_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].bottom_light_attr;
+	prompt_window_info_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].info_attr;
 
 	clear();
 

@@ -279,7 +279,7 @@ init_menu_config(Options *opts)
 
 		fcp = st_menu_load_style(&menu_config,
 								 menu_theme,
-								 40,
+								 100,
 								 !use_utf8,
 								 opts->force_ascii_art);
 
@@ -292,7 +292,7 @@ init_menu_config(Options *opts)
 	else
 		st_menu_load_style_rgb(&menu_config,
 							   menu_theme,
-							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 40,
+							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 3 : 100,
 							   &start_from_rgb,
 							   !use_utf8,
 							   opts->force_ascii_art);

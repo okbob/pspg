@@ -11,6 +11,7 @@
  *-------------------------------------------------------------------------
  */
 
+#include "pspg.h"
 #include "themes.h"
 #include <string.h>
 #include <stdbool.h>
@@ -22,6 +23,8 @@ attr_t		theme_attrs[50];
 #ifndef A_ITALIC
 #define A_ITALIC	A_DIM
 #endif
+
+int		ncurses_colorpair_index = 0;
 
 static void
 set_colour(short id, short foreground, short background, bool light, attr_t attrs)
@@ -43,18 +46,6 @@ set_colour(short id, short foreground, short background, bool light, attr_t attr
 	}
 }
 
-static attr_t
-if_in_int(int v, const int *s, attr_t v1, attr_t v2)
-{
-	while(*s != -1)
-	{
-		if (v == *s)
-			return v1;
-		s += 1;
-	}
-	return v2;
-}
-
 /* 0..255 rgb based colors */
 static void
 init_color_rgb_ff(short color, short r, short g, short b)
@@ -65,6 +56,277 @@ init_color_rgb_ff(short color, short r, short g, short b)
 			   (b / 255.0) * 1000.0);
 }
 
+typedef enum
+{
+	PSPG_BLACK_COLOR,
+	PSPG_RED_COLOR,
+	PSPG_GREEN_COLOR,
+	PSPG_BROWN_COLOR,
+	PSPG_BLUE_COLOR,
+	PSPG_MAGENTA_COLOR,
+	PSPG_CYAN_COLOR,
+	PSPG_LIGHT_GRAY_COLOR,
+	PSPG_GRAY_COLOR,
+	PSPG_BRIGHT_RED_COLOR,
+	PSPG_BRIGHT_GREEN_COLOR,
+	PSPG_YELLOW_COLOR,
+	PSPG_BRIGHT_BLUE_COLOR,
+	PSPG_BRIGHT_MAGENTA_COLOR,
+	PSPG_BRIGHT_CYAN_COLOR,
+	PSPG_WHITE_COLOR,
+	PSPG_DEFAULT_COLOR
+} PspgBasicColor;
+
+typedef enum
+{
+	PSPG_COLOR_BASIC,
+	PSPG_COLOR_256,
+	PSPG_COLOR_RGB
+} PspgColorPallet;
+
+typedef enum
+{
+	PSPG_INDEPENDENT = 0,
+	PSPG_CURSOR_BOLD,
+	PSPG_LABEL_BOLD,
+} PspgStyleDependency;
+
+typedef struct
+{
+	PspgColorPallet	cp;
+	PspgBasicColor	bc;
+	unsigned int	rgb;
+} PspgColor;
+
+typedef struct
+{
+	int		fg;
+	int		bg;
+	int		color_pair_number;
+} ColorPairCacheItem;
+
+ColorPairCacheItem ColorPairCache[255];
+int		nColorPairCache;
+
+const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0};
+const PspgColor PspgRed = {PSPG_COLOR_BASIC, PSPG_RED_COLOR, 0};
+const PspgColor PspgGreen = {PSPG_COLOR_BASIC, PSPG_GREEN_COLOR, 0};
+const PspgColor PspgBrown = {PSPG_COLOR_BASIC, PSPG_BROWN_COLOR, 0};
+const PspgColor PspgBlue = {PSPG_COLOR_BASIC, PSPG_BLUE_COLOR, 0};
+const PspgColor PspgMagenta = {PSPG_COLOR_BASIC, PSPG_MAGENTA_COLOR, 0};
+const PspgColor PspgCyan = {PSPG_COLOR_BASIC, PSPG_CYAN_COLOR, 0};
+const PspgColor PspgLightGray = {PSPG_COLOR_BASIC, PSPG_LIGHT_GRAY_COLOR, 0};
+const PspgColor PspgGray = {PSPG_COLOR_BASIC, PSPG_GRAY_COLOR, 0};
+const PspgColor PspgBrightRed = {PSPG_COLOR_BASIC, PSPG_BRIGHT_RED_COLOR, 0};
+const PspgColor PspgBrightGreen = {PSPG_COLOR_BASIC, PSPG_BRIGHT_GREEN_COLOR, 0};
+const PspgColor PspgYellow = {PSPG_COLOR_BASIC, PSPG_YELLOW_COLOR, 0};
+const PspgColor PspgBrightBlue = {PSPG_COLOR_BASIC, PSPG_BRIGHT_BLUE_COLOR, 0};
+const PspgColor PspgBrightMagenta = {PSPG_COLOR_BASIC, PSPG_BRIGHT_MAGENTA_COLOR, 0};
+const PspgColor PspgBrightCyan = {PSPG_COLOR_BASIC, PSPG_BRIGHT_CYAN_COLOR, 0};
+const PspgColor PspgWhite = {PSPG_COLOR_BASIC, PSPG_WHITE_COLOR, 0};
+const PspgColor PspgDefault = {PSPG_COLOR_BASIC, PSPG_DEFAULT_COLOR, 0};
+
+typedef struct
+{
+	PspgColor		fg;
+	PspgColor		bg;
+	int				attr;
+	PspgStyleDependency dep;
+} PspgThemeElement;
+
+typedef enum
+{
+	PspgTheme_background,
+	PspgTheme_data,
+	PspgTheme_border,
+	PspgTheme_label,
+	PspgTheme_rownum,
+	PspgTheme_recnum,
+	PspgTheme_selection,
+	PspgTheme_footer,
+	PspgTheme_cursor_data,
+	PspgTheme_cursor_border,
+	PspgTheme_cursor_label,
+	PspgTheme_cursor_rownum,
+	PspgTheme_cursor_recnum,
+	PspgTheme_cursor_selection,
+	PspgTheme_cursor_footer,
+	PspgTheme_scrollbar_arrows,
+	PspgTheme_scrollbar_background,
+	PspgTheme_scrollbar_slider,
+	PspgTheme_scrollbar_active_slider,
+	PspgTheme_title,
+	PspgTheme_status_bar,
+	PspgTheme_prompt_bar,
+	PspgTheme_info_bar,
+	PspgTheme_error_bar,
+	PspgTheme_input_bar,
+	PspgTheme_bookmark,
+	PspgTheme_bookmark_border,
+	PspgTheme_cursor_bookmark,
+	PspgTheme_cross_cursor,
+	PspgTheme_cross_cursor_border,
+	PspgTheme_pattern,
+	PspgTheme_pattern_nohl,
+	PspgTheme_pattern_line,
+	PspgTheme_pattern_line_border,
+	PspgTheme_pattern_cursor,
+	PspgTheme_pattern_line_vertical_cursor,
+	PspgTheme_pattern_line_vertical_cursor_border,
+
+	PspgTheme_error
+} PspgThemeElements;
+
+
+PspgThemeElement themedef[50];
+
+
+void
+deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr, PspgStyleDependency dep)
+{
+	memcpy(&themedef[idx].fg, &fg, sizeof(PspgColor));
+	memcpy(&themedef[idx].bg, &bg, sizeof(PspgColor));
+	themedef[idx].attr = attr;
+	themedef[idx].dep = dep;
+}
+
+int
+ncurses_color(PspgBasicColor cv, bool *isbright)
+{
+	*isbright = false;
+
+	switch (cv)
+	{
+		case PSPG_BLACK_COLOR:
+			return COLOR_BLACK;
+		case PSPG_RED_COLOR:
+			return COLOR_RED;
+		case PSPG_GREEN_COLOR:
+			return COLOR_GREEN;
+		case PSPG_BROWN_COLOR:
+			return COLOR_YELLOW;
+		case PSPG_BLUE_COLOR:
+			return COLOR_BLUE;
+		case PSPG_MAGENTA_COLOR:
+			return COLOR_MAGENTA;
+		case PSPG_CYAN_COLOR:
+			return COLOR_CYAN;
+		case PSPG_LIGHT_GRAY_COLOR:
+			return COLOR_WHITE;
+		case PSPG_GRAY_COLOR:
+			*isbright = true;
+			return COLOR_BLACK;
+		case PSPG_BRIGHT_RED_COLOR:
+			*isbright = true;
+			return COLOR_RED;
+		case PSPG_BRIGHT_GREEN_COLOR:
+			*isbright = true;
+			return COLOR_GREEN;
+		case PSPG_YELLOW_COLOR:
+			*isbright = true;
+			return COLOR_YELLOW;
+		case PSPG_BRIGHT_BLUE_COLOR:
+			*isbright = true;
+			return COLOR_BLUE;
+		case PSPG_BRIGHT_MAGENTA_COLOR:
+			*isbright = true;
+			return COLOR_MAGENTA;
+		case PSPG_BRIGHT_CYAN_COLOR:
+			*isbright = true;
+			return COLOR_CYAN;
+		case PSPG_WHITE_COLOR:
+			*isbright = true;
+			return COLOR_WHITE;
+		case PSPG_DEFAULT_COLOR:
+			return -1;
+	}
+
+	return -1;
+}
+
+attr_t
+ncurses_theme_attr(PspgThemeElements idx)
+{
+	int		bgcolor;
+	int		fgcolor;
+	bool	bgcolorbright;
+	bool	fgcolorbright;
+	attr_t	result;
+	int		i;
+
+	PspgThemeElement *te = &themedef[idx];
+
+	result = te->attr;
+
+	if (te->dep != PSPG_INDEPENDENT)
+	{
+		if (current_state && current_state->opts)
+		{
+			bool bold_cursor = current_state->opts->bold_cursor;
+			bool bold_labels = current_state->opts->bold_labels;
+
+			if ((te->dep == PSPG_CURSOR_BOLD && bold_cursor) ||
+				(te->dep == PSPG_LABEL_BOLD && bold_labels))
+				result |= A_BOLD;
+		}
+	}
+
+	if (te->fg.cp == PSPG_COLOR_BASIC &&
+		te->bg.cp == PSPG_COLOR_BASIC)
+	{
+		fgcolor = ncurses_color(te->fg.bc, &fgcolorbright);
+		bgcolor = ncurses_color(te->bg.bc, &bgcolorbright);
+
+		if (COLORS == 8)
+		{
+			/*
+			 * cannot to use bright color on background and
+			 * foreground together
+			 */
+			if (fgcolorbright && bgcolorbright)
+				bgcolorbright = false;
+
+			if (fgcolorbright)
+				result |= A_BOLD;
+			else if (bgcolorbright)
+				result |= A_BOLD | A_REVERSE;
+		}
+		else
+		{
+			if (fgcolorbright)
+				fgcolor += 8;
+			if (bgcolorbright)
+				bgcolor += 8;
+		}
+
+		/* try to find color pair in cache */
+		for (i = 0; i < nColorPairCache; i++)
+		{
+			if (ColorPairCache[i].fg == fgcolor &&
+				ColorPairCache[i].bg == bgcolor)
+			{
+				result |= COLOR_PAIR(ColorPairCache[i].color_pair_number);
+				return result;
+			}
+		}
+
+		/*
+		 * The number of color pairs can be limmited, so try
+		 * to reuse it.
+		 */
+		init_pair(ncurses_colorpair_index, fgcolor, bgcolor);
+		result |= COLOR_PAIR(ncurses_colorpair_index);
+
+		ColorPairCache[nColorPairCache].fg = fgcolor;
+		ColorPairCache[nColorPairCache].bg = bgcolor;
+		ColorPairCache[nColorPairCache++].color_pair_number = ncurses_colorpair_index++;
+	}
+
+	return result;
+}
+
+
+
 /*
  * Set color pairs based on style
  */
@@ -74,20 +336,24 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	attr_t labels_attr = bold_labels ? A_BOLD : 0;
 	attr_t cursor_attr = bold_cursor ? A_BOLD : 0;
 
+	ncurses_colorpair_index = 1;
+	nColorPairCache = 0;
+
+
 	memset(theme_attrs, 0, sizeof(theme_attrs));
 
-	init_pair(21, COLOR_WHITE, COLOR_BLACK);		/* Fx keys */
+//	init_pair(21, COLOR_WHITE, COLOR_BLACK);		/* Fx keys */
 
-	set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);		/* error */
-	set_colour(27, COLOR_BLACK, COLOR_WHITE, false, 0);		/* input */
+//	set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);		/* error */
+//	set_colour(27, COLOR_BLACK, COLOR_WHITE, false, 0);		/* input */
 
-	set_colour(30, COLOR_WHITE, COLOR_BLACK, false, A_REVERSE);	/* scrollbar arrows */
-	set_colour(31, COLOR_WHITE, COLOR_BLACK, true, 0);			/* scrollbar background */
-	set_colour(32, COLOR_BLACK, COLOR_BLUE, false, A_REVERSE);	/* scrollbar slider */
-	set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar active slider */
-
-	set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
-	set_colour(35, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
+//	set_colour(30, COLOR_WHITE, COLOR_BLACK, false, A_REVERSE);	/* scrollbar arrows */
+//	set_colour(31, COLOR_WHITE, COLOR_BLACK, true, 0);			/* scrollbar background */
+//	set_colour(32, COLOR_BLACK, COLOR_BLUE, false, A_REVERSE);	/* scrollbar slider */
+//	set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar active slider */
+//
+//	set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
+//	set_colour(35, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);			/* top bar colors */
 
 	switch (theme)
 	{
@@ -132,38 +398,55 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 1:
 			/* mc theme */
-			init_pair(1, COLOR_WHITE, COLOR_BLUE);
+			/* 1 */ deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0, 0);
 
-			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(4, COLOR_YELLOW, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_YELLOW, COLOR_CYAN, true, cursor_attr);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(8, COLOR_RED, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(13, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_GREEN, COLOR_BLUE, false, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_BLUE, true, A_REVERSE);
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0, 0);
+			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0, 0);
+			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0, PSPG_LABEL_BOLD);
+			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0, 0);
+			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD, 0);
+			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0, 0);
+
+			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0, 0);
+			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+
+			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0, 0);
+			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0, 0);
+			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0, 0);
+			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0, 0);
+
+			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0, 0);
+			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0, 0);
+			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0, 0);
+			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0, 0);
+			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
+			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0, 0);
+
+			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0, 0);
+			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD, 0);
+			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD, 0);
+
+			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0, 0);
+			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0, 0);
+
+			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
+			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+
+			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD, 0);
+			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0, 0);
+			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
+			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0, 0);
+			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0, 0);
+
+			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
+			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0, 0);
 			break;
 
 		case 2:
@@ -1083,143 +1366,79 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	}
 }
 
-#define _in			if_in_int
-#define _notin		if_notin_int
-
 void
 initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t)
 {
 	memset(t, 0, sizeof(Theme));
 
 	/* selected content and cursor in selected area */
-	t->selection_attr = theme_attr(34);
-	t->selection_cursor_attr = theme_attr(35) ;
+	t->selection_attr = ncurses_theme_attr(PspgTheme_selection);
+	t->selection_cursor_attr = ncurses_theme_attr(PspgTheme_cursor_selection) ;
 
 	/* cross cursor - initial setting */
-	t->cross_cursor_attr = theme_attr(22);
-	t->cross_cursor_line_attr = theme_attr(23);
+	t->cross_cursor_attr = ncurses_theme_attr(PspgTheme_cross_cursor);
+	t->cross_cursor_line_attr = ncurses_theme_attr(PspgTheme_cross_cursor_border);
 
-	t->pattern_vertical_cursor_attr = theme_attr(24);
-	t->pattern_vertical_cursor_line_attr = theme_attr(25);
+	t->pattern_vertical_cursor_attr = ncurses_theme_attr(PspgTheme_pattern_line_vertical_cursor);
+	t->pattern_vertical_cursor_line_attr = ncurses_theme_attr(PspgTheme_pattern_line_vertical_cursor_border);
 
-	/* input bottom line and error bottom line colors */
-	t->error_attr = theme_attr(26);
-	t->input_attr = theme_attr(27);
+	t->line_attr = ncurses_theme_attr(PspgTheme_border);
+
+	t->bookmark_data_attr = ncurses_theme_attr(PspgTheme_bookmark);
+	t->bookmark_line_attr = ncurses_theme_attr(PspgTheme_bookmark_border);
+
+	t->cursor_bookmark_attr = ncurses_theme_attr(PspgTheme_cursor_bookmark);
+	t->cursor_line_attr = ncurses_theme_attr(PspgTheme_cursor_border);
+
+	t->title_attr = ncurses_theme_attr(PspgTheme_title);
+	t->status_bar_attr = ncurses_theme_attr(PspgTheme_status_bar);
+	t->prompt_attr = ncurses_theme_attr(PspgTheme_prompt_bar);
+	t->info_attr = ncurses_theme_attr(PspgTheme_info_bar);
+	t->error_attr = ncurses_theme_attr(PspgTheme_error_bar);
+	t->input_attr = ncurses_theme_attr(PspgTheme_input_bar);
+
+	t->found_str_attr = no_highlight_lines ? ncurses_theme_attr(PspgTheme_pattern_nohl) : ncurses_theme_attr(PspgTheme_pattern);
+	t->pattern_data_attr = ncurses_theme_attr(PspgTheme_pattern_line);
+	t->pattern_line_attr = ncurses_theme_attr(PspgTheme_pattern_line_border);
+	t->cursor_pattern_attr = ncurses_theme_attr(PspgTheme_pattern_cursor);
+
+	t->expi_attr = ncurses_theme_attr(PspgTheme_recnum);
+	t->cursor_expi_attr = ncurses_theme_attr(PspgTheme_cursor_recnum);
 
 	switch (window_identifier)
 	{
 		case WINDOW_LUC:
 		case WINDOW_FIX_ROWS:
-			t->data_attr = theme_attr(4);
-			t->cursor_data_attr = theme_attr(5);
-			t->cursor_line_attr = theme_attr(11);
-			t->cursor_expi_attr = theme_attr(6);
-			break;
-
-		case WINDOW_TOP_BAR:
-			t->title_attr = theme_attr(7);
-			break;
-
-		case WINDOW_BOTTOM_BAR:
-			t->prompt_attr = _in(theme, (int[]) {0, 1, -1}, theme_attr(2), theme_attr(13));
-			t->bottom_attr = theme_attr(12);
-			t->bottom_light_attr = theme_attr(13);
+			t->data_attr = ncurses_theme_attr(PspgTheme_label);
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_label);
 			break;
 
 		case WINDOW_FIX_COLS:
-			t->data_attr = theme_attr(4);
-			t->line_attr = 0;
-			t->expi_attr = theme_attr(8);
-			t->cursor_data_attr = theme_attr(5);
-			t->cursor_line_attr = theme_attr(11);
-			t->cursor_expi_attr = theme_attr(6);
-			t->cursor_pattern_attr = theme_attr(20);
-			t->bookmark_data_attr = theme_attr(14);
-			t->bookmark_line_attr = theme_attr(28);
-			t->cursor_bookmark_attr = theme_attr(14);
-			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
-			t->pattern_data_attr = theme_attr(16);
-			t->pattern_line_attr = theme_attr(17);
-
-			t->line_attr |= 0;
-			t->expi_attr |= A_BOLD;
-			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
-			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
-			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
-			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
-			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->found_str_attr |= _in(theme, (int[]) {16, -1}, A_UNDERLINE | (no_highlight_lines ? A_ITALIC : 0), 0);
+			t->data_attr = ncurses_theme_attr(PspgTheme_label);
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_label);
 			break;
 
 		case WINDOW_ROWS:
-			t->data_attr = theme_attr(3);
-			t->line_attr = 0;
-			t->expi_attr = theme_attr(8);
-			t->cursor_data_attr = theme_attr(6);
-			t->cursor_line_attr = theme_attr(11);
-			t->cursor_expi_attr = theme_attr(6);
-			t->cursor_pattern_attr = theme_attr(19);
-			t->bookmark_data_attr = theme_attr(14);
-			t->bookmark_line_attr = theme_attr(28);
-			t->cursor_bookmark_attr = theme_attr(14);
-			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
-			t->pattern_data_attr = theme_attr(16);
-			t->pattern_line_attr = theme_attr(17);
-
-			t->expi_attr |= A_BOLD;
-			t->bookmark_data_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, A_BOLD);
-			t->bookmark_line_attr |= _in(theme, (int[]){15, -1}, A_REVERSE | A_BOLD, 0);
-			t->cursor_bookmark_attr |= _in(theme, (int[]){15, -1}, A_BOLD, A_REVERSE | A_BOLD);
-			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : _in(theme, (int[]){0, 15,  -1}, A_REVERSE | A_BOLD, A_BOLD);
-			t->pattern_data_attr |= _in(theme, (int[]) {15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->pattern_line_attr |= _in(theme, (int[]) {11, 7, 8, 15, -1}, A_BOLD, 0) | _in(theme, (int[]) {0, 15, -1}, A_REVERSE, 0);
-			t->found_str_attr |= _in(theme, (int[]) {16,  -1}, A_UNDERLINE, 0);
+			t->data_attr = ncurses_theme_attr(PspgTheme_data);
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_data);
 			break;
 
 		case WINDOW_FOOTER:
-			t->data_attr = is_tabular_fmt ? theme_attr(9) : theme_attr(3);
-			t->line_attr = 0;
-			t->expi_attr = 0;
-			t->cursor_data_attr = theme_attr(10);
-			t->cursor_line_attr = 0;
-			t->cursor_expi_attr = 0;
-			t->cursor_pattern_attr = theme_attr(19);
-			t->bookmark_data_attr = theme_attr(14);
-			t->bookmark_line_attr = theme_attr(28);
-			t->cursor_bookmark_attr = theme_attr(14);
-			t->found_str_attr = !no_highlight_lines ? theme_attr(15) : theme_attr(18);
-			t->pattern_data_attr = theme_attr(16);
-			t->pattern_line_attr = theme_attr(17);
-
-			t->line_attr |= 0,
-			t->expi_attr |= 0;
-			t->cursor_line_attr |= 0;
-			t->cursor_expi_attr |= 0;
-			t->bookmark_line_attr |= 0;
-			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
-			t->found_str_attr |= no_highlight_lines ? (_in(theme, (int[]){0, -1}, A_REVERSE, A_BOLD)) : A_BOLD;
-			t->pattern_data_attr |= 0;
-			t->pattern_line_attr |= 0;
-			t->cursor_pattern_attr |= A_REVERSE;
+			t->data_attr = is_tabular_fmt ? ncurses_theme_attr(PspgTheme_footer) : ncurses_theme_attr(PspgTheme_data);
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_footer);
 			break;
 
 		case WINDOW_ROWNUM:
 		case WINDOW_ROWNUM_LUC:
-			t->data_attr = theme_attr(21);
-			t->cursor_data_attr = theme_attr(10);
-			t->bookmark_data_attr = theme_attr(14);
-			t->bookmark_line_attr = theme_attr(28);
-			t->cursor_bookmark_attr = theme_attr(14);
-			t->pattern_data_attr = theme_attr(16);
-			t->cursor_bookmark_attr |= A_BOLD | A_REVERSE;
+			t->data_attr = ncurses_theme_attr(PspgTheme_rownum);;
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_rownum);;
 			break;
 
 		case WINDOW_VSCROLLBAR:
-			t->scrollbar_arrow_attr = theme_attr(30);
-			t->scrollbar_attr = theme_attr(31);
-			t->scrollbar_slider_attr = theme_attr(32);
-			t->scrollbar_active_slider_attr = theme_attr(33);
+			t->scrollbar_arrow_attr = ncurses_theme_attr(PspgTheme_scrollbar_arrows);
+			t->scrollbar_attr = ncurses_theme_attr(PspgTheme_scrollbar_background);
+			t->scrollbar_slider_attr = ncurses_theme_attr(PspgTheme_scrollbar_slider);
+			t->scrollbar_active_slider_attr = ncurses_theme_attr(PspgTheme_scrollbar_active_slider);
 
 			switch (theme)
 			{

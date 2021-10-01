@@ -47,8 +47,7 @@ typedef struct
 	attr_t pattern_line_attr;		/* colors for pattern line art */
 	attr_t cursor_pattern_attr;		/* colors for pattern on cursor line */
 	attr_t title_attr;				/* colors for title window */
-	attr_t bottom_attr;				/* colors for bottom text */
-	attr_t bottom_light_attr;		/* colors for lighter bottom text */
+	attr_t info_attr;				/* colors for bottom info text */
 	attr_t prompt_attr;				/* less prompt color */
 	attr_t cursor_rownum_attr;		/* colors for cursor rownum column */
 	attr_t cross_cursor_attr;		/* colors for cross horizontal and vertical cursor (data) */
@@ -65,6 +64,7 @@ typedef struct
 	bool scrollbar_use_arrows;
 	attr_t selection_attr;
 	attr_t selection_cursor_attr;
+	attr_t status_bar_attr;
 } Theme;
 
 #define		WINDOW_LUC				0
