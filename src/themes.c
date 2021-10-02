@@ -131,7 +131,6 @@ typedef struct
 	PspgColor		fg;
 	PspgColor		bg;
 	int				attr;
-	PspgStyleDependency dep;
 } PspgThemeElement;
 
 typedef enum
@@ -177,17 +176,40 @@ typedef enum
 	PspgTheme_error
 } PspgThemeElements;
 
+static PspgStyleDependency
+styledep(PspgThemeElements el)
+{
+	switch (el)
+	{
+		case PspgTheme_cursor_data:
+		case PspgTheme_cursor_label:
+		case PspgTheme_cursor_rownum:
+		case PspgTheme_cursor_recnum:
+		case PspgTheme_cursor_selection:
+		case PspgTheme_cursor_footer:
+		case PspgTheme_cursor_bookmark:
+		case PspgTheme_cross_cursor:
+			return PSPG_CURSOR_BOLD;
+
+		case PspgTheme_label:
+			return PSPG_LABEL_BOLD;
+
+		default:
+			return PSPG_INDEPENDENT;
+	}
+}
+
+
 
 PspgThemeElement themedef[50];
 
 
 void
-deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr, PspgStyleDependency dep)
+deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
 {
 	memcpy(&themedef[idx].fg, &fg, sizeof(PspgColor));
 	memcpy(&themedef[idx].bg, &bg, sizeof(PspgColor));
 	themedef[idx].attr = attr;
-	themedef[idx].dep = dep;
 }
 
 int
@@ -253,20 +275,23 @@ ncurses_theme_attr(PspgThemeElements idx)
 	bool	fgcolorbright;
 	attr_t	result;
 	int		i;
+	PspgStyleDependency dep;
 
 	PspgThemeElement *te = &themedef[idx];
 
 	result = te->attr;
 
-	if (te->dep != PSPG_INDEPENDENT)
+	dep = styledep(idx);
+
+	if (dep != PSPG_INDEPENDENT)
 	{
 		if (current_state && current_state->opts)
 		{
 			bool bold_cursor = current_state->opts->bold_cursor;
 			bool bold_labels = current_state->opts->bold_labels;
 
-			if ((te->dep == PSPG_CURSOR_BOLD && bold_cursor) ||
-				(te->dep == PSPG_LABEL_BOLD && bold_labels))
+			if ((dep == PSPG_CURSOR_BOLD && bold_cursor) ||
+				(dep == PSPG_LABEL_BOLD && bold_labels))
 				result |= A_BOLD;
 		}
 	}
@@ -286,10 +311,19 @@ ncurses_theme_attr(PspgThemeElements idx)
 			if (fgcolorbright && bgcolorbright)
 				bgcolorbright = false;
 
+			if (bgcolorbright && (result & A_REVERSE))
+				bgcolorbright = false;
+
 			if (fgcolorbright)
 				result |= A_BOLD;
 			else if (bgcolorbright)
+			{
+				int		aux = fgcolor;
+
+				fgcolor = bgcolor;
+				bgcolor = aux;
 				result |= A_BOLD | A_REVERSE;
+			}
 		}
 		else
 		{
@@ -345,723 +379,898 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 			/* mc black theme */
 			use_default_colors();
 
-			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0, 0);
+			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
 
 			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_label, PspgDefault, PspgDefault, A_BOLD, PSPG_LABEL_BOLD);
-			deftheme(PspgTheme_rownum, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_recnum, PspgBlack, PspgLightGray, A_BOLD, 0);
-			deftheme(PspgTheme_footer, PspgDefault, PspgDefault, 0, 0);
+			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_label, PspgDefault, PspgDefault, A_BOLD);
+			deftheme(PspgTheme_rownum, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_recnum, PspgBlack, PspgLightGray, A_BOLD);
+			deftheme(PspgTheme_footer, PspgDefault, PspgDefault, 0);
 
-			deftheme(PspgTheme_cursor_data, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_border, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_cursor_label, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_cursor_data, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_cursor_border, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_cursor_label, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgLightGray, 0);
 
-			deftheme(PspgTheme_scrollbar_arrows, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_scrollbar_background, PspgDefault, PspgDefault, A_DIM, 0);
-			deftheme(PspgTheme_scrollbar_slider, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_scrollbar_active_slider, PspgDefault, PspgDefault, A_REVERSE, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgDefault, PspgDefault, A_DIM);
+			deftheme(PspgTheme_scrollbar_slider, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgDefault, PspgDefault, A_REVERSE);
 
-			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_info_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
-			deftheme(PspgTheme_input_bar, PspgDefault, PspgDefault, 0, 0);
+			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_info_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgDefault, PspgDefault, 0);
 
-			deftheme(PspgTheme_bookmark, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_bookmark_border, PspgBlack, PspgLightGray, A_BOLD, 0);
-			deftheme(PspgTheme_cursor_bookmark, PspgLightGray, PspgBlack, A_BOLD, 0);
+			deftheme(PspgTheme_bookmark, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_bookmark_border, PspgBlack, PspgLightGray, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgLightGray, PspgBlack, A_BOLD);
 
-			deftheme(PspgTheme_cross_cursor, PspgDefault, PspgDefault, A_REVERSE, 0);
-			deftheme(PspgTheme_cross_cursor_border, PspgDefault, PspgDefault, A_REVERSE, 0);
+			deftheme(PspgTheme_cross_cursor, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cross_cursor_border, PspgDefault, PspgDefault, A_REVERSE);
 
-			deftheme(PspgTheme_selection, PspgLightGray, PspgBlack, A_DIM | A_BOLD | A_REVERSE, 0);
-			deftheme(PspgTheme_cursor_selection, PspgLightGray, PspgGray, A_BOLD, 0);
+			deftheme(PspgTheme_selection, PspgLightGray, PspgBlack, A_DIM | A_BOLD | A_REVERSE);
+			deftheme(PspgTheme_cursor_selection, PspgLightGray, PspgGray, A_BOLD);
 
-			deftheme(PspgTheme_pattern, PspgLightGray, PspgBlack, A_BOLD | A_REVERSE, 0);
-			deftheme(PspgTheme_pattern_nohl, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_pattern_line, PspgDefault, PspgDefault, A_REVERSE, 0);
-			deftheme(PspgTheme_pattern_line_border, PspgDefault, PspgDefault, A_REVERSE, 0);
-			deftheme(PspgTheme_pattern_cursor, PspgLightGray, PspgBlack, 0, 0);
+			deftheme(PspgTheme_pattern, PspgLightGray, PspgBlack, A_BOLD | A_REVERSE);
+			deftheme(PspgTheme_pattern_nohl, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_pattern_line, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_pattern_line_border, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_pattern_cursor, PspgLightGray, PspgBlack, 0);
 
-			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgLightGray, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgLightGray, 0);
 			break;
 
 		case 1:
 			/* mc theme */
-			/* 1 */ deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0, 0);
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
 
-			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0, 0);
-			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0, 0);
-			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0, PSPG_LABEL_BOLD);
-			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0, 0);
-			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD, 0);
-			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0, 0);
+			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
+			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD);
+			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0);
 
-			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0, 0);
-			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
+			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
 
-			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0, 0);
-			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0, 0);
-			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0, 0);
-			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0, 0);
+			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0);
+			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0, 0);
-			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0, 0);
-			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0, 0);
-			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0, 0);
-			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
-			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0, 0);
+			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
+			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
 
-			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0, 0);
-			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD, 0);
-			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD, 0);
+			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
+			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
 
-			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0, 0);
-			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0, 0);
+			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
 
-			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
-			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD, 0);
-			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0, 0);
-			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
-			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0, 0);
-			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0, 0);
+			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
 
-			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
-			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0, 0);
+			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 2:
 			/* FoxPro theme */
-			deftheme(PspgTheme_background, PspgLightGray, PspgCyan, 0, 0);
+			deftheme(PspgTheme_background, PspgLightGray, PspgCyan, 0);
 
-			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			deftheme(PspgTheme_data, PspgWhite, PspgCyan, 0, 0);
-			deftheme(PspgTheme_border, PspgLightGray, PspgCyan, 0, 0);
-			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0, PSPG_LABEL_BOLD);
-			deftheme(PspgTheme_rownum, PspgLightGray, PspgCyan, 0, 0);
-			deftheme(PspgTheme_recnum, PspgWhite, PspgBlue, A_BOLD, 0);
-			deftheme(PspgTheme_footer, PspgBlue, PspgCyan, 0, 0);
+			deftheme(PspgTheme_data, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgWhite, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlue, PspgCyan, 0);
 
-			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgBlue, 0, 0);
-			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0);
 
-			deftheme(PspgTheme_scrollbar_arrows, PspgYellow, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_scrollbar_slider, PspgYellow, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_scrollbar_active_slider, PspgYellow, PspgLightGray, A_BOLD, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgYellow, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgYellow, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgYellow, PspgLightGray, A_BOLD);
 
-			deftheme(PspgTheme_title, PspgYellow, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0, 0);
-			deftheme(PspgTheme_error_bar, PspgYellow, PspgRed, 0, 0);
-			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_title, PspgYellow, PspgLightGray, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_error_bar, PspgYellow, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
 
-			deftheme(PspgTheme_bookmark, PspgWhite, PspgMagenta, A_BOLD, 0);
-			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgMagenta, 0, 0);
-			deftheme(PspgTheme_cursor_bookmark, PspgWhite, PspgMagenta, A_BOLD | A_REVERSE, 0);
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgMagenta, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_bookmark, PspgWhite, PspgMagenta, A_BOLD | A_REVERSE);
 
-			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightBlue, 0, 0);
-			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightBlue, 0, 0);
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightBlue, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightBlue, 0);
 
-			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
-			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD, 0);
-			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0, 0);
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
 
-			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 3:
 			/* PD Menu theme */
-			deftheme(PspgTheme_background, PspgBlack, PspgCyan, 0, 0);
+			deftheme(PspgTheme_background, PspgBlack, PspgCyan, 0);
 
-			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			deftheme(PspgTheme_data, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_border, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0, PSPG_LABEL_BOLD);
-			deftheme(PspgTheme_rownum, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_recnum, PspgWhite, PspgCyan, A_BOLD, 0);
-			deftheme(PspgTheme_footer, PspgBlack, PspgCyan, 0, 0);
+			deftheme(PspgTheme_data, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_border, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgWhite, PspgCyan, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlack, PspgCyan, 0);
 
-			deftheme(PspgTheme_cursor_data, PspgBrightCyan, PspgBlack, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_border, PspgCyan, PspgBlack, 0, 0);
-			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlack, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_rownum, PspgBrightCyan, PspgBlack, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_recnum, PspgBrightCyan, PspgBlack, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_footer, PspgBrightCyan, PspgBlack, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_cursor_data, PspgBrightCyan, PspgBlack, 0);
+			deftheme(PspgTheme_cursor_border, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBrightCyan, PspgBlack, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBrightCyan, PspgBlack, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBrightCyan, PspgBlack, 0);
 
-			deftheme(PspgTheme_scrollbar_arrows, PspgWhite, PspgBlack, A_REVERSE, 0);
-			deftheme(PspgTheme_scrollbar_background, PspgWhite, PspgBlack, 0, 0);
-			deftheme(PspgTheme_scrollbar_slider, PspgBlack, PspgBlue, A_REVERSE, 0);
-			deftheme(PspgTheme_scrollbar_active_slider, PspgWhite, PspgBlack, A_REVERSE, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgWhite, PspgBlack, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_background, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlack, PspgBlue, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgWhite, PspgBlack, A_REVERSE);
 
-			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlack, 0, 0);
-			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
-			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
 
-			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD, 0);
-			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, 0, 0);
-			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD, 0);
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
 
-			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgWhite, 0, 0);
-			deftheme(PspgTheme_cross_cursor_border, PspgCyan, PspgWhite, 0, 0);
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgCyan, PspgWhite, 0);
 
-			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
-			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_pattern, PspgWhite, PspgGreen, A_BOLD, 0);
-			deftheme(PspgTheme_pattern_nohl, PspgWhite, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line_border, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlue, 0, 0);
+			deftheme(PspgTheme_pattern, PspgWhite, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlue, 0);
 
-			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgBrightGreen, 0, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgBrightGreen, 0);
 			break;
 
 		case 4:
 			/* White theme */
-			deftheme(PspgTheme_background, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_background, PspgBlack, PspgLightGray, 0);
 
-			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			deftheme(PspgTheme_data, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_border, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_label, PspgBlack, PspgLightGray, A_BOLD, PSPG_LABEL_BOLD);
-			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0, 0);
-			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD, 0);
-			deftheme(PspgTheme_footer, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_data, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_border, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_label, PspgBlack, PspgLightGray, A_BOLD);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlack, PspgLightGray, 0);
 
-			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgBlue, 0, 0);
-			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0);
 
-			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0, 0);
-			deftheme(PspgTheme_scrollbar_background, PspgBlack, PspgWhite, 0, 0);
-			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0, 0);
-			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0, 0);
-			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
-			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD, 0);
-			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, A_BOLD, 0);
-			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD, 0);
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
 
-			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0, 0);
-			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBlack, 0, 0);
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBlack, 0);
 
-			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
-			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD, 0);
-			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line_border, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
 
-			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgBrightGreen, 0, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgBrightGreen, 0);
 			break;
 
 		case 5:
 			/* Mutt theme */
 			use_default_colors();
 
-			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0, 0);
+			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
 
-			/* set color_pair(1) to background */
 			ncurses_theme_attr(PspgTheme_background);
 
-			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0, 0);
-			deftheme(PspgTheme_label, PspgBrightCyan, PspgDefault, 0, PSPG_LABEL_BOLD);
-			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0, 0);
-			deftheme(PspgTheme_recnum, PspgBlack, PspgBlue, A_BOLD, 0);
-			deftheme(PspgTheme_footer, PspgBlack, PspgCyan, 0, 0);
+			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_label, PspgBrightCyan, PspgDefault, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgBlack, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlack, PspgCyan, 0);
 
-			deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_border, PspgDefault, PspgCyan, 0, 0);
-			deftheme(PspgTheme_cursor_label, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0, PSPG_CURSOR_BOLD);
+			deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgDefault, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
 
-			deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlack, A_REVERSE, 0);
-			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgGray, 0, 0);
-			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0, 0);
-			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlack, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgGray, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			deftheme(PspgTheme_title, PspgBrightGreen, PspgBlue, 0, 0);
-			deftheme(PspgTheme_status_bar, PspgBrightGreen, PspgBlue, 0, 0);
-			deftheme(PspgTheme_prompt_bar, PspgBrightGreen, PspgBlue, 0, 0);
-			deftheme(PspgTheme_info_bar, PspgBlack, PspgCyan, 0, 0);
-			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0, 0);
-			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0, 0);
+			deftheme(PspgTheme_title, PspgBrightGreen, PspgBlue, 0);
+			deftheme(PspgTheme_status_bar, PspgBrightGreen, PspgBlue, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBrightGreen, PspgBlue, 0);
+			deftheme(PspgTheme_info_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
 
-			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD, 0);
-			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, A_BOLD, 0);
-			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD, 0);
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
 
-			deftheme(PspgTheme_cross_cursor, PspgLightGray, PspgBlack, 0, 0);
-			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBlack, 0, 0);
+			deftheme(PspgTheme_cross_cursor, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBlack, 0);
 
-			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0, 0);
-			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0, 0);
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD, 0);
-			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_line_border, PspgDefault, PspgGreen, 0, 0);
-			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgCyan, 0, 0);
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgDefault, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgCyan, 0);
 
-			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0, PSPG_CURSOR_BOLD);
-			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgWhite, PspgBrightGreen, 0, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgWhite, PspgBrightGreen, 0);
 			break;
 
 		case 6:
 			/* PC Fand theme */
-			init_pair(1, COLOR_WHITE, COLOR_BLACK);
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlack, 0);
 
-			set_colour(2, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(4, COLOR_CYAN, COLOR_BLACK, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(7, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(20, COLOR_CYAN, COLOR_BLUE, true, cursor_attr);
-			set_colour(22, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(23, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlack, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgCyan, PspgBlack, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlack, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_background, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgBlack, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgBrightCyan, PspgBlue, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 7:
 			/* Green theme */
-			init_pair(1, COLOR_GREEN, COLOR_BLACK);
+			deftheme(PspgTheme_background, PspgGreen, PspgBlack, 0);
 
-			set_colour(2, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(3, COLOR_GREEN, COLOR_BLACK, false, 0);
-			set_colour(4, COLOR_GREEN, COLOR_BLACK, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_GREEN, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_GREEN, true, cursor_attr);
-			set_colour(7, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_GREEN, true, cursor_attr);
-			set_colour(11, COLOR_GREEN, COLOR_GREEN, true, 0);
-			set_colour(12, COLOR_WHITE, COLOR_GREEN, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_GREEN, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(17, COLOR_GREEN, COLOR_CYAN, false, 0);
-			set_colour(18, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(19, COLOR_CYAN, COLOR_GREEN, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(21, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(22, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE |  cursor_attr);
-			set_colour(23, COLOR_GREEN, COLOR_GREEN, true, A_REVERSE);
-			set_colour(24, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_CYAN, COLOR_GREEN, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_GREEN, COLOR_BLACK, true, 0);
-			set_colour(31, COLOR_GREEN, COLOR_BLACK, false, 0);
-			set_colour(32, COLOR_GREEN, COLOR_BLACK, false, A_REVERSE);
-			set_colour(33, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(34, COLOR_GREEN, COLOR_BLACK, true, A_DIM | A_REVERSE);
-			set_colour(35, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr );
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgGreen, PspgBlack, 0);
+			deftheme(PspgTheme_border, PspgGreen, PspgBlack, 0);
+			deftheme(PspgTheme_label, PspgBrightGreen, PspgBlack, 0);
+			deftheme(PspgTheme_rownum, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgCyan, PspgBlack, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_cursor_border, PspgBrightGreen, PspgGreen, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgGreen, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBrightGreen, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgGreen, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgBrightGreen, 0);
+
+			deftheme(PspgTheme_title, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_status_bar, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_prompt_bar, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgBrightGreen, PspgRed, 0);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgGreen, PspgBrightGreen, 0);
+
+			deftheme(PspgTheme_selection, PspgBrightGreen, PspgBlack, A_DIM | A_REVERSE);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgBrightGreen, 0);
+
+			deftheme(PspgTheme_pattern, PspgWhite, PspgCyan, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgGreen, PspgCyan, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgGreen, PspgBrightCyan, 0);
 			break;
 
 		case 8:
 			/* Blue theme */
-			init_pair(1, COLOR_CYAN, COLOR_BLUE);
+			deftheme(PspgTheme_background, PspgCyan, PspgBlue, 0);
 
-			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(4, COLOR_WHITE, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(11, COLOR_CYAN, COLOR_CYAN, true, 0);
-			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_CYAN, COLOR_GREEN, true, 0);
-			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(21, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_CYAN, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_CYAN, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);	/* scrollbar arrows */
-			set_colour(31, COLOR_WHITE, COLOR_WHITE, false, 0);			/* scrollbar background */
-			set_colour(32, COLOR_WHITE, COLOR_WHITE, true, A_REVERSE);	/* scrollbar slider */
-			set_colour(33, COLOR_BLACK, COLOR_BLACK, false, A_REVERSE);	/* scrollbar active slider */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_border, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_rownum, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgLightGray, PspgBlue, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgBrightCyan, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgCyan, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgBlack, 0);
+
+			deftheme(PspgTheme_title, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_status_bar, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_prompt_bar, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgCyan, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgBrightCyan, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgYellow, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgCyan, PspgBrightGreen, 0);
 			break;
 
 		case 9:
 			/* Word Perfect theme */
-			init_pair(1, COLOR_WHITE, COLOR_BLUE);
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
 
-			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(4, COLOR_CYAN, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_GREEN, COLOR_BLUE, true, 0);
-			set_colour(10, COLOR_WHITE, COLOR_CYAN, true, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_BLUE, true, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(31, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_WHITE, COLOR_WHITE, false, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_WHITE, true, A_REVERSE);
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlue, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBrightGreen, PspgBlue, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgCyan, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgLightGray, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgYellow, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 10:
 			/* low contrast theme */
-			init_pair(1, COLOR_BLUE, COLOR_CYAN);
+			deftheme(PspgTheme_background, PspgBlue, PspgCyan, 0);
 
-			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(3, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(4, COLOR_WHITE, COLOR_CYAN, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(7, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(11, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_BLUE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_BLUE, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(21, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_BLUE, true, A_REVERSE);
-			set_colour(27, COLOR_BLACK, COLOR_CYAN, false, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(31, COLOR_BLACK, COLOR_CYAN, true, 0);
-			set_colour(32, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
-			set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_DIM | A_REVERSE);
-			set_colour(35, COLOR_GREEN, COLOR_BLACK, false, A_REVERSE | cursor_attr );
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_border, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_rownum, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlue, PspgCyan, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_border, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgGray, PspgCyan, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBrightCyan, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_status_bar, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgCyan, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgCyan, PspgBlack, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgGreen, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgCyan, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgBlue, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlue, PspgBrightGreen, 0);
 			break;
 
 		case 11:
 			/* Dark cyan theme */
-			init_pair(1, COLOR_CYAN, COLOR_BLACK);
+			deftheme(PspgTheme_background, PspgCyan, PspgBlack, 0);
 
-			set_colour(2, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(3, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(4, COLOR_CYAN, COLOR_BLACK, true, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_MAGENTA, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_MAGENTA, true, cursor_attr);
-			set_colour(7, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(9, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_MAGENTA, true, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_MAGENTA, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_MAGENTA, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_MAGENTA, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_CYAN, COLOR_GREEN, true, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(19, COLOR_CYAN, COLOR_MAGENTA, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(22, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_CYAN, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_WHITE, COLOR_WHITE, false, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_WHITE, true, A_REVERSE);
-			set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_CYAN, COLOR_BLUE, true, cursor_attr );
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_border, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlack, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgWhite, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgLightGray, PspgBlack, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgMagenta, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_status_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_prompt_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgMagenta, PspgWhite, A_DIM | A_REVERSE);
+			deftheme(PspgTheme_cross_cursor_border, PspgMagenta, PspgLightGray, A_DIM | A_REVERSE);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgBrightMagenta, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgYellow, PspgBlack, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgCyan, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlue, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgCyan, PspgBrightGreen, 0);
 			break;
 
 		case 12:
 			/* Paradox like theme */
-			init_pair(1, COLOR_BLUE, COLOR_CYAN);
+			deftheme(PspgTheme_background, PspgBlue, PspgCyan, 0);
 
-			set_colour(2, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(4, COLOR_BLUE, COLOR_CYAN, false, labels_attr);
-			set_colour(5, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(7, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_BLUE, true, cursor_attr);
-			set_colour(11, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_BLUE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(19, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(20, COLOR_WHITE, COLOR_MAGENTA, true, cursor_attr);
-			set_colour(21, COLOR_CYAN, COLOR_CYAN, true, 0);
-			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_BLUE, true, A_REVERSE);
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_BLUE, COLOR_CYAN, false, 0);
-			set_colour(33, COLOR_CYAN, COLOR_BLUE, true, A_REVERSE);
-			set_colour(34, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_CYAN, COLOR_BLACK, true, A_DIM | A_REVERSE | cursor_attr );
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_border, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_label, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_rownum, PspgBrightCyan, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlue, PspgCyan, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_border, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgBlue, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_title, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_status_bar, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlue, PspgCyan, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgCyan, PspgBlack, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBrightCyan, PspgBlack, A_DIM| A_REVERSE);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlue, PspgBrightGreen, 0);
 			break;
 
 		case 13:
 			/* DBase retro theme */
-			init_pair(1, COLOR_WHITE, COLOR_BLUE);
+			deftheme(PspgTheme_background, PspgWhite, PspgBlue, 0);
 
-			set_colour(2, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(4, COLOR_WHITE, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_YELLOW, COLOR_CYAN, true, cursor_attr);
-			set_colour(6, COLOR_YELLOW, COLOR_CYAN, true, cursor_attr);
-			set_colour(7, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(27, COLOR_BLACK, COLOR_CYAN, false, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
-			set_colour(34, COLOR_WHITE, COLOR_MAGENTA, true, 0);
-			set_colour(35, COLOR_MAGENTA, COLOR_BLACK, true, A_REVERSE | cursor_attr );
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgLightGray, PspgBlue, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgYellow, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgYellow, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_status_bar, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_prompt_bar, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgCyan, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgBrightMagenta, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 14:
 			/* DBase retro magenta */
-			init_pair(1, COLOR_WHITE, COLOR_BLUE);
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
 
-			set_colour(2, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(3, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(4, COLOR_MAGENTA, COLOR_BLUE, true, labels_attr);
-			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(7, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(11, COLOR_WHITE, COLOR_CYAN, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_WHITE, COLOR_GREEN, false, 0);
-			set_colour(18, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(21, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLUE, true, 0);		/* input */
-			set_colour(28, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLUE, true, 0);
-			set_colour(31, COLOR_CYAN, COLOR_BLUE, false, 0);
-			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
-			set_colour(33, COLOR_MAGENTA, COLOR_BLACK, true, A_REVERSE);
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_label, PspgBrightMagenta, PspgBlue, 0);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_recnum, PspgLightGray, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgLightGray, PspgBlue, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgWhite, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_status_bar, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_prompt_bar, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgWhite, PspgBlue, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgWhite, PspgMagenta, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgBrightMagenta, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgWhite, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 15:
 			/* Red theme */
-			init_pair(1, COLOR_BLACK, COLOR_WHITE);
+			deftheme(PspgTheme_background, PspgBlack, PspgLightGray, 0);
 
-			set_colour(2, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(3, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(4, COLOR_RED, COLOR_WHITE, false, A_DIM);
-			set_colour(5, COLOR_WHITE, COLOR_RED, true, cursor_attr);
-			set_colour(6, COLOR_WHITE, COLOR_RED, true, cursor_attr);
-			set_colour(7, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(8, COLOR_WHITE, COLOR_BLUE, false, 0);
-			set_colour(9, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(10, COLOR_WHITE, COLOR_RED, true, cursor_attr);
-			set_colour(11, COLOR_BLACK, COLOR_RED, false, 0);
-			set_colour(12, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(13, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(14, COLOR_YELLOW, COLOR_RED, true, A_REVERSE | A_BOLD);
-			set_colour(15, COLOR_YELLOW, COLOR_BLACK, true, 0);
-			set_colour(16, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(17, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(18, COLOR_CYAN, COLOR_BLUE, true, 0);
-			set_colour(19, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, false, 0);
-			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, COLOR_RED, COLOR_BLACK, false, 0);
-			set_colour(24, COLOR_RED, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_RED, COLOR_BLACK, true, A_REVERSE);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
-			set_colour(28, COLOR_YELLOW, COLOR_RED, true, A_REVERSE | A_BOLD);
-			set_colour(30, COLOR_BLACK, COLOR_WHITE, false, 0);
-			set_colour(31, COLOR_BLACK, COLOR_WHITE, true, 0);
-			set_colour(32, COLOR_BLACK, COLOR_BLACK, true, A_REVERSE | A_DIM);
-			set_colour(33, COLOR_RED, COLOR_BLACK, false, A_REVERSE);
-			set_colour(34, COLOR_YELLOW, COLOR_BLACK, true, A_REVERSE);
-			set_colour(35, COLOR_RED, COLOR_BLACK, true, A_REVERSE | cursor_attr );
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_border, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_label, PspgRed, PspgLightGray, A_DIM);
+			deftheme(PspgTheme_rownum, PspgLightGray, PspgBlack, 0);
+			deftheme(PspgTheme_recnum, PspgWhite, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgBlack, PspgLightGray, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_border, PspgBlack, PspgRed, 0);
+			deftheme(PspgTheme_cursor_label, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_cursor_footer, PspgWhite, PspgRed, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgGray, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlack, PspgBlack, A_DIM | A_REVERSE);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgRed, 0);
+
+			deftheme(PspgTheme_title, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_info_bar, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_bookmark, PspgRed, PspgYellow, A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgBlack, PspgYellow, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgYellow, PspgRed, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgRed, PspgBlack, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgYellow, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgBrightRed, 0);
+
+			deftheme(PspgTheme_pattern, PspgBlack, PspgYellow, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgWhite, A_BOLD);
+			deftheme(PspgTheme_pattern_line_border, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgLightGray, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightRed, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgBlack, PspgBrightRed, 0);
 			break;
 
 		case 16:
 			/* Simple theme */
 			use_default_colors();
-			init_pair(1, -1, -1);
 
-			set_colour(2, -1, -1, false, 0);
-			set_colour(3, -1, -1, false, 0);
-			set_colour(4, -1, -1, true, A_ITALIC | labels_attr);
-			set_colour(5, -1, -1, true, A_REVERSE | cursor_attr);
-			set_colour(6, -1, -1, true, A_REVERSE | cursor_attr);
-			set_colour(7, -1, -1, false, 0);
-			set_colour(8, -1, -1, false, 0);
-			set_colour(9, -1, -1, false, 0);
-			set_colour(10, -1, -1, true, A_REVERSE | cursor_attr);
-			set_colour(11, -1, -1, false, A_REVERSE);
-			set_colour(12, -1, -1, false, 0);
-			set_colour(13, -1, -1, true, 0);
-			set_colour(14, -1, -1, false, A_UNDERLINE);
-			set_colour(15, -1, -1, false, A_UNDERLINE);
-			set_colour(16, -1, -1, false, 0);
-			set_colour(17, -1, -1, false, 0);
-			set_colour(18, -1, -1, false, A_UNDERLINE);
-			set_colour(19, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
-			set_colour(20, -1, -1, false, A_UNDERLINE | A_REVERSE | A_BOLD);
-			set_colour(21, -1, -1, false, 0);
-			set_colour(22, -1, -1, true, cursor_attr);
-			set_colour(23, -1, -1, false, 0);
-			set_colour(24, -1, -1, true, A_REVERSE | cursor_attr);
-			set_colour(25, -1, -1, true, A_REVERSE);
-			set_colour(27, -1, -1, false, 0);		/* input */
-			set_colour(28, -1, -1, false, A_UNDERLINE);
-			set_colour(30, -1, -1, true, 0);
-			set_colour(31, -1, -1, false, A_DIM);
-			set_colour(32, -1, -1, false, A_REVERSE);
-			set_colour(33, -1, -1, true, A_REVERSE);
-			set_colour(34, -1, -1, false, A_DIM | A_REVERSE);
-			set_colour(35, -1, -1, false, A_REVERSE | cursor_attr | A_UNDERLINE);
+			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
+
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_label, PspgDefault, PspgDefault, A_ITALIC);
+			deftheme(PspgTheme_rownum, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_recnum, PspgDefault, PspgDefault, A_BOLD);
+			deftheme(PspgTheme_footer, PspgDefault, PspgDefault, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cursor_border, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cursor_label, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cursor_rownum, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cursor_recnum, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_cursor_footer, PspgDefault, PspgDefault, A_REVERSE);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgDefault, PspgDefault, A_BOLD);
+			deftheme(PspgTheme_scrollbar_background, PspgDefault, PspgDefault, A_DIM);
+			deftheme(PspgTheme_scrollbar_slider, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgDefault, PspgDefault, A_REVERSE);
+
+			deftheme(PspgTheme_title, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_status_bar, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_prompt_bar, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_info_bar, PspgDefault, PspgDefault, A_BOLD);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, A_REVERSE);
+			deftheme(PspgTheme_input_bar, PspgDefault, PspgDefault, 0);
+
+			deftheme(PspgTheme_bookmark, PspgDefault, PspgDefault, A_UNDERLINE | A_BOLD);
+			deftheme(PspgTheme_bookmark_border, PspgDefault, PspgDefault, A_UNDERLINE | A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgDefault, PspgDefault, A_UNDERLINE | A_BOLD | A_REVERSE);
+
+			deftheme(PspgTheme_cross_cursor, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgDefault, PspgDefault, 0);
+
+			deftheme(PspgTheme_selection, PspgDefault, PspgDefault, A_DIM | A_REVERSE);
+			deftheme(PspgTheme_cursor_selection, PspgDefault, PspgDefault, A_REVERSE | A_UNDERLINE);
+
+			deftheme(PspgTheme_pattern, PspgDefault, PspgDefault, A_UNDERLINE | A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgDefault, PspgDefault, A_UNDERLINE);
+			deftheme(PspgTheme_pattern_line, PspgDefault, PspgDefault, A_BOLD);
+			deftheme(PspgTheme_pattern_line_border, PspgDefault, PspgDefault, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgDefault, PspgDefault, A_UNDERLINE | A_REVERSE | A_BOLD);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgDefault, PspgDefault, A_REVERSE);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgDefault, PspgDefault, A_REVERSE);
 			break;
 
 		case 17:
@@ -1340,38 +1549,55 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 22:
 			/* Relation pipes theme */
-			init_pair(1, COLOR_GREEN, COLOR_BLACK);
+			deftheme(PspgTheme_background, PspgGreen, PspgBlack, 0);
 
-			set_colour(2, COLOR_RED, COLOR_BLACK, true, 0);
-			set_colour(3, COLOR_CYAN, COLOR_BLACK, false, 0);
-			set_colour(4, COLOR_WHITE, COLOR_BLACK, true, labels_attr);
-			set_colour(5, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(6, COLOR_BLACK, COLOR_CYAN, false, 0);
-			set_colour(7, COLOR_RED, COLOR_BLACK, true, 0);
-			set_colour(8, COLOR_RED, COLOR_BLACK, false, 0);
-			set_colour(9, COLOR_YELLOW, COLOR_BLACK, false, 0);
-			set_colour(10, COLOR_BLACK, COLOR_CYAN, false, cursor_attr);
-			set_colour(11, COLOR_GREEN, COLOR_CYAN, true, 0);
-			set_colour(12, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(13, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(14, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(15, COLOR_YELLOW, COLOR_GREEN, true, 0);
-			set_colour(16, COLOR_BLACK, COLOR_GREEN, false, 0);
-			set_colour(17, COLOR_GREEN, COLOR_GREEN, true, 0);
-			set_colour(18, COLOR_GREEN, COLOR_BLUE, false, 0);
-			set_colour(19, COLOR_YELLOW, COLOR_CYAN, true, 0);
-			set_colour(20, COLOR_WHITE, COLOR_BLACK, true, 0);
-			set_colour(21, COLOR_WHITE, COLOR_CYAN, true, 0);
-			set_colour(22, COLOR_CYAN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(23, COLOR_CYAN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(24, COLOR_GREEN, COLOR_BLACK, true, A_REVERSE | cursor_attr);
-			set_colour(25, COLOR_GREEN, COLOR_WHITE, true, A_REVERSE);
-			set_colour(26, COLOR_WHITE, COLOR_RED, true, 0);
-			set_colour(28, COLOR_GREEN, COLOR_RED, true, 0);
-			set_colour(30, COLOR_WHITE, COLOR_BLACK, false, A_REVERSE);
-			set_colour(31, COLOR_BLACK, COLOR_BLACK, true, 0);
-			set_colour(32, COLOR_WHITE, COLOR_BLUE, false, A_REVERSE);
-			set_colour(33, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);
+			/* set color_pair(1) to background */
+			ncurses_theme_attr(PspgTheme_background);
+
+			deftheme(PspgTheme_data, PspgCyan, PspgBlack, 0);
+			deftheme(PspgTheme_border, PspgGreen, PspgBlack, 0);
+			deftheme(PspgTheme_label, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgRed, PspgBlack, A_BOLD);
+			deftheme(PspgTheme_footer, PspgYellow, PspgBlack, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgBrightGreen, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+
+			deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlack, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_background, PspgGray, PspgBlack, A_REVERSE);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_title, PspgBrightRed, PspgBlack, 0);
+			deftheme(PspgTheme_status_bar, PspgBrightRed, PspgBlack, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBrightRed, PspgBlack, 0);
+			deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_bookmark_border, PspgBrightGreen, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgBrightGreen, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 23:
@@ -1507,8 +1733,8 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 
 		case WINDOW_ROWNUM:
 		case WINDOW_ROWNUM_LUC:
-			t->data_attr = ncurses_theme_attr(PspgTheme_rownum);;
-			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_rownum);;
+			t->data_attr = ncurses_theme_attr(PspgTheme_rownum);
+			t->cursor_data_attr = ncurses_theme_attr(PspgTheme_cursor_rownum);
 			break;
 
 		case WINDOW_VSCROLLBAR:
