@@ -269,7 +269,7 @@ get_menu_style(int main_theme)
 void
 init_menu_config(Options *opts)
 {
-	int start_from_rgb = 220;
+	int start_from_rgb = 128;
 
 	menu_theme = get_menu_style(opts->theme);
 

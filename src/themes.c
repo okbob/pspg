@@ -25,6 +25,7 @@ attr_t		theme_attrs[50];
 #endif
 
 int		ncurses_colorpair_index = 0;
+int		ncurses_color_index = 0;
 
 static void
 set_colour(short id, short foreground, short background, bool light, attr_t attrs)
@@ -108,6 +109,15 @@ typedef struct
 ColorPairCacheItem ColorPairCache[255];
 int		nColorPairCache;
 
+typedef struct
+{
+	short	color;
+	unsigned int rgb;
+} ColorCacheItem;
+
+ColorCacheItem ColorCache[255];
+int		nColorCache;
+
 const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0};
 const PspgColor PspgRed = {PSPG_COLOR_BASIC, PSPG_RED_COLOR, 0};
 const PspgColor PspgGreen = {PSPG_COLOR_BASIC, PSPG_GREEN_COLOR, 0};
@@ -133,8 +143,12 @@ typedef struct
 	int				attr;
 } PspgThemeElement;
 
+PspgThemeElement themedef[50];
+
+
 typedef enum
 {
+	PspgTheme_none = 0,
 	PspgTheme_background,
 	PspgTheme_data,
 	PspgTheme_border,
@@ -199,10 +213,36 @@ styledep(PspgThemeElements el)
 	}
 }
 
+static short
+color_index_rgb(unsigned int rgb)
+{
+	short		r;
+	short		g;
+	short		b;
 
+	int			i;
 
-PspgThemeElement themedef[50];
+	for (i = 0; i <nColorCache; i++)
+	{
+		if (ColorCache[i].rgb == rgb)
+			return ColorCache[i].color;
+	}
 
+	/* rgb is not in cache, new registration is necessary */
+	if (ncurses_color_index >= 255)
+		return -1;
+
+	ColorCache[nColorCache].color = ncurses_color_index++;
+	ColorCache[nColorCache].rgb = rgb;
+
+	r = ((rgb >> 16) & 0xff) / 255.0 * 1000.0;
+	g = ((rgb >> 8) & 0xff) / 255.0 * 1000.0;
+	b = ((rgb) & 0xff) / 255.0 * 1000.0;
+
+	init_color(ColorCache[nColorCache].color, r, g, b);
+
+	return ColorCache[nColorCache++].color;
+}
 
 void
 deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
@@ -210,6 +250,18 @@ deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
 	memcpy(&themedef[idx].fg, &fg, sizeof(PspgColor));
 	memcpy(&themedef[idx].bg, &bg, sizeof(PspgColor));
 	themedef[idx].attr = attr;
+}
+
+void
+deftheme_rgb(PspgThemeElements idx, unsigned int fg, unsigned int bg, int attr)
+{
+	PspgThemeElement *te = &themedef[idx];
+
+	te->fg.cp = PSPG_COLOR_RGB;
+	te->fg.rgb = fg;
+	te->bg.cp = PSPG_COLOR_RGB;
+	te->bg.rgb = bg;
+	te->attr = attr;
 }
 
 int
@@ -332,35 +384,67 @@ ncurses_theme_attr(PspgThemeElements idx)
 			if (bgcolorbright)
 				bgcolor += 8;
 		}
-
-		/* try to find color pair in cache */
-		for (i = 0; i < nColorPairCache; i++)
-		{
-			if (ColorPairCache[i].fg == fgcolor &&
-				ColorPairCache[i].bg == bgcolor)
-			{
-				result |= COLOR_PAIR(ColorPairCache[i].color_pair_number);
-				return result;
-			}
-		}
-
-		/*
-		 * The number of color pairs can be limmited, so try
-		 * to reuse it.
-		 */
-		init_pair(ncurses_colorpair_index, fgcolor, bgcolor);
-		result |= COLOR_PAIR(ncurses_colorpair_index);
-
-		ColorPairCache[nColorPairCache].fg = fgcolor;
-		ColorPairCache[nColorPairCache].bg = bgcolor;
-		ColorPairCache[nColorPairCache++].color_pair_number = ncurses_colorpair_index++;
 	}
+	else if (te->fg.cp == PSPG_COLOR_RGB &&
+			 te->bg.cp == PSPG_COLOR_RGB)
+	{
+		fgcolor = color_index_rgb(te->fg.rgb);
+		bgcolor = color_index_rgb(te->bg.rgb);
+	}
+	else
+	{
+		/* fallback */
+		fgcolor = COLOR_WHITE;
+		bgcolor = COLOR_BLACK;
+	}
+
+	/* try to find color pair in cache */
+	for (i = 0; i < nColorPairCache; i++)
+	{
+		if (ColorPairCache[i].fg == fgcolor &&
+			ColorPairCache[i].bg == bgcolor)
+		{
+			result |= COLOR_PAIR(ColorPairCache[i].color_pair_number);
+			return result;
+		}
+	}
+
+	if (ncurses_colorpair_index >= 255)
+		return 0;
+
+	/*
+	 * The number of color pairs can be limmited, so try
+	 * to reuse it.
+	 */
+	init_pair(ncurses_colorpair_index, fgcolor, bgcolor);
+	result |= COLOR_PAIR(ncurses_colorpair_index);
+
+	ColorPairCache[nColorPairCache].fg = fgcolor;
+	ColorPairCache[nColorPairCache].bg = bgcolor;
+	ColorPairCache[nColorPairCache++].color_pair_number = ncurses_colorpair_index++;
 
 	return result;
 }
 
+typedef struct
+{
+	PspgThemeElements te;
+	PspgColor		fg;
+	PspgColor		bg;
+	int				attr;
+} PspgThemeElementDef;
+
+#define RGBC(n)				{PSPG_COLOR_RGB, 0, n}
+
+PspgThemeElementDef mc_bw[] = {
+	{PspgTheme_data, PspgDefault, PspgDefault, A_BOLD | A_REVERSE},
+	{PspgTheme_data, PspgDefault, RGBC(0xffffff), A_BOLD | A_REVERSE},
+	{PspgTheme_none}
+
+};
+
 /*
- * Set color pairs based on style
+ * Set theme definition
  */
 void
 initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
@@ -371,14 +455,17 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 	ncurses_colorpair_index = 1;
 	nColorPairCache = 0;
 
+	ncurses_color_index = 32;
+	nColorCache = 0;
+
 	memset(theme_attrs, 0, sizeof(theme_attrs));
+
+	use_default_colors();
 
 	switch (theme)
 	{
 		case 0:
 			/* mc black theme */
-			use_default_colors();
-
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
 
 			/* set color_pair(1) to background */
@@ -436,50 +523,50 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 			ncurses_theme_attr(PspgTheme_background);
 
-			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
-			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
-			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
-			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
-			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD);
-			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
+			deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+			deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD);
+			deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0);
 
-			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
-			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
-			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
-			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
-			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
-			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
 
-			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0);
-			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
-			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
-			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
-			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
-			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
-			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
-			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
-			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
 
-			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
-			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
-			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+			deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
 
-			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
-			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
 
-			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
-			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
 
-			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
-			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
-			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
-			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
-			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
 
-			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
-			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
 			break;
 
 		case 2:
@@ -640,8 +727,6 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 5:
 			/* Mutt theme */
-			use_default_colors();
-
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
 
 			ncurses_theme_attr(PspgTheme_background);
@@ -1221,8 +1306,6 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 16:
 			/* Simple theme */
-			use_default_colors();
-
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
 
 			ncurses_theme_attr(PspgTheme_background);
@@ -1275,6 +1358,57 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 17:
 			/* Solar Dark theme */
+
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
+
+			ncurses_theme_attr(PspgTheme_background);
+
+			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
+			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD);
+			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0);
+
+			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
+			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+
+			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0);
+			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
+			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
+			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
+			break;
+
 			init_color(235, 27, 212, 259);
 			init_color(234, 0, 169, 212);
 			init_color(240, 345, 431, 459);
@@ -1323,6 +1457,57 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 18:
 			/* Solar Light theme */
+
+			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
+
+			ncurses_theme_attr(PspgTheme_background);
+
+			/* 3 */ deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
+			/* -1- */ deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
+			/* 4 */ deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
+			/* 21 */ deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+			/* 8 */ deftheme(PspgTheme_recnum, PspgRed, PspgBlue, A_BOLD);
+			/* 9 */ deftheme(PspgTheme_footer, PspgCyan, PspgBlue, 0);
+
+			/* 6 */ deftheme(PspgTheme_cursor_data, PspgBlack, PspgCyan, 0);
+			/* 11 */ deftheme(PspgTheme_cursor_border, PspgLightGray, PspgCyan, 0);
+			/* 5 */ deftheme(PspgTheme_cursor_label, PspgYellow, PspgCyan, 0);
+			/* -10- */ deftheme(PspgTheme_cursor_rownum, PspgBlack, PspgCyan, 0);
+			/* -6- */ deftheme(PspgTheme_cursor_recnum, PspgBlack, PspgCyan, 0);
+			/* 10 */ deftheme(PspgTheme_cursor_footer, PspgBlack, PspgCyan, 0);
+
+			/* 30 */ deftheme(PspgTheme_scrollbar_arrows, PspgLightGray, PspgBlue, 0);
+			/* 31 */ deftheme(PspgTheme_scrollbar_background, PspgCyan, PspgBlue, 0);
+			/* 32 */ deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgLightGray, 0);
+			/* 33 */ deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
+
+			/* 7 */ deftheme(PspgTheme_title, PspgBlack, PspgCyan, 0);
+			/* 2 */ deftheme(PspgTheme_status_bar, PspgBlack, PspgCyan, 0);
+			/* -2- */ deftheme(PspgTheme_prompt_bar, PspgBlack, PspgCyan, 0);
+			/* 13 */ deftheme(PspgTheme_info_bar, PspgBlack, PspgGreen, 0);
+			/* 26 */ deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			/* 27 */ deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			/* 14 */ deftheme(PspgTheme_bookmark, PspgWhite, PspgRed, 0);
+			/* 28 */ deftheme(PspgTheme_bookmark_border, PspgLightGray, PspgRed, A_BOLD);
+			/* 14 */ deftheme(PspgTheme_cursor_bookmark, PspgRed, PspgWhite, A_BOLD);
+
+			/* 22 */ deftheme(PspgTheme_cross_cursor, PspgBlack, PspgBrightCyan, 0);
+			/* 23 */ deftheme(PspgTheme_cross_cursor_border, PspgLightGray, PspgBrightCyan, 0);
+
+			/* 34 */ deftheme(PspgTheme_selection, PspgBlack, PspgBrightCyan, 0);
+			/* 35 */ deftheme(PspgTheme_cursor_selection, PspgBlack, PspgWhite, 0);
+
+			/* 15 */ deftheme(PspgTheme_pattern, PspgYellow, PspgGreen, A_BOLD);
+			/* 18 */ deftheme(PspgTheme_pattern_nohl, PspgGreen, PspgBlue, 0);
+			/* 16 */ deftheme(PspgTheme_pattern_line, PspgBlack, PspgGreen, 0);
+			/* 17 */ deftheme(PspgTheme_pattern_line_border, PspgLightGray, PspgGreen, 0);
+			/* 20 */ deftheme(PspgTheme_pattern_cursor, PspgWhite, PspgBlack, 0);
+
+			/* 24 */ deftheme(PspgTheme_pattern_line_vertical_cursor, PspgBlack, PspgBrightGreen, 0);
+			/* 25 */ deftheme(PspgTheme_pattern_line_vertical_cursor_border, PspgLightGray, PspgBrightGreen, 0);
+			break;
+
 			init_color(234, 13, 98, 119);
 			init_color(235, 18, 141, 172);
 			init_color(240, 110, 146, 200);
@@ -1369,182 +1554,158 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 19:
 			/* Gruvbox light theme */
-			init_color_rgb_ff(200, 0xff, 0xff, 0xd7); /* background */
-			init_color_rgb_ff(201, 0x26, 0x26, 0x26); /* foreground */
-			init_color_rgb_ff(202, 0xaf, 0xaf, 0x87); /* modeline bg */
-			init_color_rgb_ff(203, 0x4e, 0x4e, 0x4e); /* modeline fg */
-			init_color_rgb_ff(204, 0xd7, 0xd6, 0xaf); /* table decor */
-			init_color_rgb_ff(205, 0xeb, 0xdb, 0xb2); /* cursor bg */
-			init_color_rgb_ff(206, 0xaf, 0xaf, 0xaf); /* footer */
-			init_color_rgb_ff(207, 0xff, 0xff, 0xaf); /* lineno bg */
+			deftheme_rgb(PspgTheme_background, 0xd7d6af, 0xffffd7, 0);
 
-			init_color_rgb_ff(210, 0x87, 0x00, 0x00); /* keyword - red */
-			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
-			init_color_rgb_ff(212, 0x00, 0x5f, 0x87); /* mark - faded blue */
-			init_color_rgb_ff(213, 0xfb, 0xf1, 0xc7); /* cursor bg */
-			init_color_rgb_ff(214, 0xd0, 0xcf, 0xa0); /* mark line cursor */
-			init_color_rgb_ff(215, 0xff, 0xff, 0xff); /* mark fg - white */
+			ncurses_theme_attr(PspgTheme_background);
 
-			init_pair(1, 204, 200);
+			deftheme_rgb(PspgTheme_data, 0x262626, 0xffffd7, 0);
+			deftheme_rgb(PspgTheme_border, 0xd7d6af, 0xffffd7, 0);
+			deftheme_rgb(PspgTheme_label, 0x870000, 0xffffd7, 0);
+			deftheme_rgb(PspgTheme_rownum, 0xafafaf, 0xffffaf, 0);
+			deftheme_rgb(PspgTheme_recnum, 0xffffff, 0xffffd7, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, 0xafafaf, 0xffffd7, 0);
 
-			init_pair(2, 203, 202);
-			init_pair(3, 201, 200);
-			init_pair(4, 210, 200);
-			init_pair(5, 210, 205);
-			init_pair(6, 203, 205);
-			init_pair(7, 203, 202);
-			init_pair(8, 17, 200);
-			init_pair(9, 206, 200);
-			init_pair(10, 203, 205);
-			init_pair(11, 206, 205);
-			init_pair(13, 203, 202);
-			init_pair(14, 215, 211);
-			init_pair(15, 212, 204);
-			init_pair(16, 201, 204);
-			init_pair(17, 206, 204);
-			init_pair(18, -1, -1);
-			init_pair(19, -1, -1);
-			init_pair(20, 212, 205);
-			init_pair(21, 206, 207);
-			init_pair(22, 203, 213);
-			init_pair(23, 206, 213);
-			init_pair(24, 201, 214);
-			init_pair(25, 206, 214);
-			init_pair(28, 215, 211);
+			deftheme_rgb(PspgTheme_cursor_data, 0x4e4e4e, 0xebdbb2, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0xafafaf, 0xebdbb2, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0x870000, 0xebdbb2, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0x4e4e4e, 0xebdbb2, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, 0x4e4e4e, 0xebdbb2, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, 0x4e4e4e, 0xebdbb2, 0);
 
-			theme_attrs[4] = labels_attr;
-			theme_attrs[5] = cursor_attr;
-			theme_attrs[6] = cursor_attr;
-			theme_attrs[10] = cursor_attr;
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgBlack, PspgWhite, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			set_colour(34, 204, 201, false, A_REVERSE);
-			set_colour(35, 201, 202, false, cursor_attr);
+			deftheme_rgb(PspgTheme_title, 0x4e4e4e, 0xafaf87, 0);
+			deftheme_rgb(PspgTheme_status_bar, 0x4e4e4e, 0xafaf87, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, 0x4e4e4e, 0xafaf87, 0);
+			deftheme_rgb(PspgTheme_info_bar, 0x4e4e4e, 0xafaf87, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgLightGray, 0);
+
+			deftheme_rgb(PspgTheme_bookmark, 0xffffff, 0xd75f5f, A_BOLD);
+			deftheme_rgb(PspgTheme_bookmark_border, 0xffffff,  0xd75f5f, A_BOLD);
+			deftheme_rgb(PspgTheme_cursor_bookmark,  0xd75f5f, 0xffffff, A_BOLD);
+
+			deftheme_rgb(PspgTheme_cross_cursor, 0x4e4e4e, 0xfbf1c7, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, 0xafafaf, 0xfbf1c7, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0x262626, 0xd7d6af, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0x262626, 0xafaf87, 0);
+
+			deftheme_rgb(PspgTheme_pattern, 0x005f87, 0xd7d6af, A_BOLD);
+			deftheme_rgb(PspgTheme_pattern_nohl, 0xd7d6af, 0xffffd7, 0);
+			deftheme_rgb(PspgTheme_pattern_line, 0x262626, 0xd7d6af, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, 0xafafaf, 0xd7d6af, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor,  0x005f87, 0xebdbb2, 0);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0x262626, 0xd0cfa0, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0xafafaf, 0xd0cfa0, 0);
 			break;
 
 		case 20:
 			/* Tao theme */
-			init_color_rgb_ff(200, 0xf1, 0xf1, 0xf1); /* background */
-			init_color_rgb_ff(201, 0x61, 0x61, 0x61); /* foreground */
-			init_color_rgb_ff(202, 0xfc, 0xfc, 0xfc); /* modeline bg */
-			init_color_rgb_ff(203, 0x17, 0x17, 0x17); /* modeline fg */
-			init_color_rgb_ff(204, 0x9e, 0x9e, 0x9e); /* table decor */
-			init_color_rgb_ff(205, 0x4e, 0x4e, 0x4e); /* cursor bg */
-			init_color_rgb_ff(213, 0xf6, 0xf6, 0xf6); /* cursor fg */
-			init_color_rgb_ff(206, 0x9e, 0x9e, 0x9e); /* footer */
-			init_color_rgb_ff(207, 0xf6, 0xf6, 0xf6); /* lineno bg */
+			deftheme_rgb(PspgTheme_background, 0x9e9e9e, 0xf1f1f1, 0);
 
-			init_color_rgb_ff(210, 0x00, 0x00, 0x00); /* keyword - red */
-			init_color_rgb_ff(211, 0Xd7, 0x5f, 0x5f); /* bookmark - faded red */
-			init_color_rgb_ff(212, 0xff, 0xff, 0xff); /* mark fg - white */
-			init_color_rgb_ff(215, 0xc3, 0xc3, 0xc3); /* mark bg */
-			init_color_rgb_ff(214, 0xda, 0xda, 0xda); /* marked line bg */
-			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+			ncurses_theme_attr(PspgTheme_background);
 
-			init_color_rgb_ff(217, 0x40, 0x40, 0x40); /* vertical marked cursor bg */
+			deftheme_rgb(PspgTheme_data, 0x616161, 0xf1f1f1, 0);
+			deftheme_rgb(PspgTheme_border, 0x9e9e9e, 0xf1f1f1, 0);
+			deftheme_rgb(PspgTheme_label, 0x000000, 0xf1f1f1, 0);
+			deftheme_rgb(PspgTheme_rownum, 0x9e9e9e, 0xf6f6f6, 0);
+			deftheme_rgb(PspgTheme_recnum, 0xffffff, 0xf1f1f1, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, 0x9e9e9e, 0xf1f1f1, 0);
 
-			init_color(240, 40, 50, 200);
+			deftheme_rgb(PspgTheme_cursor_data, 0xf6f6f6, 0x4e4e4e, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x9e9e9e, 0x4e4e4e, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xf6f6f6, 0x4e4e4e, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xf6f6f6, 0x4e4e4e, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, 0xf6f6f6, 0x4e4e4e, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, 0xf6f6f6, 0x4e4e4e, 0);
 
-			init_pair(1, 204, 200);
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			init_pair(2, 203, 202);
-			init_pair(3, 201, 200);
-			init_pair(4, 210, 200);
-			init_pair(5, 213, 205);
-			init_pair(6, 213, 205);
-			init_pair(7, 203, 202);
-			init_pair(8, 17, 200);
-			init_pair(9, 206, 200);
-			init_pair(10, 213, 205);
-			init_pair(11, 204, 205);
-			init_pair(13, 203, 202);
-			init_pair(14, 212, 211);
-			init_pair(15, 216, 214);
-			init_pair(16, 201, 214);
-			init_pair(17, 206, 214);
-			init_pair(18, -1, -1);
-			init_pair(19, -1, -1);
-			init_pair(20, 212, 205);
-			init_pair(21, 204, 207);
-			init_pair(28, 212, 211);
+			deftheme_rgb(PspgTheme_title, 0x171717, 0xfcfcfc, 0);
+			deftheme_rgb(PspgTheme_status_bar, 0x171717, 0xfcfcfc, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, 0x171717, 0xfcfcfc, 0);
+			deftheme_rgb(PspgTheme_info_bar, 0x171717, 0xfcfcfc, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgWhite, PspgBlack, A_REVERSE);
 
-			set_colour(22, COLOR_WHITE, COLOR_BLACK, true, cursor_attr);
-			set_colour(23, 204, COLOR_BLACK, false, 0);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
+			deftheme_rgb(PspgTheme_bookmark, 0xffffff, 0xd75f5f, 0);
+			deftheme_rgb(PspgTheme_bookmark_border, 0xffffff, 0xd75f5f, A_BOLD);
+			deftheme_rgb(PspgTheme_cursor_bookmark, 0xffffff, 0xd75f5f, A_BOLD | A_REVERSE);
 
-			init_pair(24, 213, 217);
-			init_pair(25, 204, 217);
+			deftheme(PspgTheme_cross_cursor, PspgWhite, PspgBlack, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, 0x9e9e9e, 0x000000, 0);
 
-			theme_attrs[4] = labels_attr;
-			theme_attrs[5] = cursor_attr;
-			theme_attrs[6] = cursor_attr;
-			theme_attrs[10] = cursor_attr;
+			deftheme_rgb(PspgTheme_selection, 0x171717, 0x9e9e9e, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xf6f6f6, 0x171717, 0);
 
-			set_colour(34, 203, 206, false, 0);
-			set_colour(35, 213, 203, false, cursor_attr);
+			deftheme_rgb(PspgTheme_pattern, 0x252525, 0xdadada, A_BOLD);
+			deftheme_rgb(PspgTheme_pattern_nohl, 0x9e9e9e, 0xf1f1f1, 0);
+			deftheme_rgb(PspgTheme_pattern_line, 0x616161, 0xdadada, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, 0x9e9e9e, 0xdadada, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor, 0xffffff, 0x4e4e4e, 0);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0xf6f6f6, 0x404040, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x9e9e9e, 0x404040, 0);
 			break;
 
 		case 21:
 			/* Flatwhite theme */
-			init_color_rgb_ff(200, 0xf7, 0xf3, 0xee); /* background */
-			init_color_rgb_ff(201, 0x60, 0x5A, 0x52); /* foreground */
-			init_color_rgb_ff(202, 0xb9, 0xA9, 0x92); /* modeline bg */
-			init_color_rgb_ff(203, 0x17, 0x17, 0x17); /* modeline fg */
-			init_color_rgb_ff(204, 0xb9, 0xa9, 0x92); /* table decor */
-			init_color_rgb_ff(205, 0x6a, 0x4d, 0xff); /* cursor bg */
-			init_color_rgb_ff(213, 0xf6, 0xf6, 0xf6); /* cursor fg */
-			init_color_rgb_ff(206, 0x9e, 0x9e, 0x9e); /* footer */
-			init_color_rgb_ff(207, 0xf7, 0xf3, 0xee); /* lineno bg */
+			deftheme_rgb(PspgTheme_background, 0xb9a992, 0xf7f3ee, 0);
 
-			init_color_rgb_ff(210, 0x09, 0x09, 0x08); /* labels */
-			init_color_rgb_ff(211, 0Xf7, 0xe0, 0xc3); /* bookmark - bg */
-			init_color_rgb_ff(212, 0x60, 0x5a, 0x52); /* bookmark - fg */
-			init_color_rgb_ff(215, 0xe2, 0xe9, 0xc1); /* mark bg */
-			init_color_rgb_ff(214, 0xe2, 0xe9, 0xc1); /* marked line bg */
-			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+			ncurses_theme_attr(PspgTheme_background);
 
-			init_color_rgb_ff(217, 0x40, 0x40, 0x40); /* vertical marked cursor bg */
-			init_color_rgb_ff(218, 0x00, 0x00, 0x00);
-			init_color_rgb_ff(219, 0x5f, 0x45, 0xe5);
-			init_color_rgb_ff(199, 0x87, 0x70, 0xff);
+			deftheme_rgb(PspgTheme_data, 0x605a52, 0xf7f3ee, 0);
+			deftheme_rgb(PspgTheme_border, 0xb9a992, 0xf7f3ee, 0);
+			deftheme_rgb(PspgTheme_label, 0x090908, 0xf7f3ee, 0);
+			deftheme_rgb(PspgTheme_rownum, 0xb9a992, 0xf7f3ee, 0);
+			deftheme_rgb(PspgTheme_recnum, 0xffffff, 0xf7f3ee, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, 0x9e9e9e, 0xf7f3ee, 0);
 
-			init_color(240, 40, 50, 200);
+			deftheme_rgb(PspgTheme_cursor_data, 0xf6f6f6, 0x6a4dff, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0xb9a992, 0x6a4dff, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xf6f6f6, 0x6a4dff, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xf6f6f6, 0x6a4dff, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, 0xf6f6f6, 0x6a4dff, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, 0xf6f6f6, 0x6a4dff, 0);
 
-			init_pair(1, 204, 200);
-			init_pair(2, 203, 202);
-			init_pair(3, 201, 200);
-			init_pair(4, 210, 200);
-			init_pair(5, 213, 205);
-			init_pair(6, 213, 205);
-			init_pair(7, 203, 202);
-			init_pair(8, 17, 200);
-			init_pair(9, 206, 200);
-			init_pair(10, 213, 205);
-			init_pair(11, 204, 205);
-			init_pair(13, 203, 202);
-			init_pair(14, 212, 211);
-			init_pair(15, 216, 214);
-			init_pair(16, 201, 214);
-			init_pair(17, 204, 214);
-			init_pair(18, -1, -1);
-			init_pair(19, 201, 205);
-			init_pair(20, 218, 205);
-			init_pair(21, 204, 207);
-			init_pair(28, 204, 211);
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme(PspgTheme_scrollbar_background, PspgWhite, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_slider, PspgBlue, PspgBlack, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			set_colour(22, COLOR_WHITE, 199, true, cursor_attr);
-			set_colour(23, 204, 199, false, 0);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
+			deftheme_rgb(PspgTheme_title, 0x171717, 0xb9ad92, 0);
+			deftheme_rgb(PspgTheme_status_bar, 0x171717, 0xb9ad92, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, 0x171717, 0xb9ad92, 0);
+			deftheme_rgb(PspgTheme_info_bar, 0x171717, 0xb9ad92, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0);
 
-			init_pair(24, 213, 219);
-			init_pair(25, 204, 219);
+			deftheme_rgb(PspgTheme_bookmark, 0x605a52, 0xf7e0c3, A_BOLD);
+			deftheme_rgb(PspgTheme_bookmark_border, 0xb9a992, 0xf7e0c3, 0);
+			deftheme_rgb(PspgTheme_cursor_bookmark, 0x605a52, 0xf7e0c3, A_BOLD | A_REVERSE);
 
-			theme_attrs[4] = labels_attr;
-			theme_attrs[5] = cursor_attr;
-			theme_attrs[6] = cursor_attr;
-			theme_attrs[10] = cursor_attr;
+			deftheme_rgb(PspgTheme_cross_cursor, 0xffffff, 0x8770ff, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, 0xb9a992, 0x8770ff, 0);
 
-			set_colour(34, 210, 202, false, 0);
-			set_colour(35, 213, 203, false, cursor_attr);
+			deftheme_rgb(PspgTheme_selection, 0x90909, 0xb9ad92, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xf6f6f6, 0x171717, 0);
+
+			deftheme_rgb(PspgTheme_pattern, 0x252525, 0xe3e9c1, A_BOLD);
+			deftheme_rgb(PspgTheme_pattern_nohl, 0xb9a992, 0xf7f3ee, 0);
+			deftheme_rgb(PspgTheme_pattern_line, 0x605a52, 0xe3e9c1, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, 0xb9a992, 0xe3e9c1, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor, 0xffffff, 0x6a4dff, 0);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0xf6f6f6, 0x5f45e5, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0xb9a992, 0x5f45e5, 0);
 			break;
 
 		case 22:
@@ -1602,69 +1763,54 @@ initialize_color_pairs(int theme, bool bold_labels, bool bold_cursor)
 
 		case 23:
 			/* PaperColour theme */
-			init_color_rgb_ff(200, 0xee, 0xee, 0xee); /* background */
-			init_color_rgb_ff(201, 0x09, 0x09, 0x09); /* foreground */
-			init_color_rgb_ff(202, 0xd0, 0xd0, 0xd0); /* modeline bg */
-			init_color_rgb_ff(203, 0x09, 0x09, 0x09); /* modeline fg */
-			init_color_rgb_ff(204, 0x00, 0x87, 0xaf); /* table decor */
-			init_color_rgb_ff(205, 0x00, 0x5f, 0x87); /* cursor bg */
-			init_color_rgb_ff(213, 0xee, 0xee, 0xee); /* cursor fg */
-			init_color_rgb_ff(206, 0x44, 0x44, 0x44); /* footer */
-			init_color_rgb_ff(207, 0xee, 0xee, 0xee); /* lineno bg */
+			deftheme_rgb(PspgTheme_background, 0x0087af, 0xeeeeee, 0);
 
-			init_color_rgb_ff(210, 0xd7, 0x00, 0x87); /* labels */
-			init_color_rgb_ff(211, 0Xdf, 0x00, 0x00); /* bookmark - bg */
-			init_color_rgb_ff(212, 0xff, 0xff, 0xf0); /* bookmark - fg */
-			init_color_rgb_ff(215, 0xff, 0xff, 0x87); /* mark bg */
-			init_color_rgb_ff(214, 0xff, 0xff, 0x87); /* marked line bg */
-			init_color_rgb_ff(216, 0x25, 0x25, 0x25);
+			ncurses_theme_attr(PspgTheme_background);
 
-			init_color_rgb_ff(217, 0x00, 0x5f, 0x40); /* vertical marked cursor bg */
-			init_color_rgb_ff(218, 0xff, 0xff, 0xff);
-			init_color_rgb_ff(219, 0x5f, 0x45, 0xe5); 
-			init_color_rgb_ff(199, 0x00, 0x5f, 0xd0); /* cross cursor */
+			deftheme_rgb(PspgTheme_data, 0x090909, 0xeeeeee, 0);
+			deftheme_rgb(PspgTheme_border, 0x0087af, 0xeeeeee, 0);
+			deftheme_rgb(PspgTheme_label, 0xd70087, 0xeeeeee, 0);
+			deftheme_rgb(PspgTheme_rownum, 0x0087af, 0xeeeeee, 0);
+			deftheme_rgb(PspgTheme_recnum, 0xd70087, 0xeeeeee, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, 0x444444, 0xeeeeee, 0);
 
-			init_color(240, 40, 50, 200);
+			deftheme_rgb(PspgTheme_cursor_data, 0xeeeeee, 0x005f87, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x0087af, 0x005f87, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xeeeeee, 0x005f87, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xeeeeee, 0x005f87, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, 0xeeeeee, 0x005f87, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, 0xeeeeee, 0x005f87, 0);
 
-			init_pair(1, 204, 200);
-			init_pair(2, 203, 202);
-			init_pair(3, 201, 200);
-			init_pair(4, 210, 200);
-			init_pair(5, 213, 205);
-			init_pair(6, 213, 205);
-			init_pair(7, 203, 202);
-			init_pair(8, 17, 200);
-			init_pair(9, 206, 200);
-			init_pair(10, 213, 205);
-			init_pair(11, 204, 205);
-			init_pair(13, 203, 202);
-			init_pair(14, 212, 211);
-			init_pair(15, 216, 214);
-			init_pair(16, 201, 214);
-			init_pair(17, 204, 214);
-			init_pair(18, -1, -1);
-			init_pair(19, 201, 205);
-			set_colour(20, 218, 205, false, A_BOLD);
-			init_pair(21, 204, 207);
-			init_pair(28, 204, 211);
+			deftheme(PspgTheme_scrollbar_arrows, PspgBlack, PspgLightGray, 0);
+			deftheme_rgb(PspgTheme_scrollbar_background, 0xeeeeee, 0x444444, 0);
+			deftheme_rgb(PspgTheme_scrollbar_slider, 0xeeeeee, 0x005f87, 0);
+			deftheme(PspgTheme_scrollbar_active_slider, PspgBlue, PspgWhite, 0);
 
-			set_colour(22, COLOR_WHITE, 199, true, cursor_attr);
-			set_colour(23, 204, 199, false, 0);
-			set_colour(27, COLOR_WHITE, COLOR_BLACK, true, A_REVERSE);		/* input */
+			deftheme_rgb(PspgTheme_title, 0x090909, 0xd0d0d0, 0);
+			deftheme_rgb(PspgTheme_status_bar, 0x090909, 0xd0d0d0, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, 0x090909, 0xd0d0d0, 0);
+			deftheme_rgb(PspgTheme_info_bar, 0x090909, 0xd0d0d0, 0);
+			deftheme(PspgTheme_error_bar, PspgWhite, PspgRed, 0);
+			deftheme(PspgTheme_input_bar, PspgBlack, PspgWhite, 0);
 
-			init_pair(24, 213, 217);
-			init_pair(25, 204, 217);
+			deftheme_rgb(PspgTheme_bookmark, 0xfffff0, 0xdf0000, A_BOLD);
+			deftheme_rgb(PspgTheme_bookmark_border, 0x0087af, 0xdf0000, A_BOLD);
+			deftheme_rgb(PspgTheme_cursor_bookmark, 0xfffff0, 0xdf0000, A_BOLD | A_REVERSE);
 
-			theme_attrs[4] = labels_attr;
-			theme_attrs[5] = cursor_attr;
-			theme_attrs[6] = cursor_attr;
-			theme_attrs[10] = cursor_attr;
+			deftheme_rgb(PspgTheme_cross_cursor, 0xffffff, 0x005fd0, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, 0x0087af, 0x005fd0, 0);
 
-			set_colour(31, 200, 206, false, 0);						/* scrollbar background */
-			set_colour(32, 200, 205, false, 0);							/* scrollbar slider */
+			deftheme_rgb(PspgTheme_selection, 0x090909, 0xd0d0d0, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xeeeeee, 0x090909, 0);
 
-			set_colour(34, 201, 202, false, 0);
-			set_colour(35, 213, 203, false, cursor_attr);
+			deftheme_rgb(PspgTheme_pattern, 0x252525, 0xffff87, A_BOLD | A_UNDERLINE);
+			deftheme_rgb(PspgTheme_pattern_nohl, 0x0087af, 0xeeeeee, 0);
+			deftheme_rgb(PspgTheme_pattern_line, 0x090909, 0xffff87, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, 0x0087af, 0xffff87, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor, 0xffffff, 0x005f87, A_BOLD);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0xeeeeee, 0x005f40, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x0087af, 0x005f40, 0);
 			break;
 	}
 }
