@@ -2804,7 +2804,7 @@ main(int argc, char *argv[])
 
 reinit_theme:
 
-	initialize_color_pairs(opts.theme, opts.bold_labels, opts.bold_cursor);
+	initialize_color_pairs(opts.theme);
 
 	timeout(0);
 
