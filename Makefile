@@ -9,7 +9,7 @@ all:
 
 DEPS=$(wildcard *.d)
 PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o pgclient.o args.o infra.o \
-table.o string.o export.o linebuffer.o bscommands.o readline.o inputs.o
+table.o string.o export.o linebuffer.o bscommands.o readline.o inputs.o theme_loader.o
 
 OBJS=$(PSPG_OFILES)
 
@@ -79,6 +79,9 @@ inputs.o: src/pspg.h src/inputs.h src/inputs.c
 
 bscommands.o: src/pspg.h src/bscommands.c
 	$(CC)  src/bscommands.c -c $(CPPFLAGS) $(CFLAGS)
+
+theme_loader.o: src/pspg.h src/themes.h src/theme_loader.c
+	$(CC)  src/theme_loader.c -c $(CPPFLAGS) $(CFLAGS)
 
 pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/inputs.h src/pspg.c
 	$(CC)  -c src/pspg.c -o pspg.o $(CPPFLAGS) $(CFLAGS)

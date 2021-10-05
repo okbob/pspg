@@ -62,7 +62,7 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val, char **str_val)
 		while (*line == ' ')
 			line++;
 
-		if (*line >= '0' && *line <= '9')
+		if (*line == '-' || (*line >= '0' && *line <= '9'))
 		{
 			*int_val = atoi(line);
 			return 1;
@@ -84,8 +84,7 @@ parse_cfg(char *line, char *key, bool *bool_val, int *int_val, char **str_val)
 
 			size = strlen(line);
 			str = trim_quoted_str(line, &size);
-
-			*str_val = sstrndup(str, size);
+			*str_val = str ? sstrndup(str, size) : NULL;
 			return 3;
 		}
 	}
@@ -169,6 +168,13 @@ save_config(char *path, Options *opts)
 			return false;
 	}
 
+	if (opts->custom_theme_name)
+	{
+		result = fprintf(f, "nullstr = \"%s\"\n", opts->custom_theme_name);
+		if (result < 0)
+			return false;
+	}
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
@@ -219,7 +225,7 @@ assign_str(char *key, char **target, char *value, int type)
 		return false;
 	}
 
-	*target = sstrdup(value);
+	*target = value;
 
 	return true;
 }
@@ -318,6 +324,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_int(key, (int *) &opts->hist_size, int_val, res, 0, INT_MAX);
 			else if (strcmp(key, "progressive_load_mode") == 0)
 				is_valid = assign_bool(key, &opts->progressive_load_mode, bool_val, res);
+			else if (strcmp(key, "custom_theme_name") == 0)
+				is_valid = assign_str(key, &opts->custom_theme_name, str_val, res);
 
 			if (!is_valid || res == -1)
 				break;

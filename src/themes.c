@@ -24,50 +24,8 @@ attr_t		theme_attrs[50];
 #define A_ITALIC	A_DIM
 #endif
 
-int		ncurses_colorpair_index = 0;
-int		ncurses_color_index = 0;
-
-typedef enum
-{
-	PSPG_BLACK_COLOR,
-	PSPG_RED_COLOR,
-	PSPG_GREEN_COLOR,
-	PSPG_BROWN_COLOR,
-	PSPG_BLUE_COLOR,
-	PSPG_MAGENTA_COLOR,
-	PSPG_CYAN_COLOR,
-	PSPG_LIGHT_GRAY_COLOR,
-	PSPG_GRAY_COLOR,
-	PSPG_BRIGHT_RED_COLOR,
-	PSPG_BRIGHT_GREEN_COLOR,
-	PSPG_YELLOW_COLOR,
-	PSPG_BRIGHT_BLUE_COLOR,
-	PSPG_BRIGHT_MAGENTA_COLOR,
-	PSPG_BRIGHT_CYAN_COLOR,
-	PSPG_WHITE_COLOR,
-	PSPG_DEFAULT_COLOR
-} PspgBasicColor;
-
-typedef enum
-{
-	PSPG_COLOR_BASIC,
-	PSPG_COLOR_256,
-	PSPG_COLOR_RGB
-} PspgColorPallet;
-
-typedef enum
-{
-	PSPG_INDEPENDENT = 0,
-	PSPG_CURSOR_BOLD,
-	PSPG_LABEL_BOLD,
-} PspgStyleDependency;
-
-typedef struct
-{
-	PspgColorPallet	cp;
-	PspgBasicColor	bc;
-	unsigned int	rgb;
-} PspgColor;
+static int		ncurses_colorpair_index = 0;
+static int		ncurses_color_index = 0;
 
 typedef struct
 {
@@ -76,8 +34,8 @@ typedef struct
 	int		color_pair_number;
 } ColorPairCacheItem;
 
-ColorPairCacheItem ColorPairCache[255];
-int		nColorPairCache;
+static ColorPairCacheItem ColorPairCache[255];
+static int		nColorPairCache;
 
 typedef struct
 {
@@ -85,8 +43,8 @@ typedef struct
 	unsigned int rgb;
 } ColorCacheItem;
 
-ColorCacheItem ColorCache[255];
-int		nColorCache;
+static ColorCacheItem ColorCache[255];
+static int		nColorCache;
 
 const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0};
 const PspgColor PspgRed = {PSPG_COLOR_BASIC, PSPG_RED_COLOR, 0};
@@ -106,58 +64,7 @@ const PspgColor PspgBrightCyan = {PSPG_COLOR_BASIC, PSPG_BRIGHT_CYAN_COLOR, 0};
 const PspgColor PspgWhite = {PSPG_COLOR_BASIC, PSPG_WHITE_COLOR, 0};
 const PspgColor PspgDefault = {PSPG_COLOR_BASIC, PSPG_DEFAULT_COLOR, 0};
 
-typedef struct
-{
-	PspgColor		fg;
-	PspgColor		bg;
-	int				attr;
-} PspgThemeElement;
-
-PspgThemeElement themedef[50];
-
-
-typedef enum
-{
-	PspgTheme_background = 0,
-	PspgTheme_data,
-	PspgTheme_border,
-	PspgTheme_label,
-	PspgTheme_rownum,
-	PspgTheme_recnum,
-	PspgTheme_selection,
-	PspgTheme_footer,
-	PspgTheme_cursor_data,
-	PspgTheme_cursor_border,
-	PspgTheme_cursor_label,
-	PspgTheme_cursor_rownum,
-	PspgTheme_cursor_recnum,
-	PspgTheme_cursor_selection,
-	PspgTheme_cursor_footer,
-	PspgTheme_scrollbar_arrows,
-	PspgTheme_scrollbar_background,
-	PspgTheme_scrollbar_slider,
-	PspgTheme_scrollbar_active_slider,
-	PspgTheme_title,
-	PspgTheme_status_bar,
-	PspgTheme_prompt_bar,
-	PspgTheme_info_bar,
-	PspgTheme_error_bar,
-	PspgTheme_input_bar,
-	PspgTheme_bookmark,
-	PspgTheme_bookmark_border,
-	PspgTheme_cursor_bookmark,
-	PspgTheme_cross_cursor,
-	PspgTheme_cross_cursor_border,
-	PspgTheme_pattern,
-	PspgTheme_pattern_nohl,
-	PspgTheme_pattern_line,
-	PspgTheme_pattern_line_border,
-	PspgTheme_pattern_cursor,
-	PspgTheme_pattern_line_vertical_cursor,
-	PspgTheme_pattern_line_vertical_cursor_border,
-
-	PspgTheme_error
-} PspgThemeElements;
+static PspgThemeElement themedef[50];
 
 static PspgStyleDependency
 styledep(PspgThemeElements el)

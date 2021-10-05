@@ -78,7 +78,125 @@ typedef struct
 #define		WINDOW_ROWNUM_LUC		8
 #define		WINDOW_VSCROLLBAR		9
 
+typedef enum
+{
+	PSPG_BLACK_COLOR,
+	PSPG_RED_COLOR,
+	PSPG_GREEN_COLOR,
+	PSPG_BROWN_COLOR,
+	PSPG_BLUE_COLOR,
+	PSPG_MAGENTA_COLOR,
+	PSPG_CYAN_COLOR,
+	PSPG_LIGHT_GRAY_COLOR,
+	PSPG_GRAY_COLOR,
+	PSPG_BRIGHT_RED_COLOR,
+	PSPG_BRIGHT_GREEN_COLOR,
+	PSPG_YELLOW_COLOR,
+	PSPG_BRIGHT_BLUE_COLOR,
+	PSPG_BRIGHT_MAGENTA_COLOR,
+	PSPG_BRIGHT_CYAN_COLOR,
+	PSPG_WHITE_COLOR,
+	PSPG_DEFAULT_COLOR
+} PspgBasicColor;
+
+typedef enum
+{
+	PSPG_COLOR_BASIC,
+	PSPG_COLOR_256,
+	PSPG_COLOR_RGB
+} PspgColorPallet;
+
+typedef enum
+{
+	PSPG_INDEPENDENT = 0,
+	PSPG_CURSOR_BOLD,
+	PSPG_LABEL_BOLD,
+} PspgStyleDependency;
+
+typedef struct
+{
+	PspgColorPallet	cp;
+	PspgBasicColor	bc;
+	unsigned int	rgb;
+} PspgColor;
+
+extern const PspgColor PspgBlack;
+extern const PspgColor PspgRed;
+extern const PspgColor PspgGreen;
+extern const PspgColor PspgBrown;
+extern const PspgColor PspgBlue;
+extern const PspgColor PspgMagenta;
+extern const PspgColor PspgCyan;
+extern const PspgColor PspgLightGray;
+extern const PspgColor PspgGray;
+extern const PspgColor PspgBrightRed;
+extern const PspgColor PspgBrightGreen;
+extern const PspgColor PspgYellow;
+extern const PspgColor PspgBrightBlue;
+extern const PspgColor PspgBrightMagenta;
+extern const PspgColor PspgBrightCyan;
+extern const PspgColor PspgWhite;
+extern const PspgColor PspgDefault;
+
+typedef struct
+{
+	PspgColor		fg;
+	PspgColor		bg;
+	int				attr;
+} PspgThemeElement;
+
+typedef struct
+{
+	bool			used;
+	PspgThemeElement te;
+} PspgThemeLoaderElement;
+
+typedef enum
+{
+	PspgTheme_background = 0,
+	PspgTheme_data,
+	PspgTheme_border,
+	PspgTheme_label,
+	PspgTheme_rownum,
+	PspgTheme_recnum,
+	PspgTheme_selection,
+	PspgTheme_footer,
+	PspgTheme_cursor_data,
+	PspgTheme_cursor_border,
+	PspgTheme_cursor_label,
+	PspgTheme_cursor_rownum,
+	PspgTheme_cursor_recnum,
+	PspgTheme_cursor_selection,
+	PspgTheme_cursor_footer,
+	PspgTheme_scrollbar_arrows,
+	PspgTheme_scrollbar_background,
+	PspgTheme_scrollbar_slider,
+	PspgTheme_scrollbar_active_slider,
+	PspgTheme_title,
+	PspgTheme_status_bar,
+	PspgTheme_prompt_bar,
+	PspgTheme_info_bar,
+	PspgTheme_error_bar,
+	PspgTheme_input_bar,
+	PspgTheme_bookmark,
+	PspgTheme_bookmark_border,
+	PspgTheme_cursor_bookmark,
+	PspgTheme_cross_cursor,
+	PspgTheme_cross_cursor_border,
+	PspgTheme_pattern,
+	PspgTheme_pattern_nohl,
+	PspgTheme_pattern_line,
+	PspgTheme_pattern_line_border,
+	PspgTheme_pattern_cursor,
+	PspgTheme_pattern_line_vertical_cursor,
+	PspgTheme_pattern_line_vertical_cursor_border,
+	PspgTheme_error
+} PspgThemeElements;
+
+
 extern void initialize_color_pairs(int theme);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
+
+extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, bool *is_warning);
 
 #endif

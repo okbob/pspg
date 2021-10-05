@@ -106,6 +106,7 @@ static struct option long_options[] =
 	{"no-last-row-search", no_argument, 0, 46},
 	{"no-progressive-load", no_argument, 0, 47},
 	{"no-implicit-stream", no_argument, 0, 48},
+	{"custom-style-name", required_argument, 0, 49},
 	{0, 0, 0, 0}
 };
 
@@ -331,6 +332,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --bold-labels            row, column labels use bold font\n");
 					fprintf(stdout, "  --bold-cursor            cursor use bold font\n");
 					fprintf(stdout, "  --border                 type of borders (0..2)\n");
+					fprintf(stdout, "  --custom-style=NAME      name of custom color style\n");
 					fprintf(stdout, "  --double-header          header separator uses double lines\n");
 					fprintf(stdout, "  --force-uniborder        replace ascii borders by unicode borders\n");
 					fprintf(stdout, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
@@ -664,6 +666,9 @@ readargs(char **argv,
 				break;
 			case 47:
 				opts->progressive_load_mode = false;
+				break;
+			case 49:
+				opts->custom_theme_name = sstrdup(optarg);
 				break;
 			default:
 				{
