@@ -94,7 +94,7 @@ ThemeLoaderGetToken(Tokenizer *tokenizer, Token *token)
 
 		if (tokenizer->current - token->str != 6)
 		{
-			log_row("syntax error - broken format for rgb color (this row is ignored)");
+			log_row("theme loader syntax error - broken format for rgb color");
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -177,14 +177,14 @@ GetAttr(Tokenizer *tokenizer)
 				result |= A_DIM;
 			else
 			{
-				log_row("unknown attribute \"%.*s\" (this row is ignored)", _token->size, _token->str);
+				log_row("theme loader unknown attribute \"%.*s\"", _token->size, _token->str);
 				tokenizer->is_error = true;
 				return 0;
 			}
 		}
 		else
 		{
-			log_row("unexpected token - expected style attribute (this row is ignored)");
+			log_row("theme loader unexpected token - expected style attribute");
 			tokenizer->is_error = true;
 			return 0;
 		}
@@ -300,7 +300,7 @@ GetKey(Tokenizer *tokenizer)
 					tlk.te_type = PspgTheme_error;
 				else
 				{
-					log_row("unknown key \"%.*s\" (this row is ignored)",
+					log_row("theme loader unknown key \"%.*s\"",
 							  _token->size, _token->str);
 					tokenizer->is_error = true;
 					return NULL;
@@ -309,7 +309,7 @@ GetKey(Tokenizer *tokenizer)
 		}
 		else
 		{
-			log_row("unexpected token - expected key name (this row is ignored)");
+			log_row("theme loader unexpected token - expected key name");
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -332,7 +332,7 @@ GetColorDef(Tokenizer *tokenizer)
 			return NULL;
 		if (_token->typ == TOKEN_CHAR)
 		{
-			log_row("unexpected token \"%c\" (this row is ignored)", _token->value);
+			log_row("theme loader unexpected token \"%c\"", _token->value);
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -374,7 +374,7 @@ GetColorDef(Tokenizer *tokenizer)
 				return (PspgColor *) &PspgDefault;
 			else
 			{
-				log_row("unknown color \"%.*s\" (this row is ignored)", _token->size, _token->str);
+				log_row("theme loader unknown color \"%.*s\"", _token->size, _token->str);
 				tokenizer->is_error = true;
 				return NULL;
 			}
@@ -402,9 +402,10 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 	char	   *line = NULL;
 	ssize_t		read;
 	size_t		len;
+	int			lineno = 0;
 
 	if (size <= PspgTheme_error)
-		leave("internal error - the size of theme loader table is too small");
+		leave("theme loader internal error - the size of theme loader table is too small");
 
 	*is_warning = false;
 	memset(tle, 0, size * sizeof(PspgThemeLoaderElement));
@@ -420,6 +421,12 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 		Token token, *_token;
 		ThemeLoaderKey *key;
 
+		lineno += 1;
+
+		/* strip new line on the end */
+		if (line[read - 1] == '\n')
+			line[read - 1] = '\0';
+
 		initTokenizer(&tokenizer, line);
 		key = GetKey(&tokenizer);
 
@@ -433,13 +440,13 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 			_token = ThemeLoaderGetToken(&tokenizer, &token);
 			if (!_token)
 			{
-				log_row("syntax error - missing \"=\" (this row is ignored)");
-				continue;
+				log_row("theme loader syntax error - missing \"=\"");
+				goto err;
 			}
 			else if (_token->typ != TOKEN_CHAR || _token->value != '=')
 			{
-				log_row("unexepected token - expected \"=\" (this row is ignored)");
-				continue;
+				log_row("theme loader unexepected token - expected \"=\"");
+				goto err;
 			}
 
 			if (key->key_type == TL_TEMPLATE_INDEX || key->key_type == TL_MENU_INDEX)
@@ -447,13 +454,13 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (!_token)
 				{
-					log_row("missing number (this row is ignored)");
-					continue;
+					log_row("theme loader missing number");
+					goto err;
 				}
 				if (_token->typ != TOKEN_NUMBER)
 				{
-					log_row("unexpected token - expected number (this row is ignored)");
-					continue;
+					log_row("theme loader unexpected token - expected number");
+					goto err;
 				}
 
 				int_value = _token->value;
@@ -464,42 +471,41 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 
 				color = GetColorDef(&tokenizer);
 				if (tokenizer.is_error)
-					continue;
+					goto err;
 
 				if (!color)
 				{
-					log_row("missing foreground color definition (this row is ignored)");
-					continue;
+					log_row("theme loader missing foreground color definition");
+					goto err;
 				}
 
 				te.fg = *color;
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (!_token || (_token->typ != TOKEN_CHAR || _token->value != ','))
 				{
-					log_row("syntax error - missing \",\" (this row is ignored)");
-					continue;
+					log_row("theme loader syntax error - missing \",\"");
+					goto err;
 				}
 
 				color = GetColorDef(&tokenizer);
 				if (tokenizer.is_error)
-					continue;
+					goto err;
 
 				if (!color)
 				{
-					log_row("missing background color definition (this row is ignored)");
-					continue;
+					log_row("theme loader missing background color definition");
+					goto err;
 				}
 
 				te.bg = *color;
 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
-
 				if (_token)
 				{
 					if (_token->typ != TOKEN_CHAR || _token->value != ',')
 					{
-						log_row("syntax error - missing \",\" (this row is ignored)");
-						continue;
+						log_row("theme loader syntax error - missing \",\"");
+						goto err;
 					}
 
 					te.attr = GetAttr(&tokenizer);
@@ -511,8 +517,8 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (_token)
 				{
-					log_row("unexpected token before end of line (this row is ignored)");
-					continue;
+					log_row("theme loader unexpected token before end of line");
+					goto err;
 				}
 
 				if (key->key_type == TL_MENU_INDEX)
@@ -525,7 +531,21 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 					tle[key->te_type].used = true;
 				}
 			}
+			else
+				goto err;
 		}
+		else
+		{
+			if (tokenizer.is_error)
+				goto err;
+		}
+
+		continue;
+
+err:
+
+		log_row("theme loader skips line %d", lineno);
+		log_row("%d: \"%s\"", lineno, line);
 	}
 
 	free(line);
