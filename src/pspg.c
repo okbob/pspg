@@ -2420,6 +2420,9 @@ main(int argc, char *argv[])
 	const char *PSPG_CONF;
 	const char *PSPG_HISTORY;
 
+	/* custom theme definition */
+	PspgThemeLoaderElement	custom_theme_tle[50];
+
 	/* static variables reinitialization */
 	vertical_cursor_column = -1;
 	cursor_col = 0;
@@ -2505,6 +2508,9 @@ main(int argc, char *argv[])
 	state.opts = &opts;
 	current_state = &state;
 
+	state.theme_template = -1;
+	state.menu_template = -1;
+
 	pspgenv = getenv("PSPG");
 	if (pspgenv)
 	{
@@ -2545,6 +2551,24 @@ main(int argc, char *argv[])
 			leave("cannot to open log file \"%s\"", pathname);
 
 		setlinebuf(logfile);
+	}
+
+	if (opts.custom_theme_name)
+	{
+		FILE	   *themedesc;
+		bool		is_warning;
+
+		themedesc = open_theme_desc(opts.custom_theme_name);
+		if (!themedesc)
+			leave(state.errstr ? state.errstr : "cannot to open theme description file");
+
+		if (!theme_loader(themedesc, custom_theme_tle, 50, &state.theme_template, &state.menu_template, &is_warning))
+			leave(state.errstr ? state.errstr : "cannot to load theme description file");
+
+		if (is_warning)
+			fprintf(stderr, "some fields in custom theme description file are ignored (check log)\n");
+
+		fclose(themedesc);
 	}
 
 	if (state.boot_wait > 0)
@@ -2804,7 +2828,16 @@ main(int argc, char *argv[])
 
 reinit_theme:
 
-	initialize_color_pairs(opts.theme);
+	if (opts.custom_theme_name)
+	{
+		initialize_color_pairs(state.theme_template);
+		log_row("template theme %d loaded", state.theme_template);
+
+		applyCustomTheme(custom_theme_tle, 50);
+		log_row("use custom theme");
+	}
+	else
+		initialize_color_pairs(opts.theme);
 
 	timeout(0);
 

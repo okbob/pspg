@@ -1695,3 +1695,17 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 		t->pattern_line_attr = t->line_attr;
 	}
 }
+
+void
+applyCustomTheme(PspgThemeLoaderElement *tle, int size)
+{
+	int		i;
+
+	for (i = 0; i < size; i++)
+	{
+		if (tle[i].used)
+		{
+			themedef[i] = tle[i].te;
+		}
+	}
+}

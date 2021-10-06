@@ -214,6 +214,12 @@ int menu_theme = -1;
 static int
 get_menu_style(int main_theme)
 {
+	if (current_state && current_state->menu_template >= 0)
+	{
+		log_row("use custom menu template %d", current_state->menu_template);
+		return current_state->menu_template;
+	}
+
 	switch (main_theme)
 	{
 		case 0:

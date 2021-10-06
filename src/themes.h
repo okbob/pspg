@@ -153,7 +153,8 @@ typedef struct
 
 typedef enum
 {
-	PspgTheme_background = 0,
+	PspgTheme_none = 0,
+	PspgTheme_background,
 	PspgTheme_data,
 	PspgTheme_border,
 	PspgTheme_label,
@@ -196,7 +197,14 @@ typedef enum
 
 extern void initialize_color_pairs(int theme);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
+extern void applyCustomTheme(PspgThemeLoaderElement *tle, int size);
 
-extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, bool *is_warning);
+extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, int *menu, bool *is_warning);
+extern FILE *open_theme_desc(char *name);
+
+#ifndef A_ITALIC
+#define A_ITALIC	A_DIM
+#endif
+
 
 #endif

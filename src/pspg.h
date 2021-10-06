@@ -285,6 +285,9 @@ typedef struct
 	ScrDesc *scrdesc;				/* used for redraw */
 	DataDesc *desc;					/* used for input, for access to necessary data for tabcomplete */
 	Options *opts;					/* used for redraw */
+
+	int		theme_template;
+	int		menu_template;
 } StateData;
 
 
