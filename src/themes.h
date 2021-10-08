@@ -33,6 +33,7 @@
 
 typedef struct
 {
+	attr_t background_attr;			/* colors for background */
 	attr_t data_attr;				/* colors for data (alphanums) */
 	attr_t line_attr;				/* colors for borders */
 	attr_t expi_attr;				/* colors for expanded headers */
@@ -198,6 +199,7 @@ typedef enum
 extern void initialize_color_pairs(int theme);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
 extern void applyCustomTheme(PspgThemeLoaderElement *tle, int size);
+extern attr_t ncurses_theme_attr(PspgThemeElements idx);
 
 extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, int *menu, bool *is_warning);
 extern FILE *open_theme_desc(char *name);

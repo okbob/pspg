@@ -196,6 +196,24 @@ ncurses_color(PspgBasicColor cv, bool *isbright)
 	return -1;
 }
 
+int
+ncurses_color_ex(PspgColor c)
+{
+	if (c.cp == PSPG_COLOR_RGB)
+		return color_index_rgb(c.rgb);
+	else if (c.cp == PSPG_COLOR_BASIC)
+	{
+		bool	isbright;
+		int		result;
+
+		result = ncurses_color(c.bc, &isbright);
+
+		return isbright ? result + 8 : result;
+	}
+	else
+		return 0;
+}
+
 attr_t
 ncurses_theme_attr(PspgThemeElements idx)
 {
@@ -263,11 +281,11 @@ ncurses_theme_attr(PspgThemeElements idx)
 				bgcolor += 8;
 		}
 	}
-	else if (te->fg.cp == PSPG_COLOR_RGB &&
+	else if (te->fg.cp == PSPG_COLOR_RGB ||
 			 te->bg.cp == PSPG_COLOR_RGB)
 	{
-		fgcolor = color_index_rgb(te->fg.rgb);
-		bgcolor = color_index_rgb(te->bg.rgb);
+		fgcolor = ncurses_color_ex(te->fg);
+		bgcolor = ncurses_color_ex(te->bg);
 	}
 	else
 	{
@@ -333,10 +351,6 @@ initialize_color_pairs(int theme)
 		case 0:
 			/* mc black theme */
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_label, PspgDefault, PspgDefault, A_BOLD);
@@ -386,9 +400,6 @@ initialize_color_pairs(int theme)
 		case 1:
 			/* mc theme */
 			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_label, PspgYellow, PspgBlue, 0);
@@ -438,9 +449,6 @@ initialize_color_pairs(int theme)
 		case 2:
 			/* FoxPro theme */
 			deftheme(PspgTheme_background, PspgLightGray, PspgCyan, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgWhite, PspgCyan, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgCyan, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
@@ -490,9 +498,6 @@ initialize_color_pairs(int theme)
 		case 3:
 			/* PD Menu theme */
 			deftheme(PspgTheme_background, PspgBlack, PspgCyan, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgBlack, PspgCyan, 0);
 			deftheme(PspgTheme_border, PspgBlack, PspgCyan, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
@@ -542,9 +547,6 @@ initialize_color_pairs(int theme)
 		case 4:
 			/* White theme */
 			deftheme(PspgTheme_background, PspgBlack, PspgLightGray, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgBlack, PspgLightGray, 0);
 			deftheme(PspgTheme_border, PspgBlack, PspgLightGray, 0);
 			deftheme(PspgTheme_label, PspgBlack, PspgLightGray, A_BOLD);
@@ -594,9 +596,6 @@ initialize_color_pairs(int theme)
 		case 5:
 			/* Mutt theme */
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_label, PspgBrightCyan, PspgDefault, 0);
@@ -646,9 +645,6 @@ initialize_color_pairs(int theme)
 		case 6:
 			/* PC Fand theme */
 			deftheme(PspgTheme_background, PspgLightGray, PspgBlack, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgLightGray, PspgBlack, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgBlack, 0);
 			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlack, 0);
@@ -698,9 +694,6 @@ initialize_color_pairs(int theme)
 		case 7:
 			/* Green theme */
 			deftheme(PspgTheme_background, PspgGreen, PspgBlack, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgGreen, PspgBlack, 0);
 			deftheme(PspgTheme_border, PspgGreen, PspgBlack, 0);
 			deftheme(PspgTheme_label, PspgBrightGreen, PspgBlack, 0);
@@ -750,9 +743,6 @@ initialize_color_pairs(int theme)
 		case 8:
 			/* Blue theme */
 			deftheme(PspgTheme_background, PspgCyan, PspgBlue, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_border, PspgCyan, PspgBlue, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgBlue, 0);
@@ -802,10 +792,6 @@ initialize_color_pairs(int theme)
 		case 9:
 			/* Word Perfect theme */
 			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlue, 0);
@@ -855,10 +841,6 @@ initialize_color_pairs(int theme)
 		case 10:
 			/* low contrast theme */
 			deftheme(PspgTheme_background, PspgBlue, PspgCyan, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgBlue, PspgCyan, 0);
 			deftheme(PspgTheme_border, PspgBlue, PspgCyan, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgCyan, 0);
@@ -908,10 +890,6 @@ initialize_color_pairs(int theme)
 		case 11:
 			/* Dark cyan theme */
 			deftheme(PspgTheme_background, PspgCyan, PspgBlack, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgCyan, PspgBlack, 0);
 			deftheme(PspgTheme_border, PspgCyan, PspgBlack, 0);
 			deftheme(PspgTheme_label, PspgBrightCyan, PspgBlack, 0);
@@ -961,10 +939,6 @@ initialize_color_pairs(int theme)
 		case 12:
 			/* Paradox like theme */
 			deftheme(PspgTheme_background, PspgBlue, PspgCyan, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgWhite, PspgCyan, 0);
 			deftheme(PspgTheme_border, PspgBlue, PspgCyan, 0);
 			deftheme(PspgTheme_label, PspgBlue, PspgCyan, 0);
@@ -1014,10 +988,6 @@ initialize_color_pairs(int theme)
 		case 13:
 			/* DBase retro theme */
 			deftheme(PspgTheme_background, PspgWhite, PspgBlue, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgWhite, PspgBlue, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgBlue, 0);
@@ -1067,10 +1037,6 @@ initialize_color_pairs(int theme)
 		case 14:
 			/* DBase retro magenta */
 			deftheme(PspgTheme_background, PspgLightGray, PspgBlue, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgWhite, PspgBlue, 0);
 			deftheme(PspgTheme_border, PspgLightGray, PspgBlue, 0);
 			deftheme(PspgTheme_label, PspgBrightMagenta, PspgBlue, 0);
@@ -1120,10 +1086,6 @@ initialize_color_pairs(int theme)
 		case 15:
 			/* Red theme */
 			deftheme(PspgTheme_background, PspgBlack, PspgLightGray, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgBlack, PspgLightGray, 0);
 			deftheme(PspgTheme_border, PspgBlack, PspgLightGray, 0);
 			deftheme(PspgTheme_label, PspgRed, PspgLightGray, A_DIM);
@@ -1173,9 +1135,6 @@ initialize_color_pairs(int theme)
 		case 16:
 			/* Simple theme */
 			deftheme(PspgTheme_background, PspgDefault, PspgDefault, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_border, PspgDefault, PspgDefault, 0);
 			deftheme(PspgTheme_label, PspgDefault, PspgDefault, A_ITALIC);
@@ -1225,9 +1184,6 @@ initialize_color_pairs(int theme)
 		case 17:
 			/* Solar Dark theme */
 			deftheme_rgb(PspgTheme_background, RGB(576, 631, 631), RGB(0, 169, 212), 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, RGB(557, 616, 624), RGB(0, 169, 212), 0);
 			deftheme_rgb(PspgTheme_border, RGB(576, 631, 631), RGB(0, 169, 212), 0);
 			deftheme_rgb(PspgTheme_label, RGB(149, 545, 824), RGB(0, 169, 212), 0);
@@ -1276,9 +1232,6 @@ initialize_color_pairs(int theme)
 		case 18:
 			/* Solar Light theme */
 			deftheme_rgb(PspgTheme_background, RGB(13,98,119), RGB(576, 631, 631), 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, RGB(13,98,119), RGB(576, 631, 631), 0);
 			deftheme_rgb(PspgTheme_border, RGB(13,98,119),  RGB(576, 631, 631), 0);
 			deftheme_rgb(PspgTheme_label, 0x001972,  RGB(576, 631, 631), 0);
@@ -1328,9 +1281,6 @@ initialize_color_pairs(int theme)
 		case 19:
 			/* Gruvbox light theme */
 			deftheme_rgb(PspgTheme_background, 0xd7d6af, 0xffffd7, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, 0x262626, 0xffffd7, 0);
 			deftheme_rgb(PspgTheme_border, 0xd7d6af, 0xffffd7, 0);
 			deftheme_rgb(PspgTheme_label, 0x870000, 0xffffd7, 0);
@@ -1380,9 +1330,6 @@ initialize_color_pairs(int theme)
 		case 20:
 			/* Tao theme */
 			deftheme_rgb(PspgTheme_background, 0x9e9e9e, 0xf1f1f1, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, 0x616161, 0xf1f1f1, 0);
 			deftheme_rgb(PspgTheme_border, 0x9e9e9e, 0xf1f1f1, 0);
 			deftheme_rgb(PspgTheme_label, 0x000000, 0xf1f1f1, 0);
@@ -1432,9 +1379,6 @@ initialize_color_pairs(int theme)
 		case 21:
 			/* Flatwhite theme */
 			deftheme_rgb(PspgTheme_background, 0xb9a992, 0xf7f3ee, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, 0x605a52, 0xf7f3ee, 0);
 			deftheme_rgb(PspgTheme_border, 0xb9a992, 0xf7f3ee, 0);
 			deftheme_rgb(PspgTheme_label, 0x090908, 0xf7f3ee, 0);
@@ -1484,10 +1428,6 @@ initialize_color_pairs(int theme)
 		case 22:
 			/* Relation pipes theme */
 			deftheme(PspgTheme_background, PspgGreen, PspgBlack, 0);
-
-			/* set color_pair(1) to background */
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme(PspgTheme_data, PspgCyan, PspgBlack, 0);
 			deftheme(PspgTheme_border, PspgGreen, PspgBlack, 0);
 			deftheme(PspgTheme_label, PspgWhite, PspgBlack, 0);
@@ -1537,9 +1477,6 @@ initialize_color_pairs(int theme)
 		case 23:
 			/* PaperColour theme */
 			deftheme_rgb(PspgTheme_background, 0x0087af, 0xeeeeee, 0);
-
-			ncurses_theme_attr(PspgTheme_background);
-
 			deftheme_rgb(PspgTheme_data, 0x090909, 0xeeeeee, 0);
 			deftheme_rgb(PspgTheme_border, 0x0087af, 0xeeeeee, 0);
 			deftheme_rgb(PspgTheme_label, 0xd70087, 0xeeeeee, 0);
@@ -1592,6 +1529,8 @@ void
 initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t)
 {
 	memset(t, 0, sizeof(Theme));
+
+	t->background_attr = ncurses_theme_attr(PspgTheme_background);
 
 	/* selected content and cursor in selected area */
 	t->selection_attr = ncurses_theme_attr(PspgTheme_selection);

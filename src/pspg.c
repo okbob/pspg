@@ -722,7 +722,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 	{
 		scrdesc->top_bar_rows = 1;
 		top_bar = subwin(stdscr, 1, 0, 0, 0);
-		wbkgd(top_bar, COLOR_PAIR(2));
+		wbkgd(top_bar, ncurses_theme_attr(PspgTheme_status_bar));
 		wnoutrefresh(top_bar);
 		w_top_bar(scrdesc) = top_bar;
 	}
@@ -755,7 +755,7 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		werase(bottom_bar);
 
 		/* data colours are better than default */
-		wbkgd(bottom_bar, COLOR_PAIR(3));
+		wbkgd(bottom_bar, ncurses_theme_attr(PspgTheme_data));
 		wnoutrefresh(bottom_bar);
 	}
 
@@ -2834,7 +2834,7 @@ reinit_theme:
 		log_row("template theme %d loaded", state.theme_template);
 
 		applyCustomTheme(custom_theme_tle, 50);
-		log_row("use custom theme");
+		log_row("use custom theme \"%s\"", opts.custom_theme_name);
 	}
 	else
 		initialize_color_pairs(opts.theme);
@@ -2865,7 +2865,7 @@ reinit_theme:
 
 	leaveok(stdscr, TRUE);
 
-	wbkgdset(stdscr, COLOR_PAIR(1));
+	wbkgdset(stdscr, ncurses_theme_attr(PspgTheme_background));
 
 	initialize_special_keycodes();
 
@@ -4064,8 +4064,88 @@ reset_search:
 						}
 
 						opts.theme = theme_num;
+						free(opts.custom_theme_name);
+						opts.custom_theme_name = NULL;
+						if (current_state)
+							current_state->menu_template = -1;
 						reinit = true;
 						goto reinit_theme;
+					}
+
+					break;
+				}
+
+			case cmd_SetCustomTheme:
+				{
+					char   *theme_name = NULL;
+					char	theme_name_str[256];
+
+					if (string_argument_is_valid)
+					{
+						theme_name = string_argument;
+						string_argument_is_valid = false;
+					}
+					else
+					{
+						get_string("custom theme name: ", theme_name_str, sizeof(theme_name_str) - 1, last_line, 'u');
+						if (theme_name_str[0] != '\0')
+						{
+							int		len = strlen(theme_name_str);
+							char   *trimmed_str;
+
+							trimmed_str = trim_quoted_str(theme_name_str, &len);
+							if (len > 0)
+							{
+								theme_name = trimmed_str;
+								theme_name[len] = '\0';
+							}
+						}
+					}
+
+					if (theme_name)
+					{
+						FILE	   *themefile;
+
+						themefile = open_theme_desc(theme_name);
+						if (themefile)
+						{
+							bool	is_warning;
+
+							if (theme_loader(themefile,
+											 custom_theme_tle, 50,
+											 &state.theme_template,
+											 &state.menu_template,
+											 &is_warning))
+							{
+								free(opts.custom_theme_name);
+								opts.custom_theme_name = sstrdup(theme_name);
+
+								if (is_warning)
+									show_info_wait(" some fields in custom theme file are ignored (check log)", NULL,
+												   false, false, true, false);
+
+								reinit = true;
+								goto reinit_theme;
+							}
+							else
+							{
+								show_info_wait(" cannot to load theme %s", current_state->errstr,
+											   true, false, false, true);
+
+								current_state->errstr = NULL;
+								current_state->_errno = 0;
+							}
+
+							fclose(themefile);
+						}
+						else
+						{
+							show_info_wait(" %s", current_state->errstr,
+										   true, false, false, true);
+
+							current_state->errstr = NULL;
+							current_state->_errno = 0;
+						}
 					}
 
 					break;

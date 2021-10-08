@@ -176,6 +176,49 @@ Options can be passed inside env variable `PSPG` too.
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
+The theme can be customized. The custom theme file should be saved in directory with `pspg`
+configuration. The name of this file should be .pspg_theme_xxx. The custom theme can
+be selected by command line option `--custom-style=name` or by command `\ctheme name`.
+
+Example of custom theme file (named `.pspg_theme_mc2`):
+
+    template = 1
+    template_menu = 3
+    
+    background = black, white
+    data = black, white
+    label = black, white, italic, bold
+    border = #000000, white
+    footer = lightgray, white
+    cursor_data = blue, white, italic, bold, dim, reverse
+    cursor_border = blue, blue , italic, bold, dim, reverse
+    cursor_label = blue, white, italic, bold, dim, reverse
+    cursor_footer = blue, white, italic, bold, dim, reverse
+    cursor_bookmark = red, white, italic, bold, dim, reverse
+    cross_cursor = white, blue, italic, bold
+    cross_cursor_border = brightblue, blue
+    status_bar = black, lightgray
+    title = black, lightgray
+    scrollbar_arrows = black, white
+    scrollbar_background = lightgray, white
+    scrollbar_slider = white, gray
+
+In this file you can choose keys (`background`, `data`, `border`, `label`, `row_number`,
+`record_number`, `selected_area`, `footer`, `cursor_data`, `cursor_border`, `cursor_label`,
+`cursor_row_number`, `cursor_record_number`, `cursor_selected_area`, `cursor_footer`,
+`scrollbar_arrows`, `scrollbar_background`, `scrollbar_slider`, `scrollbar_slider_active`,
+`title`, `status_bar`,`prompt_bar`, `info_bar`, `input_bar`, `error_bar`, `bookmark`,
+`bookmark_border`, `cursor_bookmark`, `cross_cursor`, `cross_cursor_border`,
+`matched_pattern`, `matched_pattern_nohl`, `matched_line`, `matched_line_border`,
+`matched_pattern_cursor`, `matched_line_vertical_cursor`, `matched_line_vertical_cursor_border`,
+`error`), colors (`Black`, `Red`, `Green`, `Brown`, `Blue`, `Magenta`, `Cyan`, `LightGray`,
+`Gray`, `BrightRed`, `BrightGreen`, `Yeloow`, `BrightBlue`, `BrightMagenta`, `BrightCyan`,
+`White` and `Default`) and styles (`bold`, `italic`, `underline`, `reverse`, `standout`, `dim`).
+
+If the format of some key is not correct, then this row is ignored. For debugging of
+custom theme is good to start `pspg` with option `--log`. An information about broken
+definitions are stored in log file.
+
 
 ## Keyboard commands
 

@@ -80,6 +80,7 @@ static const char *bscommands[] = {
 	"save",
 	"copy",
 	"theme",
+	"ctheme",
 	"quit",
 	"order",
 	"orderd",

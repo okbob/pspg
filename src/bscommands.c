@@ -109,10 +109,10 @@ get_identifier(const char *instr, const char **ident, int *n)
 				instr += 1;
 		}
 	}
-	else if (isalnum(*instr))
+	else if (isalpha(*instr) || *instr == '_')
 	{
 		*ident = instr++;
-		while (isalnum(*instr))
+		while (isalnum(*instr) || *instr == '_')
 			instr += 1;
 
 		*n = instr - *ident;
@@ -394,7 +394,6 @@ substr_column_name_search(DataDesc *desc,
 
 	return count;
 }
-
 
 static const char *
 parse_search_spec(DataDesc *desc,
@@ -690,6 +689,43 @@ parse_and_eval_bscommand(const char *cmdline,
 						   NULL, true, true, false, true);
 			return NULL;
 		}
+	}
+	else if (IS_TOKEN(cmdline, n, "cth") ||
+			 IS_TOKEN(cmdline, n, "cthe") ||
+			 IS_TOKEN(cmdline, n, "ctheme"))
+	{
+		const char *ident;
+		int		len;
+
+		cmdline += n;
+
+		free(*string_argument);
+		*string_argument = NULL;
+		*string_argument_is_valid = false;
+
+		cmdline = get_identifier(cmdline, &ident, &len);
+
+		if (!ident)
+		{
+			show_info_wait(" Syntax error (expected string)",
+						   NULL, NULL, true, false, true);
+			return NULL;
+		}
+
+		ident = trim_quoted_str(ident, &len);
+		if (len > 0)
+		{
+			*string_argument = sstrndup(ident, len);
+			*string_argument_is_valid = true;
+		}
+		else
+		{
+			show_info_wait(" Syntax error (expected non empty)",
+						   NULL, NULL, true, false, true);
+			return NULL;
+		}
+
+		*next_command = cmd_SetCustomTheme;
 	}
 	else if (IS_TOKEN(cmdline, n, "search"))
 	{

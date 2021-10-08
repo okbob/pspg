@@ -170,7 +170,7 @@ save_config(char *path, Options *opts)
 
 	if (opts->custom_theme_name)
 	{
-		result = fprintf(f, "nullstr = \"%s\"\n", opts->custom_theme_name);
+		result = fprintf(f, "custom_theme_name = \"%s\"\n", opts->custom_theme_name);
 		if (result < 0)
 			return false;
 	}

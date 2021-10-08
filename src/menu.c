@@ -191,6 +191,7 @@ ST_MENU_ITEM _options[] = {
 	{"Bold labels", cmd_BoldLabelsToggle, "M-b", 0, 0, 0, NULL},
 	{"Bold cursor", cmd_BoldCursorToggle, NULL, 0, 0, 0, NULL},
 	{"~T~heme", MENU_ITEM_THEME, NULL, 0, 0,  0, _theme},
+	{"Set custom theme", cmd_SetCustomTheme, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~S~ave setup", cmd_SaveSetup, NULL, 0, 0, 0, NULL},
 	{NULL},

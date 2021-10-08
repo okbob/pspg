@@ -170,6 +170,8 @@ cmd_string(int cmd)
 			return "SetTheme_PaperColor";
 		case cmd_SetTheme:
 			return "SetTheme";
+		case cmd_SetCustomTheme:
+			return "SetCustomTheme";
 
 		case cmd_SaveSetup:
 			return "SaveSetup";

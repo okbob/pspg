@@ -89,12 +89,13 @@ ThemeLoaderGetToken(Tokenizer *tokenizer, Token *token)
 	if (c == '#')
 	{
 		c = *tokenizer->current;
+		token->str = tokenizer->current;
 		while (isxdigit(*tokenizer->current))
 			tokenizer->current++;
 
-		if (tokenizer->current - token->str != 6)
+		if ((tokenizer->current - token->str) != 6)
 		{
-			log_row("theme loader syntax error - broken format for rgb color");
+			log_row("theme loader: syntax error (broken format of rgb color)");
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -177,14 +178,14 @@ GetAttr(Tokenizer *tokenizer)
 				result |= A_DIM;
 			else
 			{
-				log_row("theme loader unknown attribute \"%.*s\"", _token->size, _token->str);
+				log_row("theme loader: unknown attribute \"%.*s\"", _token->size, _token->str);
 				tokenizer->is_error = true;
 				return 0;
 			}
 		}
 		else
 		{
-			log_row("theme loader unexpected token - expected style attribute");
+			log_row("theme loader: unexpected token (expected style attribute)");
 			tokenizer->is_error = true;
 			return 0;
 		}
@@ -300,7 +301,7 @@ GetKey(Tokenizer *tokenizer)
 					tlk.te_type = PspgTheme_error;
 				else
 				{
-					log_row("theme loader unknown key \"%.*s\"",
+					log_row("theme loader: unknown key \"%.*s\"",
 							  _token->size, _token->str);
 					tokenizer->is_error = true;
 					return NULL;
@@ -309,7 +310,7 @@ GetKey(Tokenizer *tokenizer)
 		}
 		else
 		{
-			log_row("theme loader unexpected token - expected key name");
+			log_row("theme loader: unexpected token (expected key name)");
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -332,7 +333,7 @@ GetColorDef(Tokenizer *tokenizer)
 			return NULL;
 		if (_token->typ == TOKEN_CHAR)
 		{
-			log_row("theme loader unexpected token \"%c\"", _token->value);
+			log_row("theme loader: unexpected token \"%c\"", _token->value);
 			tokenizer->is_error = true;
 			return NULL;
 		}
@@ -374,14 +375,26 @@ GetColorDef(Tokenizer *tokenizer)
 				return (PspgColor *) &PspgDefault;
 			else
 			{
-				log_row("theme loader unknown color \"%.*s\"", _token->size, _token->str);
+				log_row("theme loader: unknown color \"%.*s\"", _token->size, _token->str);
 				tokenizer->is_error = true;
 				return NULL;
 			}
 		}
 		else
 		{
-			/* rgb */
+			static PspgColor result;
+
+			if (COLORS == 8)
+			{
+				log_row("theme loader: cannot to display RGB color");
+				tokenizer->is_error = true;
+				return NULL;
+			}
+
+			result.cp = PSPG_COLOR_RGB;
+			result.rgb = _token->value;
+
+			return &result;
 		}
 	}
 
@@ -405,7 +418,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 	int			lineno = 0;
 
 	if (size <= PspgTheme_error)
-		leave("theme loader internal error - the size of theme loader table is too small");
+		leave("theme loader: internal error (the size of theme loader table is too small)");
 
 	*is_warning = false;
 	memset(tle, 0, size * sizeof(PspgThemeLoaderElement));
@@ -440,12 +453,12 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 			_token = ThemeLoaderGetToken(&tokenizer, &token);
 			if (!_token)
 			{
-				log_row("theme loader syntax error - missing \"=\"");
+				log_row("theme loader: syntax error (missing \"=\")");
 				goto err;
 			}
 			else if (_token->typ != TOKEN_CHAR || _token->value != '=')
 			{
-				log_row("theme loader unexepected token - expected \"=\"");
+				log_row("theme loader: unexepected token (expected \"=\")");
 				goto err;
 			}
 
@@ -454,12 +467,25 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (!_token)
 				{
-					log_row("theme loader missing number");
+					log_row("theme loader: missing number");
 					goto err;
 				}
 				if (_token->typ != TOKEN_NUMBER)
 				{
-					log_row("theme loader unexpected token - expected number");
+					log_row("theme loader: unexpected token (expected number)");
+					goto err;
+				}
+
+				if (key->key_type == TL_TEMPLATE_INDEX &&
+					(_token->value < 0 || _token->value > MAX_STYLE))
+				{
+					log_row("theme loader: template style number is out of limit (%d)", MAX_STYLE);
+					goto err;
+				}
+				else if (key->key_type == TL_MENU_INDEX &&
+					(_token->value < 0 || _token->value > ST_MENU_LAST_STYLE))
+				{
+					log_row("theme loader: menu template style number is out of limit (%d)", ST_MENU_LAST_STYLE);
 					goto err;
 				}
 
@@ -475,7 +501,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 
 				if (!color)
 				{
-					log_row("theme loader missing foreground color definition");
+					log_row("theme loader: missing foreground color definition");
 					goto err;
 				}
 
@@ -483,7 +509,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (!_token || (_token->typ != TOKEN_CHAR || _token->value != ','))
 				{
-					log_row("theme loader syntax error - missing \",\"");
+					log_row("theme loader: syntax error (missing \",\")");
 					goto err;
 				}
 
@@ -493,7 +519,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 
 				if (!color)
 				{
-					log_row("theme loader missing background color definition");
+					log_row("theme loader: missing background color definition");
 					goto err;
 				}
 
@@ -504,7 +530,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				{
 					if (_token->typ != TOKEN_CHAR || _token->value != ',')
 					{
-						log_row("theme loader syntax error - missing \",\"");
+						log_row("theme loader: syntax error (missing \",\")");
 						goto err;
 					}
 
@@ -517,7 +543,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 				_token = ThemeLoaderGetToken(&tokenizer, &token);
 				if (_token)
 				{
-					log_row("theme loader unexpected token before end of line");
+					log_row("theme loader: unexpected token before end of line");
 					goto err;
 				}
 
@@ -544,8 +570,9 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 
 err:
 
-		log_row("theme loader skips line %d", lineno);
+		log_row("theme loader: skips line %d due error", lineno);
 		log_row("%d: \"%s\"", lineno, line);
+		*is_warning = true;
 	}
 
 	free(line);
@@ -576,6 +603,7 @@ open_theme_desc(char *name)
 	dir = dirname(transf_path);
 
 	snprintf(buffer, MAXPATHLEN - 1, "%s/.pspg_theme_%s", dir, name);
+	log_row("opening custom theme style \"%s\"", buffer);
 
 	errno = 0;
 

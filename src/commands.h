@@ -71,6 +71,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_RelationalPipes,
 	cmd_SetTheme_PaperColor,
 	cmd_SetTheme,
+	cmd_SetCustomTheme,
 	cmd_SaveSetup,
 
 	cmd_Escape,
