@@ -1838,23 +1838,19 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 			}
 		}
 
+		/*
+		 * pbcopy has not an argument for returning
+		 * version info, and without arguments, it
+		 * is waiting for data. We can try to just
+		 * open pipe, and close this pipe, and check
+		 * the status.
+		 */
 		errno = 0;
-		f = popen("pbcopy", "r");
+		f = popen("pbcopy", "w");
 		if (f)
 		{
-			retval = getline(&line, &size, f);
-			if (retval >= 0 && line)
-			{
-				/* there is not version option */
-				isokstr = true;
-
-				free(line);
-				line = NULL;
-				size = 0;
-			}
-
 			status = pclose(f);
-			if (status == 0 && isokstr)
+			if (status == 0)
 			{
 				clipboard_application_id = 3;
 				return;
