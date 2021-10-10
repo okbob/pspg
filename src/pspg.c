@@ -1882,6 +1882,7 @@ export_to_file(PspgCommand command,
 	pid_t	pid = -1;
 	bool	copy_to_file = false;
 	bool	use_pipe = false;
+	bool	use_pbcopy = false;
 
 	*force_refresh = false;
 
@@ -2016,6 +2017,16 @@ export_to_file(PspgCommand command,
 				fp = popen(++ptr, "w");
 		}
 	}
+	else if (clipboard_application_id == 3)
+	{
+		/*
+		 * mechanism used and tested for wl-copy and xclip doesn't
+		 * work with pbcopy. So we can just to use popen instead
+		 * rwe_popen.
+		 */
+		use_pbcopy = true;
+		fp = popen("pbcopy", "w");
+	}
 	else
 	{
 		char   *fmt;
@@ -2063,8 +2074,6 @@ export_to_file(PspgCommand command,
 			snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
 		else if (clipboard_application_id == 2)
 			snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
-		else if (clipboard_application_id == 3)
-			snprintf(cmdline_clipboard_app, 1024, "pbcopy");
 
 		if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
 		{
@@ -2088,6 +2097,8 @@ export_to_file(PspgCommand command,
 
 	if (fp)
 	{
+		errno = 0;
+
 		isok = export_data(opts, scrdesc, desc,
 						   _cursor_row, cursor_column,
 						   fp,
@@ -2116,7 +2127,31 @@ export_to_file(PspgCommand command,
 			(void) wait_on_press_any_key();
 		}
 		else if (copy_to_file)
+		{
 			fclose(fp);
+		}
+		else if (use_pbcopy)
+		{
+			int		result;
+
+			result = pclose(fp);
+			if (result != 0)
+			{
+				if (errno != 0)
+					log_row("write error (%s)", strerror(errno));
+				else
+					log_row("write error");
+
+				show_info_wait(" Cannot write to clipboard",
+							   NULL, true, true, false, true);
+
+				/* err string is saved already, because refresh_first is used */
+				current_state->errstr = NULL;
+				*force_refresh = true;
+
+				return;
+			}
+		}
 		else
 		{
 			char	err_buffer[2048];
