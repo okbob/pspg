@@ -432,7 +432,7 @@ set_line_info(Options *opts,
 			lb->lineinfo[i].mask = LINEINFO_UNKNOWN;
 	}
 
-	linfo = &lbm->lb->lineinfo[lbm->lb_rowno - 1];
+	linfo = &lbm->lb->lineinfo[lbm->lb_rowno];
 
 	if (linfo->mask & LINEINFO_UNKNOWN)
 	{
