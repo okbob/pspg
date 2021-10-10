@@ -176,9 +176,14 @@ Options can be passed inside env variable `PSPG` too.
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
+### Custom themes
+
 The theme can be customized. The custom theme file should be saved in directory with `pspg`
 configuration. The name of this file should be .pspg_theme_xxx. The custom theme can
 be selected by command line option `--custom-style=name` or by command `\ctheme name`.
+
+![Screenshot](screenshots/pspg-5.4.0-custom-theme.png)
+
 
 Example of custom theme file (named `.pspg_theme_mc2`):
 
