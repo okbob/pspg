@@ -186,7 +186,7 @@ be selected by command line option `--custom-style=name` or by command `\ctheme 
 
 
 Example of custom theme file (named `.pspg_theme_mc2` (it can be activated by 
-command `\ctheme mc2`):
+command `\ctheme mc2`)):
 
     template = 1
     template_menu = 3
