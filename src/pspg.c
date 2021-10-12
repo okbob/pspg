@@ -2017,23 +2017,12 @@ export_to_file(PspgCommand command,
 				fp = popen(++ptr, "w");
 		}
 	}
-	else if (clipboard_application_id == 3)
-	{
-		/*
-		 * mechanism used and tested for wl-copy and xclip doesn't
-		 * work with pbcopy. So we can just to use popen instead
-		 * rwe_popen.
-		 */
-		use_pbcopy = true;
-		fp = popen("pbcopy", "w");
-	}
 	else
 	{
 		char   *fmt;
 		char	cmdline_clipboard_app[1024];
 
 		check_clipboard_app(opts, force_refresh);
-
 		if (!clipboard_application_id)
 		{
 			show_info_wait(" Cannot find clipboard application",
@@ -2042,57 +2031,69 @@ export_to_file(PspgCommand command,
 				return;
 		}
 
-		if (format == CLIPBOARD_FORMAT_TEXT ||
-			INSERT_FORMAT_TYPE(format))
+		if (clipboard_application_id == 3)
 		{
-			if (use_utf8)
-				fmt = "text/plain;charset=utf-8";
-			else
-				fmt = "text/plain";
-
+			/*
+			 * mechanism used and tested for wl-copy and xclip doesn't
+			 * work with pbcopy. So we can just to use popen instead
+			 * rwe_popen.
+			 */
+			use_pbcopy = true;
+			fp = popen("pbcopy", "w");
 		}
-		else if (format == CLIPBOARD_FORMAT_CSV)
+		else
 		{
-			if (use_utf8)
-				fmt = "text/csv;charset=utf-8";
-			else
-				fmt = "text/csv";
+			if (format == CLIPBOARD_FORMAT_TEXT ||
+				INSERT_FORMAT_TYPE(format))
+			{
+				if (use_utf8)
+					fmt = "text/plain;charset=utf-8";
+				else
+					fmt = "text/plain";
+			}
+			else if (format == CLIPBOARD_FORMAT_CSV)
+			{
+				if (use_utf8)
+					fmt = "text/csv;charset=utf-8";
+				else
+					fmt = "text/csv";
+			}
+			else if (format == CLIPBOARD_FORMAT_TSVC)
+			{
+				fmt = "application/x-libreoffice-tsvc";
+			}
+			else /* fallback */
+			{
+				if (use_utf8)
+					fmt = "text/plain;charset=utf-8";
+				else
+					fmt = "text/plain";
+			}
+
+			if (clipboard_application_id == 1)
+				snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
+			else if (clipboard_application_id == 2)
+				snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
+
+			if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
+			{
+				format_error("%s", strerror(errno));
+				log_row("open error (%s)", current_state->errstr);
+
+				show_info_wait(" Cannot to start clipboard application",
+							   NULL, true, true, false, true);
+
+				/* err string is saved already, because refresh_first is used */
+				current_state->errstr = NULL;
+				*force_refresh = true;
+
+				return;
+			}
+
+			fcntl(ferr, F_SETFL, O_NONBLOCK);
+
+			fp = fdopen(fin, "w");
 		}
-		else if (format == CLIPBOARD_FORMAT_TSVC)
-		{
-			fmt = "application/x-libreoffice-tsvc";
-		}
-		else /* fallback */
-		{
-			if (use_utf8)
-				fmt = "text/plain;charset=utf-8";
-			else
-				fmt = "text/plain";
-		}
-
-		if (clipboard_application_id == 1)
-			snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
-		else if (clipboard_application_id == 2)
-			snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
-
-		if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
-		{
-			format_error("%s", strerror(errno));
-			log_row("open error (%s)", current_state->errstr);
-
-			show_info_wait(" Cannot to start clipboard application",
-						   NULL, true, true, false, true);
-
-			/* err string is saved already, because refresh_first is used */
-			current_state->errstr = NULL;
-			*force_refresh = true;
-
-			return;
-		}
-
-		fcntl(ferr, F_SETFL, O_NONBLOCK);
-
-		fp = fdopen(fin, "w");
 	}
 
 	if (fp)
