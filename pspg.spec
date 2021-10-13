@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.3.5
+Version: 	5.4.1
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,10 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Wed Oct 13 2021 Pavel Stehule <pavel.stehule@gmail.com>
+- custom themes
+- fix pasting to clipboard on macos
+
 * Fri Jul 30 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - using stream mode as default for PIPE source was bad idea.
   I reverted it.
