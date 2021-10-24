@@ -178,18 +178,20 @@ see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.htm
 
 ### Custom themes
 
-The theme can be customized. The custom theme file should be saved in directory with `pspg`
-configuration. The name of this file should be .pspg_theme_xxx. The custom theme can
-be selected by command line option `--custom-style=name` or by command `\ctheme name`.
+The theme can be customized over base and menu templates referencing the
+built-in themes. The custom theme file should be saved in directory with `pspg`
+configuration. The name of this file should be .pspg_theme_xxx. The custom
+theme can be selected by command line option `--custom-style=name` or by
+command `\ctheme name`.
 
 ![Screenshot](screenshots/pspg-5.4.0-custom-theme.png)
 
-Example of custom theme file (named `.pspg_theme_mc2` (it can be activated by 
+Example of custom theme file (named `.pspg_theme_mc2` (it can be activated by
 command `\ctheme mc2`)):
 
     template = 1
     template_menu = 3
-    
+
     background = black, white
     data = black, white
     label = black, white, italic, bold
@@ -208,17 +210,59 @@ command `\ctheme mc2`)):
     scrollbar_background = lightgray, white
     scrollbar_slider = white, gray
 
-In this file you can choose keys (`background`, `data`, `border`, `label`, `row_number`,
-`record_number`, `selected_area`, `footer`, `cursor_data`, `cursor_border`, `cursor_label`,
-`cursor_row_number`, `cursor_record_number`, `cursor_selected_area`, `cursor_footer`,
-`scrollbar_arrows`, `scrollbar_background`, `scrollbar_slider`, `scrollbar_slider_active`,
-`title`, `status_bar`,`prompt_bar`, `info_bar`, `input_bar`, `error_bar`, `bookmark`,
-`bookmark_border`, `cursor_bookmark`, `cross_cursor`, `cross_cursor_border`,
-`matched_pattern`, `matched_pattern_nohl`, `matched_line`, `matched_line_border`,
-`matched_pattern_cursor`, `matched_line_vertical_cursor`, `matched_line_vertical_cursor_border`,
-`error`), colors (`Black`, `Red`, `Green`, `Brown`, `Blue`, `Magenta`, `Cyan`, `LightGray`,
-`Gray`, `BrightRed`, `BrightGreen`, `Yeloow`, `BrightBlue`, `BrightMagenta`, `BrightCyan`,
-`White` and `Default`) and styles (`bold`, `italic`, `underline`, `reverse`, `standout`, `dim`).
+`template` and `template_menu` set fallback values for any keys not specified
+in the custom theme. `template_menu` in particular is currently the only way to
+customize the F9 menu appearance.
+
+| key                                   | customizes                                                          |
+|---------------------------------------|---------------------------------------------------------------------|
+| `background`                          | Background color                                                    |
+| `data`                                | Data (non-header or frozen column) text                             |
+| `border`                              | Border color                                                        |
+| `label`                               | Label (header or frozen column) text                                |
+| `row_number`                          | Line numbers                                                        |
+| `record_number`                       |                                                                     |
+| `selected_area`                       |                                                                     |
+| `footer`                              | Results footer (non-tabular e.g. rowcount)                          |
+| `cursor_data`                         | Highlighted data (non-header or frozen column) text                 |
+| `cursor_border`                       | Highlighted border color                                            |
+| `cursor_label`                        | Highlighted label (header or frozen column) text                    |
+| `cursor_row_number`                   | Highlighted line numbers                                            |
+| `cursor_record_number`                |                                                                     |
+| `cursor_selected_area`                |                                                                     |
+| `cursor_footer`                       | Highlighted results footer (non-tabular e.g. rowcount)              |
+| `scrollbar_arrows`                    | Scrollbar up and down arrows                                        |
+| `scrollbar_background`                | Scrollbar "empty" background                                        |
+| `scrollbar_slider`                    | Scrollbar slider over the background                                |
+| `scrollbar_active_slider`             | Scrollbar slider grabbed by mouse                                   |
+| `title`                               | Results headline (in psql describe commands)                        |
+| `status_bar`                          | Top query and cursor location information                           |
+| `prompt_bar`                          |                                                                     |
+| `info_bar`                            | Info text (e.g. "Not found" when searching)                         |
+| `input_bar`                           | Input prompt and text (e.g. search)                                 |
+| `error_bar`                           |                                                                     |
+| `bookmark`                            |                                                                     |
+| `bookmark_border`                     |                                                                     |
+| `cursor_bookmark`                     |                                                                     |
+| `cross_cursor`                        | Highlighted cell at intersection of horizontal and vertical cursors |
+| `cross_cursor_border`                 | Borders at intersection of horizontal and vertical cursors          |
+| `matched_pattern`                     | Search result match text                                            |
+| `matched_pattern_nohl`                |                                                                     |
+| `matched_line`                        | Line containing search result                                       |
+| `matched_line_border`                 | Borders in search result line                                       |
+| `matched_pattern_cursor`              | Highlighted search result match text                                |
+| `matched_line_vertical_cursor`        | Vertically highlighted search result match text                     |
+| `matched_line_vertical_cursor_border` | Borders of vertically highlighted cell with search result match     |
+| `error`                               |                                                                     |
+
+ANSI colors `Black`, `Red`, `Green`, `Brown`, `Blue`, `Magenta`, `Cyan`,
+`LightGray`, `Gray`, `BrightRed`, `BrightGreen`, `Yellow`, `BrightBlue`,
+`BrightMagenta`, `BrightCyan`, `White`, and `Default` will display as your
+terminal emulator configures them. Alternatively, you can specify hex RGB
+values `#FF00FF`.
+
+Styles are any combination of: `bold`, `italic`, `underline`, `reverse`,
+`standout`, `dim`.
 
 If the format of some key is not correct, then this row is ignored. For debugging of
 custom theme is good to start `pspg` with option `--log`. An information about broken
