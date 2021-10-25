@@ -1652,6 +1652,7 @@ multilines_detection(DataDesc *desc)
 {
 	LineBufferIter	lbi;
 	LineBufferMark	lbm;
+	int				recno = 1;
 
 	bool		border0 = (desc->border_type == 0);
 	bool		border1 = (desc->border_type == 1);
@@ -1717,6 +1718,11 @@ multilines_detection(DataDesc *desc)
 			pos += dsplen(str);
 			str += charlen(str);
 		}
+
+		lbm_recno_offset(&lbm, lineno - recno);
+
+		if (!found_continuation_symbol)
+			recno += 1;
 	}
 
 	desc->multilines_already_tested = true;

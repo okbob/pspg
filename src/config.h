@@ -95,6 +95,7 @@ typedef struct
 	int		hist_size;
 	bool	progressive_load_mode;
 	char   *custom_theme_name;
+	bool	highlight_odd_rec;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

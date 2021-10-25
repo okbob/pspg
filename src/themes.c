@@ -16,9 +16,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-attr_t		theme_attrs[50];
-
-#define theme_attr(id)		(COLOR_PAIR(id) | theme_attrs[id])
+bool	has_odd_themedef = false;
 
 #ifndef A_ITALIC
 #define A_ITALIC	A_DIM
@@ -64,7 +62,9 @@ const PspgColor PspgBrightCyan = {PSPG_COLOR_BASIC, PSPG_BRIGHT_CYAN_COLOR, 0};
 const PspgColor PspgWhite = {PSPG_COLOR_BASIC, PSPG_WHITE_COLOR, 0};
 const PspgColor PspgDefault = {PSPG_COLOR_BASIC, PSPG_DEFAULT_COLOR, 0};
 
-static PspgThemeElement themedef[50];
+static PspgThemeElement themedef[THEMEDEF_SIZE][2];
+
+static int current_themedef_bank = 0;
 
 static PspgStyleDependency
 styledep(PspgThemeElements el)
@@ -125,15 +125,15 @@ color_index_rgb(unsigned int rgb)
 void
 deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
 {
-	memcpy(&themedef[idx].fg, &fg, sizeof(PspgColor));
-	memcpy(&themedef[idx].bg, &bg, sizeof(PspgColor));
-	themedef[idx].attr = attr;
+	memcpy(&themedef[idx][current_themedef_bank].fg, &fg, sizeof(PspgColor));
+	memcpy(&themedef[idx][current_themedef_bank].bg, &bg, sizeof(PspgColor));
+	themedef[idx][current_themedef_bank].attr = attr;
 }
 
 void
 deftheme_rgb(PspgThemeElements idx, unsigned int fg, unsigned int bg, int attr)
 {
-	PspgThemeElement *te = &themedef[idx];
+	PspgThemeElement *te = &themedef[idx][current_themedef_bank];
 
 	te->fg.cp = PSPG_COLOR_RGB;
 	te->fg.rgb = fg;
@@ -225,7 +225,7 @@ ncurses_theme_attr(PspgThemeElements idx)
 	int		i;
 	PspgStyleDependency dep;
 
-	PspgThemeElement *te = &themedef[idx];
+	PspgThemeElement *te = &themedef[idx][current_themedef_bank];
 
 	result = te->attr;
 
@@ -336,15 +336,21 @@ typedef struct
 void
 initialize_color_pairs(int theme)
 {
+	int		i;
+
 	ncurses_colorpair_index = 1;
 	nColorPairCache = 0;
 
 	ncurses_color_index = 32;
 	nColorCache = 0;
 
-	memset(theme_attrs, 0, sizeof(theme_attrs));
+	has_odd_themedef = false;
+
+//	memset(theme_attrs, 0, sizeof(theme_attrs));
 
 	use_default_colors();
+
+	current_themedef_bank = 0;
 
 	switch (theme)
 	{
@@ -1523,12 +1529,45 @@ initialize_color_pairs(int theme)
 			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x0087af, 0x005f40, 0);
 			break;
 	}
+
+	current_themedef_bank = 1;
+
+	for (i = 0; i < THEMEDEF_SIZE; i++)
+		themedef[i][1] = themedef[i][0];
+
+	switch (theme)
+	{
+		case 1:
+			deftheme(PspgTheme_data, PspgBlue, PspgLightGray, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_border, PspgBlue, PspgLightGray, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_label, PspgBlue, PspgYellow, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_selection, PspgBrightCyan, PspgBlack, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_cursor_selection, PspgBlack, PspgLightGray, 0);
+
+			deftheme(PspgTheme_cursor_data, PspgCyan, PspgBlack, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_cursor_border, PspgCyan, PspgLightGray, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_cursor_label, PspgCyan, PspgYellow, A_REVERSE | A_DIM);
+			deftheme(PspgTheme_cursor_rownum, PspgCyan, PspgBlack, A_REVERSE | A_DIM);
+
+			deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
+
+
+			has_odd_themedef = true;
+			break;
+	}
 }
 
 void
-initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t)
+initialize_theme(int theme,
+				 int window_identifier,
+				 bool is_tabular_fmt,
+				 bool no_highlight_lines,
+				 int themedef_bank,
+				 Theme *t)
 {
 	memset(t, 0, sizeof(Theme));
+
+	current_themedef_bank = themedef_bank;
 
 	t->background_attr = ncurses_theme_attr(PspgTheme_background);
 
@@ -1636,15 +1675,23 @@ initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_
 }
 
 void
-applyCustomTheme(PspgThemeLoaderElement *tle, int size)
+applyCustomTheme(PspgThemeLoaderElement *tle,
+				 PspgThemeLoaderElement *tle2)
 {
 	int		i;
 
-	for (i = 0; i < size; i++)
+	for (i = 0; i < THEMEDEF_SIZE; i++)
 	{
 		if (tle[i].used)
 		{
-			themedef[i] = tle[i].te;
+			themedef[i][0] = tle[i].te;
+			themedef[i][1] = tle[i].te;
+		}
+
+		if (tle2[i].used)
+		{
+			themedef[i][1] = tle2[i].te;
+			has_odd_themedef = true;
 		}
 	}
 }

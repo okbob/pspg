@@ -13,6 +13,7 @@
 
 #include "pspg.h"
 
+#include <limits.h>
 #include <stdlib.h>
 
 /*
@@ -181,12 +182,35 @@ lbm_xor_mask(LineBufferMark *lbm, char mask)
 {
 	if (!lbm->lb->lineinfo)
 	{
+		int		i;
+
 		/* smalloc returns zero fill memory already */
 		lbm->lb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
+
+		for (i = 0; i < LINEBUFFER_LINES; i++)
+			lbm->lb->lineinfo[i].recno_offset = SHRT_MIN;
 	}
 
 	lbm->lb->lineinfo[lbm->lb_rowno].mask ^= mask;
 }
+
+void
+lbm_recno_offset(LineBufferMark *lbm, short int recno_offset)
+{
+	if (!lbm->lb->lineinfo)
+	{
+		int		i;
+
+		/* smalloc returns zero fill memory already */
+		lbm->lb->lineinfo = smalloc(LINEBUFFER_LINES * sizeof(LineInfo));
+
+		for (i = 0; i < LINEBUFFER_LINES; i++)
+			lbm->lb->lineinfo[i].recno_offset = SHRT_MIN;
+	}
+
+	lbm->lb->lineinfo[lbm->lb_rowno].recno_offset = recno_offset;
+}
+
 
 /*
  * Working horse of lbm_get_line and lbi_get_line routines

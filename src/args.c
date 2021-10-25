@@ -107,6 +107,7 @@ static struct option long_options[] =
 	{"no-progressive-load", no_argument, 0, 47},
 	{"no-implicit-stream", no_argument, 0, 48},
 	{"custom-style-name", required_argument, 0, 49},
+	{"highlight-odd-rec", no_argument, 0, 50},
 	{0, 0, 0, 0}
 };
 
@@ -335,6 +336,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --custom-style=NAME      name of custom color style\n");
 					fprintf(stdout, "  --double-header          header separator uses double lines\n");
 					fprintf(stdout, "  --force-uniborder        replace ascii borders by unicode borders\n");
+					fprintf(stdout, "  --highlight-odd-rec      use special style for odd records\n");
 					fprintf(stdout, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
 					fprintf(stdout, "  --null=STRING            STRING used instead NULL\n");
 					fprintf(stdout, "\nSearching options\n");
@@ -670,6 +672,10 @@ readargs(char **argv,
 			case 49:
 				opts->custom_theme_name = sstrdup(optarg);
 				break;
+			case 50:
+				opts->highlight_odd_rec = true;
+				break;
+
 			default:
 				{
 					format_error("Try %s --help\n", argv[0]);

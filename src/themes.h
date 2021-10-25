@@ -78,6 +78,9 @@ typedef struct
 #define		WINDOW_ROWNUM			7
 #define		WINDOW_ROWNUM_LUC		8
 #define		WINDOW_VSCROLLBAR		9
+#define		WINDOW_ROWS_ODD			10
+#define		WINDOW_FIX_COLS_ODD		11
+#define		WINDOW_ROWNUM_ODD		12
 
 typedef enum
 {
@@ -197,16 +200,19 @@ typedef enum
 
 
 extern void initialize_color_pairs(int theme);
-extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, Theme *t);
-extern void applyCustomTheme(PspgThemeLoaderElement *tle, int size);
+extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, int themedef_bank, Theme *t);
+extern void applyCustomTheme(PspgThemeLoaderElement *tle, PspgThemeLoaderElement *tle2);
 extern attr_t ncurses_theme_attr(PspgThemeElements idx);
 
-extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, int *menu, bool *is_warning);
+extern bool theme_loader(FILE *theme, PspgThemeLoaderElement *tle, PspgThemeLoaderElement *tle2, int *template, int *menu, bool *is_warning);
 extern FILE *open_theme_desc(char *name);
+
+extern bool has_odd_themedef;
 
 #ifndef A_ITALIC
 #define A_ITALIC	A_DIM
 #endif
 
+#define		THEMEDEF_SIZE			50
 
 #endif

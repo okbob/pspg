@@ -408,20 +408,28 @@ GetColorDef(Tokenizer *tokenizer)
  *
  * This function returns true, when theme was loaded. An warning can
  * be raised by setting output argument is_warning to true.
+ *
+ * tle2 is used for odd records.
  */
 bool
-theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, int *menu, bool *is_warning)
+theme_loader(FILE *theme,
+			 PspgThemeLoaderElement *tle,
+			 PspgThemeLoaderElement *tle2,
+			 int *template,
+			 int *menu,
+			 bool *is_warning)
 {
 	char	   *line = NULL;
 	ssize_t		read;
 	size_t		len;
 	int			lineno = 0;
 
-	if (size <= PspgTheme_error)
+	if (THEMEDEF_SIZE <= PspgTheme_error)
 		leave("theme loader: internal error (the size of theme loader table is too small)");
 
 	*is_warning = false;
-	memset(tle, 0, size * sizeof(PspgThemeLoaderElement));
+	memset(tle, 0, THEMEDEF_SIZE * sizeof(PspgThemeLoaderElement));
+	memset(tle2, 0, THEMEDEF_SIZE * sizeof(PspgThemeLoaderElement));
 
 	*template = 6;
 	*menu = 2;
@@ -433,6 +441,7 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 		Tokenizer tokenizer;
 		Token token, *_token;
 		ThemeLoaderKey *key;
+		PspgThemeLoaderElement *_tle = tle;
 
 		lineno += 1;
 
@@ -449,6 +458,15 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 			PspgThemeElement te;
 
 			te.attr = 0;
+
+			_token = ThemeLoaderGetToken(&tokenizer, &token);
+			if (_token)
+			{
+				if (_token->typ == TOKEN_CHAR && _token->value == '*')
+					_tle = tle2;
+				else
+					ThemeLoaderPushBackToken(&tokenizer, &token);
+			}
 
 			_token = ThemeLoaderGetToken(&tokenizer, &token);
 			if (!_token)
@@ -553,8 +571,8 @@ theme_loader(FILE *theme, PspgThemeLoaderElement *tle, int size, int *template, 
 					*template = int_value;
 				else
 				{
-					tle[key->te_type].te = te;
-					tle[key->te_type].used = true;
+					_tle[key->te_type].te = te;
+					_tle[key->te_type].used = true;
 				}
 			}
 			else

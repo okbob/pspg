@@ -45,6 +45,7 @@ typedef struct LineInfo
 {
 	char			mask;
 	short int		start_char;
+	short int		recno_offset;
 } LineInfo;
 
 #define	LINEBUFFER_LINES		1000
@@ -154,7 +155,8 @@ typedef struct
 	bool	load_data_rows;			/* true, when loaded rows holds data */
 } DataDesc;
 
-#define		PSPG_WINDOW_COUNT		10
+#define		PSPG_WINDOW_COUNT				10
+#define		PSPG_WINDOW_THEMES_COUNT		13
 
 /*
  * This structure can be mutable - depends on displayed data
@@ -173,7 +175,7 @@ typedef struct
 	int		main_start_x;			/* x position of first row of main place */
 	int		top_bar_rows;			/* 1 or 0 when top bar is not used */
 	WINDOW	*wins[PSPG_WINDOW_COUNT];
-	Theme	themes[PSPG_WINDOW_COUNT];
+	Theme	themes[PSPG_WINDOW_THEMES_COUNT];
 	char	searchterm[256];		/* currently active search input */
 	int		searchterm_char_size;	/* size of searchterm in chars */
 	int		searchterm_size;		/* size of searchterm in bytes */
@@ -449,6 +451,7 @@ extern SimpleLineBufferIter *init_slbi_ddesc(SimpleLineBufferIter *slbi, DataDes
 extern SimpleLineBufferIter *slbi_get_line_next(SimpleLineBufferIter *slbi, char **line, LineInfo **linfo);
 extern bool ddesc_set_mark(LineBufferMark *lbm, DataDesc *desc, int pos);
 extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
+extern void lbm_recno_offset(LineBufferMark *lbm, short int recno_offset);
 extern void lb_free(DataDesc *desc);
 extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
 

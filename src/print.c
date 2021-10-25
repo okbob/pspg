@@ -877,12 +877,27 @@ window_fill(int window_identifier,
 								window_identifier == WINDOW_FIX_ROWS ||
 								window_identifier == WINDOW_FOOTER;
 	bool		is_text = window_identifier == WINDOW_FOOTER && desc->headline_transl == NULL;
-
+	int			odd_theme_identifier = -1;
 
 	win = scrdesc->wins[window_identifier];
 	t = &scrdesc->themes[window_identifier];
 
 	pattern_fix = t->found_str_attr & A_UNDERLINE;
+
+	if (has_odd_themedef && opts->highlight_odd_rec)
+	{
+		if (window_identifier == WINDOW_FIX_COLS)
+			odd_theme_identifier = WINDOW_FIX_COLS_ODD;
+		else if (window_identifier == WINDOW_ROWS)
+			odd_theme_identifier = WINDOW_ROWS_ODD;
+		else if (window_identifier == WINDOW_ROWNUM)
+			odd_theme_identifier = WINDOW_ROWNUM_ODD;
+		else
+			odd_theme_identifier = -1;
+
+		if (odd_theme_identifier != -1)
+			multilines_detection(desc);
+	}
 
 	/* when we want to detect expanded records titles */
 	if (desc->is_expanded_mode)
@@ -930,12 +945,24 @@ window_fill(int window_identifier,
 		int			npositions = 0;
 		int			is_in_range = false;
 		int			rowno = row + srcy_bak + 1 - desc->first_data_row;
+		int			lineno;
+		int			recno;
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
 		(void) lbi_set_mark_next(&lbi, &lbm);
 
-		line_is_valid = lbm_get_line(&lbm, &rowstr, &lineinfo, NULL);
+		line_is_valid = lbm_get_line(&lbm, &rowstr, &lineinfo, &lineno);
+
+		if (odd_theme_identifier != -1)
+		{
+			recno = lineno - lineinfo->recno_offset;
+
+			if (recno % 2 == 1)
+				t = &scrdesc->themes[odd_theme_identifier];
+			else
+				t = &scrdesc->themes[window_identifier];
+		}
 
 		/* when rownum is printed, don't process original text */
 		if (is_rownum && line_is_valid)

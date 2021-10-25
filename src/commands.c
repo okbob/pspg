@@ -341,6 +341,9 @@ cmd_string(int cmd)
 		case cmd_ShowPrimaryScreen:
 			return "ShowPrimaryScreen";
 
+		case cmd_ToggleHighlightOddRec:
+			return "ToggleHighlightOddRec";
+
 		default:
 			return "unknown command";
 	}

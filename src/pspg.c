@@ -2454,6 +2454,7 @@ main(int argc, char *argv[])
 
 	/* custom theme definition */
 	PspgThemeLoaderElement	custom_theme_tle[50];
+	PspgThemeLoaderElement	custom_theme_tle2[50];
 
 	/* static variables reinitialization */
 	vertical_cursor_column = -1;
@@ -2500,6 +2501,7 @@ main(int argc, char *argv[])
 	opts.last_row_search = true;
 	opts.hist_size = 500;
 	opts.progressive_load_mode = true;
+	opts.highlight_odd_rec = false;
 
 	setup_sigsegv_handler();
 
@@ -2594,7 +2596,12 @@ main(int argc, char *argv[])
 		if (!themedesc)
 			leave(state.errstr ? state.errstr : "cannot to open theme description file");
 
-		if (!theme_loader(themedesc, custom_theme_tle, 50, &state.theme_template, &state.menu_template, &is_warning))
+		if (!theme_loader(themedesc,
+						  custom_theme_tle,
+						  custom_theme_tle2,
+						  &state.theme_template,
+						  &state.menu_template,
+						  &is_warning))
 			leave(state.errstr ? state.errstr : "cannot to load theme description file");
 
 		if (is_warning)
@@ -2865,7 +2872,7 @@ reinit_theme:
 		initialize_color_pairs(state.theme_template);
 		log_row("template theme %d loaded", state.theme_template);
 
-		applyCustomTheme(custom_theme_tle, 50);
+		applyCustomTheme(custom_theme_tle, custom_theme_tle2);
 		log_row("use custom theme \"%s\"", opts.custom_theme_name);
 	}
 	else
@@ -2966,9 +2973,9 @@ reinit_theme:
 		throw_selection(&scrdesc, &desc, &mark_mode);
 	}
 
-	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_TOP_BAR]);
-	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
-	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_VSCROLLBAR]);
+	initialize_theme(opts.theme, WINDOW_TOP_BAR, desc.headline_transl != NULL, false, 0, &scrdesc.themes[WINDOW_TOP_BAR]);
+	initialize_theme(opts.theme, WINDOW_BOTTOM_BAR, desc.headline_transl != NULL, false, 0, &scrdesc.themes[WINDOW_BOTTOM_BAR]);
+	initialize_theme(opts.theme, WINDOW_VSCROLLBAR, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_VSCROLLBAR]);
 
 	prompt_window_input_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].input_attr;
 	prompt_window_error_attr = scrdesc.themes[WINDOW_BOTTOM_BAR].error_attr;
@@ -3084,18 +3091,21 @@ reinit_theme:
 		last_x_focus = get_x_focus(vertical_cursor_column, cursor_col, &desc, &scrdesc);
 	}
 
-	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
-	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWNUM]);
+	initialize_theme(opts.theme, WINDOW_ROWNUM_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_ROWNUM_LUC]);
+	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_ROWNUM]);
 
 	create_layout_dimensions(&opts, &scrdesc, &desc, opts.freezed_cols != -1 ? opts.freezed_cols : default_freezed_cols, fixedRows, maxy, maxx);
 	create_layout(&opts, &scrdesc, &desc, first_data_row);
 
-	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_LUC]);
-	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_ROWS]);
-	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FIX_COLS]);
-	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_ROWS]);
-	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, &scrdesc.themes[WINDOW_FOOTER]);
+	initialize_theme(opts.theme, WINDOW_LUC, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_LUC]);
+	initialize_theme(opts.theme, WINDOW_FIX_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_FIX_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_FIX_COLS]);
+	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_ROWS]);
+	initialize_theme(opts.theme, WINDOW_FOOTER, desc.headline_transl != NULL, opts.no_highlight_lines, 0, &scrdesc.themes[WINDOW_FOOTER]);
 
+	initialize_theme(opts.theme, WINDOW_FIX_COLS, desc.headline_transl != NULL, opts.no_highlight_lines, 1, &scrdesc.themes[WINDOW_FIX_COLS_ODD]);
+	initialize_theme(opts.theme, WINDOW_ROWS, desc.headline_transl != NULL, opts.no_highlight_lines, 1, &scrdesc.themes[WINDOW_ROWS_ODD]);
+	initialize_theme(opts.theme, WINDOW_ROWNUM, desc.headline_transl != NULL, opts.no_highlight_lines, 1, &scrdesc.themes[WINDOW_ROWNUM_ODD]);
 
 	set_scrollbar(&scrdesc, &desc, first_row);
 
@@ -4144,7 +4154,8 @@ reset_search:
 							bool	is_warning;
 
 							if (theme_loader(themefile,
-											 custom_theme_tle, 50,
+											 custom_theme_tle,
+											 custom_theme_tle2,
 											 &state.theme_template,
 											 &state.menu_template,
 											 &is_warning))
@@ -4190,6 +4201,11 @@ reset_search:
 
 			case cmd_BoldCursorToggle:
 				opts.bold_cursor = !opts.bold_cursor;
+				reinit = true;
+				goto reinit_theme;
+
+			case cmd_ToggleHighlightOddRec:
+				opts.highlight_odd_rec = !opts.highlight_odd_rec;
 				reinit = true;
 				goto reinit_theme;
 
