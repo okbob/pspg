@@ -85,6 +85,7 @@ Output format options:
   --border                 type of borders (0..2)
   --double-header          header separator uses double lines
   --force-uniborder        replace ascii borders by unicode borders
+  --highlight-odd-rec      highlights odd records (when it is supported by style)
   --ignore-bad-rows        rows with wrong column numbers are ignored
   --null=STRING            STRING used instead NULL
 
@@ -209,6 +210,12 @@ command `\ctheme mc2`)):
     scrollbar_arrows = black, white
     scrollbar_background = lightgray, white
     scrollbar_slider = white, gray
+
+Some keys can be marked by symobol `*`. Marked keys are used for odd records.
+
+    data* = black, lightgray
+    label* = black, lightgray, italic, bold
+    border* = #000000, lightgray
 
 `template` and `template_menu` set fallback values for any keys not specified
 in the custom theme. `template_menu` in particular is currently the only way to

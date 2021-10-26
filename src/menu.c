@@ -277,7 +277,7 @@ get_menu_style(int main_theme)
 void
 init_menu_config(Options *opts)
 {
-	int start_from_rgb = 128;
+	int start_from_rgb = 190;
 
 	menu_theme = get_menu_style(opts->theme);
 
@@ -300,7 +300,7 @@ init_menu_config(Options *opts)
 	else
 		st_menu_load_style_rgb(&menu_config,
 							   menu_theme,
-							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 1 : 30,
+							   menu_theme == ST_MENU_STYLE_ONECOLOR ? 1 : 50,
 							   &start_from_rgb,
 							   !use_utf8,
 							   opts->force_ascii_art);

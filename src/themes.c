@@ -341,12 +341,10 @@ initialize_color_pairs(int theme)
 	ncurses_colorpair_index = 1;
 	nColorPairCache = 0;
 
-	ncurses_color_index = 32;
+	ncurses_color_index = 64;
 	nColorCache = 0;
 
 	has_odd_themedef = false;
-
-//	memset(theme_attrs, 0, sizeof(theme_attrs));
 
 	use_default_colors();
 
@@ -1551,6 +1549,56 @@ initialize_color_pairs(int theme)
 
 			deftheme(PspgTheme_rownum, PspgWhite, PspgCyan, 0);
 
+			has_odd_themedef = true;
+			break;
+
+		case 19:
+			/* Gruvbox light theme */
+			deftheme_rgb(PspgTheme_data, 0x262626, 0xf7f7bc, 0);
+			deftheme_rgb(PspgTheme_border, 0xd7d6af, 0xf7f7bc, 0);
+			deftheme_rgb(PspgTheme_label, 0x870000, 0xf7f7bc, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0x4e4e4e, 0xddcea8, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0xafafaf, 0xddcea8, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0x870000, 0xddcea8, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0x4e4e4e, 0xddcea8, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0x262626, 0xd0cfaa, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0x262626, 0x9f9f7c, 0);
+
+			has_odd_themedef = true;
+			break;
+
+		case 20:
+			/* Tao theme */
+			deftheme_rgb(PspgTheme_data, 0x616161, 0xe4e4e4, 0);
+			deftheme_rgb(PspgTheme_border, 0x9e9e9e, 0xe4e4e4, 0);
+			deftheme_rgb(PspgTheme_label, 0x000000, 0xe4e4e4, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0xf6f6f6, 0x494949, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x9e9e9e, 0x494949, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xf6f6f6, 0x494949, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xf6f6f6, 0x494949, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0x171717, 0x949494, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xf6f6f6, 0x111111, 0);
+
+			has_odd_themedef = true;
+			break;
+
+		case 23:
+			/* PaperColour theme */
+			deftheme_rgb(PspgTheme_data, 0x090909, 0xe4e4e4, 0);
+			deftheme_rgb(PspgTheme_border, 0x0087af, 0xe4e4e4, 0);
+			deftheme_rgb(PspgTheme_label, 0xd70087, 0xe4e4e4, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0xeeeeee, 0x025070, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x0087af, 0x025070, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xeeeeee, 0x025070, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xeeeeee, 0x025070, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0x090909, 0xc0c0c0, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xeeeeee, 0x181717, 0);
 
 			has_odd_themedef = true;
 			break;
