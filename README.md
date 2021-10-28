@@ -285,6 +285,8 @@ definitions are stored in log file.
 | <kbd>KEY_DOWN</kbd>, <kbd>j</kbd>                                        | navigate forward by one line                                        |
 | <kbd>KEY_LEFT</kbd>, <kbd>h</kbd>                                        | scroll to left                                                      |
 | <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd>                                       | scroll to right                                                     |
+| <kbd>Ctrl</kbd>+<kbd>KEY_LEFT</kbd>                                      | scroll one char left                                                |
+| <kbd>Ctrl</kbd>+<kbd>KEY_RIGHT</kbd>                                     | scroll one char right                                               |
 | <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd>                            | go to the start of file                                             |
 | <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd>                             | go to the end of file                                               |
 | <kbd>Alt</kbd>+<kbd>l</kbd>                                              | go to line number                                                   |

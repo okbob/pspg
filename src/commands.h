@@ -90,6 +90,8 @@ typedef enum PspgCommand
 	cmd_ScrollDownHalfPage,
 	cmd_MoveLeft,
 	cmd_MoveRight,
+	cmd_MoveCharLeft,
+	cmd_MoveCharRight,
 	cmd_CursorFirstRow,
 	cmd_CursorLastRow,
 	cmd_CursorFirstRowPage,

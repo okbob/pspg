@@ -18,6 +18,8 @@ int		CTRL_HOME;
 int		CTRL_END;
 int		CTRL_SHIFT_HOME;
 int		CTRL_SHIFT_END;
+int		CTRL_LEFT;
+int		CTRL_RIGHT;
 
 static int
 get_code(const char *capname, int fallback)
@@ -62,6 +64,8 @@ initialize_special_keycodes()
 	CTRL_END = get_code("kEND5", 533);
 	CTRL_SHIFT_HOME = get_code("kHOM6", 537);
 	CTRL_SHIFT_END = get_code("kEND6", 532);
+	CTRL_RIGHT = get_code("kRIT5", 561);
+	CTRL_LEFT = get_code("kLFT5", 546);
 }
 
 /*
@@ -208,6 +212,10 @@ cmd_string(int cmd)
 			return "MoveLeft";
 		case cmd_MoveRight:
 			return "MoveRight";
+		case cmd_MoveCharLeft:
+			return "MoveCharLeft";
+		case cmd_MoveCharRight:
+			return "MoveCharRight";
 		case cmd_CursorFirstRow:
 			return "CursorFirstRow";
 		case cmd_CursorLastRow:
@@ -552,6 +560,10 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 		*nested_command = cmd_CursorFirstRow;
 		return cmd_Mark_NestedCursorCommand;
 	}
+	else if (c == CTRL_LEFT)
+		return cmd_MoveCharLeft;
+	else if (c == CTRL_RIGHT)
+		return cmd_MoveCharRight;
 
 	return cmd_Invalid;
 }

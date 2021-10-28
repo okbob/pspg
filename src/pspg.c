@@ -4704,6 +4704,18 @@ show_first_col:
 					cursor_row -= 1;
 				break;
 
+			case cmd_MoveCharLeft:
+				long_argument = 1;
+				long_argument_is_valid = true;
+				next_command = cmd_MoveLeft;
+				break;
+
+			case cmd_MoveCharRight:
+				long_argument = 1;
+				long_argument_is_valid = true;
+				next_command = cmd_MoveRight;
+				break;
+
 			case cmd_MoveLeft:
 				{
 					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);
@@ -4727,7 +4739,16 @@ recheck_left:
 					}
 					else
 					{
-						int		move_left = 30;
+						int		move_left;
+						int		step = 30;
+
+						if (long_argument_is_valid)
+						{
+							step = (int) long_argument;
+							long_argument_is_valid = false;
+						}
+
+						move_left = step;
 
 						if (cursor_col == 0 && scrdesc.footer_rows > 0 &&
 							(!opts.vertical_cursor || (opts.vertical_cursor && vertical_cursor_column == 1)))
@@ -4751,8 +4772,8 @@ recheck_left:
 									{
 										move_left = left_border - xmin;
 
-										if (move_left > 30)
-											move_left = 30;
+										if (move_left > step)
+											move_left = step;
 									}
 									else
 									{
@@ -4766,8 +4787,8 @@ recheck_left:
 											if (xmin < left_border)
 											{
 												move_left = left_border - xmin;
-												if (move_left > 30)
-													move_left = 30;
+												if (move_left > step)
+													move_left = step;
 											}
 										}
 									}
@@ -4785,7 +4806,7 @@ recheck_left:
 							{
 								int		i;
 
-								for (i = 1; i <= 30; i++)
+								for (i = 1; i <= step; i++)
 								{
 									int		pos = scrdesc.fix_cols_cols + cursor_col - i - 1;
 
@@ -4836,10 +4857,19 @@ recheck_right:
 					}
 					else
 					{
-						int		move_right = 30;
+						int		move_right;
 						int		max_cursor_col;
 						int		new_cursor_col = cursor_col;
 						int		prev_vertical_cursor_column = vertical_cursor_column;
+						int		step = 30;
+
+						if (long_argument_is_valid)
+						{
+							step = (int) long_argument;
+							long_argument_is_valid = false;
+						}
+
+						move_right = step;
 
 						if (desc.headline_transl != NULL)
 						{
@@ -4852,7 +4882,7 @@ recheck_right:
 								{
 									int wx = vmaxx - scrdesc.main_maxx - cursor_col + 1;
 
-									move_right = wx > 30 ? 30 : wx;
+									move_right = wx > step ? step : wx;
 								}
 								else
 								{
@@ -4866,7 +4896,7 @@ recheck_right:
 										{
 											int wx = vmaxx - scrdesc.main_maxx - cursor_col + 1;
 
-											move_right = wx > 30 ? 30 : wx;
+											move_right = wx > step ? step : wx;
 										}
 										else
 											move_right = 0;
@@ -4878,7 +4908,7 @@ recheck_right:
 								char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
 								int		i;
 
-								for (i = 1; i <= 30; i++)
+								for (i = 1; i <= step; i++)
 								{
 									if (str[i] == 'I')
 									{
@@ -5003,7 +5033,6 @@ recheck_right:
 
 					next_command = cmd_GotoLine;
 				}
-
 				break;
 
 			case cmd_ShowFirstCol:
@@ -6018,7 +6047,6 @@ recheck_end:
 							if (!opts.no_sleep)
 								usleep(30 * 1000);
 					}
-//					else
 
 #endif
 
