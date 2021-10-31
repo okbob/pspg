@@ -270,6 +270,14 @@ print_versions(void)
 
 	fprintf(stdout, "with inotify support\n");
 
+#else
+
+#ifdef HAVE_KQUEUE
+
+	fprintf(stdout, "with kqueue support\n");
+
+#endif
+
 #endif
 
 }

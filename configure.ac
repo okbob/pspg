@@ -75,4 +75,16 @@ if test "x$have_inotify" = "xyes"; then
   fi
 fi
 
+
+AC_CHECK_HEADERS([sys/event.h], have_kqueue=yes, have_kqueue=no)
+
+if test "x$have_kqueue" = "xyes"; then
+
+  AC_CHECK_FUNCS(kqueue, have_kqueue=yes, have_kqueue=no)
+
+  if test "x$have_kqueue" = "xyes"; then
+    AC_DEFINE(HAVE_KQUEUE, 1, [Define if you have kqueue support (BSD only)])
+  fi
+fi
+
 AC_OUTPUT

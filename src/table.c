@@ -101,6 +101,10 @@ isHeadLeftChar(char *str)
 	if (str[0] == '+' && str[1] == '=')
 		return true;
 
+	/* Oracle's SQLcli (ANSI CONSOLE) */
+	if (str[0] == '_')
+		return true;
+
 	if (str[0] != '\342')
 		return false;
 
@@ -733,6 +737,78 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			break;
 		}
 
+		/* Cleaning possible ascii sequences */
+		if (read > 0)
+		{
+			char	   *ptr = line;
+			int		not_processed = read;
+
+			/* fast mode, escape detection */
+			while (not_processed > 0)
+			{
+				if (*ptr == '\x1b')
+					break;
+
+				not_processed -= 1;
+				ptr += 1;
+			}
+
+			if (not_processed > 0)
+			{
+				char	   *writeptr = ptr;
+
+				/*
+				 * there are ANSI escape sequences, and
+				 * we need to clean it.
+				 */
+				while (not_processed > 0)
+				{
+					if (*ptr != '\x1b')
+					{
+						*writeptr++ = *ptr++;
+						not_processed -= 1;
+					}
+					else
+					{
+						if (not_processed > 2)
+						{
+							not_processed -= 2;
+							ptr += 1;
+
+							if (*ptr++ == '[')
+							{
+								while (not_processed-- > 0)
+								{
+									int		c = *ptr++;
+
+									if (c)
+									{
+										if (c >= '@' && c <= '~')
+											break;
+									}
+									else
+									{
+										/* broken ascii or end of line? */
+										*writeptr++ = '\0';
+										goto finish_deescape;
+									}
+								}
+							}
+						}
+						else
+						{
+							*writeptr++ = '\0';
+							break;
+						}
+					}
+				}
+
+finish_deescape:
+
+				read = writeptr - line;
+			}
+		}
+
 		/* In query stream node exit when you find row with only GS - Group Separator */
 		if (opts->querystream && read == 1)
 		{
@@ -1143,6 +1219,22 @@ translate_headline(DataDesc *desc)
 			if (processed_chars == 0)
 			{
 				desc->linestyle = 'a';
+			}
+			else if (desc->linestyle != 'a')
+			{
+				broken_format = true;
+				break;
+			}
+			*destptr++ = 'd';
+			srcptr += 1;
+		}
+		else if (*srcptr == '_')
+		{
+			if (processed_chars == 0)
+			{
+				desc->linestyle = 'a';
+				desc->border_type = 0;
+				desc->is_sqlcl_fmt = true;
 			}
 			else if (desc->linestyle != 'a')
 			{
