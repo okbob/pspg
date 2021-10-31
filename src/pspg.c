@@ -3059,12 +3059,37 @@ reinit_theme:
 					}
 					else
 					{
+						const char *last_row;
+
 						/*
 						 * fallback - we cannot to distingush tabular data
 						 * and footer data in border 0
 						 */
 						desc.last_data_row = desc.last_row - 1;
 						desc.footer_row = desc.last_row;
+
+						/*
+						 * Oracle's SQLcl makes rows with same length, so
+						 * when last row has same length like header row,
+						 * then we can block this fallback.
+						 */
+						last_row = getline_ddesc(&desc, desc.last_row);
+						if (last_row)
+						{
+							size_t		last_row_size;
+							int			last_row_chars;
+
+							last_row_size = strlen(last_row);
+							last_row_chars = use_utf8 ? utf_string_dsplen(last_row, last_row_size) : last_row_size;
+
+							if (desc.headline_char_size == last_row_chars)
+							{
+								desc.last_data_row = desc.last_row;
+								desc.footer_row = -1;
+
+								log_row("applied fix for Oracle's SQLcl for table without footer");
+							}
+						}
 					}
 				}
 

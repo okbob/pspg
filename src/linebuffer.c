@@ -533,3 +533,16 @@ lb_print_all_ddesc(DataDesc *desc, FILE *f)
 			break;
 	}
 }
+
+const char *
+getline_ddesc(DataDesc *desc, int pos)
+{
+	LineBufferIter lbi;
+	char	   *result;
+
+	init_lbi_ddesc(&lbi, desc, pos);
+	if (lbi_get_line(&lbi, &result, NULL, NULL))
+		return result;
+
+	return NULL;
+}

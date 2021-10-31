@@ -577,6 +577,85 @@ strncpytrim(char *dest, const char *src,
 	*dest = '\0';
 }
 
+/*
+ * Remove ANSI escape sequences from input line
+ */
+static ssize_t
+remove_ansi_escape_seq(char *line, ssize_t bytes)
+{
+	char	   *ptr = line;
+	int			not_processed = bytes;
+	char	   *writeptr = ptr;
+
+	if (bytes == 0)
+		return 0;
+
+	/* fast mode, escape detection */
+	while (not_processed > 0)
+	{
+		if (*ptr == '\x1b')
+			break;
+
+		not_processed -= 1;
+		ptr += 1;
+	}
+
+	/* when there are not escape sequence, then returns original size */
+	if (not_processed == 0)
+		return bytes;
+
+	writeptr = ptr;
+
+	/*
+	 * there are ANSI escape sequences, and
+	 * we need to clean it.
+	 */
+	while (not_processed > 0)
+	{
+		if (*ptr != '\x1b')
+		{
+			*writeptr++ = *ptr++;
+			not_processed -= 1;
+		}
+		else
+		{
+			if (not_processed > 2)
+			{
+				not_processed -= 2;
+				ptr += 1;
+
+				if (*ptr++ == '[')
+				{
+					while (not_processed-- > 0)
+					{
+						int		c = *ptr++;
+
+						if (c)
+						{
+							if (c >= '@' && c <= '~')
+								break;
+						}
+						else
+						{
+							/* broken ascii escape sequence or end of line? */
+							*writeptr++ = '\0';
+							goto finish_deescape;
+						}
+					}
+				}
+			}
+			else
+			{
+				*writeptr++ = '\0';
+				break;
+			}
+		}
+	}
+
+finish_deescape:
+
+	return writeptr - line;
+}
 
 /*
  * Read data from file and fill DataDesc.
@@ -737,77 +816,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			break;
 		}
 
-		/* Cleaning possible ascii sequences */
-		if (read > 0)
-		{
-			char	   *ptr = line;
-			int		not_processed = read;
-
-			/* fast mode, escape detection */
-			while (not_processed > 0)
-			{
-				if (*ptr == '\x1b')
-					break;
-
-				not_processed -= 1;
-				ptr += 1;
-			}
-
-			if (not_processed > 0)
-			{
-				char	   *writeptr = ptr;
-
-				/*
-				 * there are ANSI escape sequences, and
-				 * we need to clean it.
-				 */
-				while (not_processed > 0)
-				{
-					if (*ptr != '\x1b')
-					{
-						*writeptr++ = *ptr++;
-						not_processed -= 1;
-					}
-					else
-					{
-						if (not_processed > 2)
-						{
-							not_processed -= 2;
-							ptr += 1;
-
-							if (*ptr++ == '[')
-							{
-								while (not_processed-- > 0)
-								{
-									int		c = *ptr++;
-
-									if (c)
-									{
-										if (c >= '@' && c <= '~')
-											break;
-									}
-									else
-									{
-										/* broken ascii or end of line? */
-										*writeptr++ = '\0';
-										goto finish_deescape;
-									}
-								}
-							}
-						}
-						else
-						{
-							*writeptr++ = '\0';
-							break;
-						}
-					}
-				}
-
-finish_deescape:
-
-				read = writeptr - line;
-			}
-		}
+		read = remove_ansi_escape_seq(line, read);
 
 		/* In query stream node exit when you find row with only GS - Group Separator */
 		if (opts->querystream && read == 1)

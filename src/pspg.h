@@ -455,6 +455,7 @@ extern void lbm_xor_mask(LineBufferMark *lbm, char mask);
 extern void lbm_recno_offset(LineBufferMark *lbm, short int recno_offset);
 extern void lb_free(DataDesc *desc);
 extern void lb_print_all_ddesc(DataDesc *desc, FILE *f);
+extern const char *getline_ddesc(DataDesc *desc, int pos);
 
 /* from bscommands.c */
 extern const char *get_token(const char *instr, const char **token, int *n);
