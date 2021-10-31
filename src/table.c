@@ -1029,12 +1029,14 @@ broken_format:
 
 #endif
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
+
 
 	if (completed && f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) /* clean event buffer */
-		clean_inotify_poll();
+		clean_notify_poll();
 
 #endif
+
 
 	return true;
 }

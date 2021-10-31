@@ -2481,7 +2481,7 @@ main(int argc, char *argv[])
 	opts.csv_header = 'a';				/* auto detection */
 	opts.border_type = 2;				/* outer border */
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
 	opts.watch_file = true;
 

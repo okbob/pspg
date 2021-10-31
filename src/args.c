@@ -266,17 +266,13 @@ print_versions(void)
 
 #endif
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY)
 
 	fprintf(stdout, "with inotify support\n");
 
-#else
-
-#ifdef HAVE_KQUEUE
+#elif defined(HAVE_KQUEUE)
 
 	fprintf(stdout, "with kqueue support\n");
-
-#endif
 
 #endif
 

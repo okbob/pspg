@@ -22,9 +22,15 @@
 
 #define PSPG_ESC_DELAY					2000
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY)
 
 #include <sys/inotify.h>
+
+#elif defined(HAVE_KQUEUE)
+
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
 
 #endif
 
@@ -44,9 +50,14 @@ static struct pollfd fds[2];
 
 static long last_data_pos = -1;
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
-static int inotify_fd = -1;
+static int notify_fd = -1;
+
+#endif
+
+#if defined(HAVE_INOTIFY)
+
 static int inotify_wd = -1;
 
 #endif
@@ -157,9 +168,9 @@ _get_pspg_event(NCursesEventData *nced,
 	bool	without_timeout = timeout == -1;
 	bool	zero_timeout = timeout == 0;
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
-	bool	poll_inotify_fd = false;
+	bool	poll_notify_fd = false;
 
 #endif
 
@@ -224,22 +235,22 @@ _get_pspg_event(NCursesEventData *nced,
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
-			poll_inotify_fd = false;
+			poll_notify_fd = false;
 
 #endif
 
 			nfds = 2;
 		}
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
 		else if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT)
 		{
-			fds[1].fd = inotify_fd;
+			fds[1].fd = notify_fd;
 			fds[1].events = POLLIN;
-			poll_inotify_fd = true;
+			poll_notify_fd = true;
 			nfds = 2;
 		}
 
@@ -374,16 +385,16 @@ repeat_reading:
 				else if (revents & POLLIN)
 				{
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY)
 
-					if (poll_inotify_fd)
+					if (poll_notify_fd)
 					{
 						ssize_t		len;
 						char		buff[640];
 						bool		stream_closed = false;
 
 						/* there are a events on monitored file */
-						len = read(inotify_fd, buff, sizeof(buff));
+						len = read(notify_fd, buff, sizeof(buff));
 
 						/*
 						 * read to end, it is notblocking IO, only one event and
@@ -402,7 +413,7 @@ repeat_reading:
 								ino_event += sizeof (struct inotify_event) + ino_event->len;
 							}
 
-							len = read(inotify_fd, buff, sizeof(buff));
+							len = read(notify_fd, buff, sizeof(buff));
 						}
 
 						if (stream_closed)
@@ -416,6 +427,38 @@ repeat_reading:
 						 * of is not ready for pspg and we get inotify event too prematurely.
 						 * Use longer waiting in streaming mode, because detected event is MODIFY
 						 */
+						usleep(1000 * (stream_closed ? 100 : 250));
+					}
+
+#elif defined(HAVE_KQUEUE)
+
+					if (poll_notify_fd)
+					{
+						struct kevent kqev;
+						struct timespec tmout = {0, 0};
+						bool		stream_closed = false;
+						int			rc;
+
+						rc = kevent(notify_fd, NULL, 0, &kqev, 1, &tmout);
+						while (rc == 1)
+						{
+							if (kqev.flags & EV_ERROR)
+								log_row("kqueue EV_ERROR (%s)", strerror(kqev.data));
+							else if (kqev.flags & NOTE_CLOSE_WRITE)
+								stream_closed = true;
+
+							rc = kevent(notify_fd, NULL, 0, &kqev, 1, &tmout);
+						}
+
+						if (rc == -1)
+							log_row("kqueue error (%s)", strerror(errno));
+
+						if (stream_closed)
+						{
+							log_row("detected CLOSE WRITE by kqueue");
+							close_data_stream();
+						}
+
 						usleep(1000 * (stream_closed ? 100 : 250));
 					}
 
@@ -626,7 +669,7 @@ open_data_stream(Options *opts)
 			if (f_data_opts & STREAM_IS_FILE)
 			{
 
-#ifndef HAVE_INOTIFY
+#if !defined(HAVE_INOTIFY) && !defined(HAVE_KQUEUE)
 
 				leave("streaming on file is not available without file notification service");
 
@@ -658,25 +701,53 @@ open_data_stream(Options *opts)
 		(opts->watch_file || current_state->stream_mode))
 	{
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY)
 
-		if (inotify_fd == -1)
+		if (notify_fd == -1)
 		{
-			inotify_fd = inotify_init1(IN_NONBLOCK);
-			if (inotify_fd == -1)
+			notify_fd = inotify_init1(IN_NONBLOCK);
+			if (notify_fd == -1)
 				leave("cannot initialize inotify (%s)", strerror(errno));
 		}
 
-		if (inotify_wd == -1)
+		if (notify_wd == -1)
 		{
-			inotify_wd = inotify_add_watch(inotify_fd,
+			inotify_wd = inotify_add_watch(notify_fd,
 												 pathname,
 												 IN_CLOSE_WRITE |
 												 (current_state->stream_mode ? IN_MODIFY : 0));
 
 
-			if (inotify_wd == -1)
+			if (notify_wd == -1)
 				leave("cannot watch file \"%s\" (%s)", pathname, strerror(errno));
+		}
+
+		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
+
+#elif defined(HAVE_KQUEUE)
+
+		if (notify_fd == -1)
+		{
+			static struct kevent event;
+			int		rc;
+
+			notify_fd = kqueue();
+			if (notify_fd == -1)
+				leave("cannot to initialize kqueue(%s)", strerror(errno));
+
+			EV_SET(&event,
+				   fileno(f_data),
+				   EVFILT_VNODE, EV_ADD | EV_ENABLE | EV_CLEAR,
+				   NOTE_CLOSE_WRITE |
+				   (current_state->stream_mode ? NOTE_WRITE : 0),
+				   0, NULL);
+
+			rc = kevent(notify_fd, &event, 1, NULL, 0, NULL);
+			if (rc == -1)
+				leave("cannot to register kqueue event (%s)", strerror(errno));
+
+			if (event.flags & EV_ERROR)
+				leave("cannot to register kqueue event (%s)", strerror(event.data));
 		}
 
 		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
@@ -754,18 +825,22 @@ close_tty_stream(void)
 	f_tty = NULL;
 	close_f_tty = false;
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY)
 
-	if (inotify_wd >= 0)
+	if (notify_wd >= 0)
 	{
-		inotify_rm_watch(inotify_fd, inotify_wd);
+		inotify_rm_watch(notify_fd, inotify_wd);
 		inotify_wd = -1;
 	}
 
-	if (inotify_fd >= 0)
+#endif
+
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
+
+	if (notify_fd >= 0)
 	{
-		close(inotify_fd);
-		inotify_fd = -1;
+		close(notify_fd);
+		notify_fd = -1;
 	}
 
 #endif
@@ -849,17 +924,36 @@ wait_on_press_any_key(void)
 	return result;
 }
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
 void
-clean_inotify_poll(void)
+clean_notify_poll(void)
 {
+
+#if defined(HAVE_INOTIFY)
+
 	char buff[64];
 
-	if (inotify_fd >= 0)
+	if (notify_fd >= 0)
 	{
-		while (read(inotify_fd, buff, sizeof(buff)) >= 0) {};
+		while (read(notify_fd, buff, sizeof(buff)) >= 0) {};
 	}
+
+#elif defined(HAVE_KQUEUE)
+
+	struct kevent kqev;
+	struct timespec tmout = {0, 0};
+	int		rc;
+
+	if  (notify_fd >= 0)
+	{
+		rc = kevent(notify_fd, NULL, 0, &kqev, 1, &tmout);
+		while (rc == 1)
+			rc = kevent(notify_fd, NULL, 0, &kqev, 1,  &tmout);
+	}
+
+#endif
+
 }
 
 #endif

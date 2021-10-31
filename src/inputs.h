@@ -82,9 +82,9 @@ extern void close_tty_stream(void);
 extern int wait_on_press_any_key(void);
 extern const char *get_input_file_basename(void);
 
-#ifdef HAVE_INOTIFY
+#if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
-extern void clean_inotify_poll(void);
+extern void clean_notify_poll(void);
 
 #endif
 
