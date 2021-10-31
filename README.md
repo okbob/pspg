@@ -618,6 +618,12 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
     # pkg install pspg
 
+## OpenBSD
+
+    % cd /usr/ports/databases/pspg
+    % doas make install
+    
+[More about it](https://fluca1978.github.io/2021/10/28/pspgOpenBSD.html)
 
 ## Using MacPorts (MacOS only)
 
