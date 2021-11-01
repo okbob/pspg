@@ -710,7 +710,7 @@ open_data_stream(Options *opts)
 				leave("cannot initialize inotify (%s)", strerror(errno));
 		}
 
-		if (notify_wd == -1)
+		if (inotify_wd == -1)
 		{
 			inotify_wd = inotify_add_watch(notify_fd,
 												 pathname,
@@ -718,7 +718,7 @@ open_data_stream(Options *opts)
 												 (current_state->stream_mode ? IN_MODIFY : 0));
 
 
-			if (notify_wd == -1)
+			if (inotify_wd == -1)
 				leave("cannot watch file \"%s\" (%s)", pathname, strerror(errno));
 		}
 
@@ -827,7 +827,7 @@ close_tty_stream(void)
 
 #if defined(HAVE_INOTIFY)
 
-	if (notify_wd >= 0)
+	if (inotify_wd >= 0)
 	{
 		inotify_rm_watch(notify_fd, inotify_wd);
 		inotify_wd = -1;
