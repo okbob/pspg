@@ -1245,7 +1245,6 @@ translate_headline(DataDesc *desc)
 			{
 				desc->linestyle = 'a';
 				desc->border_type = 0;
-				desc->is_sqlcl_fmt = true;
 			}
 			else if (desc->linestyle != 'a')
 			{
