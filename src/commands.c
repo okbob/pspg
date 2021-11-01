@@ -351,6 +351,8 @@ cmd_string(int cmd)
 
 		case cmd_ToggleHighlightOddRec:
 			return "ToggleHighlightOddRec";
+		case cmd_ToggleHideHeaderLine:
+			return "ToggleHideHeaderLine";
 
 		default:
 			return "unknown command";

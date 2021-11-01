@@ -190,6 +190,7 @@ ST_MENU_ITEM _options[] = {
 	{"Force ~a~scii menu", cmd_MenuAsciiArtToggle, NULL, 0, 0, 0, NULL},
 	{"Bold labels", cmd_BoldLabelsToggle, "M-b", 0, 0, 0, NULL},
 	{"Bold cursor", cmd_BoldCursorToggle, NULL, 0, 0, 0, NULL},
+	{"Hide header line", cmd_ToggleHideHeaderLine, NULL, 0, 0, 0, NULL},
 	{"Highlight odd records", cmd_ToggleHighlightOddRec, NULL, 0, 0, 0, NULL},
 	{"~T~heme", MENU_ITEM_THEME, NULL, 0, 0,  0, _theme},
 	{"S~e~t custom theme", cmd_SetCustomTheme, NULL, 0, 0, 0, NULL},
@@ -417,6 +418,8 @@ post_menu(Options *opts, struct ST_MENU *menu)
 			  !opts->empty_string_is_null && opts->nullstr && *opts->nullstr);
 
 	st_menu_set_option(menu, cmd_ToggleHighlightOddRec, ST_MENU_OPTION_MARKED, opts->highlight_odd_rec);
+	st_menu_set_option(menu, cmd_ToggleHideHeaderLine, ST_MENU_OPTION_MARKED, opts->hide_header_line);
+
 }
 
 void

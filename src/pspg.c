@@ -162,6 +162,7 @@ static int		default_freezed_cols = 1;
 static int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 
 static int		fix_rows_offset = 0;
+static int		 fix_hide_header_line = 0;
 
 static MarkModeType	mark_mode = MARK_MODE_NONE;
 static int		mark_mode_start_row = 0;
@@ -510,6 +511,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		scrdesc->main_maxx -= startx;
 	}
 
+	fix_hide_header_line = 0;
 	scrdesc->fix_cols_cols = 0;
 
 	/* search end of fixCol'th column */
@@ -539,6 +541,12 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 			  desc->headline_transl != NULL)
 	{
 		scrdesc->fix_rows_rows = desc->border_head_row + 1 - desc->title_rows;
+
+		if (opts->hide_header_line)
+		{
+			scrdesc->fix_rows_rows -= 1;
+			fix_hide_header_line = 1;
+		}
 	}
 
 	/* disable fixed parts when is not possible draw in screen */
@@ -1695,7 +1703,7 @@ get_x_focus(int _vertical_cursor_column,
 }
 
 #define VISIBLE_DATA_ROWS		(scrdesc.main_maxy - scrdesc.fix_rows_rows - fix_rows_offset)
-#define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1)
+#define MAX_FIRST_ROW			(desc.last_row - desc.title_rows - scrdesc.main_maxy + 1 - fix_hide_header_line)
 #define MAX_CURSOR_ROW			(desc.last_row - desc.first_data_row)
 #define CURSOR_ROW_OFFSET		(scrdesc.fix_rows_rows + desc.title_rows + fix_rows_offset)
 
@@ -1763,7 +1771,11 @@ adjust_first_row(int _first_row, DataDesc *desc, ScrDesc *scrdesc)
 	if (_first_row < 0)
 		_first_row = 0;
 
-	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1;
+	/*
+	 * When header line is invisible, then visible area is one row
+	 * bigger, and then first row should be lower.
+	 */
+	max_first_row = desc->last_row - desc->title_rows - scrdesc->main_maxy + 1 - fix_hide_header_line;
 	max_first_row = max_first_row < 0 ? 0 : max_first_row;
 
 	return _first_row > max_first_row ? max_first_row : _first_row;
@@ -2596,6 +2608,7 @@ main(int argc, char *argv[])
 	opts.hist_size = 500;
 	opts.progressive_load_mode = true;
 	opts.highlight_odd_rec = false;
+	opts.hide_header_line = false;
 
 	setup_sigsegv_handler();
 
@@ -4245,6 +4258,11 @@ reset_search:
 				opts.highlight_odd_rec = !opts.highlight_odd_rec;
 				reinit = true;
 				goto reinit_theme;
+
+			case cmd_ToggleHideHeaderLine:
+				opts.hide_header_line = !opts.hide_header_line;
+				refresh_scr = true;
+				break;
 
 			case cmd_Mark:
 				if (mark_mode != MARK_MODE_ROWS &&

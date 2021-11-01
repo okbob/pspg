@@ -108,6 +108,7 @@ static struct option long_options[] =
 	{"no-implicit-stream", no_argument, 0, 48},
 	{"custom-style-name", required_argument, 0, 49},
 	{"highlight-odd-rec", no_argument, 0, 50},
+	{"hide-header-line", no_argument, 0, 51},
 	{0, 0, 0, 0}
 };
 
@@ -340,6 +341,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --custom-style=NAME      name of custom color style\n");
 					fprintf(stdout, "  --double-header          header separator uses double lines\n");
 					fprintf(stdout, "  --force-uniborder        replace ascii borders by unicode borders\n");
+					fprintf(stdout, "  --hide-header-line       hides header line\n");
 					fprintf(stdout, "  --highlight-odd-rec      use special style for odd records\n");
 					fprintf(stdout, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
 					fprintf(stdout, "  --null=STRING            STRING used instead NULL\n");
@@ -678,6 +680,9 @@ readargs(char **argv,
 				break;
 			case 50:
 				opts->highlight_odd_rec = true;
+				break;
+			case 51:
+				opts->hide_header_line = true;
 				break;
 
 			default:

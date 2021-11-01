@@ -157,6 +157,7 @@ typedef enum PspgCommand
 	cmd_BsCommand,
 	cmd_ShowPrimaryScreen,
 	cmd_ToggleHighlightOddRec,
+	cmd_ToggleHideHeaderLine,
 } PspgCommand;
 
 extern void initialize_special_keycodes();

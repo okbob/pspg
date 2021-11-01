@@ -141,6 +141,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("last_row_search", opts->last_row_search);
 	SAFE_SAVE_BOOL_OPTION("progressive_load_mode", opts->progressive_load_mode);
 	SAFE_SAVE_BOOL_OPTION("highlight_odd_rec", opts->highlight_odd_rec);
+	SAFE_SAVE_BOOL_OPTION("hide_header_line", opts->hide_header_line);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -329,6 +330,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_str(key, &opts->custom_theme_name, str_val, res);
 			else if (strcmp(key, "highlight_odd_rec") == 0)
 				is_valid = assign_bool(key, &opts->highlight_odd_rec, bool_val, res);
+			else if (strcmp(key, "hide_header_line") == 0)
+				is_valid = assign_bool(key, &opts->hide_header_line, bool_val, res);
 
 			if (!is_valid || res == -1)
 				break;

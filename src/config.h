@@ -96,6 +96,7 @@ typedef struct
 	bool	progressive_load_mode;
 	char   *custom_theme_name;
 	bool	highlight_odd_rec;
+	bool	hide_header_line;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

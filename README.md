@@ -86,6 +86,7 @@ Output format options:
   --double-header          header separator uses double lines
   --force-uniborder        replace ascii borders by unicode borders
   --highlight-odd-rec      highlights odd records (when it is supported by style)
+  --hide-header-line       hides header line (between column names and data)
   --ignore-bad-rows        rows with wrong column numbers are ignored
   --null=STRING            STRING used instead NULL
 
