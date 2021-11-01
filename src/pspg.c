@@ -2324,6 +2324,100 @@ check_visible_vertical_cursor(DataDesc *desc,
 	return true;
 }
 
+
+/*
+ * Last check and hacks
+ */
+static void
+finalize_tabular_data(DataDesc *desc)
+{
+	if (desc->is_expanded_mode)
+	{
+		if (strchr(desc->headline_transl, 'I') == NULL)
+		{
+			char *str = desc->rows.rows[desc->title_rows + 1];
+			int pos = 0;
+
+			/* fallback point, didn't find separator already */
+			while (pos < 40)
+			{
+				if ((desc->linestyle == 'a' && *str == '|' && pos > 1) ||
+				    (desc->linestyle == 'u' && pos > 1 &&
+				    (strncmp(str, /* │ */ "\342\224\202", 3) == 0 ||
+				     strncmp(str, /* ║ */ "\342\225\221", 3) == 0)))
+				{
+					desc->headline_transl[pos] = 'I';
+					break;
+				}
+				pos += 1;
+				str += charlen(str);
+			}
+		}
+	}
+	else
+	{
+		if (desc->border_type != 2)
+		{
+			if (desc->border_bottom_row == -1 && desc->footer_row == -1)
+			{
+				/*
+				 * It is hard to detect end of table and start of footer
+				 * when border_type != 2. But for border_type = 1 it is
+				 * possible. First footer line starting with nonspace.
+				 * But some data should not to have footer.
+				 */
+				if (desc->border_type == 1)
+				{
+					if (desc->alt_footer_row != -1)
+					{
+						desc->footer_row = desc->alt_footer_row;
+						desc->last_data_row = desc->footer_row - 1;
+					}
+					else
+						desc->last_data_row = desc->last_row;
+				}
+				else
+				{
+					const char *last_row;
+
+					/*
+					 * fallback - we cannot to distingush tabular data
+					 * and footer data in border 0
+					 */
+					desc->last_data_row = desc->last_row - 1;
+					desc->footer_row = desc->last_row;
+
+					/*
+					 * Oracle's SQLcl makes rows with same length, so
+					 * when last row has same length like header row,
+					 * then we can block this fallback.
+					 */
+					last_row = getline_ddesc(desc, desc->last_row);
+					if (last_row)
+					{
+						size_t		last_row_size;
+						int			last_row_chars;
+
+						last_row_size = strlen(last_row);
+						last_row_chars = use_utf8 ? utf_string_dsplen(last_row, last_row_size) : last_row_size;
+
+						if (desc->headline_char_size == last_row_chars)
+						{
+							desc->last_data_row = desc->last_row;
+							desc->footer_row = -1;
+
+							log_row("applied fix for Oracle's SQLcl for table without footer");
+						}
+					}
+				}
+			}
+
+			trim_footer_rows(desc);
+		}
+	}
+}
+
+
 static int
 mousex_get_colno(DataDesc *desc,
 				 ScrDesc *scrdesc,
@@ -3011,92 +3105,7 @@ reinit_theme:
 
 	/* some corrections */
 	if (detected_format)
-	{
-		if (desc.is_expanded_mode)
-		{
-			if (strchr(desc.headline_transl,'I') == NULL)
-			{
-				char *str = desc.rows.rows[desc.title_rows + 1];
-				int pos = 0;
-
-				/* fallback point, didn't find separator already */
-				while (pos < 40)
-				{
-					if ((desc.linestyle == 'a' && *str == '|' && pos > 1) ||
-					    (desc.linestyle == 'u' && pos > 1 &&
-					    (strncmp(str, /* │ */ "\342\224\202", 3) == 0 ||
-					     strncmp(str, /* ║ */ "\342\225\221", 3) == 0)))
-					{
-						desc.headline_transl[pos] = 'I';
-						break;
-					}
-					pos += 1;
-					str += charlen(str);
-				}
-			}
-		}
-		else
-		{
-			if (desc.border_type != 2)
-			{
-				if (desc.border_bottom_row == -1 && desc.footer_row == -1)
-				{
-					/*
-					 * It is hard to detect end of table and start of footer
-					 * when border_type != 2. But for border_type = 1 it is
-					 * possible. First footer line starting with nonspace.
-					 * But some data should not to have footer.
-					 */
-					if (desc.border_type == 1)
-					{
-						if (desc.alt_footer_row != -1)
-						{
-							desc.footer_row = desc.alt_footer_row;
-							desc.last_data_row = desc.footer_row - 1;
-						}
-						else
-							desc.last_data_row = desc.last_row;
-					}
-					else
-					{
-						const char *last_row;
-
-						/*
-						 * fallback - we cannot to distingush tabular data
-						 * and footer data in border 0
-						 */
-						desc.last_data_row = desc.last_row - 1;
-						desc.footer_row = desc.last_row;
-
-						/*
-						 * Oracle's SQLcl makes rows with same length, so
-						 * when last row has same length like header row,
-						 * then we can block this fallback.
-						 */
-						last_row = getline_ddesc(&desc, desc.last_row);
-						if (last_row)
-						{
-							size_t		last_row_size;
-							int			last_row_chars;
-
-							last_row_size = strlen(last_row);
-							last_row_chars = use_utf8 ? utf_string_dsplen(last_row, last_row_size) : last_row_size;
-
-							if (desc.headline_char_size == last_row_chars)
-							{
-								desc.last_data_row = desc.last_row;
-								desc.footer_row = -1;
-
-								log_row("applied fix for Oracle's SQLcl for table without footer");
-							}
-						}
-					}
-				}
-
-				trim_footer_rows(&desc);
-			}
-		}
-	}
+		finalize_tabular_data(&desc);
 
 	if (opts.tabular_cursor && !opts.no_cursor)
 		opts.no_cursor = desc.headline_transl == NULL;
@@ -3437,6 +3446,9 @@ reinit_theme:
 
 							if (desc.headline)
 								(void) translate_headline(&desc);
+
+							if (desc.headline_transl)
+								finalize_tabular_data(&desc);
 
 							if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 							{
