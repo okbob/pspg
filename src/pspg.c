@@ -162,7 +162,7 @@ static int		default_freezed_cols = 1;
 static int		fixedRows = -1;			/* detect automatically (not yet implemented option) */
 
 static int		fix_rows_offset = 0;
-static int		 fix_hide_header_line = 0;
+static int		fix_hide_header_line = 0;
 
 static MarkModeType	mark_mode = MARK_MODE_NONE;
 static int		mark_mode_start_row = 0;
@@ -6584,7 +6584,7 @@ recheck_end:
 			{
 				int		rows_rows;
 
-				rows_rows = min_int(desc.footer_row - scrdesc.fix_rows_rows - first_row - desc.title_rows,
+				rows_rows = min_int(desc.footer_row - scrdesc.fix_rows_rows - first_row - desc.title_rows - fix_hide_header_line,
 									 scrdesc.main_maxy - scrdesc.fix_rows_rows);
 				rows_rows = rows_rows > 0 ? rows_rows : 0;
 
