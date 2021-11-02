@@ -542,7 +542,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	{
 		scrdesc->fix_rows_rows = desc->border_head_row + 1 - desc->title_rows;
 
-		if (opts->hide_header_line)
+		if (opts->hide_header_line && scrdesc->fix_rows_rows > 1)
 		{
 			scrdesc->fix_rows_rows -= 1;
 			fix_hide_header_line = 1;

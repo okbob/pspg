@@ -1009,6 +1009,12 @@ next_row:
 		desc->headline = desc->rows.rows[desc->border_top_row];
 		desc->headline_size = strlen(desc->headline);
 	}
+	else if (desc->border_head_row == -1 && desc->border_top_row != -1)
+	{
+		desc->border_head_row = desc->border_top_row;
+		desc->headline = desc->rows.rows[desc->border_top_row];
+		desc->headline_size = strlen(desc->headline);
+	}
 	else
 	{
 broken_format:
@@ -1053,6 +1059,8 @@ translate_headline(DataDesc *desc)
 	bool	broken_format = false;
 	int		processed_chars = 0;
 	bool	is_expanded_info = false;
+	bool	is_headerless = (desc->border_head_row == desc->border_top_row &&
+							 !desc->is_expanded_mode);
 
 	srcptr = desc->headline;
 	destptr = smalloc(desc->headline_size + 2);
@@ -1107,7 +1115,8 @@ translate_headline(DataDesc *desc)
 				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
 		{
 			/* should be expanded mode */
-			if (processed_chars > 0 || !desc->is_expanded_mode)
+			if (processed_chars > 0 ||
+				(!desc->is_expanded_mode && !is_headerless))
 			{
 				broken_format = true;
 				break;
@@ -1121,7 +1130,7 @@ translate_headline(DataDesc *desc)
 				 strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
 		{
 			if (desc->linestyle != 'u' || desc->border_type != 2 ||
-				!desc->is_expanded_mode)
+				(!desc->is_expanded_mode  && !is_headerless))
 			{
 				broken_format = true;
 				break;
@@ -1134,7 +1143,8 @@ translate_headline(DataDesc *desc)
 				 strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
 				 strncmp(srcptr, "\342\225\246", 3) == 0)
 		{
-			if (desc->linestyle != 'u' || !desc->is_expanded_mode)
+			if (desc->linestyle != 'u' ||
+				(!desc->is_expanded_mode  && !is_headerless))
 			{
 				broken_format = true;
 				break;
