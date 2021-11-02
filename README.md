@@ -561,6 +561,7 @@ If you want to use `pspg` as Postgres client, then you need run
 I had to install `openssl-devel` package and I had to set
 `export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
 
+On FreeBsd you should to use `gmake` instead `make`.
 
 # Note - Installation
 
@@ -671,6 +672,10 @@ option.
   be possible to operate over columns - hide columns, change width, cyclic iteration over columns,
   change order of columns, mark columns and export only selected columns (selected rows).
 
+* Replace printing document directly to ncurses window by some smarter structure. Internally
+  there are lot of checks and fixs to support complex dynamic layout. The possibly views should
+  to remember first row, last row, current row. Now, these data are in global variables or in
+  DataDesc and ScrDesc structures.
 
 # st_menu
 
