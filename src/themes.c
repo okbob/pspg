@@ -1552,6 +1552,34 @@ initialize_color_pairs(int theme)
 			has_odd_themedef = true;
 			break;
 
+		case 17:
+			/* Solar Dark theme */
+			deftheme_rgb(PspgTheme_data, RGB(557, 616, 624), RGB(0, 149, 192), 0);
+			deftheme_rgb(PspgTheme_border, RGB(576, 631, 631), RGB(0, 149, 192), 0);
+			deftheme_rgb(PspgTheme_label, RGB(149, 545, 824), RGB(0, 149, 192), 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, RGB(27, 212, 259), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_border, RGB(27, 212, 259), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_label, RGB(27, 212, 259), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, RGB(27, 212, 259), RGB(690, 517, 0), 0);
+
+			has_odd_themedef = true;
+			break;
+
+		case 18:
+			/* Solar Light theme */
+			deftheme_rgb(PspgTheme_data, RGB(13,98,119), RGB(546, 601, 601), 0);
+			deftheme_rgb(PspgTheme_border, RGB(13,98,119),  RGB(546, 601, 601), 0);
+			deftheme_rgb(PspgTheme_label, 0x001972,  RGB(546, 601, 601), 0);
+
+			deftheme_rgb(PspgTheme_cursor_data,  RGB(18, 141, 172), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_border,  RGB(18, 141, 172), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_label,  RGB(18, 141, 172), RGB(690, 517, 0), 0);
+			deftheme_rgb(PspgTheme_cursor_rownum,  RGB(18, 141, 172), RGB(690, 517, 0), 0);
+
+			has_odd_themedef = true;
+			break;
+
 		case 19:
 			/* Gruvbox light theme */
 			deftheme_rgb(PspgTheme_data, 0x262626, 0xf7f7bc, 0);
@@ -1582,6 +1610,23 @@ initialize_color_pairs(int theme)
 
 			deftheme_rgb(PspgTheme_selection, 0x171717, 0x949494, 0);
 			deftheme_rgb(PspgTheme_cursor_selection, 0xf6f6f6, 0x111111, 0);
+
+			has_odd_themedef = true;
+			break;
+
+		case 21:
+			/* Flatwhite theme */
+			deftheme_rgb(PspgTheme_data, 0x605a52, 0xeae0d3, 0);
+			deftheme_rgb(PspgTheme_border, 0xb9a992, 0xeae0d3, 0);
+			deftheme_rgb(PspgTheme_label, 0x090908, 0xeae0d3, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0xf6f6f6, 0x5534ff, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0xb9a992, 0x5534ff, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0xf6f6f6, 0x5534ff, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0xf6f6f6, 0x5534ff, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0x90909, 0xafa182, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0xf6f6f6, 0x101010, 0);
 
 			has_odd_themedef = true;
 			break;
