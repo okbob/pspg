@@ -444,8 +444,12 @@ repeat_reading:
 						{
 							if (kqev.flags & EV_ERROR)
 								log_row("kqueue EV_ERROR (%s)", strerror(kqev.data));
+
+#if defined(NOTE_CLOSE_WRITE)
+
 							else if (kqev.flags & NOTE_CLOSE_WRITE)
 								stream_closed = true;
+#endif
 
 							rc = kevent(notify_fd, NULL, 0, &kqev, 1, &tmout);
 						}
@@ -724,7 +728,7 @@ open_data_stream(Options *opts)
 
 		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
 
-#elif defined(HAVE_KQUEUE)
+#elif defined(HAVE_KQUEUE) && defined(NOTE_CLOSE_WRITE)
 
 		if (notify_fd == -1)
 		{
@@ -740,6 +744,37 @@ open_data_stream(Options *opts)
 				   EVFILT_VNODE, EV_ADD | EV_ENABLE | EV_CLEAR,
 				   NOTE_CLOSE_WRITE |
 				   (current_state->stream_mode ? NOTE_WRITE : 0),
+				   0, NULL);
+
+			rc = kevent(notify_fd, &event, 1, NULL, 0, NULL);
+			if (rc == -1)
+				leave("cannot to register kqueue event (%s)", strerror(errno));
+
+			if (event.flags & EV_ERROR)
+				leave("cannot to register kqueue event (%s)", strerror(event.data));
+		}
+
+		f_data_opts |= STREAM_HAS_NOTIFY_SUPPORT;
+
+#elif defined(HAVE_KQUEUE)
+
+		/*
+		 * NOTE_CLOSE_WRITE is available from FreeBSD 11
+		 * On older BSD systems this event is not available.
+		 */
+		if (notify_fd == -1 && current_state->stream_mode)
+		{
+			static struct kevent event;
+			int		rc;
+
+			notify_fd = kqueue();
+			if (notify_fd == -1)
+				leave("cannot to initialize kqueue(%s)", strerror(errno));
+
+			EV_SET(&event,
+				   fileno(f_data),
+				   EVFILT_VNODE, EV_ADD | EV_ENABLE | EV_CLEAR,
+				   NOTE_WRITE,
 				   0, NULL);
 
 			rc = kevent(notify_fd, &event, 1, NULL, 0, NULL);
