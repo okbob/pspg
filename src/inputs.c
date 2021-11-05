@@ -246,7 +246,8 @@ _get_pspg_event(NCursesEventData *nced,
 
 #if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
-		else if (f_data_opts & STREAM_HAS_NOTIFY_SUPPORT)
+		else if ((f_data_opts & STREAM_HAS_NOTIFY_SUPPORT) &&
+				 (notify_fd != -1))
 		{
 			fds[1].fd = notify_fd;
 			fds[1].events = POLLIN;
@@ -815,10 +816,34 @@ close_data_stream(void)
 		fclose(f_data);
 
 		f_data = NULL;
+
+#if defined(HAVE_INOTIFY)
+
+		f_data_opts = f_data_opts & STREAM_HAS_NOTIFY_SUPPORT;
+
+#else
+
 		f_data_opts = 0;
+
+#endif
 
 		close_f_data = false;
 	}
+
+	/*
+	 * KQUEUE has joined notification file descriptor,
+	 * so we should to invalidate notify_fd too.
+	 */
+#if defined(HAVE_KQUEUE)
+
+	if (notify_fd != -1)
+	{
+		fclose(notify_fd);
+		notify_fd = -1;
+	}
+
+#endif
+
 }
 
 bool
