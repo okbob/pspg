@@ -838,7 +838,7 @@ close_data_stream(void)
 
 	if (notify_fd != -1)
 	{
-		fclose(notify_fd);
+		close(notify_fd);
 		notify_fd = -1;
 	}
 
