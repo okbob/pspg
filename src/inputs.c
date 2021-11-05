@@ -648,6 +648,8 @@ open_data_stream(Options *opts)
 
 	if (f_data)
 	{
+		f_data_opts = 0;
+
 		if (fstat(fileno(f_data), &statbuf) != 0)
 		{
 			current_state->_errno = errno;
@@ -735,13 +737,23 @@ open_data_stream(Options *opts)
 		{
 			static struct kevent event;
 			int		rc;
+			int		fd2;
 
 			notify_fd = kqueue();
 			if (notify_fd == -1)
 				leave("cannot to initialize kqueue(%s)", strerror(errno));
 
+			/*
+			 * The data file can be closed after reading, but we want to watch
+			 * file longer time, so use own file descriptor (when we don't use
+			 * stream mode)
+			 */
+			fd2 = fileno(f_data);
+			if (!current_data->stream_mode)
+				fd2 = dup(fd2);
+
 			EV_SET(&event,
-				   fileno(f_data),
+				   fd2,
 				   EVFILT_VNODE, EV_ADD | EV_ENABLE | EV_CLEAR,
 				   NOTE_CLOSE_WRITE |
 				   (current_state->stream_mode ? NOTE_WRITE : 0),
@@ -817,7 +829,7 @@ close_data_stream(void)
 
 		f_data = NULL;
 
-#if defined(HAVE_INOTIFY)
+#if defined(HAVE_INOTIFY) && defined(HAVE_KQUEUE)
 
 		f_data_opts = f_data_opts & STREAM_HAS_NOTIFY_SUPPORT;
 
@@ -834,12 +846,22 @@ close_data_stream(void)
 	 * KQUEUE has joined notification file descriptor,
 	 * so we should to invalidate notify_fd too.
 	 */
-#if defined(HAVE_KQUEUE)
+#if defined(HAVE_KQUEUE) && defined(NOTE_CLOSE_WRITE)
+
+	if (current_state->stream_mode && notify_fd != -1)
+	{
+		close(notify_fd);
+		notify_fd = -1;
+		f_data_opts = 0;
+	}
+
+#elif defined(HAVE_KQUEUE)
 
 	if (notify_fd != -1)
 	{
 		close(notify_fd);
 		notify_fd = -1;
+		f_data_opts = 0;
 	}
 
 #endif
