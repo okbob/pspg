@@ -636,23 +636,19 @@ remove_ansi_escape_seq(char *line, ssize_t bytes)
 								break;
 						}
 						else
-						{
 							/* broken ascii escape sequence or end of line? */
-							*writeptr++ = '\0';
 							goto finish_deescape;
-						}
 					}
 				}
 			}
 			else
-			{
-				*writeptr++ = '\0';
 				break;
-			}
 		}
 	}
 
 finish_deescape:
+
+	*writeptr++ = '\0';
 
 	return writeptr - line;
 }
