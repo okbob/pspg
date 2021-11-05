@@ -749,7 +749,7 @@ open_data_stream(Options *opts)
 			 * stream mode)
 			 */
 			fd2 = fileno(f_data);
-			if (!current_data->stream_mode)
+			if (!current_state->stream_mode)
 				fd2 = dup(fd2);
 
 			EV_SET(&event,
