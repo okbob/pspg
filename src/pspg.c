@@ -608,8 +608,10 @@ create_layout(Options *opts,
 			data_rows = scrdesc->main_maxy - scrdesc->fix_rows_rows;
 		}
 
-		scrdesc->footer_rows = min_int(data_rows - scrdesc->rows_rows,
-									   desc->last_row - desc->footer_row + 1);
+		/*
+		 * Footer window fill all remaining space.
+		 */
+		scrdesc->footer_rows = data_rows - scrdesc->rows_rows;
 
 		if (scrdesc->footer_rows > 0)
 		{
@@ -622,8 +624,7 @@ create_layout(Options *opts,
 	}
 	else if (desc->headline_transl != NULL)
 	{
-		scrdesc->rows_rows = min_int(scrdesc->main_maxy - scrdesc->fix_rows_rows,
-									 desc->last_row - desc->first_data_row + 1);
+		scrdesc->rows_rows = scrdesc->main_maxy - scrdesc->fix_rows_rows;
 	}
 	else
 	{

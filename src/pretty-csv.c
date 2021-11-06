@@ -1554,7 +1554,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 			desc->last_row = desc->total_rows - 1;
 
 			desc->footer_row = desc->last_row;
-			desc->footer_rows = 1;
 
 			if (pconfig.border == 2)
 			{
@@ -1650,7 +1649,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		desc->last_row = desc->total_rows - 1;
 
 		desc->footer_row = desc->last_row;
-		desc->footer_rows = 1;
 
 		if (pconfig.border == 2)
 		{
