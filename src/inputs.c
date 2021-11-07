@@ -623,6 +623,7 @@ open_data_stream(Options *opts)
 		 * in open time. But it doesn't look like robust solution.
 		 */
 		f_data = fopen(locpathname, mode);
+		f_data_opts = 0;
 		if (!f_data)
 		{
 			/* save errno, and prepare error message */
@@ -648,8 +649,6 @@ open_data_stream(Options *opts)
 
 	if (f_data)
 	{
-		f_data_opts = 0;
-
 		if (fstat(fileno(f_data), &statbuf) != 0)
 		{
 			current_state->_errno = errno;
@@ -823,6 +822,8 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
+//leave("close file");
+
 	if (close_f_data)
 	{
 		fclose(f_data);
