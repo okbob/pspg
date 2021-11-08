@@ -540,9 +540,9 @@ pager = /usr/bin/pspg --rr=2 --quit-if-one-screen --ignore-case
 
 # sqlcl
 
-As `sqlcl` doesn't current support a pager option directly, you can either use a tool like [qsh](https://github.com/muhmud/qsh) to work around this issue, or use the [pspg.sql](https://github.com/okbob/pspg/blob/master/scripts/sqlcl/pspg.sql) script from this repo.
+As `sqlcl` doesn't currently support a pager option directly, you can either use a tool like [qsh](https://github.com/muhmud/qsh) to work around this issue, or use the [pspg.sql](https://github.com/okbob/pspg/blob/master/scripts/sqlcl/pspg.sql) script from this repo.
 
-To use the script, start `sqlcl` as show below (it's important to pass in details of your tty):
+To use the script, start `sqlcl` as shown below (it's important to pass in the details of your current tty):
 
 ```
 $ TTY=$(tty) sqlcl system/system @/path/to/pspg.sql
