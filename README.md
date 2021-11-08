@@ -14,7 +14,7 @@ This pager can be used from the following clients command line clients too:
 - `monetdb`
 - [`Trino (formerly Presto SQL)`](https://trino.io/)
 - [`usql`](https://github.com/xo/usql/)
-
+- [`sqlcl`](https://github.com/okbob/pspg/#sqlcl) (for oracle)
 
 ## Main target
 
@@ -429,7 +429,7 @@ regex/\.csv
 * restart <code>mc</code>
 
 
-# Know issues
+# Known issues
 
 * When you use `pspg` on Cygwin, then some temporary freezing of scrolling was reported
   In this case, please, use an option `--no-sleep`. I see slow scrolling (via scrollbar)
@@ -536,6 +536,22 @@ and doesn't need `--pgcli-fix` option.
 
 ```
 pager = /usr/bin/pspg --rr=2 --quit-if-one-screen --ignore-case
+```
+
+# sqlcl
+
+As `sqlcl` doesn't currently support a pager option directly, you can either use a tool like [qsh](https://github.com/muhmud/qsh) to work around this issue, or use the [pspg.sql](https://github.com/okbob/pspg/blob/master/scripts/sqlcl/pspg.sql) script from this repo.
+
+To use the script, start `sqlcl` as shown below (it's important to pass in the details of your current tty):
+
+```
+$ TTY=$(tty) sqlcl system/system @/path/to/pspg.sql
+```
+
+You can now have the results of a query sent to `pspg` like this:
+
+```
+SQL> pspg select * from user_tables;
 ```
 
 # Note - mouse
