@@ -142,7 +142,7 @@ typedef struct
 	int		fixed_rows;				/* number of fixed rows */
 	int		fixed_columns;			/* number of fixed columns */
 	int		data_rows;				/* number of data rows */
-	bool	oid_name_table;			/* detected system table with first oid column */
+	bool	freeze_two_cols;			/* detected system table with first oid column */
 	bool	multilines_already_tested;	/* true, when we know where are multilines */
 	bool	has_multilines;			/* true, when some field contains more lines */
 

@@ -2801,7 +2801,7 @@ main(int argc, char *argv[])
 
 	detected_format = desc.headline_transl;
 
-	if (detected_format && desc.oid_name_table)
+	if (detected_format && desc.freeze_two_cols)
 		default_freezed_cols = 2;
 
 	/*
@@ -3482,7 +3482,7 @@ reinit_theme:
 							first_data_row = desc.first_data_row;
 
 							detected_format = desc.headline_transl;
-							if (detected_format && desc.oid_name_table)
+							if (detected_format && desc.freeze_two_cols)
 								default_freezed_cols = 2;
 
 							/* we should to save searching related data from scrdesc */

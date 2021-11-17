@@ -710,7 +710,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 		memset(&desc->rows, 0, sizeof(LineBuffer));
 		desc->rows.prev = NULL;
-		desc->oid_name_table = false;
+		desc->freeze_two_cols = false;
 		desc->multilines_already_tested = false;
 		desc->last_buffer = 0;
 
@@ -1425,7 +1425,20 @@ translate_headline(DataDesc *desc)
 				if (desc->cranges[1].name_size > 4 &&
 						nstrstr_with_sizes(desc->namesline + desc->cranges[1].name_offset + desc->cranges[1].name_size - 4,
 										   4, "name", 4))
-					desc->oid_name_table = true;
+					desc->freeze_two_cols = true;
+			}
+			else if ((desc->cranges[0].name_size == 10 &&
+						  				nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_offset,
+									   desc->cranges[0].name_size,
+									   "schemaname",
+									   10)) ||
+					(desc->cranges[0].name_size == 6 &&
+						  				nstrstr_with_sizes(desc->namesline + desc->cranges[0].name_offset,
+									   desc->cranges[0].name_size,
+									   "schema",
+									   6)))
+			{
+				desc->freeze_two_cols = true;
 			}
 		}
 
