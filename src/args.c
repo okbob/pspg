@@ -156,7 +156,7 @@ buildargv(const char *input, int *_argc, char *appname)
 			if (argc >= (maxargc - 1))
 			{
 				maxargc *= 2;
-				argv = (char **) realloc(argv, maxargc * sizeof (char *));
+				argv = (char **) srealloc(argv, maxargc * sizeof (char *));
 				argv[argc] = NULL;
 			}
 
@@ -524,7 +524,7 @@ readargs(char **argv,
 			case 31:
 				{
 					char   *nullstr;
-					int		size;
+					int		size = strlen(optarg);
 
 					nullstr = trim_quoted_str(optarg, &size);
 					if (size > 255)

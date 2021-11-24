@@ -458,6 +458,8 @@ theme_loader(FILE *theme,
 			PspgThemeElement te;
 
 			te.attr = 0;
+			te.fg = PspgWhite;
+			te.bg = PspgBlack;
 
 			_token = ThemeLoaderGetToken(&tokenizer, &token);
 			if (_token)

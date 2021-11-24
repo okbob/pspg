@@ -1470,6 +1470,8 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 			if (query != opts->query)
 				free(query);
 
+			free(linebuf.buffer);
+
 			return false;
 		}
 	}
@@ -1478,6 +1480,8 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		if (!f_data)
 		{
 			format_error("missing data");
+			free(linebuf.buffer);
+
 			return false;
 		}
 
@@ -1494,6 +1498,8 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 		if (!f_data)
 		{
 			format_error("missing data");
+			free(linebuf.buffer);
+
 			return false;
 		}
 

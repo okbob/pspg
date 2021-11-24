@@ -436,9 +436,17 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_nonblocking, bool wait_on_
 
 				if (dynbuf)
 				{
-					dynbuf = realloc(dynbuf, fetched_chars + len + 1);
-					if (!dynbuf)
+					char	   *_dynbuf;
+
+					_dynbuf = realloc(dynbuf, fetched_chars + len + 1);
+					if (!_dynbuf)
+					{
+						free(_dynbuf);
 						return -1;
+					}
+					else
+						dynbuf = _dynbuf;
+
 					memcpy(dynbuf + fetched_chars, statbuf, len + 1);
 					fetched_chars += len;
 				}

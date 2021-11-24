@@ -1991,10 +1991,10 @@ export_to_file(PspgCommand command,
 				rows = (int) percent;
 				percent = 0.0;
 			}
-		}
 
-		strncpy(last_rows_number, number, sizeof(last_rows_number) - 1);
-		last_rows_number[sizeof(last_rows_number) - 1] = '\0';
+			strncpy(last_rows_number, number, sizeof(last_rows_number) - 1);
+			last_rows_number[sizeof(last_rows_number) - 1] = '\0';
+		}
 	}
 
 	if (copy_to_file)
