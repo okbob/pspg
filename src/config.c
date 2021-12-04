@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 static int
 parse_cfg(char *line, char *key, bool *bool_val, int *int_val, char **str_val)
@@ -111,6 +112,9 @@ save_config(char *path, Options *opts)
 	errno = 0;
 	f = fopen(path, "w");
 	if (f == NULL)
+		return false;
+
+	if (chmod(path, 0644) != 0)
 		return false;
 
 	SAFE_SAVE_BOOL_OPTION("ascii_menu", opts->force_ascii_art);

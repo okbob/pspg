@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #ifndef GWINSZ_IN_SYS_IOCTL
@@ -2612,6 +2613,8 @@ main(int argc, char *argv[])
 	opts.hide_header_line = false;
 
 	setup_sigsegv_handler();
+
+	umask(022);
 
 	PSPG_CONF = getenv("PSPG_CONF");
 	if (!PSPG_CONF)
