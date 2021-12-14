@@ -22,12 +22,13 @@
 #include "themes.h"
 #include "st_menu.h"
 
-#define LINEINFO_NONE				0
-#define LINEINFO_BOOKMARK			1
-#define LINEINFO_FOUNDSTR			2
-#define LINEINFO_FOUNDSTR_MULTI		4
-#define LINEINFO_UNKNOWN			8
-#define LINEINFO_CONTINUATION		16
+#define LINEINFO_NONE					0
+#define LINEINFO_BOOKMARK				1
+#define LINEINFO_FOUNDSTR				2
+#define LINEINFO_FOUNDSTR_MULTI			4
+#define LINEINFO_UNKNOWN				8
+#define LINEINFO_CONTINUATION			16
+#define LINEINFO_HASNOT_CONTINUATION	32
 
 #define			FILE_UNDEF			0
 #define			FILE_CSV			1
@@ -43,7 +44,7 @@
 
 typedef struct LineInfo
 {
-	char			mask;
+	unsigned char	mask;
 	short int		start_char;
 	short int		recno_offset;
 } LineInfo;

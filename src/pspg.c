@@ -2409,8 +2409,8 @@ finalize_tabular_data(DataDesc *desc)
 					last_row = getline_ddesc(desc, desc->last_row);
 					if (last_row)
 					{
-						size_t		last_row_size;
-						int			last_row_chars;
+						int		last_row_size;
+						int		last_row_chars;
 
 						last_row_size = strlen(last_row);
 						last_row_chars = use_utf8 ? utf_string_dsplen(last_row, last_row_size) : last_row_size;

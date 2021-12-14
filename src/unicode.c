@@ -81,8 +81,8 @@ utf8charlen(const char ch)
 
 struct mbinterval
 {
-	unsigned int first;
-	unsigned int last;
+	int first;
+	int last;
 };
 
 /* auxiliary function for binary search in interval table */
