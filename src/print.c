@@ -527,11 +527,16 @@ set_line_info(Options *opts,
  * Two examples how to print wide char correctly
  */
 static void
-pspg_mvwadd_wchar(WINDOW *win, int y, int x, wchar_t wchr, attr_t attr)
+pspg_mvwadd_wchar(WINDOW *win, int y, int x, wchar_t *wchr, attr_t attr)
 {
 	cchar_t		cchr;
 
-	setcchar(&cchr, &wchr, attr, PAIR_NUMBER(attr), NULL);
+	/*
+	 * Note: I misunderstand to the function setcchar originally. I passed there
+	 * pointer to wide char, but it really expects pointer to wide char string
+	 * ended zero. This issue was detected by address sanitizer
+	 */
+	setcchar(&cchr, wchr, attr, PAIR_NUMBER(attr), NULL);
 	mvwadd_wch(win, y, x, &cchr);
 }
 
@@ -590,8 +595,8 @@ draw_scrollbar_win(WINDOW *win,
 	else
 	{
 		/* ▲ ▼ */
-		pspg_mvwadd_wchar(win, 0, 0, L'\x25b2', t->scrollbar_arrow_attr);
-		pspg_mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L'\x25bc', t->scrollbar_arrow_attr);
+		pspg_mvwadd_wchar(win, 0, 0, L"\x25b2", t->scrollbar_arrow_attr);
+		pspg_mvwadd_wchar(win, scrdesc->scrollbar_maxy - 1, 0, L"\x25bc", t->scrollbar_arrow_attr);
 	}
 
 #else
