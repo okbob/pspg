@@ -346,6 +346,8 @@ initialize_color_pairs(int theme)
 
 	has_odd_themedef = false;
 
+	/* reset colors */
+	start_color();
 	use_default_colors();
 
 	current_themedef_bank = 0;
