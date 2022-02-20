@@ -2492,8 +2492,11 @@ main(int argc, char *argv[])
 {
 	int		maxx, maxy;
 	int		event_keycode = 0;
+	bool	press_alt = false;
 	int		prev_event_keycode = 0;
 	int		next_event_keycode = 0;
+	bool	prev_alt = false;
+	bool	next_alt = false;
 	int		command = cmd_Invalid;
 	int		nested_command = cmd_Invalid;
 	int		translated_command = cmd_Invalid;
@@ -3225,12 +3228,15 @@ reinit_theme:
 			if (prev_event_keycode == 0)
 			{
 				prev_event_keycode = event_keycode;
+				prev_alt = press_alt;
 			}
 			else
 			{
 				next_event_keycode = prev_event_keycode;
+				next_alt = prev_alt;
 				reuse_event = false;
 				prev_event_keycode = 0;
+				prev_alt = false;
 			}
 		}
 
@@ -3278,7 +3284,9 @@ reinit_theme:
 			if (next_event_keycode != 0)
 			{
 				event_keycode = next_event_keycode;
+				press_alt = next_alt;
 				next_event_keycode = 0;
+				next_alt = false;
 			}
 			else
 			{
@@ -3354,6 +3362,7 @@ reinit_theme:
 					break;
 
 				event_keycode = (event == PSPG_NCURSES_EVENT) ? nced.keycode : 0;
+				press_alt = (event == PSPG_NCURSES_EVENT) ? nced.alt : false;
 
 				/*
 				 * Immediately clean mouse state attributes when event is not
@@ -3542,6 +3551,8 @@ reinit_theme:
 						next_event_keycode = 0;
 						next_command = 0;
 						command = 0;
+						press_alt = false;
+						next_alt = false;
 					}
 				}
 
@@ -3620,7 +3631,7 @@ reinit_theme:
 			ST_MENU_ITEM		*ami;
 			ST_CMDBAR_ITEM		*aci;
 
-			processed = st_menu_driver(menu, event_keycode, nced.alt, &nced.mevent);
+			processed = st_menu_driver(menu, event_keycode, press_alt, &nced.mevent);
 			if (processed)
 			{
 				/*
@@ -3710,7 +3721,7 @@ hide_menu:
 			if (!processed)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, nced.alt, &opts, &nested_command);
+				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
 				translated_command = command;
 			}
 			else
@@ -3721,7 +3732,7 @@ hide_menu:
 			if (!redirect_mode)
 			{
 				translated_command_history = translated_command;
-				command = translate_event(event_keycode, nced.alt, &opts, &nested_command);
+				command = translate_event(event_keycode, press_alt, &opts, &nested_command);
 				translated_command = command;
 			}
 		}
@@ -4964,14 +4975,21 @@ recheck_right:
 							}
 							else
 							{
-								char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col];
+								char   *str = &desc.headline_transl[scrdesc.fix_cols_cols + cursor_col + 1];
 								int		i;
 
-								for (i = 1; i <= step; i++)
+								/*
+								 * Try to find column end in next step chars. Skip first
+								 * char, and later skip border.
+								 */
+								for (i = 0; i < step; i++)
 								{
-									if (str[i] == 'I')
+									if (*str == '\0')
+										break;
+
+									if (*str++ == 'I')
 									{
-										move_right = i + 1;
+										move_right = i + 2;
 										break;
 									}
 								}

@@ -115,7 +115,10 @@ save_config(char *path, Options *opts)
 		return false;
 
 	if (chmod(path, 0644) != 0)
+	{
+		fclose(f);
 		return false;
+	}
 
 	SAFE_SAVE_BOOL_OPTION("ascii_menu", opts->force_ascii_art);
 	SAFE_SAVE_BOOL_OPTION("bold_labels", opts->bold_labels);
