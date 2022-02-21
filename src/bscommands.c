@@ -861,7 +861,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		{
 			Options loc_opts;
 
-			memcpy(&loc_opts, &opts, sizeof(Options));
+			memcpy(&loc_opts, opts, sizeof(Options));
 
 			loc_opts.copy_target = COPY_TARGET_FILE;
 			loc_opts.nullstr = expspec.nullstr;
