@@ -1321,7 +1321,7 @@ translate_headline(DataDesc *desc)
 		int			i;
 
 		/* Move right corner more right */
-		if (desc->border_type == 0)
+		if (desc->border_type == 0 && last_black_char)
 		{
 			last_black_char[0] = 'd';
 			last_black_char[1] = 'R';
@@ -1329,7 +1329,7 @@ translate_headline(DataDesc *desc)
 		}
 
 		/* trim ending spaces */
-		else if (last_black_char != 0)
+		else if (last_black_char)
 		{
 			last_black_char[1] = '\0';
 		}
