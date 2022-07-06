@@ -4,7 +4,7 @@
  *	  a routines for implementation (parsing, execution) of backslash
  *	  commands
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/bscommands.c

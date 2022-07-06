@@ -3,7 +3,7 @@
  * infra.c
  *	  a routines for build a infrastructure
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/infra.c

@@ -3,7 +3,7 @@
  * pretty-csv.c
  *	  import and formatting csv and tsv documents
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/pretty-csv.c

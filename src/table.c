@@ -3,7 +3,7 @@
  * table.c
  *	  a routines for parsing file with data in tabular form
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/table.c

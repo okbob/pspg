@@ -3,7 +3,7 @@
  * theme_loader.c
  *	  a routines for loading theme (style) definition
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/theme_loader.c

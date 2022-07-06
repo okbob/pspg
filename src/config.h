@@ -3,7 +3,7 @@
  * config.h
  *	  load/save configuration
  *
- * Portions Copyright (c) 2017-2021 Pavel Stehule
+ * Portions Copyright (c) 2017-2022 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/config.h
