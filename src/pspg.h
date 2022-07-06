@@ -458,7 +458,6 @@ extern const char *getline_ddesc(DataDesc *desc, int pos);
 
 /* from bscommands.c */
 extern const char *get_token(const char *instr, const char **token, int *n);
-extern const char *get_identifier(const char *instr, const char **ident, int *n);
 extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 											int *next_command, long *long_argument, bool *long_argument_is_valid,
 											char **string_argument, bool *string_argument_is_valid, bool *refresh_clear);

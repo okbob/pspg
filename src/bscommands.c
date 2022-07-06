@@ -69,8 +69,11 @@ get_token(const char *instr, const char **token, int *n)
 /*
  * Try to detect identifier in quotes or double quotes.
  */
-const char *
-get_identifier(const char *instr, const char **ident, int *n)
+static const char *
+get_identifier(const char *instr,
+			   const char **ident,
+			   int *n,
+			   bool allow_colnum)
 {
 	char		ending_symbol = -1;
 
@@ -113,6 +116,14 @@ get_identifier(const char *instr, const char **ident, int *n)
 	{
 		*ident = instr++;
 		while (isalnum(*instr) || *instr == '_')
+			instr += 1;
+
+		*n = instr - *ident;
+	}
+	else if (allow_colnum && isdigit(*instr))
+	{
+		*ident = instr++;
+		while (isdigit(*instr) || *instr == '_')
 			instr += 1;
 
 		*n = instr - *ident;
@@ -258,7 +269,7 @@ parse_exported_spec(const char *instr,
 					return NULL;
 				}
 
-				instr = get_identifier(instr, &ident, &ident_len);
+				instr = get_identifier(instr, &ident, &ident_len, false);
 				if (!ident)
 				{
 					show_info_wait(" Syntax error (expected closed quoted string)",
@@ -424,7 +435,7 @@ parse_search_spec(DataDesc *desc,
 				const char	   *ident;
 				int			n;
 
-				instr = get_identifier(instr, &ident, &n);
+				instr = get_identifier(instr, &ident, &n, false);
 				if (!ident)
 				{
 					show_info_wait(" Syntax error (expected closed quoted string)",
@@ -497,7 +508,7 @@ parse_search_spec(DataDesc *desc,
 							return NULL;
 						}
 
-						instr = get_identifier(instr, &ident, &len);
+						instr = get_identifier(instr, &ident, &len, false);
 						if (len > 0)
 						{
 							int		count;
@@ -703,7 +714,7 @@ parse_and_eval_bscommand(const char *cmdline,
 		*string_argument = NULL;
 		*string_argument_is_valid = false;
 
-		cmdline = get_identifier(cmdline, &ident, &len);
+		cmdline = get_identifier(cmdline, &ident, &len, false);
 
 		if (!ident)
 		{
@@ -802,7 +813,7 @@ parse_and_eval_bscommand(const char *cmdline,
 				  IS_TOKEN(cmdline, n, "rsort");
 
 		OrderCommand = is_desc ? cmd_SortDesc : cmd_SortAsc;
-		cmdline = get_identifier(cmdline + n, &ident, &len);
+		cmdline = get_identifier(cmdline + n, &ident, &len, true);
 
 		if (len > 0)
 		{
