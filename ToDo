@@ -6,6 +6,7 @@ Known bugs
 
 Possible ToDo
 =============
+* fast scrolling - vertical or horizontal scrolling based on table's rows or table's columns
 * support fetched data - columns width can be different
 
 Similar projects
