@@ -2614,6 +2614,7 @@ main(int argc, char *argv[])
 	opts.progressive_load_mode = true;
 	opts.highlight_odd_rec = false;
 	opts.hide_header_line = false;
+	opts.esc_delay = -1;
 
 	setup_sigsegv_handler();
 
@@ -2761,6 +2762,9 @@ main(int argc, char *argv[])
 
 	log_row("started");
 	log_row("%s utf8 support", use_utf8 ? "with" : "without");
+
+	pspg_esc_delay = opts.esc_delay;
+	log_row("esc delay = %d", pspg_esc_delay);
 
 	if (opts.csv_format || opts.tsv_format || opts.query)
 		result = read_and_format(&opts, &desc, &state);

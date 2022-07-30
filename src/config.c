@@ -184,6 +184,10 @@ save_config(char *path, Options *opts)
 			return false;
 	}
 
+	result = fprintf(f, "esc_delay = %d\n", opts->esc_delay);
+	if (result < 0)
+		return false;
+
 	result = fclose(f);
 	if (result != 0)
 		return false;
@@ -339,6 +343,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->highlight_odd_rec, bool_val, res);
 			else if (strcmp(key, "hide_header_line") == 0)
 				is_valid = assign_bool(key, &opts->hide_header_line, bool_val, res);
+			else if (strcmp(key, "esc_delay") == 0)
+				is_valid = assign_int(key, &opts->esc_delay, int_val, res, -1, INT_MAX);
 
 			if (!is_valid || res == -1)
 				break;

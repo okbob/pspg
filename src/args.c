@@ -109,6 +109,7 @@ static struct option long_options[] =
 	{"custom-style-name", required_argument, 0, 49},
 	{"highlight-odd-rec", no_argument, 0, 50},
 	{"hide-header-line", no_argument, 0, 51},
+	{"esc-delay", required_argument, 0, 52},
 	{0, 0, 0, 0}
 };
 
@@ -313,6 +314,7 @@ readargs(char **argv,
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
 					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)\n");
+					fprintf(stdout, "  --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )\n");
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
 					fprintf(stdout, "  --ni                     not interactive mode (only for csv and query)\n");
@@ -683,6 +685,9 @@ readargs(char **argv,
 				break;
 			case 51:
 				opts->hide_header_line = true;
+				break;
+			case 52:
+				opts->esc_delay = atoi(optarg);
 				break;
 
 			default:

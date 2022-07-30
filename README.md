@@ -57,6 +57,7 @@ General options:
   -F, --quit-if-one-screen
                            quit if content is one screen
   --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+  --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )
   --interactive            force interactive mode
   --ignore_file_suffix     don't try to deduce format from file suffix
   --ni                     not interactive mode (only for csv and query)
@@ -363,13 +364,19 @@ The output can be redirected to any command when the name starts with pipe symbo
 
     \copy csv | less
 
-
 ## Ending
 
 The pager can be ended by pressing keys <kbd>q</kbd> or <kbd>F10</kbd> or <kbd>Esc</kbd> <kbd>0</kbd>.
 With option `--on-sigint-exit` then the pager is closed by pressing keys <kbd>Ctrl</kbd>+<kbd>c</kbd>
 or <kbd>Esc</kbd> <kbd>Esc</kbd>.
 
+## Use <kbd>Escape</kbd>, key instead <key>Alt</key> + <key>key</key>
+
+pspg supports a possibility to use a sequence of keys <kbd>Esc</kbd>, <kbd>key</kbd> instead an
+combination of <kbd>Alt</kbd>+<kbd>key</kbd>. The interval between pressing <kbd>Esc</kbd> and
+<kbd>key</kbd> is limmited by interval specified by option `esc-delay` or by configuration's
+option `esc_delay`. This is max delay time in ms. After this interval, the single pressing <kbd>Esc</kbd>
+is interpreted as `Escape`. -1 meas unlimited, 0 disables this feature.
 
 ## Column search
 

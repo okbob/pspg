@@ -692,7 +692,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	if (!desc->initialized)
 	{
-		log_row("DataDesc is initialized\n");
+		log_row("DataDesc is initialized");
 
 		desc->title[0] = '\0';
 		desc->title_rows = 0;

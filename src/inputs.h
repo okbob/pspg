@@ -68,6 +68,8 @@ extern FILE	   *f_data;
 extern FILE	   *f_tty;
 extern int		f_data_opts;
 
+extern int		pspg_esc_delay;
+
 extern int get_pspg_event(NCursesEventData *nced, bool only_tty_events, int timeout);
 extern void unget_pspg_event(NCursesEventData *nced);
 

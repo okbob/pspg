@@ -97,6 +97,7 @@ typedef struct
 	char   *custom_theme_name;
 	bool	highlight_odd_rec;
 	bool	hide_header_line;
+	int		esc_delay;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

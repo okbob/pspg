@@ -20,8 +20,6 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define PSPG_ESC_DELAY					2000
-
 #if defined(HAVE_INOTIFY)
 
 #include <sys/inotify.h>
@@ -67,6 +65,9 @@ static bool saved_event_is_valid = false;
 
 static bool close_f_tty = false;
 static bool close_f_data = false;
+
+int		pspg_esc_delay;
+
 
 /*************************************
  * Events processing
@@ -145,6 +146,18 @@ repeat:
 		}
 
 		return false;
+	}
+
+	/*
+	 * Workaround for issue #204. Probably different implementation of
+	 * ESCDELAY on macos. pspg sets ESCDELAY just to 1ms. It should be
+	 * enough for transformation escape seq to function def keys, but
+	 * it should be fast enough to return ESC key.
+	 */
+	if (nced->keycode == ERR && !first_event)
+	{
+		log_row("unexpected error ESC: %s (%d)", strerror(errno), errno);
+		nced->keycode = PSPG_NOTASSIGNED_CODE;
 	}
 
 	nced->alt = !first_event;
@@ -336,17 +349,32 @@ repeat_reading:
 					{
 						first_event = false;
 
-						/*
-						 * own implementation of escape delay. For fast escape - press
-						 * 2x escape.
-						 */
-						timeout = PSPG_ESC_DELAY;
-						goto repeat_reading;
+						if (pspg_esc_delay != 0)
+						{
+							if (pspg_esc_delay > 0)
+							{
+								timeout = pspg_esc_delay;
+								without_timeout = false;
+							}
+							else
+							{
+								timeout = -1;
+								without_timeout = true;
+							}
+
+							goto repeat_reading;
+						}
+						else
+						{
+							/* esc delay is not wanted */
+							nced->keycode = PSPG_ESC_CODE;
+							return PSPG_NCURSES_EVENT;
+						}
 					}
 
 					if (!first_event)
 					{
-						/* double escpae */
+						/* double escape */
 						if (nced->alt && nced->keycode == PSPG_NOTASSIGNED_CODE)
 							nced->keycode = PSPG_ESC_CODE;
 						else if (nced->keycode != KEY_MOUSE)
