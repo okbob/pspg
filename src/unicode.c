@@ -16,6 +16,8 @@
 #include "unicode.h"
 #include "string.h"
 
+#include "pspg.h"
+
 inline static wchar_t utf8_to_unicode(const unsigned char *c);
 
 /*
@@ -656,7 +658,8 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	int		f1 = 0, f2 = 0;
-	bool	eq;
+	int		needle_char_len = 0;
+	bool	needle_char_is_upper = false;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -665,8 +668,7 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 	while (*needle_cur != '\0')
 	{
 		int		haystack_char_len;
-		int		needle_char_len = 0;
-		bool	needle_char_is_upper =  false;
+		bool	eq;
 
 		if (*haystack_cur == '\0')
 			return NULL;

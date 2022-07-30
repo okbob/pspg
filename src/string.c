@@ -149,7 +149,7 @@ nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	int		f1 = 0;
-	bool	eq;
+	bool	needle_char_is_upper = false; /* be compiler quiet */
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -157,7 +157,7 @@ nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
-		bool	needle_char_is_upper = false; /* be compiler quiet */
+		bool	eq;
 
 		if (*haystack_cur == '\0')
 			return NULL;
