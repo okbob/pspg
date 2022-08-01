@@ -149,16 +149,11 @@ repeat:
 	}
 
 	/*
-	 * Workaround for issue #204. Probably different implementation of
-	 * ESCDELAY on macos. pspg sets ESCDELAY just to 1ms. It should be
-	 * enough for transformation escape seq to function def keys, but
-	 * it should be fast enough to return ESC key.
+	 * Workaround for issue #204. MacOS returns ERR when there are not
+	 * any other activity after ESC in ESCDELAY limit.
 	 */
-	if (nced->keycode == ERR && !first_event)
-	{
-		log_row("unexpected error ESC: %s (%d)", strerror(errno), errno);
+	if (nced->keycode == ERR && !first_event && errno == 0)
 		nced->keycode = PSPG_NOTASSIGNED_CODE;
-	}
 
 	nced->alt = !first_event;
 
