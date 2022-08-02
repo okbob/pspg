@@ -409,7 +409,7 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 				return cmd_ForwardSearch;
 			case '9':
 				return cmd_ShowMenu;
-			case 27:
+			case PSPG_ESC_CODE:
 				return cmd_Escape;
 			case '0':
 				return cmd_Quit;

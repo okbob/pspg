@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.5.5
+Version: 	5.5.6
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,7 +43,10 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
-* Tue Nov  2 2021 Pavel Stehule <pavel.stehule@gmail.com>
+* Tue Aug 2 2022 Pavel Stehule <pavel.stehule@gmail.com>
+- allow to set esc delay interval
+
+* Tue Nov 2 2021 Pavel Stehule <pavel.stehule@gmail.com>
 - new visual effects --highlight-odd-rec and --hide-header-line
 - possibility to read SQLcl (Oracle) tables in ANSICONSOLE format
 - support streaming mode over files on BSD like systems (kqueue support)

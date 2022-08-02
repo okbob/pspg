@@ -492,7 +492,7 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 			pos -= 1;
 		else if (c == 2 || c == 9)
 			pos += 1;
-		else if (c == 4 || c == 27)
+		else if (c == 4 || c == PSPG_ESC_CODE)
 			break;
 		else if (c == 5)
 		{
@@ -662,7 +662,7 @@ get_string(char *prompt,
 		while (c == ERR || c == 0);
 
 		/* detect double alts .. escape */
-		if (c == 27 && prev_c == 27)
+		if (c == PSPG_ESC_CODE && prev_c == PSPG_ESC_CODE)
 		{
 			/*
 			 * Cannot leave here - readline requires complete ALT pair.
@@ -702,7 +702,7 @@ finish_read:
 		char   *ptr = readline_buffer;
 
 		while (*ptr)
-			if (*ptr++ == 27)
+			if (*ptr++ == PSPG_ESC_CODE)
 			{
 				result_is_ok = false;
 				break;

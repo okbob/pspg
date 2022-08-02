@@ -1596,7 +1596,7 @@ show_info_wait(const char *fmt,
 
 	/* eat escape if pressed here */
 	if (event == PSPG_NCURSES_EVENT &&
-		!(nced.keycode == 27 && nced.alt))
+		!(nced.keycode == PSPG_ESC_CODE && nced.alt))
 		unget_pspg_event(&nced);
 }
 

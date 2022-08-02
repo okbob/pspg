@@ -35,6 +35,8 @@
 #include "inputs.h"
 #include "pspg.h"
 
+#define PSPG_NOTASSIGNED_CODE					0
+
 static char	pathname[MAXPATHLEN] = "";
 
 FILE   *f_tty = NULL;						/* ncurses input stream */
