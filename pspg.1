@@ -1,0 +1,579 @@
+.\" generated with Ronn-NG/v0.9.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.9.1
+.TH "PSPG" "" "August 2022" ""
+.SH "NAME"
+\fBpspg\fR \- Postgres Pager
+.P
+Everybody who uses \fBpsql\fR uses \fBless\fR pager\. It is working well, but there is not any special support for tabular data\. I found few projects, but no one was completed for this purpose\. I decided to write some small specialized pager for usage as \fBpsql\fR pager\.
+.P
+This pager can be used from the following clients command line clients too:
+.IP "\[ci]" 4
+\fBmysql\fR
+.IP "\[ci]" 4
+\fBsqlite\fR
+.IP "\[ci]" 4
+\fBpgcli\fR \fIhttps://github\.com/dbcli/pgcli/\fR
+.IP "\[ci]" 4
+\fBmonetdb\fR
+.IP "\[ci]" 4
+\fBTrino (formerly Presto SQL)\fR \fIhttps://trino\.io/\fR
+.IP "\[ci]" 4
+\fBusql\fR \fIhttps://github\.com/xo/usql/\fR
+.IP "\[ci]" 4
+\fBsqlcl\fR \fIhttps://github\.com/okbob/pspg/#sqlcl\fR (for oracle)
+.IP "" 0
+.SH "Main target"
+.IP "\[ci]" 4
+possibility to freeze first few rows, first few columns
+.IP "\[ci]" 4
+possibility to sort data by specified numeric column
+.IP "\[ci]" 4
+possibility to use fancy colors \- like \fBmcview\fR or \fBFoxPro\fR \- http://okbob\.blogspot\.com/2019/12/pspg\-themes\-what\-you\-use\-it\.html
+.IP "\[ci]" 4
+mouse is supported and used
+.IP "\[ci]" 4
+possibility to copy selected range to clipboard
+.IP "" 0
+.SH "Video presentation"
+ \fIhttps://www\.youtube\.com/watch?v=JyxuEkoYDQk\fR
+.SH "Screenshots"
+
+.SH "Options"
+.nf
+[pavel@localhost ~]$ pspg \-\-help
+pspg is a Unix pager designed for table browsing\.
+
+Usage:
+  pspg [OPTION] [file]
+
+General options:
+  \-\-about                  about authors
+  \-\-help                   show this help
+  \-V, \-\-version            show version
+  \-f, \-\-file=FILE          open file
+  \-F, \-\-quit\-if\-one\-screen
+                           quit if content is one screen
+  \-\-clipboard\-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+  \-\-esc\-delay=NUM          specify escape delay in ms (\-1 inf, 0 not used, )
+  \-\-interactive            force interactive mode
+  \-\-ignore_file_suffix     don\'t try to deduce format from file suffix
+  \-\-ni                     not interactive mode (only for csv and query)
+  \-\-no\-watch\-file          don\'t watch inotify event of file
+  \-\-no\-mouse               don\'t use own mouse handling
+  \-\-no\-progressive\-load    don\'t use progressive data load
+  \-\-no\-sigint\-search\-reset
+                           without reset searching on sigint (CTRL C)
+  \-\-no\-sleep               without waits against flickering
+  \-\-no_xterm_mouse_mode    don\'t use optional xterm mouse mode
+  \-\-only\-for\-tables        use std pager when content is not table
+  \-\-on\-sigint\-exit         exit on sigint(CTRL C or Escape)
+  \-\-pgcli\-fix              try to fix some pgcli related issues
+  \-\-querystream            read queries from stream forever
+  \-\-quit\-on\-f3             exit on F3 like mc viewers
+  \-\-rr=ROWNUM              rows reserved for specific purposes
+  \-\-stream                 read input forever
+  \-X, \-\-reprint\-on\-exit    preserve content after exit
+
+Output format options:
+  \-a, \-\-ascii              force ascii
+  \-b, \-\-blackwhite         black\-white style
+  \-s, \-\-style=N            set color style number (0\.\.22)
+  \-\-bold\-labels            row, column labels use bold font
+  \-\-bold\-cursor            cursor use bold font
+  \-\-border                 type of borders (0\.\.2)
+  \-\-double\-header          header separator uses double lines
+  \-\-force\-uniborder        replace ascii borders by unicode borders
+  \-\-highlight\-odd\-rec      highlights odd records (when it is supported by style)
+  \-\-hide\-header\-line       hides header line (between column names and data)
+  \-\-ignore\-bad\-rows        rows with wrong column numbers are ignored
+  \-\-null=STRING            STRING used instead NULL
+
+Searching options
+  \-g \-\-hlite\-search, \-G \-\-HILITE\-SEARCH
+                           don\'t highlight lines for searches
+  \-i \-\-ignore\-case         ignore case in searches that do not contain uppercase
+  \-I \-\-IGNORE\-CASE         ignore case in all searches
+
+Interface options:
+  \-c, \-\-freezecols=N       freeze N columns (0\.\.9)
+  \-\-less\-status\-bar        status bar like less pager
+  \-\-line\-numbers           show line number column
+  \-\-menu\-always            show top bar menu every time
+  \-\-no\-bars, \-\-no\-commandbar, \-\-no\-topbar
+                           don\'t show bottom, top bar or both
+  \-\-no\-cursor              row cursor will be hidden
+  \-\-no\-last\-row\-search     don\'t use the last pattern when starting a new search
+  \-\-no\-scrollbar           don\'t show scrollbar
+  \-\-no\-sound               don\'t use beep when scroll is not possible
+  \-\-tabular\-cursor         cursor is visible only when data has table format
+  \-\-vertical\-cursor        show vertical column cursor
+
+Input format options:
+  \-\-csv                    input stream has csv format
+  \-\-csv\-separator          char used as field separator
+  \-\-csv\-header [on/off]    specify header line usage
+  \-\-skip\-columns\-like="SPACE SEPARATED STRING LIST"
+                           columns with substr in name are ignored
+  \-\-tsv                    input stream has tsv format
+
+Watch mode options:
+  \-q, \-\-query=QUERY        execute query
+  \-w, \-\-watch time         the query (or read file) is repeated every time (sec)
+
+Connection options
+  \-d, \-\-dbname=DBNAME      database name
+  \-h, \-\-host=HOSTNAME      database server host (default: "local socket")
+  \-p, \-\-port=PORT          database server port (default: "5432")
+  \-U, \-\-username=USERNAME  database user name
+  \-W, \-\-password           force password prompt
+
+Debug options:
+  \-\-log=FILE               log debug info to file
+  \-\-wait=NUM               wait NUM seconds to allow attach from a debugger
+.fi
+.P
+pspg shares lot of key commands with less pager or vi editor\.
+.P
+Options can be passed inside env variable \fBPSPG\fR too\.
+.SH "Environment variables"
+.TS
+allbox;
+l l.
+Name	Usage
+\fBPSPG\fR	can holds same options like command line
+\fBPSPG_CONF\fR	path to configuration file
+\fBPSPG_HISTORY\fR	path to file pspg\'s readline history file
+.TE
+.SH "Themes"
+.TS
+allbox;
+l l.
+Code	Name
+0	black & white
+1	Midnight Commander like
+2	FoxPro like
+3	Pdmenu like
+4	White theme
+5	Mutt like
+6	PCFand like
+7	Green theme
+8	Blue theme
+9	Word Perfect like
+10	Low contrast blue theme
+11	Dark cyan/black mode
+12	Paradox like
+13	dBase IV retro style
+14	dBase IV retro style (Magenta labels)
+15	Red white theme
+16	Simple theme
+17	Solarized dark theme
+18	Solarized light theme
+19	Gruvbox light theme
+20	Tao Light theme
+21	FlatWhite theme
+22	Relational pipes theme
+23	Paper Color theme
+.TE
+.P
+see http://okbob\.blogspot\.cz/2017/07/i\-hope\-so\-every\-who\-uses\-psql\-uses\-less\.html
+.SS "Custom themes"
+The theme can be customized over base and menu templates referencing the built\-in themes\. The custom theme file should be saved in directory with \fBpspg\fR configuration\. The name of this file should be \.pspg_theme_xxx\. The custom theme can be selected by command line option \fB\-\-custom\-style=name\fR or by command \fB\ectheme name\fR\.
+.P
+.P
+Example of custom theme file (named \fB\.pspg_theme_mc2\fR (it can be activated by command \fB\ectheme mc2\fR)):
+.IP "" 4
+.nf
+template = 1
+template_menu = 3
+
+background = black, white
+data = black, white
+label = black, white, italic, bold
+border = #000000, white
+footer = lightgray, white
+cursor_data = blue, white, italic, bold, dim, reverse
+cursor_border = blue, blue , italic, bold, dim, reverse
+cursor_label = blue, white, italic, bold, dim, reverse
+cursor_footer = blue, white, italic, bold, dim, reverse
+cursor_bookmark = red, white, italic, bold, dim, reverse
+cross_cursor = white, blue, italic, bold
+cross_cursor_border = brightblue, blue
+status_bar = black, lightgray
+title = black, lightgray
+scrollbar_arrows = black, white
+scrollbar_background = lightgray, white
+scrollbar_slider = white, gray
+.fi
+.IP "" 0
+.P
+Some keys can be marked by symobol \fB*\fR\. Marked keys are used for odd records\.
+.IP "" 4
+.nf
+data* = black, lightgray
+label* = black, lightgray, italic, bold
+border* = #000000, lightgray
+.fi
+.IP "" 0
+.P
+\fBtemplate\fR and \fBtemplate_menu\fR set fallback values for any keys not specified in the custom theme\. \fBtemplate_menu\fR in particular is currently the only way to customize the F9 menu appearance\.
+.TS
+allbox;
+l l.
+key	customizes
+\fBbackground\fR	Background color
+\fBdata\fR	Data (non\-header or frozen column) text
+\fBborder\fR	Border color
+\fBlabel\fR	Label (header or frozen column) text
+\fBrow_number\fR	Line numbers
+\fBrecord_number\fR	\~
+\fBselected_area\fR	\~
+\fBfooter\fR	Results footer (non\-tabular e\.g\. rowcount)
+\fBcursor_data\fR	Highlighted data (non\-header or frozen column) text
+\fBcursor_border\fR	Highlighted border color
+\fBcursor_label\fR	Highlighted label (header or frozen column) text
+\fBcursor_row_number\fR	Highlighted line numbers
+\fBcursor_record_number\fR	\~
+\fBcursor_selected_area\fR	\~
+\fBcursor_footer\fR	Highlighted results footer (non\-tabular e\.g\. rowcount)
+\fBscrollbar_arrows\fR	Scrollbar up and down arrows
+\fBscrollbar_background\fR	Scrollbar "empty" background
+\fBscrollbar_slider\fR	Scrollbar slider over the background
+\fBscrollbar_active_slider\fR	Scrollbar slider grabbed by mouse
+\fBtitle\fR	Results headline (in psql describe commands)
+\fBstatus_bar\fR	Top query and cursor location information
+\fBprompt_bar\fR	\~
+\fBinfo_bar\fR	Info text (e\.g\. "Not found" when searching)
+\fBinput_bar\fR	Input prompt and text (e\.g\. search)
+\fBerror_bar\fR	\~
+\fBbookmark\fR	\~
+\fBbookmark_border\fR	\~
+\fBcursor_bookmark\fR	\~
+\fBcross_cursor\fR	Highlighted cell at intersection of horizontal and vertical cursors
+\fBcross_cursor_border\fR	Borders at intersection of horizontal and vertical cursors
+\fBmatched_pattern\fR	Search result match text
+\fBmatched_pattern_nohl\fR	\~
+\fBmatched_line\fR	Line containing search result
+\fBmatched_line_border\fR	Borders in search result line
+\fBmatched_pattern_cursor\fR	Highlighted search result match text
+\fBmatched_line_vertical_cursor\fR	Vertically highlighted search result match text
+\fBmatched_line_vertical_cursor_border\fR	Borders of vertically highlighted cell with search result match
+\fBerror\fR	\~
+.TE
+.P
+ANSI colors \fBBlack\fR, \fBRed\fR, \fBGreen\fR, \fBBrown\fR, \fBBlue\fR, \fBMagenta\fR, \fBCyan\fR, \fBLightGray\fR, \fBGray\fR, \fBBrightRed\fR, \fBBrightGreen\fR, \fBYellow\fR, \fBBrightBlue\fR, \fBBrightMagenta\fR, \fBBrightCyan\fR, \fBWhite\fR, and \fBDefault\fR will display as your terminal emulator configures them\. Alternatively, you can specify hex RGB values \fB#FF00FF\fR\.
+.P
+Styles are any combination of: \fBbold\fR, \fBitalic\fR, \fBunderline\fR, \fBreverse\fR, \fBstandout\fR, \fBdim\fR\.
+.P
+If the format of some key is not correct, then this row is ignored\. For debugging of custom theme is good to start \fBpspg\fR with option \fB\-\-log\fR\. An information about broken definitions are stored in log file\.
+.SH "Keyboard commands"
+.TS
+allbox;
+l l.
+Key(s)	Command
+\fB0\fR, \fB1\fR, \fB2\fR, \fB3\fR, \.\., \fB9\fR	freeze first N columns
+\fBKEY_UP\fR, \fBk\fR	navigate backward by one line
+\fBKEY_DOWN\fR, \fBj\fR	navigate forward by one line
+\fBKEY_LEFT\fR, \fBh\fR	scroll to left
+\fBKEY_RIGHT\fR, \fBl\fR	scroll to right
+\fBCtrl\fR+\fBKEY_LEFT\fR	scroll one char left
+\fBCtrl\fR+\fBKEY_RIGHT\fR	scroll one char right
+\fBCtrl\fR+\fBHome\fR, \fBg\fR	go to the start of file
+\fBCtrl\fR+\fBEnd\fR, \fBG\fR	go to the end of file
+\fBAlt\fR+\fBl\fR	go to line number
+\fBH\fR	go to first line of current window
+\fBM\fR	go to half of current window
+\fBL\fR	go to end of current window
+\fBPPAGE\fR, \fBCtrl\fR+\fBb\fR	backward one window
+\fBNPAGE\fR, \fBCtrl\fR+\fBf\fR, \fBspace\fR	forward one window
+\fBHOME\fR, \fB^\fR	go to begin of line, first column
+\fBEND\fR, \fB$\fR	go to end of line, last column
+\fBCtrl\fR+\fBe\fR	scroll a window down
+\fBCtrl\fR+\fBy\fR	scroll a window up
+\fBCtrl\fR+\fBd\fR	forward a half window
+\fBCtrl\fR+\fBu\fR	backward a half window
+\fBs\fR	save content to file
+\fB/\fR	search for a pattern which will take you to the next occurrence
+\fB?\fR	search for a pattern which will take you to the previous occurrence
+\fBn\fR	for next match
+\fBN\fR	for next match in reverse direction
+\fBc\fR	column search
+\fBAlt\fR+\fB/\fR	search for a pattern inside selected area
+\fBAlt\fR+\fB?\fR	backward search for a pattern inside selected area
+\fBAlt\fR+\fBc\fR	switch (on, off) drawing line cursor
+\fBAlt\fR+\fBm\fR	switch (on, off) own mouse handler
+\fBAlt\fR+\fBn\fR	switch (on, off) drawing line numbers
+\fBAlt\fR+\fBv\fR, \fBdouble click\fR on column header	switch (on, off) drawing column cursor
+\fBMouse button wheel\fR	scroll vertical
+\fBAlt\fR+\fBMouse button wheel\fR	scroll horizontal
+\fBF9\fR	show menu
+\fBq\fR, \fBF10\fR, \fBEsc\fR \fB0\fR	quit
+\fBAlt\fR+\fBq\fR	quit and print raw (unformatted) content
+\fBAlt\fR+\fBk\fR, \fBAlt\fR+\fBdouble click\fR	switch bookmark
+\fBAlt\fR+\fBj\fR	go to next bookmark
+\fBAlt\fR+\fBi\fR	go to previous bookmark
+\fBAlt\fR+\fBo\fR	flush bookmarks
+\fBa\fR	sort ascendent
+\fBd\fR	sort descendent
+\fBu\fR	unsorted (sorted in origin order)
+\fBspace\fR	stop/continue in watch mode
+\fBR\fR	Repaint screen and refresh input file
+\fBIns\fR	export row, column or cell to default target
+\fBshift\fR+\fBcursor\|\.\|\.\|\.\fR	define range
+\fBF3\fR	start/finish of selection rows
+\fBshift\fR+\fBF3\fR	start/finish of selection block
+\fBCtrl\fR+\fBdrag mouse\fR	defines rows selection, on column header defines column selection
+\fBCtrl\fR+\fBo\fR	show primary screen, press any key to return to pager again
+.TE
+.SH "Backslash commands"
+.TS
+allbox;
+l l.
+Command	Description
+\fB\eN\fR	go to line number
+\fB\e+N\fR	go to N lines forward
+\fB\e\-N\fR	go to N lines backward
+\fB\eN+\fR	go to line number
+\fB\eN\-\fR	go to line number from end
+\fB\etheme N\fR	set theme number
+\fB\ecopy [all\e|selected] [nullstr "str"] [csv\e|tsv\e|insert\e|text\e|pipesep\e|sqlvalues]\fR	copy data to clipboard
+\fB\esave [all\e|selected] [nullstr "str"] [csv\e|tsv\e|insert\e|text\e|pipesep\e|sqlvalues]\fR	copy data to clipboard
+\fB\eorder [N\e|colum name]\fR	sort by colum
+\fB\eorderd [N\e|colum name]\fR	desc sort by column
+\fB\esort [N\e|colum name]\fR	sort by colum
+\fB\esortd [N\e|colum name]\fR	desc sort by column
+\fB\edsort [N\e|colum name]\fR	desc sort by column (alias)
+\fB\ersort [N\e|colum name]\fR	desc sort by column (alias)
+\fB\esearch [back] [selected] [colum name] [string\e|"string"]\fR	search string in data
+.TE
+.P
+The output can be redirected to any command when the name starts with pipe symbol:
+.IP "" 4
+.nf
+\ecopy csv | less
+.fi
+.IP "" 0
+.SH "Ending"
+The pager can be ended by pressing keys \fBq\fR or \fBF10\fR or \fBEsc\fR \fB0\fR\. With option \fB\-\-on\-sigint\-exit\fR then the pager is closed by pressing keys \fBCtrl\fR+\fBc\fR or \fBEsc\fR \fBEsc\fR\.
+.SH "Use <kbd>Escape</kbd>, key instead <key>Alt</key> + <key>key</key>"
+pspg supports a possibility to use a sequence of keys \fBEsc\fR, \fBkey\fR instead an combination of \fBAlt\fR+\fBkey\fR\. The interval between pressing \fBEsc\fR and \fBkey\fR is limmited by interval specified by option \fBesc\-delay\fR or by configuration\'s option \fBesc_delay\fR\. This is max delay time in ms\. After this interval, the single pressing \fBEsc\fR is interpreted as \fBEscape\fR\. \-1 meas unlimited, 0 disables this feature\.
+.SH "Column search"
+Column search is case insensitive every time\. Searched column is marked by vertical cursor\. Last non empty string searching pattern is used when current searching pattern is empty string\. Searching is starting after visible vertical column or on first visible not freezed columns (after some horizontal scrolling) or on first column\. After last column searching starts from first again\.For clipboard support the clipboard application should be installed: 1\. wl\-clipboard (Wayland), 2\. xlip (xwindows) or 3\. pbcopy (MacOS)\.
+.P
+\fBpspg\fR try to translate unicode symbol \'∅\' to NULL every time\. If you don\'t use special setting by \fB\epset null \|\.\|\.\|\.\fR, then \fBpsql\fR displays empty string instead NULL\. \fBpspg\fR hasn\'t any special detection (in export routines) for this case\. You should to check and enable or disable menu item \fBEmpty string is NULL\fR\.
+.P
+\fBpspg\fR has automatic detection of clipboard application\. Unfortunatelly, this detection should not to work for same cases\. You can specify the application by specify number (1,2,3) to \fB\-\-clipboard\-app\fR option\.
+.IP "\[ci]" 4
+\fBV: [d/d d\.\.d]\fR \- vertical cursor: (column number)/(columns) (char possitions from) \.\. (char possitions to)
+.IP "\[ci]" 4
+\fBFC: d\fR \- freezed columns length in chars
+.IP "\[ci]" 4
+\fBC: d\.\.d/d\fR \- unfreezed visible data in chars (from \.\. to)/(total)
+.IP "\[ci]" 4
+\fBL:[d + d d/d]\fR \- lines (number of first visible line) + (number of line of display), (current line)/(lines)
+.IP "\[ci]" 4
+\fBd%\fR \- percent of already displayed data
+.IP "" 0
+It works well with miller http://johnkerl\.org/miller/doc/index\.html
+.IP "" 4
+.nf
+mlr \-\-icsv \-\-opprint \-\-barred put \'\' obce\.csv | pspg \-\-force\-uniborder
+.fi
+.IP "" 0
+.P
+New version has integrated csv support \- just use \fB\-\-csv\fR option\.
+.P
+It can be integrated into \fBmc\fR
+.IP "\[ci]" 4
+copy file from \fB/etc/mc/mc\.ext\fR to your \fB~/\.config/mc directory\fR
+.IP "\[ci]" 4
+insert there
+.IP "" 0
+.IP "" 4
+.nf
+
+
+#csv
+
+regex/\e\.csv
+    View=pspg \-f %f \-\-csv
+.fi
+.IP "" 0
+.IP "\[ci]" 4
+restart \fBmc\fR
+.IP "" 0
+.IP "\[ci]" 4
+When you use \fBpspg\fR on Cygwin, then some temporary freezing of scrolling was reported In this case, please, use an option \fB\-\-no\-sleep\fR\. I see slow scrolling (via scrollbar) inside konsole (KDE terminal)\. The option \fB\-\-no\-sleep\fR helps too\.
+.IP "" 0
+The result of query can be refreshed every n seconds\. \fBpspg\fR remembers cursor row, possible vertical cursor, possible ordering\. The refreshing should be paused by pressing \fBspace\fR key\. Repeated pressing of this key enables refreshing again\.
+.P
+\fBpspg\fR uses inotify API when it is available, and when input file is changed, then \fBpspg\fR reread file immediately\. This behave can be disabled by option \fB\-\-no\-watch\-file\fR or by specification watch time by option \fB\-\-watch\fR\.\fBpspg\fR can read a continuous stream of tabular data from pipe, named pipe or from file (with an option \fB\-\-stream\fR or it can read a stream of queries from pipe or from file (with an option \fB\-\-querystream\fR)\. In stream mode, only data in table format can be processed, because \fBpspg\fR uses empty line as separator between tables\.
+.P
+The query stream mode is an sequence of SQL statements separated by char GS (Group separator \- 0x1D on separated line\.you should to add to your profile:
+.IP "" 4
+.nf
+#for Postgres 10 and older
+export PAGER="pspg"
+
+#for postgres 11 and newer
+export PSQL_PAGER="pspg"
+
+#or "\esetenv PAGER pspg" to \.psqlrc
+.fi
+.IP "" 0
+.P
+and \fB\.psqlrc\fR
+.IP "" 4
+.nf
+\eset QUIET 1
+\epset linestyle unicode
+\epset border 2
+\epset null ∅
+\eunset QUIET
+.fi
+.IP "" 0
+.P
+some possible configuration:
+.IP "" 4
+.nf
+\-\- Switch pagers with :x and :xx commands
+\eset x \'\e\esetenv PAGER less\'
+\eset xx \'\e\esetenv PAGER \e\'pspg \-bX \-\-no\-mouse\e\'\'
+:xx
+.fi
+.IP "" 0
+.P
+\fBLC_CTYPE\fR should be correct\. Mainly when you use unicode borders\. ncurses doesn\'t display unicode borders (produced by \fBpsql\fR) without correct setting of this variable\. Is possible to check a value \'C\.UTF8\'\.
+.SH "Attention"
+When you use a option \fB\-\-only\-for\-tables\fR, then
+.IP "\[ci]" 4
+set \fBPAGER\fR to \fBpspg\fR and \fBPSQL_PAGER\fR to \fBless\fR or
+.IP "\[ci]" 4
+set \fBPAGER\fR to \fBless\fR and \fBPSQL_PAGER\fR to \fBpspg\fR
+.IP "" 0
+.nf
+MariaDB [sakila]> pager pspg \-s 14 \-X \-\-force\-uniborder \-\-quit\-if\-one\-screen
+PAGER set to \'pspg \-s 14 \-X \-\-force\-uniborder \-\-quit\-if\-one\-screen\'
+MariaDB [sakila]> select now();
+MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
+.fi
+SQLite native client doesn\'t produce well formatted output, but can be forced to generate CSV format \- and this format is well readable for \fBpspg\fR
+.IP "" 4
+.nf
+sqlite3 \-csv \-header testdb\.db \'select * from foo2\' | pspg \-\-csv \-\-csv\-header=on \-\-double\-header
+.fi
+.IP "" 0
+pgcli \fIhttps://github\.com/dbcli/pgcli/\fR needs the following configuration options (\fB~/\.config/pgcli/config\fR):
+.P
+\fBpager = /usr/bin/pspg \-\-csv \-\-rr=2 \-\-quit\-if\-one\-screen \-\-ignore\-case \-\-csv\-header on \-\-pgcli\-fix table_format = csv\fR
+.P
+Older version of pgcli had very slow output in tabular format\. An workaround was using csv format\. This should not be necessary on current versions when the performance issue was fixed\. An option \fB\-\-pgcli\-fix\fR fixed import of partially broken csv format generated by \fBpgcli\fR\. Modern version of \fBpgcli\fR doesn\'t need csv format, and doesn\'t need \fB\-\-pgcli\-fix\fR option\.
+.P
+\fBpager = /usr/bin/pspg \-\-rr=2 \-\-quit\-if\-one\-screen \-\-ignore\-case\fRAs \fBsqlcl\fR doesn\'t currently support a pager option directly, you can either use a tool like qsh \fIhttps://github\.com/muhmud/qsh\fR to work around this issue, or use the pspg\.sql \fIhttps://github\.com/okbob/pspg/blob/master/scripts/sqlcl/pspg\.sql\fR script from this repo\.
+.P
+To use the script, start \fBsqlcl\fR as shown below (it\'s important to pass in the details of your current tty):
+.P
+\fB$ TTY=$(tty) sqlcl system/system @/path/to/pspg\.sql\fR
+.P
+You can now have the results of a query sent to \fBpspg\fR like this:
+.P
+\fBSQL> pspg select * from user_tables;\fRpspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique\. If there are problems with usage \- unwanted visual artefacts when you move with mouse when some mouse button is pressed, then 1\. please, report issue (please, attach log file), 2\. use an option \fB\-\-no\-xterm\-mouse\-mode\fR and \fBpspg\fR will not try to activate this mode\.Some linker issues can be fixed by:
+.IP "" 4
+.nf
+I changed
+gcc \-lncursesw pager\.c \-o pspg \-ggdb
+to
+gcc pager\.c \-o pspg \-ggdb \-lncursesw
+.fi
+.IP "" 0
+.P
+If you want to use \fBpspg\fR as Postgres client, then you need run \fBconfigure \-\-with\-postgresql=yes\fR\. On Fedora with own Postgres build I had to install \fBopenssl\-devel\fR package and I had to set \fBexport PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"\fR\.
+.P
+On FreeBsd you should to use \fBgmake\fR instead \fBmake\fR\.When you compile code from source, run \./configure first\. Sometimes \./autogen\.sh first
+.P
+If you would to display UTF\-8 characters, then \fBpspg\fR should be linked with \fBncursesw\fR library\. UTF\-8 characters are displayed badly when library \fBncursesw\fR is used\. You can see broken characters with incorrect locale setting too\.
+.P
+You can check wide chars support by \fBpspg \-\-version\fR\. Row \fBncurses with wide char support\fR is expected\. Re\-run \fBconfigure\fR with \fB\-\-with\-ncursesw\fR option\. When this command fails check if development package for ncuresesw library is installed\.
+.SH "Homebrew (for Linux & MacOS)"
+.nf
+# brew install pspg
+.fi
+.SH "Debian"
+.nf
+# apt\-cache search pspg
+# apt\-get install pspg
+.fi
+.SH "Fedora (28 and later)"
+.nf
+# dnf install pspg
+.fi
+.SH "RPM (CentOS/openSUSE/…)"
+The pspg is available from community repository https://yum\.postgresql\.org/packages\.php
+.SH "Alpine Linux"
+.nf
+# apk add pspg
+.fi
+.SH "Gentoo"
+.nf
+# emerge \-av dev\-db/pspg
+.fi
+.SH "Arch Linux"
+The Arch User Repository contains two versions:
+.IP "\[ci]" 4
+pspg \fIhttps://aur\.archlinux\.org/packages/pspg/\fR is a fixed release\.
+.IP "\[ci]" 4
+pspg\-git \fIhttps://aur\.archlinux\.org/packages/pspg\-git/\fR tracks the \fBmaster\fR branch\.
+.IP "" 0
+.P
+Use the AUR helper of your choice or git and \fBmakepkg\fR to install pspg\.
+.SH "FreeBSD"
+.nf
+# pkg install pspg
+.fi
+.SH "OpenBSD"
+.nf
+# pkg_add pspg
+.fi
+.P
+More about it \fIhttps://fluca1978\.github\.io/2021/10/28/pspgOpenBSD\.html\fR
+.SH "Using MacPorts (MacOS only)"
+.nf
+# port install pspg
+.fi
+.SH "Solaris"
+There are few issues requires manual code changes for successful compilation \- we successfully tested \fBpspg\fR, but although \fBpspg\fR was linked with ncursesw libraries, the utf8 encoding support didn\'t work fully correctly \- probably due some issues in \fBlibc\fR library\. There are problems with chars encoded to 3bytes \- unicode borders, \.\. Two bytes unicode chars should be displayed well\.
+.P
+You can use \fBpspg\fR with usual accented chars, but unicode bordes should not be used\. Replacement ascii borders by special borders chars (by ncurses technology) works well \- looks on \fBOptions|Force unicode borders\fR option\.
+.IP "\[ci]" 4
+Solaris \fBmake\fR doesn\'t support conditional statements \- should be removed So, remove unsupported functionality from \fBMakefile\fR (\fBifdef\fR,\fBendif\fR), replace \fB\-include\fR by \fBinclude\fR first\.
+.IP "\[ci]" 4
+After running \fBconfigure\fR remove link on \fBtermcap\fR library from \fBconfig\.make\fR\. It is garabage produced by \fBreadline\fR automake script\. Combination with \fBncurses\fR libraries makes some linking issues\.
+.IP "" 0
+.SS "builtin libraries"
+.nf
+export CURSES_CFLAGS="\-I/usr/include/ncurses/"
+export PANEL_LIBS="\-lpanelw"
+\&\./configure
+.fi
+.SS "OpenCSW development"
+.nf
+export CFLAGS="\-m64 \-I/opt/csw/include"
+export LDFLAGS="\-L/opt/csw/lib/64 \-R/opt/csw/lib/64"
+export PKG_CONFIG_PATH="/opt/csw/lib/64/pkgconfig"
+\&\./configure
+.fi
+.IP "\[ci]" 4
+Store data in some column format (now data are stored like array of rows)\. With this change can be possible to operate over columns \- hide columns, change width, cyclic iteration over columns, change order of columns, mark columns and export only selected columns (selected rows)\.
+.IP "\[ci]" 4
+Replace printing document directly to ncurses window by some smarter structure\. Internally there are lot of checks and fixs to support complex dynamic layout\. The possibly views should to remember first row, last row, current row\. Now, these data are in global variables or in DataDesc and ScrDesc structures\.
+.IP "" 0
+This project uses st_menu library \- implementation of CUA menubar and pulldown menu for ncurses https://github\.com/okbob/ncurses\-st\-menuIf you like it, send a postcard from your home country to my address, please:
+.IP "" 4
+.nf
+Pavel Stehule
+Skalice 12
+256 01 Benesov u Prahy
+Czech Republic
+.fi
+.IP "" 0
+.P
+I invite any questions, comments, bug reports, patches on mail address pavel\.stehule@gmail\.com

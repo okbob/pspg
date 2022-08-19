@@ -42,100 +42,100 @@ This pager can be used from the following clients command line clients too:
 
 
 ## Options
-```
-[pavel@localhost ~]$ pspg --help
-pspg is a Unix pager designed for table browsing.
 
-Usage:
-  pspg [OPTION] [file]
+    [pavel@localhost ~]$ pspg --help
+    pspg is a Unix pager designed for table browsing.
 
-General options:
-  --about                  about authors
-  --help                   show this help
-  -V, --version            show version
-  -f, --file=FILE          open file
-  -F, --quit-if-one-screen
-                           quit if content is one screen
-  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
-  --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )
-  --interactive            force interactive mode
-  --ignore_file_suffix     don't try to deduce format from file suffix
-  --ni                     not interactive mode (only for csv and query)
-  --no-watch-file          don't watch inotify event of file
-  --no-mouse               don't use own mouse handling
-  --no-progressive-load    don't use progressive data load
-  --no-sigint-search-reset
-                           without reset searching on sigint (CTRL C)
-  --no-sleep               without waits against flickering
-  --no_xterm_mouse_mode    don't use optional xterm mouse mode
-  --only-for-tables        use std pager when content is not table
-  --on-sigint-exit         exit on sigint(CTRL C or Escape)
-  --pgcli-fix              try to fix some pgcli related issues
-  --querystream            read queries from stream forever
-  --quit-on-f3             exit on F3 like mc viewers
-  --rr=ROWNUM              rows reserved for specific purposes
-  --stream                 read input forever
-  -X, --reprint-on-exit    preserve content after exit
+    Usage:
+      pspg [OPTION] [file]
 
-Output format options:
-  -a, --ascii              force ascii
-  -b, --blackwhite         black-white style
-  -s, --style=N            set color style number (0..22)
-  --bold-labels            row, column labels use bold font
-  --bold-cursor            cursor use bold font
-  --border                 type of borders (0..2)
-  --double-header          header separator uses double lines
-  --force-uniborder        replace ascii borders by unicode borders
-  --highlight-odd-rec      highlights odd records (when it is supported by style)
-  --hide-header-line       hides header line (between column names and data)
-  --ignore-bad-rows        rows with wrong column numbers are ignored
-  --null=STRING            STRING used instead NULL
+    General options:
+      --about                  about authors
+      --help                   show this help
+      -V, --version            show version
+      -f, --file=FILE          open file
+      -F, --quit-if-one-screen
+                               quit if content is one screen
+      --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+      --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )
+      --interactive            force interactive mode
+      --ignore_file_suffix     don't try to deduce format from file suffix
+      --ni                     not interactive mode (only for csv and query)
+      --no-watch-file          don't watch inotify event of file
+      --no-mouse               don't use own mouse handling
+      --no-progressive-load    don't use progressive data load
+      --no-sigint-search-reset
+                               without reset searching on sigint (CTRL C)
+      --no-sleep               without waits against flickering
+      --no_xterm_mouse_mode    don't use optional xterm mouse mode
+      --only-for-tables        use std pager when content is not table
+      --on-sigint-exit         exit on sigint(CTRL C or Escape)
+      --pgcli-fix              try to fix some pgcli related issues
+      --querystream            read queries from stream forever
+      --quit-on-f3             exit on F3 like mc viewers
+      --rr=ROWNUM              rows reserved for specific purposes
+      --stream                 read input forever
+      -X, --reprint-on-exit    preserve content after exit
 
-Searching options
-  -g --hlite-search, -G --HILITE-SEARCH
-                           don't highlight lines for searches
-  -i --ignore-case         ignore case in searches that do not contain uppercase
-  -I --IGNORE-CASE         ignore case in all searches
+    Output format options:
+      -a, --ascii              force ascii
+      -b, --blackwhite         black-white style
+      -s, --style=N            set color style number (0..22)
+      --bold-labels            row, column labels use bold font
+      --bold-cursor            cursor use bold font
+      --border                 type of borders (0..2)
+      --double-header          header separator uses double lines
+      --force-uniborder        replace ascii borders by unicode borders
+      --highlight-odd-rec      highlights odd records (when it is supported by style)
+      --hide-header-line       hides header line (between column names and data)
+      --ignore-bad-rows        rows with wrong column numbers are ignored
+      --null=STRING            STRING used instead NULL
 
-Interface options:
-  -c, --freezecols=N       freeze N columns (0..9)
-  --less-status-bar        status bar like less pager
-  --line-numbers           show line number column
-  --menu-always            show top bar menu every time
-  --no-bars, --no-commandbar, --no-topbar
-                           don't show bottom, top bar or both
-  --no-cursor              row cursor will be hidden
-  --no-last-row-search     don't use the last pattern when starting a new search
-  --no-scrollbar           don't show scrollbar
-  --no-sound               don't use beep when scroll is not possible
-  --tabular-cursor         cursor is visible only when data has table format
-  --vertical-cursor        show vertical column cursor
+    Searching options
+      -g --hlite-search, -G --HILITE-SEARCH
+                               don't highlight lines for searches
+      -i --ignore-case         ignore case in searches that do not contain uppercase
+      -I --IGNORE-CASE         ignore case in all searches
 
-Input format options:
-  --csv                    input stream has csv format
-  --csv-separator          char used as field separator
-  --csv-header [on/off]    specify header line usage
-  --skip-columns-like="SPACE SEPARATED STRING LIST"
-                           columns with substr in name are ignored
-  --tsv                    input stream has tsv format
+    Interface options:
+      -c, --freezecols=N       freeze N columns (0..9)
+      --less-status-bar        status bar like less pager
+      --line-numbers           show line number column
+      --menu-always            show top bar menu every time
+      --no-bars, --no-commandbar, --no-topbar
+                               don't show bottom, top bar or both
+      --no-cursor              row cursor will be hidden
+      --no-last-row-search     don't use the last pattern when starting a new search
+      --no-scrollbar           don't show scrollbar
+      --no-sound               don't use beep when scroll is not possible
+      --tabular-cursor         cursor is visible only when data has table format
+      --vertical-cursor        show vertical column cursor
 
-Watch mode options:
-  -q, --query=QUERY        execute query
-  -w, --watch time         the query (or read file) is repeated every time (sec)
+    Input format options:
+      --csv                    input stream has csv format
+      --csv-separator          char used as field separator
+      --csv-header [on/off]    specify header line usage
+      --skip-columns-like="SPACE SEPARATED STRING LIST"
+                               columns with substr in name are ignored
+      --tsv                    input stream has tsv format
 
-Connection options
-  -d, --dbname=DBNAME      database name
-  -h, --host=HOSTNAME      database server host (default: "local socket")
-  -p, --port=PORT          database server port (default: "5432")
-  -U, --username=USERNAME  database user name
-  -W, --password           force password prompt
+    Watch mode options:
+      -q, --query=QUERY        execute query
+      -w, --watch time         the query (or read file) is repeated every time (sec)
 
-Debug options:
-  --log=FILE               log debug info to file
-  --wait=NUM               wait NUM seconds to allow attach from a debugger
+    Connection options
+      -d, --dbname=DBNAME      database name
+      -h, --host=HOSTNAME      database server host (default: "local socket")
+      -p, --port=PORT          database server port (default: "5432")
+      -U, --username=USERNAME  database user name
+      -W, --password           force password prompt
+
+    Debug options:
+      --log=FILE               log debug info to file
+      --wait=NUM               wait NUM seconds to allow attach from a debugger
 
 pspg shares lot of key commands with less pager or vi editor.
-```
+
 Options can be passed inside env variable `PSPG` too.
 
 
@@ -338,6 +338,7 @@ definitions are stored in log file.
 
 
 ## Backslash commands
+
 | Command                                                      | Description                |
 |--------------------------------------------------------------|----------------------------|
 | `\N`                                                         | go to line number          |
@@ -356,9 +357,6 @@ definitions are stored in log file.
 | `\rsort [N\|colum name]`                                      | desc sort by column (alias)|
 | `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
 
-```
-\sort relname
-```
 
 The output can be redirected to any command when the name starts with pipe symbol:
 
