@@ -89,6 +89,9 @@ pspg.o: src/commands.h src/config.h src/unicode.h src/themes.h src/inputs.h src/
 pspg:  $(PSPG_OFILES) $(ST_MENU_OFILES) config.make
 	$(CC)  $(PSPG_OFILES) $(ST_MENU_OFILES) -o pspg $(LDFLAGS) $(LDLIBS) $(PG_LFLAGS) $(PG_LDFLAGS) $(PG_LIBS)
 
+man:
+	ronn --manual="pspg manual" --section=1 < README.md > pspg.1
+
 clean:
 	$(RM) $(ST_MENU_OFILES)
 	$(RM) $(PSPG_OFILES)
@@ -102,6 +105,8 @@ distclean: clean
 
 install: all
 	tools/install.sh bin pspg "$(DESTDIR)$(bindir)"
+
+man-install:
 	tools/install.sh data pspg.1 "$(mandir)/man1"
 
 strip-install: all
