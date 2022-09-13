@@ -9,7 +9,9 @@ dnl  Make sure aclocal actually found it!
 m4_pattern_forbid([^AX_])
 
 AC_PROG_CC
-AC_HEADER_STDC
+AC_CHECK_INCLUDES_DEFAULT
+AC_PROG_EGREP
+
 AC_HEADER_TIOCGWINSZ
 AX_DEBUG_CFLAGS
 AX_WITH_CURSES
@@ -45,13 +47,22 @@ AC_SUBST([POSTGRESQL_CPPFLAGS])
 AC_SUBST([POSTGRESQL_LDFLAGS])
 AC_SUBST([POSTGRESQL_LIBS])
 
-
-
 AC_CONFIG_FILES([config.make])
 
-if test "$ax_cv_panel" = yes; then
-  COMPILE_MENU=1
+AC_ARG_WITH([menu],
+            AS_HELP_STRING([--without-menu]),
+            [compile_menu=no],
+            [compile_menu=yes])
+
+if test "x$compile_menu" != "xyes"; then
+  COMPILE_MENU=0
+else
+  if test "$ax_cv_panel" != yes; then
+    AC_MSG_ERROR([ncurses panel library not found])
+  fi
+  AC_MSG_NOTICE([pspg will be compiled with menu])
   CFLAGS="$CFLAGS -DCOMPILE_MENU"
+  COMPILE_MENU=1
 fi
 
 # supply -g if --enable-debug
