@@ -567,7 +567,7 @@ get_string(char *prompt,
 	tabcomplete_mode = _tabcomplete_mode;
 
 	wattron(prompt_window, prompt_window_input_attr);
-	mvwprintw(prompt_window, 0, 0, "");
+	wmove(prompt_window, 0, 0);
 	wclrtoeol(prompt_window);
 
 	curs_set(1);
@@ -645,7 +645,7 @@ get_string(char *prompt,
 					redraw_screen();
 
 					wattron(prompt_window, prompt_window_input_attr);
-					mvwprintw(prompt_window, 0, 0, "");
+					wmove(prompt_window, 0, 0);
 					wclrtoeol(prompt_window);
 
 					rl_forced_update_display();
