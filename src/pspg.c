@@ -2571,9 +2571,15 @@ main(int argc, char *argv[])
 	vertical_cursor_column = -1;
 	cursor_col = 0;
 	mark_mode = MARK_MODE_NONE;
+
+#ifdef COMPILE_MENU
+
 	menu_is_active = false;
 	menu = NULL;
 	cmdbar = NULL;
+
+#endif
+
 	first_row = 0;
 	mouse_row = -1;
 	mouse_col = -1;
@@ -6324,6 +6330,9 @@ recheck_end:
 
 						if (nced.mevent.y == 0 && scrdesc.top_bar_rows > 0)
 						{
+
+#ifdef COMPILE_MENU
+
 							/* Activate menu only on BUTTON1_PRESS event */
 							if (nced.mevent.bstate & BUTTON1_PRESSED)
 							{
@@ -6332,6 +6341,15 @@ recheck_end:
 								prev_event_keycode = 0;
 								break;
 							}
+
+#else
+
+								next_command = cmd_Invalid;
+								last_sec = 0;
+								break;
+
+#endif
+
 						}
 
 						if (nced.mevent.y >= scrdesc.top_bar_rows && nced.mevent.y <= scrdesc.fix_rows_rows)
