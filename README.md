@@ -355,6 +355,8 @@ definitions are stored in log file.
 | `\sortd [N\|colum name]`                                      | desc sort by column        |
 | `\dsort [N\|colum name]`                                      | desc sort by column (alias)|
 | `\rsort [N\|colum name]`                                      | desc sort by column (alias)|
+| `\asc [N\|colum name]`                                        | sort by colum (alias)      |
+| `\desc [N\|colum name]`                                       | desc sort by colum (alias) |
 | `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
 
 
