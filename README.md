@@ -2,11 +2,11 @@
 
 # pspg - Postgres Pager
 
-Everybody who uses `psql` uses `less` pager. It is working well, but there is not any special
-support for tabular data. I found few projects, but no one was completed for this purpose.
-I decided to write some small specialized pager for usage as `psql` pager.
+Everybody who uses `psql` also uses the `less` pager. Which, while it works well, has no special
+support for tabular data. I found a few projects, but none was good enough for this purpose.
+Thus I decided to write a small specialized pager to use as a `psql` pager.
 
-This pager can be used from the following clients command line clients too:
+This pager can be used from the following command line clients, too:
 
 - `mysql`
 - `sqlite`
@@ -18,11 +18,11 @@ This pager can be used from the following clients command line clients too:
 
 ## Main target
 
-* possibility to freeze first few rows, first few columns
-* possibility to sort data by specified numeric column
-* possibility to use fancy colors - like `mcview` or `FoxPro` - http://okbob.blogspot.com/2019/12/pspg-themes-what-you-use-it.html
+* ability to freeze the first few rows, or first few columns
+* ability to sort data by the specified numeric column
+* ability to use fancy themes - like `mcview` or `FoxPro` - http://okbob.blogspot.com/2019/12/pspg-themes-what-you-use-it.html
 * mouse is supported and used
-* possibility to copy selected range to clipboard
+* ability to copy a selected range to the clipboard
 
 
 ## Video presentation
@@ -134,9 +134,9 @@ This pager can be used from the following clients command line clients too:
       --log=FILE               log debug info to file
       --wait=NUM               wait NUM seconds to allow attach from a debugger
 
-pspg shares lot of key commands with less pager or vi editor.
+pspg shares a lot of key commands with the less pager or the vi editor.
 
-Options can be passed inside env variable `PSPG` too.
+Options can be passed within the environment variable `PSPG`, too.
 
 
 ## Environment variables
@@ -189,7 +189,7 @@ command `\ctheme name`.
 
 ![Screenshot](screenshots/pspg-5.4.0-custom-theme.png)
 
-Example of custom theme file (named `.pspg_theme_mc2` (it can be activated by
+Example of a custom theme file (named `.pspg_theme_mc2` (it can be activated by
 command `\ctheme mc2`)):
 
     template = 1
