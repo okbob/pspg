@@ -1,12 +1,12 @@
 .\" generated with Ronn-NG/v0.9.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.9.1
-.TH "PSPG" "1" "September 2022" "" "pspg manual"
+.TH "PSPG" "1" "October 2022" "" "pspg manual"
 .SH "NAME"
 \fBpspg\fR \- Postgres Pager
 .P
-Everybody who uses \fBpsql\fR uses \fBless\fR pager\. It is working well, but there is not any special support for tabular data\. I found few projects, but no one was completed for this purpose\. I decided to write some small specialized pager for usage as \fBpsql\fR pager\.
+Everybody who uses \fBpsql\fR also uses the \fBless\fR pager\. Which, while it works well, has no special support for tabular data\. I found a few projects, but none was good enough for this purpose\. Thus I decided to write a small specialized pager to use as a \fBpsql\fR pager\.
 .P
-This pager can be used from the following clients command line clients too:
+This pager can be used from the following command line clients, too:
 .IP "\[ci]" 4
 \fBmysql\fR
 .IP "\[ci]" 4
@@ -24,15 +24,15 @@ This pager can be used from the following clients command line clients too:
 .IP "" 0
 .SH "Main target"
 .IP "\[ci]" 4
-possibility to freeze first few rows, first few columns
+ability to freeze the first few rows, or first few columns
 .IP "\[ci]" 4
-possibility to sort data by specified numeric column
+ability to sort data by the specified numeric column
 .IP "\[ci]" 4
-possibility to use fancy colors \- like \fBmcview\fR or \fBFoxPro\fR \- http://okbob\.blogspot\.com/2019/12/pspg\-themes\-what\-you\-use\-it\.html
+ability to use fancy themes \- like \fBmcview\fR or \fBFoxPro\fR \- http://okbob\.blogspot\.com/2019/12/pspg\-themes\-what\-you\-use\-it\.html
 .IP "\[ci]" 4
 mouse is supported and used
 .IP "\[ci]" 4
-possibility to copy selected range to clipboard
+ability to copy a selected range to the clipboard
 .IP "" 0
 .SH "Video presentation"
  \fIhttps://www\.youtube\.com/watch?v=JyxuEkoYDQk\fR
@@ -116,6 +116,11 @@ Input format options:
                            columns with substr in name are ignored
   \-\-tsv                    input stream has tsv format
 
+At end options:
+  \-\-at\-end\-reset           sends reset terminal sequence "\e33c"
+  \-\-at\-end\-clean           sends clean terminal sequence "\e033[2J"
+  \-\-et\-end\-erase\-line      sends erase line terminal sequence "\e33[2K\er"
+
 Watch mode options:
   \-q, \-\-query=QUERY        execute query
   \-w, \-\-watch time         the query (or read file) is repeated every time (sec)
@@ -132,9 +137,9 @@ Debug options:
   \-\-wait=NUM               wait NUM seconds to allow attach from a debugger
 .fi
 .P
-pspg shares lot of key commands with less pager or vi editor\.
+pspg shares a lot of key commands with the less pager or the vi editor\.
 .P
-Options can be passed inside env variable \fBPSPG\fR too\.
+Options can be passed within the environment variable \fBPSPG\fR, too\.
 .SH "Environment variables"
 .TS
 allbox;
@@ -180,7 +185,7 @@ see http://okbob\.blogspot\.cz/2017/07/i\-hope\-so\-every\-who\-uses\-psql\-uses
 The theme can be customized over base and menu templates referencing the built\-in themes\. The custom theme file should be saved in directory with \fBpspg\fR configuration\. The name of this file should be \.pspg_theme_xxx\. The custom theme can be selected by command line option \fB\-\-custom\-style=name\fR or by command \fB\ectheme name\fR\.
 .P
 .P
-Example of custom theme file (named \fB\.pspg_theme_mc2\fR (it can be activated by command \fB\ectheme mc2\fR)):
+Example of a custom theme file (named \fB\.pspg_theme_mc2\fR (it can be activated by command \fB\ectheme mc2\fR)):
 .IP "" 4
 .nf
 template = 1
