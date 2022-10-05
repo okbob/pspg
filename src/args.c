@@ -697,6 +697,18 @@ readargs(char **argv,
 				opts->esc_delay = atoi(optarg);
 				break;
 
+			case 53:
+				opts->at_end_clean = true;
+				break;
+
+			case 54:
+				opts->at_end_reset = true;
+				break;
+
+			case 55:
+				opts->at_end_erase_line = true;
+				break;
+
 			default:
 				{
 					format_error("Try %s --help\n", argv[0]);
