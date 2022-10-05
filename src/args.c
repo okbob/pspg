@@ -110,6 +110,9 @@ static struct option long_options[] =
 	{"highlight-odd-rec", no_argument, 0, 50},
 	{"hide-header-line", no_argument, 0, 51},
 	{"esc-delay", required_argument, 0, 52},
+	{"at-end-clean", no_argument, 0, 53},
+	{"at-end-reset", no_argument, 0, 54},
+	{"at-end-erase-line", no_argument, 0, 55},
 	{0, 0, 0, 0}
 };
 
@@ -372,6 +375,10 @@ readargs(char **argv,
 					fprintf(stdout, "  --skip-columns-like=\"SPACE SEPARATED STRING LIST\"\n");
 					fprintf(stdout, "                           columns with substr in name are ignored\n");
 					fprintf(stdout, "  --tsv                    input stream has tsv format\n");
+					fprintf(stdout, "\nAt end options:\n");
+					fprintf(stdout, "  --at-end-reset           sends reset terminal sequence \"\\33c\"\n");
+					fprintf(stdout, "  --at-end-clean           sends clean terminal sequence \"\\033[2J\"\n");
+					fprintf(stdout, "  --et-end-erase-line      sends erase line terminal sequence \"\\33[2K\\r\"\n");
 					fprintf(stdout, "\nWatch mode options:\n");
 					fprintf(stdout, "  -q, --query=QUERY        execute query\n");
 					fprintf(stdout, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");

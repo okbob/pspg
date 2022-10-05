@@ -2621,6 +2621,9 @@ main(int argc, char *argv[])
 	opts.highlight_odd_rec = false;
 	opts.hide_header_line = false;
 	opts.esc_delay = -1;
+	opts.at_end_reset = false;
+	opts.at_end_clean = false;
+	opts.at_end_erase_line = false;
 
 	setup_sigsegv_handler();
 
@@ -6716,6 +6719,19 @@ refresh:
 	log_row("ncurses ended");
 
 	active_ncurses = false;
+
+	/*
+	 * The alternate screen doesn't work on BSD, so there are
+	 * some possibilities of ending and cleaning.
+	 */
+	if (opts.at_end_reset)
+		printf("\033c");
+
+	if (opts.at_end_clean)
+		printf("\033[2J");
+
+	if (opts.at_end_erase_line)
+		printf("\33[2K\r");
 
 	if (raw_output_quit)
 	{
