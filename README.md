@@ -119,10 +119,10 @@ This pager can be used from the following command line clients, too:
                                columns with substr in name are ignored
       --tsv                    input stream has tsv format
 
-    At end options:
-      --at-end-reset           sends reset terminal sequence "\33c"
-      --at-end-clean           sends clean terminal sequence "\033[2J"
-      --et-end-erase-line      sends erase line terminal sequence "\33[2K\r"
+    On exit options:
+      --on-exit-reset          sends reset terminal sequence "\33c"
+      --on-exit-clean          sends clean terminal sequence "\033[2J"
+      --on-exit-erase-line     sends erase line terminal sequence "\33[2K\r"
 
     Watch mode options:
       -q, --query=QUERY        execute query

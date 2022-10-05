@@ -98,9 +98,9 @@ typedef struct
 	bool	highlight_odd_rec;
 	bool	hide_header_line;
 	int		esc_delay;
-	bool	at_end_clean;
-	bool	at_end_reset;
-	bool	at_end_erase_line;
+	bool	on_exit_clean;
+	bool	on_exit_reset;
+	bool	on_exit_erase_line;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

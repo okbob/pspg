@@ -149,9 +149,9 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("progressive_load_mode", opts->progressive_load_mode);
 	SAFE_SAVE_BOOL_OPTION("highlight_odd_rec", opts->highlight_odd_rec);
 	SAFE_SAVE_BOOL_OPTION("hide_header_line", opts->hide_header_line);
-	SAFE_SAVE_BOOL_OPTION("at_end_reset", opts->at_end_reset);
-	SAFE_SAVE_BOOL_OPTION("at_end_clean", opts->at_end_clean);
-	SAFE_SAVE_BOOL_OPTION("at_end_erase_line", opts->at_end_erase_line);
+	SAFE_SAVE_BOOL_OPTION("on_exit_reset", opts->on_exit_reset);
+	SAFE_SAVE_BOOL_OPTION("on_exit_clean", opts->on_exit_clean);
+	SAFE_SAVE_BOOL_OPTION("on_exit_erase_line", opts->on_exit_erase_line);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -348,12 +348,12 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->hide_header_line, bool_val, res);
 			else if (strcmp(key, "esc_delay") == 0)
 				is_valid = assign_int(key, &opts->esc_delay, int_val, res, -1, INT_MAX);
-			else if (strcmp(key, "at_end_reset") == 0)
-				is_valid = assign_bool(key, &opts->at_end_reset, bool_val, res);
-			else if (strcmp(key, "at_end_clean") == 0)
-				is_valid = assign_bool(key, &opts->at_end_clean, bool_val, res);
-			else if (strcmp(key, "at_end_erase_line") == 0)
-				is_valid = assign_bool(key, &opts->at_end_erase_line, bool_val, res);
+			else if (strcmp(key, "on_exit_reset") == 0)
+				is_valid = assign_bool(key, &opts->on_exit_reset, bool_val, res);
+			else if (strcmp(key, "on_exit_clean") == 0)
+				is_valid = assign_bool(key, &opts->on_exit_clean, bool_val, res);
+			else if (strcmp(key, "on_exit_erase_line") == 0)
+				is_valid = assign_bool(key, &opts->on_exit_erase_line, bool_val, res);
 
 			if (!is_valid || res == -1)
 				break;
