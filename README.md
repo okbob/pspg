@@ -294,6 +294,8 @@ definitions are stored in log file.
 | <kbd>KEY_RIGHT</kbd>, <kbd>l</kbd>                                       | scroll to right                                                     |
 | <kbd>Ctrl</kbd>+<kbd>KEY_LEFT</kbd>                                      | scroll one char left                                                |
 | <kbd>Ctrl</kbd>+<kbd>KEY_RIGHT</kbd>                                     | scroll one char right                                               |
+| <kbd>Shift</kbd>+<kbd>KEY_LEFT</kbd>                                     | scroll one column left                                                |
+| <kbd>Shift</kbd>+<kbd>KEY_RIGHT</kbd>                                    | scroll one column right                                               |
 | <kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>g</kbd>                            | go to the start of file                                             |
 | <kbd>Ctrl</kbd>+<kbd>End</kbd>, <kbd>G</kbd>                             | go to the end of file                                               |
 | <kbd>Alt</kbd>+<kbd>l</kbd>                                              | go to line number                                                   |
@@ -332,12 +334,12 @@ definitions are stored in log file.
 | <kbd>a</kbd>                                                             | sort ascendent                                                      |
 | <kbd>d</kbd>                                                             | sort descendent                                                     |
 | <kbd>u</kbd>                                                             | unsorted (sorted in origin order)                                   |
-| <kbd>space</kbd>                                                         | stop/continue in watch mode                                         |
+| <kbd>Space</kbd>                                                         | stop/continue in watch mode                                         |
 | <kbd>R</kbd>                                                             | Repaint screen and refresh input file                               |
 | <kbd>Ins</kbd>                                                           | export row, column or cell to default target                        |
 | <kbd>shift</kbd>+<kbd>cursor...</kbd>                                    | define range                                                        |
 | <kbd>F3</kbd>                                                            | start/finish of selection rows                                      |
-| <kbd>shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
+| <kbd>Shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
 | <kbd>Ctrl</kbd>+<kbd>drag mouse</kbd>                                    | defines rows selection, on column header defines column selection   |
 | <kbd>Ctrl</kbd>+<kbd>o</kbd>                                             | show primary screen, press any key to return to pager again         |
 
