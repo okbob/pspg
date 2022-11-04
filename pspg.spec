@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.5.8
+Version: 	5.5.9
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,9 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Fri Now 4 2022 Pavel Stehule <pavel.stehule@gmail.com>
+- column scroll left, column scroll right
+
 * Tue Aug 2 2022 Pavel Stehule <pavel.stehule@gmail.com>
 - allow to set esc delay interval
 

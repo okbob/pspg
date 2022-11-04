@@ -1,6 +1,6 @@
 .\" generated with Ronn-NG/v0.9.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.9.1
-.TH "PSPG" "1" "October 2022" "" "pspg manual"
+.TH "PSPG" "1" "November 2022" "" "pspg manual"
 .SH "NAME"
 \fBpspg\fR \- Postgres Pager
 .P
@@ -282,6 +282,8 @@ Key(s)	Command
 \fBKEY_RIGHT\fR, \fBl\fR	scroll to right
 \fBCtrl\fR+\fBKEY_LEFT\fR	scroll one char left
 \fBCtrl\fR+\fBKEY_RIGHT\fR	scroll one char right
+\fBShift\fR+\fBKEY_LEFT\fR	scroll one column left
+\fBShift\fR+\fBKEY_RIGHT\fR	scroll one column right
 \fBCtrl\fR+\fBHome\fR, \fBg\fR	go to the start of file
 \fBCtrl\fR+\fBEnd\fR, \fBG\fR	go to the end of file
 \fBAlt\fR+\fBl\fR	go to line number
@@ -320,12 +322,12 @@ Key(s)	Command
 \fBa\fR	sort ascendent
 \fBd\fR	sort descendent
 \fBu\fR	unsorted (sorted in origin order)
-\fBspace\fR	stop/continue in watch mode
+\fBSpace\fR	stop/continue in watch mode
 \fBR\fR	Repaint screen and refresh input file
 \fBIns\fR	export row, column or cell to default target
 \fBshift\fR+\fBcursor\|\.\|\.\|\.\fR	define range
 \fBF3\fR	start/finish of selection rows
-\fBshift\fR+\fBF3\fR	start/finish of selection block
+\fBShift\fR+\fBF3\fR	start/finish of selection block
 \fBCtrl\fR+\fBdrag mouse\fR	defines rows selection, on column header defines column selection
 \fBCtrl\fR+\fBo\fR	show primary screen, press any key to return to pager again
 .TE
