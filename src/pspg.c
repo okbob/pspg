@@ -4799,6 +4799,18 @@ show_first_col:
 				next_command = cmd_MoveRight;
 				break;
 
+			case cmd_MoveColumnLeft:
+				long_argument = desc.maxx;
+				long_argument_is_valid = true;
+				next_command = cmd_MoveLeft;
+				break;
+
+			case cmd_MoveColumnRight:
+				long_argument = desc.maxx;
+				long_argument_is_valid = true;
+				next_command = cmd_MoveRight;
+				break;
+
 			case cmd_MoveLeft:
 				{
 					bool	_is_footer_cursor = is_footer_cursor(cursor_row, &scrdesc, &desc);

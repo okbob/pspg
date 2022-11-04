@@ -92,6 +92,8 @@ typedef enum PspgCommand
 	cmd_MoveRight,
 	cmd_MoveCharLeft,
 	cmd_MoveCharRight,
+	cmd_MoveColumnLeft,
+	cmd_MoveColumnRight,
 	cmd_CursorFirstRow,
 	cmd_CursorLastRow,
 	cmd_CursorFirstRowPage,
