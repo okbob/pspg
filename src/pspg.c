@@ -6726,6 +6726,12 @@ refresh:
 
 #endif
 
+#if NCURSES_EXT_FUNCS
+
+	reset_color_pairs();
+
+#endif
+
 	endwin();
 	disable_xterm_mouse_mode();
 	log_row("ncurses ended");
