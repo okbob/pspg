@@ -265,6 +265,12 @@ print_versions(void)
 
 	fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
 
+#if NCURSES_EXT_FUNCS
+
+	fprintf(stdout, "ncurses has extended functions\n");
+
+#endif
+
 #ifdef HAVE_POSTGRESQL
 
 	fprintf(stdout, "with postgres client integration\n");
