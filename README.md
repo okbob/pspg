@@ -396,7 +396,7 @@ some horizontal scrolling) or on first column. After last column searching start
 # Export & Clipboard
 
 For clipboard support the clipboard application should be installed: 1. wl-clipboard (Wayland),
-2. xlip (xwindows) or 3. pbcopy (MacOS).
+2. xclip (xwindows) or 3. pbcopy (MacOS).
 
 `pspg` try to translate unicode symbol '∅' to NULL every time. If you don't use special setting
 by `\pset null ...`, then `psql` displays empty string instead NULL. `pspg` hasn't any special
