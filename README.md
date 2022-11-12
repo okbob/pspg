@@ -53,7 +53,7 @@ This pager can be used from the following command line clients, too:
       --about                  about authors
       --help                   show this help
       -V, --version            show version
-      --lib-versions           show versions of used libraries
+      --info                   show info about libraries and system
       -f, --file=FILE          open file
       -F, --quit-if-one-screen
                                quit if content is one screen

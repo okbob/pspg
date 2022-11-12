@@ -119,7 +119,7 @@ static struct option long_options[] =
 	{"on-exit-clean", no_argument, 0, 53},
 	{"on-exit-reset", no_argument, 0, 54},
 	{"on-exit-erase-line", no_argument, 0, 55},
-	{"lib-versions", no_argument, 0, 56},
+	{"info", no_argument, 0, 56},
 	{0, 0, 0, 0}
 };
 
@@ -240,7 +240,7 @@ print_version(void)
 }
 
 static void
-print_lib_versions(void)
+print_info(void)
 {
 
 	struct utsname u_name;
@@ -379,7 +379,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --about                  about authors\n");
 					fprintf(stdout, "  --help                   show this help\n");
 					fprintf(stdout, "  -V, --version            show version\n");
-					fprintf(stdout, "  --lib-versions           show used libraries versions\n");
+					fprintf(stdout, "  --info                   show info about libraries and system\n");
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
@@ -777,7 +777,7 @@ readargs(char **argv,
 				break;
 
 			case 56:
-				print_lib_versions();
+				print_info();
 				return false;
 
 			default:
