@@ -7223,6 +7223,14 @@ printf "%s\n" "#define HAVE_KQUEUE 1" >>confdefs.h
   fi
 fi
 
+ac_fn_c_check_header_compile "$LINENO" "sys/utsname.h" "ac_cv_header_sys_utsname_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_utsname_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_UTSNAME_H 1" >>confdefs.h
+
+fi
+
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure

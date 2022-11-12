@@ -19,6 +19,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef HAVE_SYS_UTSNAME_H
+
+#include <sys/utsname.h>
+
+#endif
+
 #ifdef HAVE_LIBREADLINE
 
 #if defined(HAVE_READLINE_READLINE_H)
@@ -113,6 +119,7 @@ static struct option long_options[] =
 	{"on-exit-clean", no_argument, 0, 53},
 	{"on-exit-reset", no_argument, 0, 54},
 	{"on-exit-erase-line", no_argument, 0, 55},
+	{"lib-versions", no_argument, 0, 56},
 	{0, 0, 0, 0}
 };
 
@@ -227,19 +234,36 @@ buildargv(const char *input, int *_argc, char *appname)
 }
 
 static void
-print_versions(void)
+print_version(void)
 {
+	fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
+}
+
+static void
+print_lib_versions(void)
+{
+
+	struct utsname u_name;
+
 	fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
 #ifdef HAVE_LIBREADLINE
 
 	fprintf(stdout, "with readline (version: 0x%04x)\n", RL_READLINE_VERSION);
 
+#else
+
+	fprintf(stdout, "without readline\n");
+
 #endif
 
 #ifdef COMPILE_MENU
 
 	fprintf(stdout, "with integrated menu\n");
+
+#else
+
+	fprintf(stdout, "without integrated menu\n");
 
 #endif
 
@@ -255,6 +279,10 @@ print_versions(void)
 
 	fprintf(stdout, "ncurses with wide char support\n");
 
+#else
+
+	fprintf(stdout, "without wide char support\n");
+
 #endif
 
 #ifdef NCURSES_WIDECHAR
@@ -267,7 +295,11 @@ print_versions(void)
 
 #if NCURSES_EXT_FUNCS
 
-	fprintf(stdout, "ncurses has extended functions\n");
+	fprintf(stdout, "with ncurses extended functions support\n");
+
+#else
+
+	fprintf(stdout, "without ncurses extended function support\n")
 
 #endif
 
@@ -275,15 +307,43 @@ print_versions(void)
 
 	fprintf(stdout, "with postgres client integration\n");
 
+#else
+
+	fprintf(stdout, "without postgres client\n");
+
 #endif
 
 #if defined(HAVE_INOTIFY)
 
 	fprintf(stdout, "with inotify support\n");
 
-#elif defined(HAVE_KQUEUE)
+#else
+
+	fprintf(stdout, "without inotify support\n");
+
+#endif
+
+
+#if defined(HAVE_KQUEUE)
 
 	fprintf(stdout, "with kqueue support\n");
+
+#else
+
+	fprintf(stdout, "without kqueue support\n");
+
+#endif
+
+#ifdef HAVE_SYS_UTSNAME_H
+
+	if (uname(&u_name) != -1)
+	{
+		fprintf(stdout, "%s %s %s %s %s\n", u_name.sysname,
+										 u_name.nodename,
+										 u_name.release,
+										 u_name.version,
+										 u_name.machine);
+	}
 
 #endif
 
@@ -319,6 +379,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --about                  about authors\n");
 					fprintf(stdout, "  --help                   show this help\n");
 					fprintf(stdout, "  -V, --version            show version\n");
+					fprintf(stdout, "  --lib-versions           show used libraries versions\n");
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
@@ -469,7 +530,7 @@ readargs(char **argv,
 				{
 					fprintf(stdout, "The pspg-%s is special pager designed for databases.\n\n", PSPG_VERSION);
 					fprintf(stdout, "Authors:\n");
-					fprintf(stdout, "    2017-2021 Pavel Stehule, Benesov district, Czech Republic\n\n");
+					fprintf(stdout, "    2017-2022 Pavel Stehule, Benesov district, Czech Republic\n\n");
 					fprintf(stdout, "Licence:\n");
 					fprintf(stdout, "    Distributed under BSD licence\n\n");
 
@@ -593,7 +654,7 @@ readargs(char **argv,
 				}
 				break;
 			case 'V':
-				print_versions();
+				print_version();
 				return false;
 			case 'X':
 				state->no_alternate_screen = true;
@@ -714,6 +775,10 @@ readargs(char **argv,
 			case 55:
 				opts->on_exit_erase_line = true;
 				break;
+
+			case 56:
+				print_lib_versions();
+				return false;
 
 			default:
 				{

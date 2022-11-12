@@ -98,4 +98,6 @@ if test "x$have_kqueue" = "xyes"; then
   fi
 fi
 
+AC_CHECK_HEADERS([sys/utsname.h])
+
 AC_OUTPUT
