@@ -51,15 +51,28 @@ print_duration(time_t start_sec, long start_ms, const char *label)
 static bool
 isTopLeftChar(char *str)
 {
-	const char *u1 = "\342\224\214";
-	const char *u2 = "\342\225\224";
-
 	if (str[0] == '+')
 		return true;
-	if (strncmp(str, u1, 3) == 0)
-		return true;
-	if (strncmp(str, u2, 3) == 0)
-		return true;
+
+	/*
+	 * \342\224\214 ┌
+	 * \342\224\217 ┏
+	 * \342\225\224 ╔
+	 * \342\225\255 ╭
+	 */
+	if (str[0] == '\342')
+	{
+		if (str[1] == '\224')
+		{
+			if (str[2] == '\214' || str[2] == '\217')
+				return true;
+		}
+		else if (str[1] == '\225')
+		{
+			if (str[2] == '\224' || str[2] == '\255')
+				return true;
+		}
+	}
 
 	return false;
 }
@@ -68,18 +81,21 @@ isTopLeftChar(char *str)
  * Returns true when char is top left header char
  */
 static bool
-isHeadLeftChar(char *str)
+isHeadLeftChar(char *str, bool *is_unicode)
 {
 	const char *u1 = "\342\224\200";
 	const char *u2 = "\342\225\220";
 
 	const char *u3 = "\342\225\236"; /* ╞ */
 	const char *u4 = "\342\224\234"; /* ├ */
-	const char *u5 = "\342\225\240"; /* ╠ */
-	const char *u6 = "\342\225\237"; /* ╟ */
+	const char *u5 = "\342\224\243"; /* ┣ */
+	const char *u6 = "\342\225\240"; /* ╠ */
+	const char *u7 = "\342\225\237"; /* ╟ */
 
-	const char *u7 = "\342\224\214"; /* ┌ */
-	const char *u8 = "\342\225\224"; /* ╔ */
+	const char *u8 = "\342\224\214"; /* ┌ */
+	const char *u9 = "\342\225\224"; /* ╔ */
+
+	*is_unicode = false;
 
 	/* ascii */
 	if ((str[0] == '+' || str[0] == '-') && str[1] == '-')
@@ -108,6 +124,8 @@ isHeadLeftChar(char *str)
 	if (str[0] != '\342')
 		return false;
 
+	*is_unicode = true;
+
 	if (strncmp(str, u1, 3) == 0)
 		return true;
 	if (strncmp(str, u2, 3) == 0)
@@ -124,34 +142,7 @@ isHeadLeftChar(char *str)
 		return true;
 	if (strncmp(str, u8, 3) == 0)
 		return true;
-
-	return false;
-}
-
-static bool
-isUnicodeHeadLeftCharBorder2(char *str)
-{
-	const char *u3 = "\342\225\236"; /* ╞ */
-	const char *u4 = "\342\224\234"; /* ├ */
-	const char *u5 = "\342\225\240"; /* ╠ */
-	const char *u6 = "\342\225\237"; /* ╟ */
-	const char *u7 = "\342\224\214"; /* ┌ */
-	const char *u8 = "\342\225\224"; /* ╔ */
-
-	if (str[0] != '\342')
-		return false;
-
-	if (strncmp(str, u3, 3) == 0)
-		return true;
-	if (strncmp(str, u4, 3) == 0)
-		return true;
-	if (strncmp(str, u5, 3) == 0)
-		return true;
-	if (strncmp(str, u6, 3) == 0)
-		return true;
-	if (strncmp(str, u7, 3) == 0)
-		return true;
-	if (strncmp(str, u8, 3) == 0)
+	if (strncmp(str, u9, 3) == 0)
 		return true;
 
 	return false;
@@ -163,15 +154,28 @@ isUnicodeHeadLeftCharBorder2(char *str)
 static bool
 isBottomLeftChar(char *str)
 {
-	const char *u1 = "\342\224\224";
-	const char *u2 = "\342\225\232";
-
 	if (str[0] == '+')
 		return true;
-	if (strncmp(str, u1, 3) == 0)
-		return true;
-	if (strncmp(str, u2, 3) == 0)
-		return true;
+
+	/*
+	 * \342\224\224 └
+	 * \342\224\227 ┗
+	 * \342\225\232 ╚
+	 * \342\225\260 ╰
+	 */
+	if (str[0] == '\342')
+	{
+		if (str[1] == '\224')
+		{
+			if (str[2] == '\224' || str[2] == '\227')
+				return true;
+		}
+		else if (str[1] == '\225')
+		{
+			if (str[2] == '\232' || str[2] == '\260')
+				return true;
+		}
+	}
 
 	return false;
 }
@@ -786,6 +790,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 
 	do
 	{
+		bool		is_unicode;
+
 		if (line && read > 0 && line[read - 1] == '\n')
 		{
 			line[read - 1] = '\0';
@@ -872,11 +878,11 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			if (desc->is_expanded_mode)
 				desc->border_head_row = nrows;
 		}
-		else if (desc->border_head_row == -1 && isHeadLeftChar(line))
+		else if (desc->border_head_row == -1 && isHeadLeftChar(line, &is_unicode))
 		{
 			desc->border_head_row = nrows;
 
-			if (isUnicodeHeadLeftCharBorder2(line))
+			if (is_unicode)
 			{
 				desc->load_data_rows = true;
 				log_row("next row will be data row");
@@ -1023,6 +1029,8 @@ next_row:
 	{
 broken_format:
 
+		log_row("input format is not tabular");
+
 		desc->headline = NULL;
 		desc->headline_size = 0;
 		desc->headline_char_size = 0;
@@ -1116,7 +1124,9 @@ translate_headline(DataDesc *desc)
 			srcptr += charlen(srcptr);
 		}
 		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
-				  strncmp(srcptr, "\342\225\224", 3) == 0)   /* ╔ */
+				 strncmp(srcptr, "\342\225\224", 3) == 0 || /* ╔ */
+				 strncmp(srcptr, "\342\224\217", 3) == 0 || /* ┏ */
+				 strncmp(srcptr, "\342\225\255", 3) == 0)	/* ╭ */
 		{
 			/* should be expanded mode */
 			if (processed_chars > 0 ||
@@ -1131,7 +1141,9 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\220", 3) == 0 || /* ┐ */
-				 strncmp(srcptr, "\342\225\227", 3) == 0)   /* ╗ */
+				 strncmp(srcptr, "\342\225\227", 3) == 0 || /* ╗ */
+				 strncmp(srcptr, "\342\224\223", 3) == 0 || /* ┓ */
+				 strncmp(srcptr, "\342\225\256", 3) == 0)	/* ╮ */
 		{
 			if (desc->linestyle != 'u' || desc->border_type != 2 ||
 				(!desc->is_expanded_mode  && !is_headerless))
@@ -1145,7 +1157,8 @@ translate_headline(DataDesc *desc)
 		else if (strncmp(srcptr, "\342\224\254", 3) == 0 || /* ┬╤ */
 				 strncmp(srcptr, "\342\225\244", 3) == 0 ||
 				 strncmp(srcptr, "\342\225\245", 3) == 0 || /* ╥╦ */
-				 strncmp(srcptr, "\342\225\246", 3) == 0)
+				 strncmp(srcptr, "\342\225\246", 3) == 0 ||
+				 strncmp(srcptr, "\342\224\263", 3) == 0)	/* ┳ */
 		{
 			if (desc->linestyle != 'u' ||
 				(!desc->is_expanded_mode  && !is_headerless))
@@ -1162,7 +1175,8 @@ translate_headline(DataDesc *desc)
 		else if (strncmp(srcptr, "\342\224\234", 3) == 0 || /* ├╟ */
 				 strncmp(srcptr, "\342\225\237", 3) == 0 ||
 				 strncmp(srcptr, "\342\225\236", 3) == 0 || /* ╞╠ */
-				 strncmp(srcptr, "\342\225\240", 3) == 0)
+				 strncmp(srcptr, "\342\225\240", 3) == 0 ||
+				 strncmp(srcptr, "\342\224\243", 3) == 0)	/* ┣ */
 		{
 			if (processed_chars > 0)
 			{
@@ -1177,7 +1191,8 @@ translate_headline(DataDesc *desc)
 		else if (strncmp(srcptr, "\342\224\244", 3) == 0 || /* ┤╢ */
 				 strncmp(srcptr, "\342\225\242", 3) == 0 ||
 				 strncmp(srcptr, "\342\225\241", 3) == 0 || /* ╡╣ */
-				 strncmp(srcptr, "\342\225\243", 3) == 0)
+				 strncmp(srcptr, "\342\225\243", 3) == 0 ||
+				 strncmp(srcptr, "\342\224\253", 3) == 0)	/* ┫ */
 		{
 			if (desc->linestyle != 'u' || desc->border_type != 2)
 			{
@@ -1190,7 +1205,8 @@ translate_headline(DataDesc *desc)
 		else if (strncmp(srcptr, "\342\224\274", 3) == 0 || /* ┼╪ */
 				 strncmp(srcptr, "\342\225\252", 3) == 0 ||
 				 strncmp(srcptr, "\342\225\253", 3) == 0 || /* ╫╬ */
-				 strncmp(srcptr, "\342\225\254", 3) == 0)
+				 strncmp(srcptr, "\342\225\254", 3) == 0 ||
+				 strncmp(srcptr, "\342\225\213", 3) == 0)	/* ╋ */
 		{
 			if (desc->linestyle != 'u')
 			{
@@ -1203,7 +1219,8 @@ translate_headline(DataDesc *desc)
 			srcptr += 3;
 		}
 		else if (strncmp(srcptr, "\342\224\200", 3) == 0 || /* ─ */
-				 strncmp(srcptr, "\342\225\220", 3) == 0) /* ═ */
+				 strncmp(srcptr, "\342\225\220", 3) == 0 || /* ═ */
+				 strncmp(srcptr, "\342\224\201", 3) == 0)	/* ━ */
 		{
 			if (processed_chars == 0)
 			{
