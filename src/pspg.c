@@ -6726,12 +6726,6 @@ refresh:
 
 #endif
 
-#if NCURSES_EXT_FUNCS
-
-	reset_color_pairs();
-
-#endif
-
 	/* try to reinit original color palette */
 	start_color();
 
