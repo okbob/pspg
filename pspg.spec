@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.5.10
+Version: 	5.5.11
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
