@@ -1749,6 +1749,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 
 		if (first_nospace_nodigit)
 		{
+			/* units used by psql */
 			if (nstreq(first_nospace_nodigit, "bytes"))
 				mp = 1l;
 			else if (nstreq(first_nospace_nodigit, "kB"))
@@ -1759,8 +1760,21 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 				mp = 1024l * 1024 * 1024;
 			else if (nstreq(first_nospace_nodigit, "TB"))
 				mp = 1024l * 1024 * 1024 * 1024;
-			else
+
+			/* units used by nushell */
+			if (nstreq(first_nospace_nodigit, "B"))
+				mp = 1l;
+			else if (nstreq(first_nospace_nodigit, "KiB"))
+				mp = 1024l;
+			else if (nstreq(first_nospace_nodigit, "MiB"))
+				mp = 1024l * 1024;
+			else if (nstreq(first_nospace_nodigit, "GiB"))
+				mp = 1024l * 1024 * 1024;
+			else if (nstreq(first_nospace_nodigit, "TiB"))
+				mp = 1024l * 1024 * 1024 * 1024;
+
 				/* unknown unit */
+			else
 				return false;
 
 			*first_nospace_nodigit = '\0';
