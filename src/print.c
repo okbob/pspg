@@ -959,7 +959,7 @@ window_fill(int window_identifier,
 
 		line_is_valid = lbm_get_line(&lbm, &rowstr, &lineinfo, &lineno);
 
-		if (odd_theme_identifier != -1 && line_is_valid)
+		if (odd_theme_identifier != -1 && lineinfo)
 		{
 			recno = lineno - lineinfo->recno_offset;
 
