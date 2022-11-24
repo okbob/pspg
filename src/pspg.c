@@ -6726,9 +6726,6 @@ refresh:
 
 #endif
 
-	/* try to reinit original color palette */
-	start_color();
-
 	endwin();
 	disable_xterm_mouse_mode();
 	log_row("ncurses ended");
