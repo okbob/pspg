@@ -120,6 +120,7 @@ static struct option long_options[] =
 	{"on-exit-reset", no_argument, 0, 54},
 	{"on-exit-erase-line", no_argument, 0, 55},
 	{"info", no_argument, 0, 56},
+	{"on-exit-sgr0", no_argument, 0, 57},
 	{0, 0, 0, 0}
 };
 
@@ -445,7 +446,8 @@ readargs(char **argv,
 					fprintf(stdout, "\nOn exit options:\n");
 					fprintf(stdout, "  --on-exit-reset          sends reset terminal sequence \"\\33c\"\n");
 					fprintf(stdout, "  --on-exit-clean          sends clean terminal sequence \"\\033[2J\"\n");
-					fprintf(stdout, "  --on-exit-erase-line     sends erase line terminal sequence \"\\33[2K\\r\"\n");
+					fprintf(stdout, "  --on-exit-erase-line     sends erase line terminal sequence \"\\033[2K\\r\"\n");
+					fprintf(stdout, "  --on-exit-sgr0           sends sgr0 terminal sequence \"\\033[0;10m\"\n");
 					fprintf(stdout, "\nWatch mode options:\n");
 					fprintf(stdout, "  -q, --query=QUERY        execute query\n");
 					fprintf(stdout, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");
@@ -779,6 +781,10 @@ readargs(char **argv,
 			case 56:
 				print_info();
 				return false;
+
+			case 57:
+				opts->on_exit_sgr0 = true;
+				break;
 
 			default:
 				{

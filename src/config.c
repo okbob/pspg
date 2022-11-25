@@ -152,6 +152,7 @@ save_config(char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("on_exit_reset", opts->on_exit_reset);
 	SAFE_SAVE_BOOL_OPTION("on_exit_clean", opts->on_exit_clean);
 	SAFE_SAVE_BOOL_OPTION("on_exit_erase_line", opts->on_exit_erase_line);
+	SAFE_SAVE_BOOL_OPTION("on_exit_sgr0", opts->on_exit_sgr0);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -354,6 +355,8 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->on_exit_clean, bool_val, res);
 			else if (strcmp(key, "on_exit_erase_line") == 0)
 				is_valid = assign_bool(key, &opts->on_exit_erase_line, bool_val, res);
+			else if (strcmp(key, "on_exit_sgr0") == 0)
+				is_valid = assign_bool(key, &opts->on_exit_sgr0, bool_val, res);
 
 			if (!is_valid || res == -1)
 				break;

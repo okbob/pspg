@@ -101,6 +101,7 @@ typedef struct
 	bool	on_exit_clean;
 	bool	on_exit_reset;
 	bool	on_exit_erase_line;
+	bool	on_exit_sgr0;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

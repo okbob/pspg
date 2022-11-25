@@ -125,6 +125,7 @@ This pager can be used from the following command line clients, too:
       --on-exit-reset          sends reset terminal sequence "\33c"
       --on-exit-clean          sends clean terminal sequence "\033[2J"
       --on-exit-erase-line     sends erase line terminal sequence "\33[2K\r"
+      --on-exit-sgr0           sends sgr0 terminal sequence "\033[0;10m"
 
     Watch mode options:
       -q, --query=QUERY        execute query

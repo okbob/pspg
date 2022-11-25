@@ -124,6 +124,8 @@ char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 bool	use_utf8;
 bool	quiet_mode = false;
 
+char *s;
+
 /*
  * Global state variables
  */
@@ -2624,6 +2626,7 @@ main(int argc, char *argv[])
 	opts.on_exit_reset = false;
 	opts.on_exit_clean = false;
 	opts.on_exit_erase_line = false;
+	opts.on_exit_sgr0 = false;
 
 	setup_sigsegv_handler();
 
@@ -6744,6 +6747,16 @@ refresh:
 
 	if (opts.on_exit_erase_line)
 		printf("\33[2K\r");
+
+	if (opts.on_exit_sgr0)
+	{
+		char	   *s;
+
+		s = tigetstr((NCURSES_CONST char *) "sgr0");
+
+		if (s != 0 && s != (char *) -1)
+			fprintf(stdout, "%s", s);
+	}
 
 	if (raw_output_quit)
 	{
