@@ -100,6 +100,16 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 
 	config->funckey_bar_style = false;
 
+	/*
+	 * rgb themes requires possibility to change color, use
+	 * fallback theme when there is not this possibility.
+	 */
+	if (!can_change_color())
+	{
+		/* force fallback style */
+		start_from_rgb = false;
+	}
+
 	switch (style)
 	{
 		case ST_MENU_STYLE_MCB:

@@ -41,7 +41,9 @@ typedef struct
 	unsigned int rgb;
 } ColorCacheItem;
 
-static ColorCacheItem ColorCache[255];
+#define COLOR_CACHE_SIZE		255
+
+static ColorCacheItem ColorCache[COLOR_CACHE_SIZE];
 static int		nColorCache;
 
 const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0};
@@ -98,15 +100,35 @@ color_index_rgb(unsigned int rgb)
 
 	int			i;
 
+	/* Use already registered colors */
 	for (i = 0; i <nColorCache; i++)
 	{
 		if (ColorCache[i].rgb == rgb)
 			return ColorCache[i].color;
 	}
 
-	/* rgb is not in cache, new registration is necessary */
-	if (ncurses_color_index >= 255)
+	/*
+	 * When color is not in cache, try to register new color,
+	 * but only when it is allowed, and when the number of color
+	 * is less than COLORS constant.
+	 */
+	if (!can_change_color())
+	{
+		log_row("the terminal doesn't allow to change of color");
 		return -1;
+	}
+
+	if (ncurses_color_index >= COLORS)
+	{
+		log_row("cannot to define own color, reach limit %d colors", COLORS);
+		return -1;
+	}
+
+	if (nColorCache >= COLOR_CACHE_SIZE)
+	{
+		log_row("cannot to define own color, reach limit %d colors in color's cache", COLOR_CACHE_SIZE);
+		return -1;
+	}
 
 	ColorCache[nColorCache].color = ncurses_color_index++;
 	ColorCache[nColorCache].rgb = rgb;
@@ -115,7 +137,8 @@ color_index_rgb(unsigned int rgb)
 	g = ((rgb >> 8) & 0xff) / 255.0 * 1000.0;
 	b = ((rgb) & 0xff) / 255.0 * 1000.0;
 
-	init_color(ColorCache[nColorCache].color, r, g, b);
+	if (init_color(ColorCache[nColorCache].color, r, g, b) == ERR)
+		log_row("init_color function returns ERR");
 
 	return ColorCache[nColorCache++].color;
 }
