@@ -55,6 +55,7 @@ This pager can be used from the following command line clients, too:
       --help                   show this help
       -V, --version            show version
       --info                   show info about libraries and system
+      --direct-color           force direct-color terminal mode
       -f, --file=FILE          open file
       -F, --quit-if-one-screen
                                quit if content is one screen
@@ -583,6 +584,12 @@ are problems with usage - unwanted visual artefacts when you move with mouse whe
 button is pressed, then 1. please, report issue (please, attach log file), 2. use an option
 `--no-xterm-mouse-mode` and `pspg` will not try to activate this mode.
 
+# Note - true color themes on KDE konsole terminal
+
+This terminal supports true colors, but only in direct mode (it doesn't allows to change
+the color definition from basic 256 color palete). You can use use `TERM=xterm-direct`.
+When `TERM` strings contains `direct` substring, `pspg` switch to use direct color. This
+mode requires some not too much old ncurses.
 
 # Note - compilation issue
 

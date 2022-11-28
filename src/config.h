@@ -102,6 +102,7 @@ typedef struct
 	bool	on_exit_reset;
 	bool	on_exit_erase_line;
 	bool	on_exit_sgr0;
+	bool	direct_color;
 } Options;
 
 extern bool save_config(char *path, Options *opts);

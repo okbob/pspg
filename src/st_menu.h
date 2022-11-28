@@ -170,4 +170,6 @@ extern void st_cmdbar_post(struct ST_CMDBAR *cmdbar);
 extern void st_cmdbar_unpost(struct ST_CMDBAR *cmdbar);
 extern void st_cmdbar_free(struct ST_CMDBAR *cmdbar);
 
+extern void st_menu_set_direct_color(bool direct_color);
+
 #endif

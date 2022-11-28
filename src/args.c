@@ -121,6 +121,7 @@ static struct option long_options[] =
 	{"on-exit-erase-line", no_argument, 0, 55},
 	{"info", no_argument, 0, 56},
 	{"on-exit-sgr0", no_argument, 0, 57},
+	{"direct-color", no_argument, 0, 58},
 	{0, 0, 0, 0}
 };
 
@@ -381,6 +382,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --help                   show this help\n");
 					fprintf(stdout, "  -V, --version            show version\n");
 					fprintf(stdout, "  --info                   show info about libraries and system\n");
+					fprintf(stdout, "  --direct-color           use direct true colors\n");
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
@@ -785,6 +787,19 @@ readargs(char **argv,
 			case 57:
 				opts->on_exit_sgr0 = true;
 				break;
+
+			case 58:
+				opts->direct_color = true;
+
+#ifndef NCURSES_EXT_FUNCS
+
+				state->errstr = "direct color mode requires ncurses with extended function support"
+				return false;
+
+#endif
+
+				break;
+
 
 			default:
 				{

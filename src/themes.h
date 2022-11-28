@@ -199,7 +199,7 @@ typedef enum
 } PspgThemeElements;
 
 
-extern void initialize_color_pairs(int theme);
+extern void initialize_color_pairs(int theme, bool direct_color);
 extern void initialize_theme(int theme, int window_identifier, bool is_tabular_fmt, bool no_highlight_lines, int themedef_bank, Theme *t);
 extern void applyCustomTheme(PspgThemeLoaderElement *tle, PspgThemeLoaderElement *tle2);
 extern attr_t ncurses_theme_attr(PspgThemeElements idx);

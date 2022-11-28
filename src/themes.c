@@ -45,24 +45,25 @@ typedef struct
 
 static ColorCacheItem ColorCache[COLOR_CACHE_SIZE];
 static int		nColorCache;
+static bool		use_direct_color;
 
-const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0};
-const PspgColor PspgRed = {PSPG_COLOR_BASIC, PSPG_RED_COLOR, 0};
-const PspgColor PspgGreen = {PSPG_COLOR_BASIC, PSPG_GREEN_COLOR, 0};
-const PspgColor PspgBrown = {PSPG_COLOR_BASIC, PSPG_BROWN_COLOR, 0};
-const PspgColor PspgBlue = {PSPG_COLOR_BASIC, PSPG_BLUE_COLOR, 0};
-const PspgColor PspgMagenta = {PSPG_COLOR_BASIC, PSPG_MAGENTA_COLOR, 0};
-const PspgColor PspgCyan = {PSPG_COLOR_BASIC, PSPG_CYAN_COLOR, 0};
-const PspgColor PspgLightGray = {PSPG_COLOR_BASIC, PSPG_LIGHT_GRAY_COLOR, 0};
-const PspgColor PspgGray = {PSPG_COLOR_BASIC, PSPG_GRAY_COLOR, 0};
-const PspgColor PspgBrightRed = {PSPG_COLOR_BASIC, PSPG_BRIGHT_RED_COLOR, 0};
-const PspgColor PspgBrightGreen = {PSPG_COLOR_BASIC, PSPG_BRIGHT_GREEN_COLOR, 0};
-const PspgColor PspgYellow = {PSPG_COLOR_BASIC, PSPG_YELLOW_COLOR, 0};
-const PspgColor PspgBrightBlue = {PSPG_COLOR_BASIC, PSPG_BRIGHT_BLUE_COLOR, 0};
-const PspgColor PspgBrightMagenta = {PSPG_COLOR_BASIC, PSPG_BRIGHT_MAGENTA_COLOR, 0};
-const PspgColor PspgBrightCyan = {PSPG_COLOR_BASIC, PSPG_BRIGHT_CYAN_COLOR, 0};
-const PspgColor PspgWhite = {PSPG_COLOR_BASIC, PSPG_WHITE_COLOR, 0};
-const PspgColor PspgDefault = {PSPG_COLOR_BASIC, PSPG_DEFAULT_COLOR, 0};
+const PspgColor PspgBlack = {PSPG_COLOR_BASIC, PSPG_BLACK_COLOR, 0x000000};
+const PspgColor PspgRed = {PSPG_COLOR_BASIC, PSPG_RED_COLOR, 0xaa0000};
+const PspgColor PspgGreen = {PSPG_COLOR_BASIC, PSPG_GREEN_COLOR, 0x00aa00};
+const PspgColor PspgBrown = {PSPG_COLOR_BASIC, PSPG_BROWN_COLOR, 0xaa5500};
+const PspgColor PspgBlue = {PSPG_COLOR_BASIC, PSPG_BLUE_COLOR, 0x0000aa};
+const PspgColor PspgMagenta = {PSPG_COLOR_BASIC, PSPG_MAGENTA_COLOR, 0xaa00aa};
+const PspgColor PspgCyan = {PSPG_COLOR_BASIC, PSPG_CYAN_COLOR, 0x00aaaa};
+const PspgColor PspgLightGray = {PSPG_COLOR_BASIC, PSPG_LIGHT_GRAY_COLOR, 0xaaaaaa};
+const PspgColor PspgGray = {PSPG_COLOR_BASIC, PSPG_GRAY_COLOR, 0x555555};
+const PspgColor PspgBrightRed = {PSPG_COLOR_BASIC, PSPG_BRIGHT_RED_COLOR, 0xff5555};
+const PspgColor PspgBrightGreen = {PSPG_COLOR_BASIC, PSPG_BRIGHT_GREEN_COLOR, 0x55ff55};
+const PspgColor PspgYellow = {PSPG_COLOR_BASIC, PSPG_YELLOW_COLOR, 0xffff55};
+const PspgColor PspgBrightBlue = {PSPG_COLOR_BASIC, PSPG_BRIGHT_BLUE_COLOR, 0x5555ff};
+const PspgColor PspgBrightMagenta = {PSPG_COLOR_BASIC, PSPG_BRIGHT_MAGENTA_COLOR, 0xff55ff};
+const PspgColor PspgBrightCyan = {PSPG_COLOR_BASIC, PSPG_BRIGHT_CYAN_COLOR, 0x55ffff};
+const PspgColor PspgWhite = {PSPG_COLOR_BASIC, PSPG_WHITE_COLOR, 0xffffff};
+const PspgColor PspgDefault = {PSPG_COLOR_BASIC, PSPG_DEFAULT_COLOR, -1};
 
 static PspgThemeElement themedef[THEMEDEF_SIZE][2];
 
@@ -165,7 +166,7 @@ deftheme_rgb(PspgThemeElements idx, unsigned int fg, unsigned int bg, int attr)
 	te->attr = attr;
 }
 
-int
+static int
 ncurses_color(PspgBasicColor cv, bool *isbright)
 {
 	*isbright = false;
@@ -219,11 +220,13 @@ ncurses_color(PspgBasicColor cv, bool *isbright)
 	return -1;
 }
 
-int
+static int
 ncurses_color_ex(PspgColor c)
 {
 	if (c.cp == PSPG_COLOR_RGB)
+	{
 		return color_index_rgb(c.rgb);
+	}
 	else if (c.cp == PSPG_COLOR_BASIC)
 	{
 		bool	isbright;
@@ -234,7 +237,7 @@ ncurses_color_ex(PspgColor c)
 		return isbright ? result + 8 : result;
 	}
 	else
-		return 0;
+		return c.bc;
 }
 
 attr_t
@@ -267,7 +270,12 @@ ncurses_theme_attr(PspgThemeElements idx)
 		}
 	}
 
-	if (te->fg.cp == PSPG_COLOR_BASIC &&
+	if (use_direct_color)
+	{
+		fgcolor = te->fg.rgb;
+		bgcolor = te->bg.rgb;
+	}
+	else if (te->fg.cp == PSPG_COLOR_BASIC &&
 		te->bg.cp == PSPG_COLOR_BASIC)
 	{
 		fgcolor = ncurses_color(te->fg.bc, &fgcolorbright);
@@ -313,11 +321,13 @@ ncurses_theme_attr(PspgThemeElements idx)
 	else
 	{
 		/* fallback */
-		fgcolor = COLOR_WHITE;
-		bgcolor = COLOR_BLACK;
+		fgcolor = -1;
+		bgcolor = -1;
 	}
 
-	/* try to find color pair in cache */
+	/* try to find color pair in cache - The number of color pairs can be
+	 * limmited, so try to reuse it.
+	 */
 	for (i = 0; i < nColorPairCache; i++)
 	{
 		if (ColorPairCache[i].fg == fgcolor &&
@@ -335,7 +345,29 @@ ncurses_theme_attr(PspgThemeElements idx)
 	 * The number of color pairs can be limmited, so try
 	 * to reuse it.
 	 */
-	init_pair(ncurses_colorpair_index, fgcolor, bgcolor);
+	if (use_direct_color)
+	{
+
+#ifdef NCURSES_EXT_FUNCS
+
+		if (init_extended_pair(ncurses_colorpair_index, fgcolor, bgcolor) == ERR)
+			log_row("the function init_extended_color_pair returns ERR");
+
+#else
+
+		/* fallback */
+		init_pair(ncurses_colorpair_index, -1, -1);
+		log_row("init_extended_pair function is not available");
+
+#endif
+
+	}
+	else
+	{
+		if (init_pair(ncurses_colorpair_index, fgcolor, bgcolor) == ERR)
+			log_row("the function init_pair returns ERR");
+	}
+
 	result |= COLOR_PAIR(ncurses_colorpair_index);
 
 	ColorPairCache[nColorPairCache].fg = fgcolor;
@@ -357,7 +389,7 @@ typedef struct
  * Set theme definition
  */
 void
-initialize_color_pairs(int theme)
+initialize_color_pairs(int theme, bool direct_color)
 {
 	int		i;
 
@@ -368,6 +400,14 @@ initialize_color_pairs(int theme)
 	nColorCache = 0;
 
 	has_odd_themedef = false;
+
+	if (direct_color)
+	{
+		use_direct_color = true;
+		log_row("direct color mode");
+	}
+	else
+		use_direct_color = false;
 
 	/* reset colors */
 	start_color();

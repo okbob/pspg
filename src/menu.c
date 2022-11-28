@@ -311,6 +311,8 @@ init_menu_config(Options *opts)
 		menu_config.shadow_width = 2;
 	else if (opts->theme == 4)
 		menu_config.text_space = 4;
+
+	st_menu_set_direct_color(opts->direct_color);
 }
 
 /*

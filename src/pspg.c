@@ -2934,6 +2934,25 @@ main(int argc, char *argv[])
 
 	active_ncurses = true;
 
+#ifdef NCURSES_EXT_FUNCS
+
+	/* when direct colors are not forced */
+	if (!opts.direct_color)
+	{
+		char	   *termval = getenv("TERM");
+
+		if (strstr(termval, "direct"))
+		{
+			log_row("terminal with direct color detected");
+			opts.direct_color = true;
+		}
+	}
+
+	if (opts.direct_color)
+		log_row("direct color mode will be used");
+
+#endif
+
 	/* xterm mouse mode recheck */
 	if (opts.xterm_mouse_mode)
 	{
@@ -2999,14 +3018,14 @@ reinit_theme:
 
 	if (opts.custom_theme_name)
 	{
-		initialize_color_pairs(state.theme_template);
+		initialize_color_pairs(state.theme_template, opts.direct_color);
 		log_row("template theme %d loaded", state.theme_template);
 
 		applyCustomTheme(custom_theme_tle, custom_theme_tle2);
 		log_row("use custom theme \"%s\"", opts.custom_theme_name);
 	}
 	else
-		initialize_color_pairs(opts.theme);
+		initialize_color_pairs(opts.theme, opts.direct_color);
 
 	timeout(0);
 
