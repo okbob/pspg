@@ -2918,7 +2918,16 @@ main(int argc, char *argv[])
 	if (!open_tty_stream())
 		leave("missing a access to terminal device");
 
-	term = newterm(termname(), stdout, f_tty);
+	/*
+	 * force xterm-direect terminal definition when direct color is required.
+	 * ncurses doesn't work well when direct and not direct colors are used
+	 * together.
+	 */
+	if (opts.direct_color)
+		term = newterm("xterm-direct", stdout, f_tty);
+	else
+		term = newterm(termname(), stdout, f_tty);
+
 	if (!term)
 		leave("cannot to initialize new terminal");
 
