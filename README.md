@@ -397,7 +397,7 @@ Searching is starting after visible vertical column or on first visible not free
 some horizontal scrolling) or on first column. After last column searching starts from first again.
 
 
-# Export & Clipboard
+## Export & Clipboard
 
 For clipboard support the clipboard application should be installed: 1. wl-clipboard (Wayland),
 2. xclip (xwindows) or 3. pbcopy (MacOS).
@@ -412,7 +412,7 @@ not to work for same cases. You can specify the application by specify number (1
 `--clipboard-app` option.
 
 
-# Status line description
+## Status line description
 
 * `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char possitions from) .. (char possitions to)
 * `FC: d` - freezed columns length in chars
@@ -421,7 +421,7 @@ not to work for same cases. You can specify the application by specify number (1
 * `d%` - percent of already displayed data
 
 
-# Usage as csv viewer
+## Usage as csv viewer
 
 It works well with miller http://johnkerl.org/miller/doc/index.html
 <pre>
@@ -438,7 +438,7 @@ It can be integrated into <code>mc</code>
 <pre>
 
 
-#csv
+##csv
 
 regex/\.csv
     View=pspg -f %f --csv
@@ -447,14 +447,14 @@ regex/\.csv
 * restart <code>mc</code>
 
 
-# Known issues
+## Known issues
 
 * When you use `pspg` on Cygwin, then some temporary freezing of scrolling was reported
   In this case, please, use an option `--no-sleep`. I see slow scrolling (via scrollbar)
   inside konsole (KDE terminal). The option `--no-sleep` helps too.
 
 
-# Usage in watch mode
+## Usage in watch mode
 
 The result of query can be refreshed every n seconds. `pspg` remembers cursor row,
 possible vertical cursor, possible ordering. The refreshing should be paused by pressing
@@ -465,7 +465,7 @@ possible vertical cursor, possible ordering. The refreshing should be paused by 
 or by specification watch time by option `--watch`.
 
 
-# Streaming modes
+## Streaming modes
 
 `pspg` can read a continuous stream of tabular data from pipe, named pipe or from file
 (with an option `--stream` or it can read a stream of queries from pipe or from file
@@ -476,7 +476,7 @@ The query stream mode is an sequence of SQL statements separated by char GS (Gro
 separator - 0x1D on separated line.
 
 
-# Recommended psql configuration
+## Recommended psql configuration
 
 you should to add to your profile:
 <pre>
@@ -520,7 +520,7 @@ When you use a option `--only-for-tables`, then
 * set `PAGER` to `less` and `PSQL_PAGER` to `pspg`
 
 
-# MySQL usage
+## MySQL usage
 
 <pre>
 MariaDB [sakila]> pager pspg -s 14 -X --force-uniborder --quit-if-one-screen
@@ -530,7 +530,7 @@ MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 </pre>
 
 
-# SQLite
+## SQLite
 
 SQLite native client doesn't produce well formatted output, but can be forced
 to generate CSV format - and this format is well readable for `pspg`
@@ -539,7 +539,7 @@ to generate CSV format - and this format is well readable for `pspg`
 
 
 
-# pgcli
+## pgcli
 
 [pgcli](https://github.com/dbcli/pgcli/) needs the following configuration options (`~/.config/pgcli/config`):
 
@@ -554,7 +554,7 @@ and doesn't need `--pgcli-fix` option.
     pager = /usr/bin/pspg --rr=2 --quit-if-one-screen --ignore-case
 
 
-# sqlcl
+## sqlcl
 
 As `sqlcl` doesn't currently support a pager option directly, you can either use a tool like [qsh](https://github.com/muhmud/qsh) to work around this issue, or use the [pspg.sql](https://github.com/okbob/pspg/blob/master/scripts/sqlcl/pspg.sql) script from this repo.
 
@@ -566,7 +566,7 @@ You can now have the results of a query sent to `pspg` like this:
 
     SQL> pspg select * from user_tables;
 
-# nushell
+## nushell
 
 The `pspg` supports default `table_mode`: `rounded` and `table_mode`: `heavy`.
 
@@ -577,21 +577,23 @@ The conversion to csv can be used too.
 
 Note: `footer_mode` should be disabled
 
-# Note - mouse
+## Note - mouse
 
 pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique. If there
 are problems with usage - unwanted visual artefacts when you move with mouse when some mouse
 button is pressed, then 1. please, report issue (please, attach log file), 2. use an option
 `--no-xterm-mouse-mode` and `pspg` will not try to activate this mode.
 
-# Note - true color themes on KDE konsole terminal
+## Note - true color themes on KDE konsole terminal
 
-This terminal supports true colors, but only in direct mode (it doesn't allows to change
-the color definition from basic 256 color palete). You can use use `TERM=xterm-direct`.
-When `TERM` strings contains `direct` substring, `pspg` switch to use direct color. This
-mode requires some not too much old ncurses.
+On my Fedora this terminal doesn't correctly display true color themes. The basic problem
+is in default `TERM` setting, that is `xterm-256color`. Unfortunately, the `konsole` terminal
+is not fully compatible with `xterm`, and doesn't allow color changing. You can force direct
+colors by using the option `--direct-color` or by setting `TERM=xterm-direct`. Second option
+is more corect setting of `TERM` variable to `konsole-256color`. In this case the `pspg` will
+map the true rgb colors to supported 256 colors.
 
-# Note - compilation issue
+## Note - compilation issue
 
 Some linker issues can be fixed by:
 <pre>
@@ -608,7 +610,7 @@ I had to install `openssl-devel` package and I had to set
 
 On FreeBsd you should to use `gmake` instead `make`.
 
-# Note - Installation
+## Note - Installation
 
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
@@ -710,7 +712,7 @@ option.
     ./configure
 
 
-# Possible ToDo
+## Possible ToDo
 
 * Store data in some column format (now data are stored like array of rows). With this change can
   be possible to operate over columns - hide columns, change width, cyclic iteration over columns,
@@ -721,13 +723,13 @@ option.
   to remember first row, last row, current row. Now, these data are in global variables or in
   DataDesc and ScrDesc structures.
 
-# st_menu
+## st_menu
 
 This project uses st_menu library - implementation of CUA menubar and pulldown menu for ncurses
 https://github.com/okbob/ncurses-st-menu
 
 
-# Note
+## Note
 
 If you like it, send a postcard from your home country to my address, please:
 

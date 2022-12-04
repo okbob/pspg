@@ -1,6 +1,6 @@
 .\" generated with Ronn-NG/v0.9.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.9.1
-.TH "PSPG" "1" "November 2022" "" "pspg manual"
+.TH "PSPG" "1" "December 2022" "" "pspg manual"
 .SH "NAME"
 \fBpspg\fR \- Postgres Pager
 .P
@@ -371,11 +371,14 @@ The pager can be ended by pressing keys \fBq\fR or \fBF10\fR or \fBEsc\fR \fB0\f
 .SH "Use <kbd>Escape</kbd>, key instead <key>Alt</key> + <key>key</key>"
 pspg supports a possibility to use a sequence of keys \fBEsc\fR, \fBkey\fR instead an combination of \fBAlt\fR+\fBkey\fR\. The interval between pressing \fBEsc\fR and \fBkey\fR is limmited by interval specified by option \fBesc\-delay\fR or by configuration\'s option \fBesc_delay\fR\. This is max delay time in ms\. After this interval, the single pressing \fBEsc\fR is interpreted as \fBEscape\fR\. \-1 meas unlimited, 0 disables this feature\.
 .SH "Column search"
-Column search is case insensitive every time\. Searched column is marked by vertical cursor\. Last non empty string searching pattern is used when current searching pattern is empty string\. Searching is starting after visible vertical column or on first visible not freezed columns (after some horizontal scrolling) or on first column\. After last column searching starts from first again\.For clipboard support the clipboard application should be installed: 1\. wl\-clipboard (Wayland), 2\. xclip (xwindows) or 3\. pbcopy (MacOS)\.
+Column search is case insensitive every time\. Searched column is marked by vertical cursor\. Last non empty string searching pattern is used when current searching pattern is empty string\. Searching is starting after visible vertical column or on first visible not freezed columns (after some horizontal scrolling) or on first column\. After last column searching starts from first again\.
+.SH "Export & Clipboard"
+For clipboard support the clipboard application should be installed: 1\. wl\-clipboard (Wayland), 2\. xclip (xwindows) or 3\. pbcopy (MacOS)\.
 .P
 \fBpspg\fR try to translate unicode symbol \'∅\' to NULL every time\. If you don\'t use special setting by \fB\epset null \|\.\|\.\|\.\fR, then \fBpsql\fR displays empty string instead NULL\. \fBpspg\fR hasn\'t any special detection (in export routines) for this case\. You should to check and enable or disable menu item \fBEmpty string is NULL\fR\.
 .P
 \fBpspg\fR has automatic detection of clipboard application\. Unfortunatelly, this detection should not to work for same cases\. You can specify the application by specify number (1,2,3) to \fB\-\-clipboard\-app\fR option\.
+.SH "Status line description"
 .IP "\[ci]" 4
 \fBV: [d/d d\.\.d]\fR \- vertical cursor: (column number)/(columns) (char possitions from) \.\. (char possitions to)
 .IP "\[ci]" 4
@@ -387,6 +390,7 @@ Column search is case insensitive every time\. Searched column is marked by vert
 .IP "\[ci]" 4
 \fBd%\fR \- percent of already displayed data
 .IP "" 0
+.SH "Usage as csv viewer"
 It works well with miller http://johnkerl\.org/miller/doc/index\.html
 .IP "" 4
 .nf
@@ -406,7 +410,7 @@ insert there
 .nf
 
 
-#csv
+##csv
 
 regex/\e\.csv
     View=pspg \-f %f \-\-csv
@@ -415,14 +419,20 @@ regex/\e\.csv
 .IP "\[ci]" 4
 restart \fBmc\fR
 .IP "" 0
+.SH "Known issues"
 .IP "\[ci]" 4
 When you use \fBpspg\fR on Cygwin, then some temporary freezing of scrolling was reported In this case, please, use an option \fB\-\-no\-sleep\fR\. I see slow scrolling (via scrollbar) inside konsole (KDE terminal)\. The option \fB\-\-no\-sleep\fR helps too\.
 .IP "" 0
+.SH "Usage in watch mode"
 The result of query can be refreshed every n seconds\. \fBpspg\fR remembers cursor row, possible vertical cursor, possible ordering\. The refreshing should be paused by pressing \fBspace\fR key\. Repeated pressing of this key enables refreshing again\.
 .P
-\fBpspg\fR uses inotify API when it is available, and when input file is changed, then \fBpspg\fR reread file immediately\. This behave can be disabled by option \fB\-\-no\-watch\-file\fR or by specification watch time by option \fB\-\-watch\fR\.\fBpspg\fR can read a continuous stream of tabular data from pipe, named pipe or from file (with an option \fB\-\-stream\fR or it can read a stream of queries from pipe or from file (with an option \fB\-\-querystream\fR)\. In stream mode, only data in table format can be processed, because \fBpspg\fR uses empty line as separator between tables\.
+\fBpspg\fR uses inotify API when it is available, and when input file is changed, then \fBpspg\fR reread file immediately\. This behave can be disabled by option \fB\-\-no\-watch\-file\fR or by specification watch time by option \fB\-\-watch\fR\.
+.SH "Streaming modes"
+\fBpspg\fR can read a continuous stream of tabular data from pipe, named pipe or from file (with an option \fB\-\-stream\fR or it can read a stream of queries from pipe or from file (with an option \fB\-\-querystream\fR)\. In stream mode, only data in table format can be processed, because \fBpspg\fR uses empty line as separator between tables\.
 .P
-The query stream mode is an sequence of SQL statements separated by char GS (Group separator \- 0x1D on separated line\.you should to add to your profile:
+The query stream mode is an sequence of SQL statements separated by char GS (Group separator \- 0x1D on separated line\.
+.SH "Recommended psql configuration"
+you should to add to your profile:
 .IP "" 4
 .nf
 #for Postgres 10 and older
@@ -464,18 +474,21 @@ set \fBPAGER\fR to \fBpspg\fR and \fBPSQL_PAGER\fR to \fBless\fR or
 .IP "\[ci]" 4
 set \fBPAGER\fR to \fBless\fR and \fBPSQL_PAGER\fR to \fBpspg\fR
 .IP "" 0
+.SH "MySQL usage"
 .nf
 MariaDB [sakila]> pager pspg \-s 14 \-X \-\-force\-uniborder \-\-quit\-if\-one\-screen
 PAGER set to \'pspg \-s 14 \-X \-\-force\-uniborder \-\-quit\-if\-one\-screen\'
 MariaDB [sakila]> select now();
 MariaDB [sakila]> select * from nicer_but_slower_film_list limit 100;
 .fi
+.SH "SQLite"
 SQLite native client doesn\'t produce well formatted output, but can be forced to generate CSV format \- and this format is well readable for \fBpspg\fR
 .IP "" 4
 .nf
 sqlite3 \-csv \-header testdb\.db \'select * from foo2\' | pspg \-\-csv \-\-csv\-header=on \-\-double\-header
 .fi
 .IP "" 0
+.SH "pgcli"
 pgcli \fIhttps://github\.com/dbcli/pgcli/\fR needs the following configuration options (\fB~/\.config/pgcli/config\fR):
 .IP "" 4
 .nf
@@ -490,6 +503,7 @@ Older version of pgcli had very slow output in tabular format\. An workaround wa
 pager = /usr/bin/pspg \-\-rr=2 \-\-quit\-if\-one\-screen \-\-ignore\-case
 .fi
 .IP "" 0
+.SH "sqlcl"
 As \fBsqlcl\fR doesn\'t currently support a pager option directly, you can either use a tool like qsh \fIhttps://github\.com/muhmud/qsh\fR to work around this issue, or use the pspg\.sql \fIhttps://github\.com/okbob/pspg/blob/master/scripts/sqlcl/pspg\.sql\fR script from this repo\.
 .P
 To use the script, start \fBsqlcl\fR as shown below (it\'s important to pass in the details of your current tty):
@@ -505,6 +519,7 @@ You can now have the results of a query sent to \fBpspg\fR like this:
 SQL> pspg select * from user_tables;
 .fi
 .IP "" 0
+.SH "nushell"
 The \fBpspg\fR supports default \fBtable_mode\fR: \fBrounded\fR and \fBtable_mode\fR: \fBheavy\fR\.
 .P
 The conversion to csv can be used too\.
@@ -514,7 +529,13 @@ sys | get cpu | to csv | pspg \-\-csv
 .fi
 .IP "" 0
 .P
-Note: \fBfooter_mode\fR should be disabledpspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique\. If there are problems with usage \- unwanted visual artefacts when you move with mouse when some mouse button is pressed, then 1\. please, report issue (please, attach log file), 2\. use an option \fB\-\-no\-xterm\-mouse\-mode\fR and \fBpspg\fR will not try to activate this mode\.This terminal supports true colors, but only in direct mode (it doesn\'t allows to change the color definition from basic 256 color palete)\. You can use use \fBTERM=xterm\-direct\fR\. When \fBTERM\fR strings contains \fBdirect\fR substring, \fBpspg\fR switch to use direct color\. This mode requires some not too much old ncurses\.Some linker issues can be fixed by:
+Note: \fBfooter_mode\fR should be disabled
+.SH "Note \- mouse"
+pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique\. If there are problems with usage \- unwanted visual artefacts when you move with mouse when some mouse button is pressed, then 1\. please, report issue (please, attach log file), 2\. use an option \fB\-\-no\-xterm\-mouse\-mode\fR and \fBpspg\fR will not try to activate this mode\.
+.SH "Note \- true color themes on KDE konsole terminal"
+On my Fedora this terminal doesn\'t correctly display true color themes\. The basic problem is in default \fBTERM\fR setting, that is \fBxterm\-256color\fR\. Unfortunately, the \fBkonsole\fR terminal is not fully compatible with \fBxterm\fR, and doesn\'t allow color changing\. You can force direct colors by using the option \fB\-\-direct\-color\fR or by setting \fBTERM=xterm\-direct\fR\. Second option is more corect setting of \fBTERM\fR variable to \fBkonsole\-256color\fR\. In this case the \fBpspg\fR will map the true rgb colors to supported 256 colors\.
+.SH "Note \- compilation issue"
+Some linker issues can be fixed by:
 .IP "" 4
 .nf
 I changed
@@ -526,7 +547,9 @@ gcc pager\.c \-o pspg \-ggdb \-lncursesw
 .P
 If you want to use \fBpspg\fR as Postgres client, then you need run \fBconfigure \-\-with\-postgresql=yes\fR\. On Fedora with own Postgres build I had to install \fBopenssl\-devel\fR package and I had to set \fBexport PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"\fR\.
 .P
-On FreeBsd you should to use \fBgmake\fR instead \fBmake\fR\.When you compile code from source, run \./configure first\. Sometimes \./autogen\.sh first
+On FreeBsd you should to use \fBgmake\fR instead \fBmake\fR\.
+.SH "Note \- Installation"
+When you compile code from source, run \./configure first\. Sometimes \./autogen\.sh first
 .P
 If you would to display UTF\-8 characters, then \fBpspg\fR should be linked with \fBncursesw\fR library\. UTF\-8 characters are displayed badly when library \fBncursesw\fR is used\. You can see broken characters with incorrect locale setting too\.
 .P
@@ -599,12 +622,16 @@ export LDFLAGS="\-L/opt/csw/lib/64 \-R/opt/csw/lib/64"
 export PKG_CONFIG_PATH="/opt/csw/lib/64/pkgconfig"
 \&\./configure
 .fi
+.SH "Possible ToDo"
 .IP "\[ci]" 4
 Store data in some column format (now data are stored like array of rows)\. With this change can be possible to operate over columns \- hide columns, change width, cyclic iteration over columns, change order of columns, mark columns and export only selected columns (selected rows)\.
 .IP "\[ci]" 4
 Replace printing document directly to ncurses window by some smarter structure\. Internally there are lot of checks and fixs to support complex dynamic layout\. The possibly views should to remember first row, last row, current row\. Now, these data are in global variables or in DataDesc and ScrDesc structures\.
 .IP "" 0
-This project uses st_menu library \- implementation of CUA menubar and pulldown menu for ncurses https://github\.com/okbob/ncurses\-st\-menuIf you like it, send a postcard from your home country to my address, please:
+.SH "st_menu"
+This project uses st_menu library \- implementation of CUA menubar and pulldown menu for ncurses https://github\.com/okbob/ncurses\-st\-menu
+.SH "Note"
+If you like it, send a postcard from your home country to my address, please:
 .IP "" 4
 .nf
 Pavel Stehule
