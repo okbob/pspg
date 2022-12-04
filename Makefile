@@ -3,9 +3,9 @@ all:
 # Include setting from the configure script
 -include config.make
 
-# override CFLAGS += -g -O2 -Werror-implicit-function-declaration -D_POSIX_SOURCE=1 -std=c99  -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wjump-misses-init -Wdouble-promotion -Wshadow -pedantic -fstack-protector-all -fsanitize=address -fstack-protector -fstack-protector-strong
+override CFLAGS += -g -O2 -Werror-implicit-function-declaration -D_POSIX_SOURCE=1 -std=c99  -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wjump-misses-init -Wdouble-promotion -Wshadow -pedantic -fstack-protector-all -fsanitize=address -fstack-protector -fstack-protector-strong
 
-# LDFLAGS += -fsanitize=address
+ LDFLAGS += -fsanitize=address
 
 DEPS=$(wildcard *.d)
 PSPG_OFILES=csv.o print.o commands.o unicode.o themes.o pspg.o config.o sort.o pgclient.o args.o infra.o \

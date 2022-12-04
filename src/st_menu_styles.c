@@ -45,7 +45,7 @@ slc(short id, short foreground, short background)
 	}
 }
 
-static int
+static unsigned int
 get_rgb(short c, bool light)
 {
 	if (light)
@@ -177,16 +177,14 @@ colour_find_rgb(unsigned int rgb)
 static void
 set_rgb_color_pair(int *cp, int *attr, int fg, int bg, const char *csrc, int _attr)
 {
-	int		fgcolor, bgcolor;
+	unsigned int		fgcolor, bgcolor;
 
 	if (direct_color)
 	{
-		int fgcolor, bgcolor;
-
 		fgcolor = csrc[0] == 'b' ? get_rgb(fg, false) : rgb_color_cache[fg];
 		bgcolor = csrc[1] == 'b' ? get_rgb(bg, false) : rgb_color_cache[bg];
 
-#ifdef NCURSES_EXT_FUNCS
+#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 
@@ -229,7 +227,7 @@ set_color_pair(int *cp, int *attr, short fg, short bg, bool light)
 		fgcolor = get_rgb(fg, light);
 		bgcolor = get_rgb(bg, false);
 
-#ifdef NCURSES_EXT_FUNCS
+#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 

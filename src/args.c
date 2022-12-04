@@ -297,7 +297,7 @@ print_info(void)
 
 #if NCURSES_EXT_FUNCS
 
-	fprintf(stdout, "with ncurses extended functions support\n");
+	fprintf(stdout, "with ncurses extended functions support no: %d\n", NCURSES_EXT_FUNCS);
 
 #else
 
@@ -789,9 +789,13 @@ readargs(char **argv,
 				break;
 
 			case 58:
-				opts->direct_color = true;
 
-#ifndef NCURSES_EXT_FUNCS
+#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+
+				opts->direct_color = true;
+				break;
+
+#else
 
 				state->errstr = "direct color mode requires ncurses with extended function support"
 				return false;

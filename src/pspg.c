@@ -124,8 +124,6 @@ char pspg_errstr_buffer[PSPG_ERRSTR_BUFFER_SIZE];
 bool	use_utf8;
 bool	quiet_mode = false;
 
-char *s;
-
 /*
  * Global state variables
  */
@@ -2943,7 +2941,7 @@ main(int argc, char *argv[])
 
 	active_ncurses = true;
 
-#ifdef NCURSES_EXT_FUNCS
+#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
 
 	/* when direct colors are not forced */
 	if (!opts.direct_color)
