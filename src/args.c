@@ -277,6 +277,7 @@ print_info(void)
 
 #endif
 
+
 #ifdef HAVE_NCURSESW
 
 	fprintf(stdout, "ncurses with wide char support\n");
@@ -304,6 +305,17 @@ print_info(void)
 	fprintf(stdout, "without ncurses extended function support\n")
 
 #endif
+
+#ifdef NCURSES_EXT_COLORS
+
+	fprintf(stdout, "with ncurses extended colors no: %d\n", NCURSES_EXT_COLORS);
+
+#else
+
+	fprintf(stdout, "without ncurses extended colors\n");
+
+#endif
+
 
 #ifdef HAVE_POSTGRESQL
 
@@ -790,7 +802,7 @@ readargs(char **argv,
 
 			case 58:
 
-#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+#ifdef NCURSES_EXT_COLORS
 
 				opts->direct_color = true;
 				break;

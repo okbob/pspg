@@ -438,7 +438,7 @@ ncurses_theme_attr(PspgThemeElements idx)
 	if (use_direct_color)
 	{
 
-#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+#ifdef  NCURSES_EXT_COLORS
 
 		if (init_extended_pair(ncurses_colorpair_index, fgcolor, bgcolor) == ERR)
 			log_row("the function init_extended_color_pair returns ERR");

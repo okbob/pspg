@@ -2941,7 +2941,7 @@ main(int argc, char *argv[])
 
 	active_ncurses = true;
 
-#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+#ifdef  NCURSES_EXT_COLORS
 
 	/* when direct colors are not forced */
 	if (!opts.direct_color)

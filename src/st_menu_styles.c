@@ -184,7 +184,7 @@ set_rgb_color_pair(int *cp, int *attr, int fg, int bg, const char *csrc, int _at
 		fgcolor = csrc[0] == 'b' ? get_rgb(fg, false) : rgb_color_cache[fg];
 		bgcolor = csrc[1] == 'b' ? get_rgb(bg, false) : rgb_color_cache[bg];
 
-#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+#ifdef  NCURSES_EXT_COLORS
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 
@@ -227,7 +227,7 @@ set_color_pair(int *cp, int *attr, short fg, short bg, bool light)
 		fgcolor = get_rgb(fg, light);
 		bgcolor = get_rgb(bg, false);
 
-#if defined NCURSES_EXT_FUNCS && NCURSES_EXT_FUNCS >= 20170401
+#ifdef  NCURSES_EXT_COLORS
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 
