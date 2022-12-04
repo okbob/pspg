@@ -809,7 +809,7 @@ readargs(char **argv,
 
 #else
 
-				state->errstr = "direct color mode requires ncurses with extended function support"
+				state->errstr = "direct color mode requires ncurses with extended function support";
 				return false;
 
 #endif
