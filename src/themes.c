@@ -92,14 +92,80 @@ styledep(PspgThemeElements el)
 	}
 }
 
+/*
+ * This is taken from tmux
+ */
+static int
+colour_dist_sq(int R, int G, int B, int r, int g, int b)
+{
+	return ((R - r) * (R - r) + (G - g) * (G - g) + (B - b) * (B - b));
+}
+
+static int
+colour_to_6cube(int v)
+{
+	if (v < 48)
+		return (0);
+
+	if (v < 114)
+		return (1);
+
+	return ((v - 35) / 40);
+}
+
+/*
+ * Convert an RGB triplet to the xterm(1) 256 colour palette.
+ *
+ * xterm provides a 6x6x6 colour cube (16 - 231) and 24 greys (232 - 255). We
+ * map our RGB colour to the closest in the cube, also work out the closest
+ * grey, and use the nearest of the two.
+ *
+ * Note that the xterm has much lower resolution for darker colours (they are
+ * not evenly spread out), so our 6 levels are not evenly spread: 0x0, 0x5f
+ * (95), 0x87 (135), 0xaf (175), 0xd7 (215) and 0xff (255). Greys are more
+ * evenly spread (8, 18, 28 ... 238).
+ */
+static int
+colour_find_rgb(unsigned char r,
+				unsigned char g,
+				unsigned char b)
+{
+	static const int	q2c[6] = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
+	int			qr, qg, qb, cr, cg, cb, d, idx;
+	int			grey_avg, grey_idx, grey;
+
+	/* Map RGB to 6x6x6 cube. */
+	qr = colour_to_6cube(r); cr = q2c[qr];
+	qg = colour_to_6cube(g); cg = q2c[qg];
+	qb = colour_to_6cube(b); cb = q2c[qb];
+
+	/* If we have hit the colour exactly, return early. */
+	if (cr == r && cg == g && cb == b)
+		return 16 + (36 * qr) + (6 * qg) + qb;
+
+	/* Work out the closest grey (average of RGB). */
+	grey_avg = (r + g + b) / 3;
+	if (grey_avg > 238)
+		grey_idx = 23;
+	else
+		grey_idx = (grey_avg - 3) / 10;
+	grey = 8 + (10 * grey_idx);
+
+	/* Is grey or 6x6x6 colour closest? */
+	d = colour_dist_sq(cr, cg, cb, r, g, b);
+	if (colour_dist_sq(grey, grey, grey, r, g, b) < d)
+		idx = 232 + grey_idx;
+	else
+		idx = 16 + (36 * qr) + (6 * qg) + qb;
+
+	return idx;
+}
+
 static short
 color_index_rgb(unsigned int rgb)
 {
-	short		r;
-	short		g;
-	short		b;
-
 	int			i;
+	bool		change_color = true;
 
 	/* Use already registered colors */
 	for (i = 0; i <nColorCache; i++)
@@ -116,10 +182,17 @@ color_index_rgb(unsigned int rgb)
 	if (!can_change_color())
 	{
 		log_row("the terminal doesn't allow to change of color");
-		return -1;
+
+		if (COLORS < 256)
+		{
+			log_row("there are not enough colors, use default");
+			return -1;
+		}
+		else
+			change_color = false;
 	}
 
-	if (ncurses_color_index >= COLORS)
+	if (change_color && ncurses_color_index >= COLORS)
 	{
 		log_row("cannot to define own color, reach limit %d colors", COLORS);
 		return -1;
@@ -131,15 +204,32 @@ color_index_rgb(unsigned int rgb)
 		return -1;
 	}
 
-	ColorCache[nColorCache].color = ncurses_color_index++;
-	ColorCache[nColorCache].rgb = rgb;
+	if (change_color)
+	{
+		short		r, g, b;
 
-	r = ((rgb >> 16) & 0xff) / 255.0 * 1000.0;
-	g = ((rgb >> 8) & 0xff) / 255.0 * 1000.0;
-	b = ((rgb) & 0xff) / 255.0 * 1000.0;
+		ColorCache[nColorCache].color = ncurses_color_index++;
+		ColorCache[nColorCache].rgb = rgb;
 
-	if (init_color(ColorCache[nColorCache].color, r, g, b) == ERR)
-		log_row("init_color function returns ERR");
+		r = ((rgb >> 16) & 0xff) / 255.0 * 1000.0;
+		g = ((rgb >> 8) & 0xff) / 255.0 * 1000.0;
+		b = ((rgb) & 0xff) / 255.0 * 1000.0;
+
+		if (init_color(ColorCache[nColorCache].color, r, g, b) == ERR)
+			log_row("init_color function returns ERR");
+	}
+	else
+	{
+		unsigned char		r, g, b;
+
+		/* try to find most near color in 256 color palete */
+		r = ((rgb >> 16) & 0xff);
+		g = ((rgb >> 8) & 0xff);
+		b = ((rgb) & 0xff);
+
+		ColorCache[nColorCache].rgb = rgb;
+		ColorCache[nColorCache].color = colour_find_rgb(r, g, b);
+	}
 
 	return ColorCache[nColorCache++].color;
 }
