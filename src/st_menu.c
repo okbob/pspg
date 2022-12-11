@@ -2453,6 +2453,11 @@ _st_menu_free(struct ST_MENU *menu)
 			delwin(menu->shadow_window);
 
 		del_panel(menu->panel);
+
+		/* pdcurses doesn't like deleting window with subwindows */
+		if (menu->window != menu->draw_area && menu->draw_area)
+			delwin(menu->draw_area);
+
 		delwin(menu->window);
 
 		free(menu->bar_fields_x_pos);
