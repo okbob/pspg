@@ -47,7 +47,12 @@
 #include <termios.h>
 #endif
 
+#ifdef PDCURSES
+
 #include <term.h>
+
+#endif
+
 #include <time.h>
 #include <unistd.h>
 
