@@ -302,7 +302,7 @@ print_info(void)
 
 #else
 
-	fprintf(stdout, "without ncurses extended function support\n")
+	fprintf(stdout, "without ncurses extended function support\n");
 
 #endif
 
@@ -316,6 +316,11 @@ print_info(void)
 
 #endif
 
+#ifdef PDCURSES
+
+	fprintf(stdout, "with pdcurses %s\n", PDC_VERDOT);
+
+#endif
 
 #ifdef HAVE_POSTGRESQL
 

@@ -47,6 +47,7 @@
 #include <termios.h>
 #endif
 
+#include <term.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -72,6 +73,17 @@
 
 #endif
 
+#ifdef PDCURSES
+
+#define BUTTON_CTRL    BUTTON_MODIFIER_CONTROL
+
+#endif
+
+#ifndef NCURSES_CONST
+
+#define NCURSES_CONST	const
+
+#endif
 
 static char		last_row_search[256];
 static char		last_col_search[256];
@@ -3040,7 +3052,7 @@ reinit_theme:
 
 	set_escdelay(1);
 
-#else
+#elif !defined PDCURSES
 
 	ESCDELAY = 1;
 
