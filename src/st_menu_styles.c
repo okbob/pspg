@@ -175,7 +175,7 @@ colour_find_rgb(unsigned int rgb)
 }
 
 static void
-set_rgb_color_pair(int *cp, int *attr, int fg, int bg, const char *csrc, int _attr)
+set_rgb_color_pair(int *cp, attr_t *attr, int fg, int bg, const char *csrc, attr_t _attr)
 {
 	unsigned int		fgcolor, bgcolor;
 
@@ -218,16 +218,16 @@ set_rgb_color_pair(int *cp, int *attr, int fg, int bg, const char *csrc, int _at
 }
 
 static void
-set_color_pair(int *cp, int *attr, short fg, short bg, bool light)
+set_color_pair(int *cp, attr_t *attr, short fg, short bg, bool light)
 {
 	if (direct_color)
 	{
+#ifdef  NCURSES_EXT_COLORS
+
 		int fgcolor, bgcolor;
 
 		fgcolor = get_rgb(fg, light);
 		bgcolor = get_rgb(bg, false);
-
-#ifdef  NCURSES_EXT_COLORS
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 

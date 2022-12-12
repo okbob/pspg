@@ -91,19 +91,19 @@ typedef struct
 	bool	force_ascii_art;		/* use ascii chars for borders */
 	int		shadow_width;			/* when shadow_width is higher than zero, shadow is visible */
 	int		menu_background_cpn;	/* draw area color pair number */
-	int		menu_background_attr;	/* draw area attributte */
+	attr_t	menu_background_attr;	/* draw area attributte */
 	int		menu_unfocused_cpn;		/* draw area color pair number when menu has not focus */
-	int		menu_unfocused_attr;	/* draw area attribute when menu has not focus */
+	attr_t	menu_unfocused_attr;	/* draw area attribute when menu has not focus */
 	int		menu_shadow_cpn;		/* menu shadow color pair number */
-	int		menu_shadow_attr;		/* menu shadow area attributte */
+	attr_t	menu_shadow_attr;		/* menu shadow area attributte */
 	int		accelerator_cpn;		/* color pair of accelerators */
-	int		accelerator_attr;		/* accelerator attributes */
+	attr_t	accelerator_attr;		/* accelerator attributes */
 	int		cursor_cpn;				/* cursor color pair */
-	int		cursor_attr;			/* cursor attributte */
+	attr_t	cursor_attr;			/* cursor attributte */
 	int		cursor_accel_cpn;		/* color pair of accelerator on cursor row */
-	int		cursor_accel_attr;		/* attributte of of accelerator on cursor row */
+	attr_t	cursor_accel_attr;		/* attributte of of accelerator on cursor row */
 	int		disabled_cpn;			/* color of disabled menu fields */
-	int		disabled_attr;			/* attributes of disabled menu fields */
+	attr_t	disabled_attr;			/* attributes of disabled menu fields */
 	int		shortcut_space;			/* spaces between text and shortcut */
 	int		text_space;				/* spaces between text fields (menubar), when it is -1, then dynamic spaces (FAND) */
 	int		init_text_space;		/* initial space for menu bar */
