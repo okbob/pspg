@@ -145,38 +145,63 @@ safe_malloc(size_t size)
 	return ptr;
 }
 
-#ifdef PDCURSES
-
-/*
- Created a new version of newwin() because PDCurses (unlike ncurses)
- will not allocate a Window if:
- (begin_y + rows > SP->lines || begin_x + cols > SP->cols)
- Therefore we will make an attempt to reduce the rows/cols if needed
- to get the allocation to pass for *most* cases.
-*/
-static WINDOW*
-newwin2(int* rows, int* cols, int begin_y, int begin_x)
+static void
+adjust_dimension(int size, int begin_pos, int min_pos, int max_size, int shadow_size,
+				 int *adjusted_size, int *adjusted_begin_pos,
+				 int *adjusted_shadow_size, int *adjusted_shadow_begin_pos)
 {
-	int SPlines, SPcols;
+	int		total_size = size + shadow_size;
+	int		_max_size = max_size - min_pos;
 
-	getmaxyx(stdscr, SPlines, SPcols);
-	if (begin_y + *rows > SPlines)
+	if ((begin_pos + total_size) <= max_size)
 	{
-		*rows = SPlines - begin_y;
+		/* data are inside range without any change */
+		*adjusted_size = size;
+		*adjusted_begin_pos = begin_pos;
+		*adjusted_shadow_size = size;
+		*adjusted_shadow_begin_pos = begin_pos + shadow_size;
 	}
-	if (begin_x + *cols > SPcols)
+	else if (_max_size > total_size)
 	{
-		*cols = SPcols - begin_x;
+		/* we can just move begin pos */
+		*adjusted_size = size;
+		*adjusted_begin_pos = max_size - total_size;
+		*adjusted_shadow_size = size;
+		*adjusted_shadow_begin_pos = *adjusted_begin_pos + shadow_size;
 	}
-
-	return newwin(*rows, *cols, begin_y, begin_x);
+	else
+	{
+		*adjusted_size = (_max_size >= size) ? size : _max_size;
+		*adjusted_begin_pos = min_pos;
+		*adjusted_shadow_size = *adjusted_size;
+		*adjusted_shadow_begin_pos = *adjusted_begin_pos;
+	}
 }
 
-#else
+/*
+ * We try to corect dimensions of windows, because pdcurses doesn't allow
+ * parts of window to be out of screen.
+ */
+static void
+adjust_dimensions(int rows, int cols,
+				  int begin_y, int begin_x, int min_y, int min_x,
+				  int shadow_width,
+				  int *adjusted_rows, int *adjusted_cols,
+				  int *adjusted_begin_y, int *adjusted_begin_x,
+				  int *adjusted_shadow_rows, int *adjusted_shadow_cols,
+				  int *adjusted_shadow_begin_y, int *adjusted_shadow_begin_x)
+{
+	int		maxy, maxx;
+	getmaxyx(stdscr, maxy, maxx);
 
-#define newwin2(rows, cols, begin_y, begin_x)  newwin(*rows, *cols, begin_y, begin_x)
+	adjust_dimension(rows, begin_y, min_y, maxy, shadow_width > 0 ? 1 : 0,
+					 adjusted_rows, adjusted_begin_y,
+					 adjusted_shadow_rows, adjusted_shadow_begin_y);
 
-#endif
+	adjust_dimension(cols, begin_x, min_x, maxx, shadow_width,
+					 adjusted_cols, adjusted_begin_x,
+					 adjusted_shadow_cols, adjusted_shadow_begin_x);
+}
 
 /*
  * Returns bytes of multibyte char
@@ -937,7 +962,7 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 			{
 				WINDOW   *new_shadow_window;
 
-				new_shadow_window = newwin2(&new_rows, &new_cols, new_y + 1, new_x + config->shadow_width);
+				new_shadow_window = newwin(new_rows, new_cols, new_y + 1, new_x + config->shadow_width);
 
 				/* There are no other possibility to resize panel */
 				replace_panel(menu->shadow_panel, new_shadow_window);
@@ -2165,6 +2190,10 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 {
 	struct ST_MENU *menu;
 	int		rows, cols;
+	int		adjusted_rows, adjusted_cols;
+	int		adjusted_begin_y, adjusted_begin_x;
+	int		adjusted_shadow_rows, adjusted_shadow_cols;
+	int		adjusted_shadow_begin_y, adjusted_shadow_begin_x;
 	ST_MENU_ITEM *menu_item;
 	int		menu_fields = 0;
 	int		i;
@@ -2212,10 +2241,26 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 	if (config->wide_hborders)
 		rows += 2;
 
+	menu->ideal_y_pos = begin_y;
+	menu->ideal_x_pos = begin_x;
+	menu->rows = rows;
+	menu->cols = cols;
+
+	/*
+	 * We try to corect dimensions of windows, because pdcurses doesn't allow
+	 * parts of window to be out of screen.
+	 */
+	adjust_dimensions(rows, cols, begin_y, begin_x, 1, 0, config->shadow_width,
+					  &adjusted_rows, &adjusted_cols,
+					  &adjusted_begin_y, &adjusted_begin_x,
+					  &adjusted_shadow_rows, &adjusted_shadow_cols,
+					  &adjusted_shadow_begin_y, &adjusted_shadow_begin_x);
+
 	/* Prepare property for menu shadow */
 	if (config->shadow_width > 0)
 	{
-		menu->shadow_window = newwin2(&rows, &cols, begin_y + 1, begin_x + config->shadow_width);
+		menu->shadow_window = newwin(adjusted_shadow_rows, adjusted_shadow_cols,
+									 adjusted_shadow_begin_y, adjusted_shadow_begin_x);
 		menu->shadow_panel = new_panel(menu->shadow_window);
 
 		hide_panel(menu->shadow_panel);
@@ -2229,12 +2274,7 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 		menu->shadow_panel = NULL;
 	}
 
-	menu->window = newwin2(&rows, &cols, begin_y, begin_x);
-
-	menu->ideal_y_pos = begin_y;
-	menu->ideal_x_pos = begin_x;
-	menu->rows = rows;
-	menu->cols = cols;
+	menu->window = newwin(adjusted_rows, adjusted_cols, adjusted_begin_y, adjusted_begin_x);
 
 	wbkgd(menu->window, COLOR_PAIR(config->menu_background_cpn) | config->menu_background_attr);
 	wnoutrefresh(menu->window);
@@ -2270,8 +2310,8 @@ st_menu_new(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items, int begin_y, int b
 	if (config->wide_vborders || config->wide_hborders)
 	{
 		menu->draw_area = derwin(menu->window,
-			rows - (config->wide_hborders ? 2 : 0),
-			cols - (config->wide_vborders ? 2 : 0),
+			adjusted_rows - (config->wide_hborders ? 2 : 0),
+			adjusted_cols - (config->wide_vborders ? 2 : 0),
 			config->wide_hborders ? 1 : 0,
 			config->wide_vborders ? 1 : 0);
 
@@ -2312,7 +2352,7 @@ st_menu_new_menubar2(ST_MENU_CONFIG *barcfg, ST_MENU_CONFIG *pdcfg, ST_MENU_ITEM
 	menu = safe_malloc(sizeof(struct ST_MENU));
 
 	maxy = 1;
-	menu->window = newwin2(&maxy, &maxx, 0, 0);
+	menu->window = newwin(maxy, maxx, 0, 0);
 	menu->panel = new_panel(menu->window);
 
 	/* there are not shadows */
@@ -2900,7 +2940,7 @@ st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items)
 	getmaxyx(stdscr, maxy, maxx);
 
 	tmpy = 1;
-	cmdbar->window = newwin2(&tmpy, &maxx, maxy - 1, 0);
+	cmdbar->window = newwin(tmpy, maxx, maxy - 1, 0);
 	cmdbar->panel = new_panel(cmdbar->window);
 
 	wbkgd(cmdbar->window,
