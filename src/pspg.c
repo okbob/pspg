@@ -3654,6 +3654,20 @@ reinit_theme:
 								   NULL, true, true, true, false);
 			}
 		}
+
+#ifdef PDCURSES
+
+		/*
+		 * Ignore input error on PDCurses. The error can be emmited just
+		 * by mouse unsupported action.
+		 */
+		else if (event_keycode == ERR)
+		{
+			continue;
+		}
+
+#endif
+
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
 
