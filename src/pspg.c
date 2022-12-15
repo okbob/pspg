@@ -6793,9 +6793,17 @@ refresh:
 
 	if (opts.on_exit_sgr0)
 	{
-		char	   *s;
+		char	   *s = (char *) -1;
 
+#ifndef PDCURSES
+
+		/*
+		 * There are some error in PDCursesMod, and although the function
+		 * tigetstr is in source code, it is not linked.
+		 */
 		s = tigetstr((NCURSES_CONST char *) "sgr0");
+
+#endif
 
 		if (s != 0 && s != (char *) -1)
 			fprintf(stdout, "%s", s);
