@@ -77,6 +77,129 @@ int		pspg_esc_delay;
  *************************************
  */
 
+#ifdef  PDCURSES
+
+static bool
+is_alt(int *keycode)
+{
+	switch (*keycode)
+	{
+		case ALT_0:
+			*keycode = '0';
+			return true;
+		case ALT_1:
+			*keycode = '1';
+			return true;
+		case ALT_2:
+			*keycode = '2';
+			return true;
+		case ALT_3:
+			*keycode = '3';
+			return true;
+		case ALT_4:
+			*keycode = '4';
+			return true;
+		case ALT_5:
+			*keycode = '5';
+			return true;
+		case ALT_6:
+			*keycode = '6';
+			return true;
+		case ALT_7:
+			*keycode = '7';
+			return true;
+		case ALT_8:
+			*keycode = '8';
+			return true;
+		case ALT_9:
+			*keycode = '9';
+			return true;
+		case ALT_A:
+			*keycode = 'a';
+			return true;
+		case ALT_B:
+			*keycode = 'b';
+			return true;
+		case ALT_C:
+			*keycode = 'c';
+			return true;
+		case ALT_D:
+			*keycode = 'd';
+			return true;
+		case ALT_E:
+			*keycode = 'e';
+			return true;
+		case ALT_F:
+			*keycode = 'f';
+			return true;
+		case ALT_G:
+			*keycode = 'g';
+			return true;
+		case ALT_H:
+			*keycode = 'h';
+			return true;
+		case ALT_I:
+			*keycode = 'i';
+			return true;
+		case ALT_J:
+			*keycode = 'j';
+			return true;
+		case ALT_K:
+			*keycode = 'k';
+			return true;
+		case ALT_L:
+			*keycode = 'l';
+			return true;
+		case ALT_M:
+			*keycode = 'm';
+			return true;
+		case ALT_N:
+			*keycode = 'n';
+			return true;
+		case ALT_O:
+			*keycode = 'o';
+			return true;
+		case ALT_P:
+			*keycode = 'p';
+			return true;
+		case ALT_Q:
+			*keycode = 'q';
+			return true;
+		case ALT_R:
+			*keycode = 'r';
+			return true;
+		case ALT_S:
+			*keycode = 's';
+			return true;
+		case ALT_T:
+			*keycode = 't';
+			return true;
+		case ALT_U:
+			*keycode = 'u';
+			return true;
+		case ALT_V:
+			*keycode = 'v';
+			return true;
+		case ALT_W:
+			*keycode = 'w';
+			return true;
+		case ALT_X:
+			*keycode = 'x';
+			return true;
+		case ALT_Y:
+			*keycode = 'y';
+			return true;
+		case ALT_Z:
+			*keycode = 'x';
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+#endif
+
 /*
  * Read one ncurses event
  */
@@ -157,7 +280,16 @@ repeat:
 	if (nced->keycode == ERR && !first_event && errno == 0)
 		nced->keycode = PSPG_NOTASSIGNED_CODE;
 
+
+#if PDCURSES
+
+	nced->alt = is_alt(&nced->keycode);
+
+#else
+
 	nced->alt = !first_event;
+
+#endif
 
 	return ok;
 }
