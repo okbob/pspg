@@ -6809,15 +6809,19 @@ refresh:
 	{
 		char	   *s = (char *) -1;
 
+/*
+ * Some versions of pdcurses has bug and doesn't contains terminfo
+ * functionality. Following code is not critical, and if there are
+ * problems with linking, the tigetstr can be thrown.
+ *
 #ifndef PDCURSES
+ */
 
-		/*
-		 * There are some error in PDCursesMod, and although the function
-		 * tigetstr is in source code, it is not linked.
-		 */
 		s = tigetstr((NCURSES_CONST char *) "sgr0");
 
+/*
 #endif
+ */
 
 		if (s != 0 && s != (char *) -1)
 			fprintf(stdout, "%s", s);
