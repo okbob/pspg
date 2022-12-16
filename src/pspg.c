@@ -10,6 +10,9 @@
  *
  *-------------------------------------------------------------------------
  */
+#define PDC_NCMOUSE
+
+
 #if defined HAVE_NCURSESW_CURSES_H
 #include <ncursesw/curses.h>
 #elif defined HAVE_NCURSESW_H
@@ -3091,6 +3094,13 @@ reinit_theme:
 		mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
 				  BUTTON4_PRESSED | BUTTON5_PRESSED |
 				  BUTTON_ALT | BUTTON_CTRL |
+
+#ifdef PDCURSES
+
+				  MOUSE_WHEEL_SCROLL | REPORT_MOUSE_POSITION |
+
+#endif
+
 				  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 				  NULL);
 
@@ -3415,7 +3425,11 @@ reinit_theme:
 					continue;
 				}
 
-				event = get_pspg_event(&nced, only_tty, timeout);
+				do
+				{
+					event = get_pspg_event(&nced, only_tty, timeout);
+
+				} while (event == PSPG_NCURSES_EVENT && nced.ignore_it);
 
 				if (event == PSPG_FATAL_EVENT)
 					break;
@@ -3654,19 +3668,6 @@ reinit_theme:
 								   NULL, true, true, true, false);
 			}
 		}
-
-#ifdef PDCURSES
-
-		/*
-		 * Ignore input error on PDCurses. The error can be emmited just
-		 * by mouse unsupported action.
-		 */
-		else if (event_keycode == ERR)
-		{
-			continue;
-		}
-
-#endif
 
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
@@ -4431,6 +4432,13 @@ reset_search:
 							mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED |
 									  BUTTON4_PRESSED | BUTTON5_PRESSED |
 									  BUTTON_ALT | BUTTON_CTRL |
+
+#ifdef PDCURSES
+
+									  MOUSE_WHEEL_SCROLL | REPORT_MOUSE_POSITION |
+
+#endif
+
 									  (opts.xterm_mouse_mode ? REPORT_MOUSE_POSITION : 0),
 									  NULL);
 

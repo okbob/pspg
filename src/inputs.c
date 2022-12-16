@@ -10,6 +10,8 @@
  *
  *-------------------------------------------------------------------------
  */
+#define PDC_NCMOUSE
+
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -67,6 +69,12 @@ static bool saved_event_is_valid = false;
 
 static bool close_f_tty = false;
 static bool close_f_data = false;
+
+#ifdef PDCURSES
+
+static bool is_button1_pressed = false;
+
+#endif
 
 int		pspg_esc_delay;
 
@@ -203,13 +211,12 @@ is_alt(int *keycode)
 /*
  * Read one ncurses event
  */
-static int
+static bool
 get_ncurses_event(NCursesEventData *nced, bool *sigint)
 {
 	bool	first_event = true;
 	int		ok = true;
 
-	*sigint = false;
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
@@ -217,6 +224,10 @@ get_ncurses_event(NCursesEventData *nced, bool *sigint)
 	int		ret;
 
 #endif
+
+	*sigint = false;
+
+	nced->ignore_it = false;
 
 	/*
 	 * When ALT key is used, then ncurses generates two keycodes. And then
@@ -239,11 +250,59 @@ repeat:
 
 #endif
 
+#ifdef DEBUG_PIPE
+
+	fprintf(debug_pipe, "*** keycode: %d, err: %d\n", nced->keycode, errno);
+
+#endif
+
 	if (errno == 0)
 	{
+
+#ifdef PDCURSES
+
+		if (nced->keycode == ERR)
+		{
+				nced->keycode = PSPG_NOTASSIGNED_CODE;
+				nced->ignore_it = true;
+				return true;
+		}
+
+#endif
+
 		if (nced->keycode == KEY_MOUSE)
 		{
 			ok = getmouse(&nced->mevent) == OK;
+
+#ifdef PDCURSES
+
+			/*
+			 * event filter - we want to report mouse move only when
+			 * BUTTON1 is pressed.
+			 */
+			if (nced->mevent.bstate & BUTTON1_PRESSED)
+			{
+				is_button1_pressed = true;
+			}
+			else if (nced->mevent.bstate & BUTTON1_RELEASED)
+			{
+				is_button1_pressed = false;
+			}
+
+			if (nced->mevent.bstate & REPORT_MOUSE_POSITION)
+			{
+				if (is_button1_pressed)
+				{
+						return true;
+				}
+
+				nced->keycode = PSPG_NOTASSIGNED_CODE;
+				nced->ignore_it = true;
+				return true;
+			}
+
+#endif
+
 		}
 		else if (nced->keycode == PSPG_ESC_CODE) /* Escape (before ALT chars) */
 		{
@@ -279,7 +338,6 @@ repeat:
 	 */
 	if (nced->keycode == ERR && !first_event && errno == 0)
 		nced->keycode = PSPG_NOTASSIGNED_CODE;
-
 
 #if PDCURSES
 
@@ -695,16 +753,21 @@ get_pspg_event(NCursesEventData *nced,
 	{
 		char	buffer[20];
 
-		if (nced->keycode == KEY_MOUSE)
-			sprintf(buffer, ", bstate: %08lx", (unsigned long) nced->mevent.bstate);
-		else
-			buffer[0] = '\0';
+		if (!nced->ignore_it)
+		{
+			if (nced->keycode == KEY_MOUSE)
+				sprintf(buffer, ", bstate: %08lx", (unsigned long) nced->mevent.bstate);
+			else
+				buffer[0] = '\0';
 
-		fprintf(debug_pipe, "*** ncurses event %s%s%s (%d) ***\n",
-			  nced->alt ? "Alt " : "",
-			  keyname(nced->keycode),
-			  buffer,
-			  nced->keycode);
+			fprintf(debug_pipe, "*** ncurses event %s%s%s (%d) ***\n",
+				  nced->alt ? "Alt " : "",
+				  nced->keycode ? keyname(nced->keycode) : "0",
+				  buffer,
+				  nced->keycode);
+		}
+		else
+			fprintf(debug_pipe, "*** ignored ncurses event ****\n");
 	}
 
 	fflush(debug_pipe);

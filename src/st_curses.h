@@ -16,6 +16,5 @@
 #ifdef PDCURSES
 /* Add some APIs that are part of ncurses but not pdcurses */
 #define wgetparent(win)     ((WINDOW*)win->_parent);
-#define getmouse nc_getmouse
 #endif
 

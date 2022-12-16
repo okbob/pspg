@@ -38,6 +38,7 @@ typedef struct
 {
 	int		keycode;
 	bool	alt;
+	bool	ignore_it;
 	MEVENT	mevent;
 } NCursesEventData;
 
