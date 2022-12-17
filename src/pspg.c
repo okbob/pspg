@@ -207,6 +207,8 @@ static long		start_app_ms;
 
 #endif
 
+typedef void (*__sigt)(int);
+
 /*
  * Own signal handlers
  */
@@ -221,6 +223,8 @@ SigintHandler(int sig_num)
 }
 
 
+#ifndef PDCURSES
+
 static void
 SigwinchHandler(int sig_num)
 {
@@ -231,6 +235,7 @@ SigwinchHandler(int sig_num)
 	handle_sigwinch = true;
 }
 
+#endif
 
 static void
 SigtermHandler(int sig_num)
@@ -850,6 +855,9 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 void
 refresh_terminal_size(void)
 {
+
+#ifndef PDCURSES
+
 	struct winsize size;
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
@@ -863,6 +871,9 @@ refresh_terminal_size(void)
 		getmaxyx(stdscr, maxy, maxx);
 		log_row("info: stdscr - maxy: %d, maxx: %d", maxy, maxx);
 	}
+
+#endif
+
 }
 
 void
@@ -871,18 +882,23 @@ refresh_layout_after_terminal_resize(void)
 	ScrDesc  *scrdesc;
 	DataDesc *desc;
 	Options	 *opts;
-	struct winsize size;
 	int		maxy, maxx;
 
-	scrdesc = current_state->scrdesc;
-	desc = current_state->desc;
-	opts = current_state->opts;
+#ifndef PDCURSES
+
+	struct winsize size;
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
 	{
 		resize_term(size.ws_row, size.ws_col);
 		clear();
 	}
+
+#endif
+
+	scrdesc = current_state->scrdesc;
+	desc = current_state->desc;
+	opts = current_state->opts;
 
 	getmaxyx(stdscr, maxy, maxx);
 
@@ -2853,7 +2869,12 @@ main(int argc, char *argv[])
 	 */
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
+
+#ifndef PDCURSES
+
 		resize_term(size.ws_row, size.ws_col);
+
+#endif
 
 		size_is_valid = true;
 		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
@@ -2951,7 +2972,17 @@ main(int argc, char *argv[])
 
 	signal(SIGINT, SigintHandler);
 	signal(SIGTERM, SigtermHandler);
+
+#ifndef PDCURSES
+
+	/*
+	 * own SIGWINCH handling doesn't work well on pdcurses.
+	 * resize_term(0, 0) crashes. resize_term(x, x) crashes
+	 * or starts recursive events.
+	 */
 	signal(SIGWINCH, SigwinchHandler);
+
+#endif
 
 	atexit(exit_handler);
 
@@ -3668,7 +3699,10 @@ reinit_theme:
 								   NULL, true, true, true, false);
 			}
 		}
-
+		else if (event == PSPG_SIGWINCH_EVENT)
+		{
+			event_keycode = KEY_RESIZE;
+		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
 		{
 

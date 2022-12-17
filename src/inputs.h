@@ -48,6 +48,7 @@ typedef enum
 	PSPG_READ_DATA_EVENT,					/* signal of new data on input */
 	PSPG_TIMEOUT_EVENT,						/* got a timeout */
 	PSPG_SIGINT_EVENT,						/* got a sigint */
+	PSPG_SIGWINCH_EVENT,					/* got a sigwinch */
 	PSPG_FATAL_EVENT,						/* got a fatal error */
 	PSPG_ERROR_EVENT,						/* got a error with error message */
 	PSPG_NOTHING_VALID_EVENT,				/* got an error, but this error can be ignored */

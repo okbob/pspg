@@ -212,11 +212,10 @@ is_alt(int *keycode)
  * Read one ncurses event
  */
 static bool
-get_ncurses_event(NCursesEventData *nced, bool *sigint)
+get_ncurses_event(NCursesEventData *nced, bool *sigint, bool *sigwinch)
 {
 	bool	first_event = true;
 	int		ok = true;
-
 
 #if NCURSES_WIDECHAR > 0 && defined HAVE_NCURSESW
 
@@ -226,8 +225,11 @@ get_ncurses_event(NCursesEventData *nced, bool *sigint)
 #endif
 
 	*sigint = false;
+	*sigwinch = false;
 
+	nced->keycode = PSPG_NOTASSIGNED_CODE;
 	nced->ignore_it = false;
+	nced->alt = false;
 
 	/*
 	 * When ALT key is used, then ncurses generates two keycodes. And then
@@ -254,21 +256,34 @@ repeat:
 
 	fprintf(debug_pipe, "*** keycode: %d, err: %d\n", nced->keycode, errno);
 
+	if (errno == EINTR)
+	{
+		if (handle_sigint)
+		{
+			*sigint = true;
+			handle_sigint = false;
+		}
+
+		if (handle_sigwinch)
+		{
+			*sigwinch = true;
+			handle_sigwinch = false;
+		}
+
+		return false;
+	}
+
 #endif
 
 	if (errno == 0)
 	{
-
-#ifdef PDCURSES
-
 		if (nced->keycode == ERR)
 		{
 				nced->keycode = PSPG_NOTASSIGNED_CODE;
+				nced->alt = false;
 				nced->ignore_it = true;
 				return true;
 		}
-
-#endif
 
 		if (nced->keycode == KEY_MOUSE)
 		{
@@ -278,7 +293,8 @@ repeat:
 
 			/*
 			 * event filter - we want to report mouse move only when
-			 * BUTTON1 is pressed.
+			 * BUTTON1 is pressed (note: we have not xterm mouse mode 1002
+			 * there, because terminalinfo is just fake API there.
 			 */
 			if (nced->mevent.bstate & BUTTON1_PRESSED)
 			{
@@ -314,24 +330,6 @@ repeat:
 		}
 	}
 
-	if ((nced->keycode == ERR && errno == EINTR) ||
-		 handle_sigint || handle_sigwinch)
-	{
-		if (handle_sigwinch)
-		{
-			nced->keycode = KEY_RESIZE;
-			return true;
-		}
-		else if (handle_sigint)
-		{
-			*sigint = true;
-			handle_sigint = false;
-			return false;
-		}
-
-		return false;
-	}
-
 	/*
 	 * Workaround for issue #204. MacOS returns ERR when there are not
 	 * any other activity after ESC in ESCDELAY limit.
@@ -363,6 +361,7 @@ _get_pspg_event(NCursesEventData *nced,
 			    int timeout)
 {
 	bool	sigint;
+	bool	sigwinch;
 	bool	first_event = true;
 	bool	first_loop = true;
 	bool	without_timeout = timeout == -1;
@@ -393,9 +392,7 @@ _get_pspg_event(NCursesEventData *nced,
 	else if (handle_sigwinch)
 	{
 		handle_sigwinch = false;
-		nced->alt = false;
-		nced->keycode = KEY_RESIZE;
-		return PSPG_NCURSES_EVENT;
+		return PSPG_SIGWINCH_EVENT;
 	}
 
 	/*
@@ -405,7 +402,7 @@ _get_pspg_event(NCursesEventData *nced,
 	 */
 	if (only_tty_events && zero_timeout)
 	{
-		if (get_ncurses_event(nced, &sigint))
+		if (get_ncurses_event(nced, &sigint, &sigwinch))
 			return PSPG_NCURSES_EVENT;
 		else if (sigint)
 		{
@@ -416,6 +413,10 @@ _get_pspg_event(NCursesEventData *nced,
 			}
 
 			return PSPG_SIGINT_EVENT;
+		}
+		else if (sigwinch)
+		{
+			return PSPG_SIGWINCH_EVENT;
 		}
 		else
 			return PSPG_NOTHING_VALID_EVENT;
@@ -519,18 +520,38 @@ repeat_reading:
 			else if (handle_sigwinch)
 			{
 				handle_sigwinch = false;
-				nced->alt = false;
-				nced->keycode = KEY_RESIZE;
-				return PSPG_NCURSES_EVENT;
+				return PSPG_SIGWINCH_EVENT;
 			}
 
-			log_row("poll error (%s)", strerror(errno));
+#ifdef PDCURSES
+
+			/*
+			 * I didn't find how to resize term in pdcurses without crash.
+			 * So instead to call resize_term from custom space, use pdcurses
+			 * sigwinch handler, and force pdcurses to handle resizing after
+			 * terminal is resized.
+			 */
+			else if (is_termresized())
+			{
+				goto ncurses_get;
+			}
+
+#endif
+
+			log_row("poll error (%s) %d", strerror(errno));
 		}
 		else if (poll_num > 0)
 		{
 			if (fds[0].revents)
 			{
-				if (get_ncurses_event(nced, &sigint))
+
+#ifdef PDCURSES
+
+ncurses_get:
+
+#endif
+
+				if (get_ncurses_event(nced, &sigint, &sigwinch))
 				{
 					if (nced->alt && nced->keycode == PSPG_NOTASSIGNED_CODE && first_event && timeout != 0)
 					{
@@ -575,6 +596,10 @@ repeat_reading:
 				{
 					if (!only_tty_events)
 						return PSPG_SIGINT_EVENT;
+				}
+				else if (sigwinch)
+				{
+					return PSPG_SIGWINCH_EVENT;
 				}
 			}
 			else if (fds[1].revents)
@@ -734,6 +759,9 @@ get_pspg_event(NCursesEventData *nced,
 			break;
 		case PSPG_SIGINT_EVENT:
 			event_name = "SIGINT";
+			break;
+		case PSPG_SIGWINCH_EVENT:
+			event_name = "SIGWINCH";
 			break;
 		case PSPG_FATAL_EVENT:
 			event_name = "FATAL";
