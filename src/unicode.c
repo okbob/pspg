@@ -344,7 +344,17 @@ utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bo
 		}
 
 		clen = utf8charlen(*ptr);
-		rowlen += utf_dsplen(ptr);
+		if (clen == 1 && *ptr == '\t')
+		{
+			/* this code is designed like pg_wcssize */
+			do
+			{
+				rowlen++;
+			} while (rowlen % 8 != 0);
+		}
+		else
+			rowlen += utf_dsplen(ptr);
+
 		ptr += clen;
 		max_bytes -= clen;
 	}

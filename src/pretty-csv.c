@@ -66,6 +66,9 @@ typedef struct
 	bool		ignore_short_rows;
 } PrintConfigType;
 
+static void pb_putc_repeat(PrintbufType *printbuf, int n, int c);
+
+
 /*
  * Add new row to LineBuffer
  */
@@ -103,19 +106,62 @@ pb_flush_line(PrintbufType *printbuf)
 static void
 pb_write(PrintbufType *printbuf, const char *str, int size)
 {
-	if (printbuf->free < size)
+	int		curr_dspl_width = 0;
+
+	while (size)
 	{
-		printbuf->size += 10 * 1024;
-		printbuf->free += 10 * 1024;
+		int		charsize, bytes;
+		bool	tabsubst = false;
 
-		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
-		if (!printbuf->buffer)
-			leave("out of memory while serialize csv output");
+		charsize = use_utf8 ? utf8charlen(*str) : 1;
+
+		if (charsize == 1 && *str == '\t')
+		{
+			bytes = 0;
+			tabsubst = true;
+
+			do
+			{
+				curr_dspl_width++;
+				bytes++;
+			} while (curr_dspl_width % 8 != 0);
+		}
+		else if (use_utf8)
+		{
+			curr_dspl_width += utf_dsplen(str);
+			bytes = charsize;
+		}
+		else
+		{
+			curr_dspl_width = *str >= 0x20 ? 1 : 0;
+			bytes = charsize;
+		}
+
+		if (bytes > printbuf->free)
+		{
+			printbuf->size += 10 * 1024;
+
+			printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
+			if (!printbuf->buffer)
+				leave("out of memory while serialize csv output");
+
+			printbuf->free = printbuf->size - printbuf->used;
+		}
+
+		if (tabsubst)
+		{
+			pb_putc_repeat(printbuf, bytes, ' ');
+		}
+		else
+		{
+			memcpy(printbuf->buffer + printbuf->used, str, bytes);
+			printbuf->used += bytes;
+			printbuf->free -= bytes;
+		}
+
+		str += charsize;
+		size -= charsize;
 	}
-
-	memcpy(printbuf->buffer + printbuf->used, str, size);
-	printbuf->used += size;
-	printbuf->free -= size;
 }
 
 static void
@@ -130,10 +176,9 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 {
 	bool	need_realloc = false;
 
-	while (printbuf->free < size * n)
+	while (printbuf->free < (size * n))
 	{
 		printbuf->size += 10 * 1024;
-		printbuf->free += 10 * 1024;
 
 		need_realloc = true;
 	}
@@ -141,6 +186,8 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 	if (need_realloc)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
+		printbuf->free = printbuf->size - printbuf->used;
+
 		if (!printbuf->buffer)
 			leave("out of memory while serialize csv output");
 	}
@@ -191,14 +238,13 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	while (printbuf->free < n)
 	{
 		printbuf->size += 10 * 1024;
-		printbuf->free += 10 * 1024;
-
 		need_realloc = true;
 	}
 
 	if (need_realloc)
 	{
 		printbuf->buffer = realloc(printbuf->buffer, printbuf->size);
+		printbuf->free = printbuf->size - printbuf->used;
 		if (!printbuf->buffer)
 			leave("out of memory while serialize csv output");
 	}
@@ -757,6 +803,13 @@ postprocess_fields(int nfields,
 					multiline = true;
 					width = cw > width ? cw : width;
 					cw = 0;
+				}
+				else if (*ptr++ == '\t')
+				{
+					do
+					{
+						cw++;
+					} while (cw % 8 != 0);
 				}
 				else
 					cw++;
