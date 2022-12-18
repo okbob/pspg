@@ -2871,7 +2871,6 @@ main(int argc, char *argv[])
 
 		size_is_valid = true;
 		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
-
 	}
 	else
 		log_row("cannot to detect terminal size via TIOCGWINSZ (%s)", strerror(errno));

@@ -284,7 +284,17 @@ utf_string_dsplen(const char *s, int bytes)
 	{
 		const char c = *s;
 
-		if (c >= 0x20 && c < 0x7f)
+		if (c == '\t')
+		{
+			do
+			{
+				result++;
+			} while (result % 8 != 0);
+
+			s += 1;
+			bytes -= 1;
+		}
+		else if (c >= 0x20 && c < 0x7f)
 		{
 			s += 1;
 			result += 1;

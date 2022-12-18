@@ -133,7 +133,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 		}
 		else
 		{
-			curr_dspl_width = *str >= 0x20 ? 1 : 0;
+			curr_dspl_width += *str >= 0x20 ? 1 : 0;
 			bytes = charsize;
 		}
 
@@ -169,7 +169,6 @@ pb_writes(PrintbufType *printbuf, const char *str)
 {
 	pb_write(printbuf, str, strlen(str));
 }
-
 
 static void
 pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
