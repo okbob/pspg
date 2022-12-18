@@ -436,7 +436,7 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 		pb_write(printbuf, str, size);
 	}
 	else
-		pb_puts(printbuf, str);
+		pb_write(printbuf, str, strlen(str));
 
 	return nextline;
 }
@@ -544,23 +544,34 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 						if (!use_utf8)
 						{
-							if (multiline)
-							{
-								char   *ptr = field;
-								width = 0;
+							char	   *ptr = field;
 
-								while (*ptr)
+							width = 0;
+
+							while (*ptr)
+							{
+								if (*ptr == '\n')
 								{
-									if (*ptr++ == '\n')
+									more_lines = true;
+									ptr += 1;
+									break;
+								}
+								else if (*ptr == '\t')
+								{
+									do
 									{
-										more_lines |= true;
-										break;
-									}
-									width += 1;
+										width++;
+									} while (width % 8 != 0);
+									ptr += 1;
+								}
+								else
+								{
+									if (*ptr >= 0x20)
+										width++;
+
+									ptr += 1;
 								}
 							}
-							else
-								width = strlen(field);
 						}
 						else
 						{
@@ -785,10 +796,11 @@ postprocess_fields(int nfields,
 
 		if (!use_utf8)
 		{
-			size_t		cw = 0;
+			size_t		max_width;
 			char	    *ptr = row->fields[i];
 
 			width = 0;
+			max_width = 0;
 
 			while (*ptr)
 			{
@@ -797,24 +809,28 @@ postprocess_fields(int nfields,
 				else if (*ptr != '-' && *ptr != ' ' && *ptr != ':')
 					total += 1;
 
-				if (*ptr++ == '\n')
+				if (*ptr == '\n')
 				{
 					multiline = true;
-					width = cw > width ? cw : width;
-					cw = 0;
+					max_width = width > max_width ? width : max_width;
+					width = 0;
 				}
-				else if (*ptr++ == '\t')
+				else if (*ptr == '\t')
 				{
 					do
 					{
-						cw++;
-					} while (cw % 8 != 0);
+						width++;
+					} while (width % 8 != 0);
 				}
-				else
-					cw++;
+				else if (*ptr >= 0x20)
+				{
+					width++;
+				}
+
+				ptr += 1;
 			}
 
-			width = cw > width ? cw : width;
+			width = width > max_width ? width : max_width;
 		}
 		else
 			width = utf_string_dsplen_multiline(row->fields[i],
