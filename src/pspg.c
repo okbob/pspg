@@ -855,33 +855,6 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 void
 refresh_terminal_size(void)
 {
-
-#ifndef PDCURSES
-
-	struct winsize size;
-
-	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
-	{
-		int		maxy, maxx;
-
-		resize_term(size.ws_row, size.ws_col);
-		log_row("new terminal size %d %d", size.ws_row, size.ws_col);
-		log_row("info: LINES: %d, COLS: %d", LINES, COLS);
-
-		getmaxyx(stdscr, maxy, maxx);
-		log_row("info: stdscr - maxy: %d, maxx: %d", maxy, maxx);
-	}
-
-#endif
-
-}
-
-void
-refresh_layout_after_terminal_resize(void)
-{
-	ScrDesc  *scrdesc;
-	DataDesc *desc;
-	Options	 *opts;
 	int		maxy, maxx;
 
 #ifndef PDCURSES
@@ -891,10 +864,25 @@ refresh_layout_after_terminal_resize(void)
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size) >= 0)
 	{
 		resize_term(size.ws_row, size.ws_col);
-		clear();
+		log_row("new terminal size %d %d", size.ws_row, size.ws_col);
 	}
 
 #endif
+
+	getmaxyx(stdscr, maxy, maxx);
+	log_row("info: stdscr - maxy: %d, maxx: %d", maxy, maxx);
+
+	current_state->scrdesc->maxy = maxy;
+	current_state->scrdesc->maxx = maxx;
+}
+
+void
+refresh_layout_after_terminal_resize(void)
+{
+	ScrDesc  *scrdesc;
+	DataDesc *desc;
+	Options	 *opts;
+	int		maxy, maxx;
 
 	scrdesc = current_state->scrdesc;
 	desc = current_state->desc;
@@ -3706,6 +3694,7 @@ reinit_theme:
 		}
 		else if (event == PSPG_SIGWINCH_EVENT)
 		{
+			refresh_terminal_size();
 			event_keycode = KEY_RESIZE;
 		}
 		else if ((event_keycode == ERR || event_keycode == KEY_F(10)) && !redirect_mode)
@@ -5232,7 +5221,6 @@ recheck_right:
 				break;
 
 			case cmd_RESIZE_EVENT:
-				refresh_terminal_size();
 				refresh_clear = true;
 
 				if (!opts.no_cursor)
