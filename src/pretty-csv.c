@@ -1204,7 +1204,7 @@ read_csv(RowBucketType *rb,
 
 			if (skip_initial)
 			{
-				if (c == ' ')
+				if (c == ' ' || c == '\t')
 					goto next_char;
 
 				skip_initial = false;
@@ -1283,7 +1283,7 @@ read_csv(RowBucketType *rb,
 				found_string = false;
 				first_nw = pos;
 			}
-			else if (instr || c != ' ')
+			else if (instr || (c != ' ' && c != '\t'))
 			{
 				last_nw = pos;
 			}
