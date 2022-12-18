@@ -5221,14 +5221,21 @@ recheck_right:
 				break;
 
 			case cmd_RESIZE_EVENT:
-				refresh_clear = true;
-
-				if (!opts.no_cursor)
 				{
-					long_argument = cursor_row + 1;
-					long_argument_is_valid = true;
+					getmaxyx(stdscr, scrdesc.maxy, scrdesc.maxx);
+					log_row("cmd_RESIZE_EVENT: info: stdscr - maxy: %d, maxx: %d",
+							scrdesc.maxy,
+							scrdesc.maxx);
 
-					next_command = cmd_GotoLine;
+					refresh_clear = true;
+
+					if (!opts.no_cursor)
+					{
+						long_argument = cursor_row + 1;
+						long_argument_is_valid = true;
+
+						next_command = cmd_GotoLine;
+					}
 				}
 				break;
 
