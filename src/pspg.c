@@ -2866,6 +2866,11 @@ main(int argc, char *argv[])
 	 * ncurses uses these variables for initial sizing stdstr. This issue
 	 * can be fixed by reread terminal (device) parameters. The overhead
 	 * is neglecting. See issue #75
+	 *
+	 * Possible ToDo (cleaning). On modern ncurses we can ensure correct
+	 * terminal size by setting use_env(FALSE); use_tioctl(TRUE); On second
+	 * hand, these functions should not be suppported on other implementations
+	 * on ncurses.
 	 */
 	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
 	{
