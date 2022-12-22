@@ -953,7 +953,6 @@ export_data(Options *opts,
 		int		size, width;
 		int		field_size;
 		int		field_xpos;
-		int		colno;
 		int		xpos;
 		char   *field, *ptr, typ;
 		FmtLineIter iter;
@@ -1008,7 +1007,6 @@ export_data(Options *opts,
 
 		field = NULL; field_size = 0; field_xpos = -1;
 
-		colno = 0;
 		expstate.colno = 0;
 
 		/* for text format we have not concate lines of multiline field */
@@ -1051,9 +1049,6 @@ export_data(Options *opts,
 
 			if (!isok)
 				goto exit_export;
-
-			if (typ == 'I')
-				colno += 1;
 		}
 
 		if (field)
