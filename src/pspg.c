@@ -4265,7 +4265,8 @@ reset_search:
 						{
 							char	buffer[256];
 
-							sprintf(buffer, "only color schemas 0..%d are supported", MAX_STYLE);
+							snprintf(buffer, sizeof(buffer),
+							    "only color schemas 0..%d are supported", MAX_STYLE);
 
 							show_info_wait(buffer, NULL, true, true, false, true);
 							break;
