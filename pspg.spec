@@ -3,7 +3,7 @@
 
 Summary: 	pspg: a unix pager optimized for psql
 Name: 		pspg
-Version: 	5.6.4
+Version: 	5.7.0
 Release: 	0%{?dist}
 License: 	BSD
 Group: 		Development/Tools
@@ -43,6 +43,9 @@ CFLAGS="$RPM_OPT_FLAGS"
 %{_bindir}/*
 
 %changelog
+* Thu Dec 22 2022 Pavel Stehule <pavel.stehule@gmail.com>
+- pspg can be compiled (and used) with pdcursesmod
+
 * Mon Nov 28 2022 Pavel Stehule <pavel.stehule@gmail.com>
 - support direct true color mode
 
