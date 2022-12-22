@@ -275,7 +275,8 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 	/* Check to see that the backend connection was successfully made */
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
-		sprintf(errmsg, "Connection to database failed: %s", PQerrorMessage(conn));
+		snprintf(errmsg, sizeof(errmsg),
+		    "Connection to database failed: %s", PQerrorMessage(conn));
 		RELEASE_AND_LEAVE(errmsg);
 	}
 
@@ -286,7 +287,8 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 	result = PQexec(conn, query);
 	if (PQresultStatus(result) != PGRES_TUPLES_OK)
 	{
-		sprintf(errmsg, "Query doesn't return data: %s", PQerrorMessage(conn));
+		snprintf(errmsg, sizeof(errmsg),
+		    "Query doesn't return data: %s", PQerrorMessage(conn));
 		RELEASE_AND_LEAVE(errmsg);
 	}
 
