@@ -245,7 +245,11 @@ static void
 print_info(void)
 {
 
+#ifdef HAVE_SYS_UTSNAME_H
+
 	struct utsname u_name;
+
+#endif
 
 	fprintf(stdout, "pspg-%s\n", PSPG_VERSION);
 
