@@ -932,8 +932,8 @@ redraw_screen(void)
 	int		vcursor_xmax_fix = -1;
 	int		vcursor_xmin_data = -1;
 	int		vcursor_xmax_data = -1;
-	int		selected_xmin = -1;
-	int		selected_xmax = -1;
+	int		selected_xmin = INT_MIN;
+	int		selected_xmax = INT_MIN;
 	int		i;
 
 	time_t		current_sec;
@@ -1118,25 +1118,25 @@ redraw_screen(void)
 				first_data_row + first_row + scrdesc->rows_rows - fix_rows_offset,
 				footer_cursor_col,
 				cursor_row - first_row - scrdesc->rows_rows + fix_rows_offset,
-				-1, -1, -1, -1,
+				-1, -1, INT_MIN, INT_MIN,
 				desc, scrdesc, opts);
 
 	window_fill(WINDOW_ROWNUM_LUC,
 				0,
 				0,
 				0,
-				-1, -1, -1, -1,
+				-1, -1, INT_MIN, INT_MIN,
 				desc, scrdesc, opts);
 
 	window_fill(WINDOW_ROWNUM,
 				first_data_row + first_row - fix_rows_offset,
 				0,
 				cursor_row - first_row + fix_rows_offset,
-				-1, -1, -1, -1,
+				-1, -1, INT_MIN, INT_MIN,
 				desc, scrdesc, opts);
 
 	window_fill(WINDOW_VSCROLLBAR,
-				0, 0, cursor_row, -1, -1, -1, -1,
+				0, 0, cursor_row, -1, -1, INT_MIN, INT_MIN,
 				desc, scrdesc, opts);
 
 	for (i = 0; i < PSPG_WINDOW_COUNT; i++)

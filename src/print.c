@@ -42,6 +42,7 @@
 #include "unicode.h"
 
 #include <ctype.h>
+#include <limits.h>
 
 #ifndef A_ITALIC
 #define A_ITALIC	A_DIM
@@ -247,7 +248,7 @@ print_column_names(WINDOW *win,
 	/* position starts from zero again to be comparable with maxx */
 	pos -= srcx;
 
-	if (selected_xmin != -1)
+	if (selected_xmin != INT_MIN)
 	{
 		selected_xmin -= srcx;
 		selected_xmax -= srcx;
@@ -263,7 +264,7 @@ print_column_names(WINDOW *win,
 		bool	is_cursor = vcursor_xmin <= pos && pos <= vcursor_xmax;
 		bool	is_in_range = false;
 
-		is_in_range = selected_xmin != -1 && pos != -1 &&
+		is_in_range = selected_xmin != INT_MIN && pos != -1 &&
 						  pos >= selected_xmin && pos <= selected_xmax;
 
 		bytes = charlen(ptr);
@@ -351,7 +352,7 @@ print_column_names(WINDOW *win,
 		act_width = act_xmax - act_xmin + 1;
 
 		is_cursor = vcursor_xmin <= act_xmin && act_xmin <= vcursor_xmax;
-		is_in_range = selected_xmin != -1 &&
+		is_in_range = selected_xmin != INT_MIN &&
 						  act_xmin >= selected_xmin && act_xmin <= selected_xmax;
 
 		if (is_in_range)
@@ -870,6 +871,8 @@ window_fill(int window_identifier,
 	SpecialWord specwords[30];
 	int			nspecwords;
 
+fprintf(debug_pipe, "INPUT selected_xmin: %d\n", selected_xmin);
+
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
@@ -1138,11 +1141,11 @@ window_fill(int window_identifier,
 			 */
 			if (is_fix_rows_only && rowstr == desc->namesline )
 			{
-				int		loc_selected_xmin = -1;
-				int		loc_selected_xmax = -1;
+				int		loc_selected_xmin = INT_MIN;
+				int		loc_selected_xmax = INT_MIN;
 
 				/* mark columns names only when columns are selected */
-				if (selected_xmin != -1 && scrdesc->selected_first_row == -1)
+				if (selected_xmin != INT_MIN && scrdesc->selected_first_row == -1)
 				{
 					loc_selected_xmin = selected_xmin;
 					loc_selected_xmax = selected_xmax;
@@ -1208,7 +1211,9 @@ window_fill(int window_identifier,
 				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
 								  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
 
-				is_selected_columns = is_selectable && selected_xmin != -1;
+fprintf(debug_pipe, ">>>>is_selected_row: %d %d\n", is_selected_row, rowno);
+
+				is_selected_columns = is_selectable && selected_xmin != INT_MIN;
 
 				while (i < maxx)
 				{
@@ -1239,7 +1244,8 @@ window_fill(int window_identifier,
 					{
 						if (is_selected_row)
 						{
-							if (selected_xmin != -1 && pos != -1)
+fprintf(debug_pipe, "selected_xmin: %d, pos: %d\n", selected_xmin, pos);
+							if (selected_xmin != INT_MIN && pos != -1)
 							{
 								if (pos >= selected_xmin && pos <= selected_xmax)
 									is_in_range = true;
