@@ -871,8 +871,6 @@ window_fill(int window_identifier,
 	SpecialWord specwords[30];
 	int			nspecwords;
 
-fprintf(debug_pipe, "INPUT selected_xmin: %d\n", selected_xmin);
-
 	bool		is_footer = window_identifier == WINDOW_FOOTER;
 	bool		is_fix_rows = window_identifier == WINDOW_LUC || window_identifier == WINDOW_FIX_ROWS;
 	bool		is_rownum = window_identifier == WINDOW_ROWNUM;
