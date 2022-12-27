@@ -148,7 +148,7 @@ parse_exported_spec(const char *instr,
 	const char   *token;
 	int		n;
 
-	spec->command = cmd_CopyAllLines;
+	spec->command = cmd_Copy;
 	spec->format = CLIPBOARD_FORMAT_TEXT;
 	spec->rows = 0;
 	spec->percent = 0.0;
