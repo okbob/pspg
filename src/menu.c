@@ -131,7 +131,7 @@ ST_MENU_ITEM _command[] = {
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"To~g~gle mark", cmd_Mark, "F3", 0, 0, 0, NULL},
 	{"~M~ark column", cmd_MarkColumn, "F13", 0, 0, 0, NULL},
-	{"Mark all", cmd_MarkAll, NULL, 0, 0, 0, NULL},
+	{"Mark all", cmd_MarkAll, "%, C-a", 0, 0, 0, NULL},
 	{"Unmar~k~", cmd_Unmark, NULL, 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Refres~h~ screen", cmd_Refresh, "R, C-l", 0, 0, 0, NULL},

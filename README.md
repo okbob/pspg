@@ -346,7 +346,7 @@ definitions are stored in log file.
 | <kbd>Shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
 | <kbd>Ctrl</kbd>+<kbd>drag mouse</kbd>                                    | defines rows selection, on column header defines column selection   |
 | <kbd>Ctrl</kbd>+<kbd>o</kbd>                                             | show primary screen, press any key to return to pager again         |
-
+| <kbd>%</kbd>, <kbd>Ctrl</kbd>+<kbd>a</kbd>                               | select all                                                          |
 
 ## Backslash commands
 

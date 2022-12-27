@@ -541,6 +541,10 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 			case '\\':
 				return cmd_BsCommand;
 
+			case 1:		/* CTRL A */
+			case '%':
+				return cmd_MarkAll;
+
 			case KEY_SR:
 				*nested_command = cmd_CursorUp;
 				return cmd_Mark_NestedCursorCommand;
