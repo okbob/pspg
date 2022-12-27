@@ -1209,8 +1209,6 @@ window_fill(int window_identifier,
 				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
 								  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
 
-fprintf(debug_pipe, ">>>>is_selected_row: %d %d\n", is_selected_row, rowno);
-
 				is_selected_columns = is_selectable && selected_xmin != INT_MIN;
 
 				while (i < maxx)
@@ -1242,7 +1240,6 @@ fprintf(debug_pipe, ">>>>is_selected_row: %d %d\n", is_selected_row, rowno);
 					{
 						if (is_selected_row)
 						{
-fprintf(debug_pipe, "selected_xmin: %d, pos: %d\n", selected_xmin, pos);
 							if (selected_xmin != INT_MIN && pos != -1)
 							{
 								if (pos >= selected_xmin && pos <= selected_xmax)
