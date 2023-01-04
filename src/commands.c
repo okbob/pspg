@@ -23,6 +23,8 @@ int		CTRL_RIGHT;
 int		SHIFT_LEFT;
 int		SHIFT_RIGHT;
 
+#ifndef PDCURSES
+
 static int
 get_code(const char *capname, int fallback)
 {
@@ -48,6 +50,8 @@ get_code(const char *capname, int fallback)
 
 }
 
+#endif
+
 /*
  * Set a value of CTRL_HOME and CTRL_END key codes. These codes
  * can be redefined on some plaforms.
@@ -55,6 +59,19 @@ get_code(const char *capname, int fallback)
 void
 initialize_special_keycodes()
 {
+
+#ifdef PDCURSES
+
+	CTRL_HOME = CTL_HOME;
+	CTRL_END = CTL_END;
+	CTRL_SHIFT_HOME = -1;
+	CTRL_SHIFT_END = -1;
+	CTRL_RIGHT = CTL_RIGHT;
+	CTRL_LEFT = CTL_LEFT;
+	SHIFT_RIGHT = KEY_SRIGHT;
+	SHIFT_LEFT = KEY_SLEFT;
+
+#else
 
 #ifdef NCURSES_EXT_FUNCS
 
@@ -70,6 +87,9 @@ initialize_special_keycodes()
 	CTRL_LEFT = get_code("kLFT5", 546);
 	SHIFT_RIGHT = get_code("kRIT2", 402);
 	SHIFT_LEFT = get_code("kLFT2", 393);
+
+#endif
+
 }
 
 /*
@@ -379,6 +399,9 @@ is_cmd_RowNumToggle(int c, bool alt)
 int
 translate_event(int c, bool alt, Options *opts, int *nested_command)
 {
+	if (c == -1)
+		return cmd_Invalid;
+
 	if (alt)
 	{
 		switch (c)
