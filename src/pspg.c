@@ -755,8 +755,22 @@ refresh_aux_windows(Options *opts, ScrDesc *scrdesc)
 		scrdesc->top_bar_rows = 0;
 	else
 	{
+
 		scrdesc->top_bar_rows = 1;
+
+#ifdef PDCURSES
+
+		/*
+		 * bug in pdcurses, width should be exactly specified
+		 */
+		top_bar = subwin(stdscr, 1, maxx, 0, 0);
+
+#else
+
 		top_bar = subwin(stdscr, 1, 0, 0, 0);
+
+#endif
+
 		wbkgd(top_bar, ncurses_theme_attr(PspgTheme_status_bar));
 		wnoutrefresh(top_bar);
 		w_top_bar(scrdesc) = top_bar;
