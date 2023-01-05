@@ -3,7 +3,7 @@
  * string.c
  *	  a routines for case insensitive string operations
  *
- * Portions Copyright (c) 2017-2022 Pavel Stehule
+ * Portions Copyright (c) 2017-2023 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/string.c

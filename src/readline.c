@@ -3,7 +3,7 @@
  * readline.c
  *	  a routines for using readline library
  *
- * Portions Copyright (c) 2017-2022 Pavel Stehule
+ * Portions Copyright (c) 2017-2023 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/readline.c

@@ -3,7 +3,7 @@
  * export.c
  *	  a routines for exporting data
  *
- * Portions Copyright (c) 2017-2022 Pavel Stehule
+ * Portions Copyright (c) 2017-2023 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/export.c

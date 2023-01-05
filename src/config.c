@@ -3,7 +3,7 @@
  * config.c
  *	  a routines for loading, saving configuration
  *
- * Portions Copyright (c) 2017-2022 Pavel Stehule
+ * Portions Copyright (c) 2017-2023 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/config.c
