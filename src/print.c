@@ -701,6 +701,7 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 	int		nwords = 0;
 	int		pos = 0;
 	bool	first_nonspace = true;
+	char   *first_char = line;
 
 	/*
 	 * When text starts on line start and first char is upper
@@ -758,6 +759,15 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 		/* psql's shell options */
 		else if (*line == '-')
 		{
+			/* when dash is inside world, then it is not an option */
+			if (line > first_char && is_ascii_alnum(line[-1]))
+			{
+				line += 1;
+				pos += 1;
+
+				continue;
+			}
+
 			words[nwords].start_pos = pos;
 			words[nwords].typ = 1;
 
