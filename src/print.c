@@ -708,8 +708,11 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 	 * char, then mark this text until double colon.
 	 *
 	 * like "Usage:"
+	 *
+	 * Exceptions: sentences (ending by . or contains \ )
 	 */
-	if (is_upper_char(line) || strncmp(line, "psql", 4) == 0)
+	if ((is_upper_char(line) || strncmp(line, "psql", 4) == 0) &&
+		!strchr(line, '.') && !strchr(line, '\\'))
 	{
 		char   *aux_line = line;
 
@@ -780,10 +783,10 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 			if (pos - words[nwords].start_pos > 2)
 				continue;
 
-			if (!is_ascii_alnum(*line))
+			if (!(is_ascii_alnum(*line) || *line == '?' || *line == '!'))
 				continue;
 
-			while (is_ascii_alnum(*line) || *line == '-')
+			while (is_ascii_alnum(*line) || *line == '-' || *line == '?' || *line == '!')
 			{
 				line += 1;
 				pos += 1;
