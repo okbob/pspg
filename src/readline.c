@@ -644,6 +644,7 @@ get_string(char *prompt,
 				{
 					handle_sigwinch = false;
 
+					clear();
 					refresh_terminal_size();
 					refresh_layout_after_terminal_resize();
 					redraw_screen();
