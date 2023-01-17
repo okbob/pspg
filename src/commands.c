@@ -522,6 +522,8 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 			case KEY_PPAGE:
 			case 2:		/* CTRL B */
 				return cmd_PageUp;
+			case 3:		/* CTRL C */
+				return cmd_Escape;
 			case ' ':
 				return opts->watch_time > 0 ? cmd_TogglePause : cmd_PageDown;
 			case 6:		/* CTRL F */

@@ -674,6 +674,12 @@ get_string(char *prompt,
 			 */
 			result_is_ok = false;
 		}
+		/* Ctrl C */
+		else if (c == 3)
+		{
+			handle_sigint = true;
+			goto finish_read;
+		}
 
 		prev_c = c;
 		set_readline_ncurses_proxy_char(c);

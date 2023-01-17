@@ -278,7 +278,7 @@ setup_sigsegv_handler(void)
 	act.sa_flags = (int) SA_RESETHAND;
 	act.sa_handler = SigsegvHandler;
 
-	sigaction (SIGSEGV, &act, &old_sigsegv_handler);
+	sigaction(SIGSEGV, &act, &old_sigsegv_handler);
 }
 
 inline int
@@ -3103,7 +3103,13 @@ reinit_theme:
 
 #endif
 
-	cbreak();
+	/*
+	 * Use raw insted cbreak. raw mode disables sending SIGINT after Ctrl+C. Although pspg
+	 * has own SIGINT trap, it is better to be disabled, because SIGINT are sent to all
+	 * process in group - psql SIGINT handler too. Now, psql "correctly" displays cancel
+	 * message, that raises unwanted visual artefacts.
+	 */
+	raw();
 	keypad(stdscr, TRUE);
 	curs_set(0);
 	noecho();

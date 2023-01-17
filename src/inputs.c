@@ -256,6 +256,8 @@ repeat:
 
 	fprintf(debug_pipe, "*** keycode: %d, err: %d\n", nced->keycode, errno);
 
+#endif
+
 	if (errno == EINTR)
 	{
 		if (handle_sigint)
@@ -272,8 +274,6 @@ repeat:
 
 		return false;
 	}
-
-#endif
 
 	if (errno == 0)
 	{
