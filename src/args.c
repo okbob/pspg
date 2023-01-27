@@ -326,6 +326,12 @@ print_info(void)
 
 #endif
 
+#ifdef PDC_WIDE
+
+	fprintf(stdout, "with pdcurses wide char support\n");
+
+#endif
+
 #ifdef HAVE_POSTGRESQL
 
 	fprintf(stdout, "with postgres client integration\n");

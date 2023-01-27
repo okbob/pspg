@@ -17,11 +17,13 @@ Compilation of pdcurses on Linux (pdcurses for VT)
 
 Maybe can be necessary to copy header files to `/usr/local/include/pdcurses`.
 
+Note - the directory should be fresh after git sync without running cmake.
+
 Compilation of pspg on pdcurses
 -------------------------------
 
     PANEL_LIBS=-lpdcurses CURSES_LIBS=-lpdcurses\
-      CURSES_CFLAGS="-I/usr/local/include/pdcurses -DPDC_WIDE=Y -DPDC_FORCE_UTF8=Y -L/usr/local/lib"\
-      ./configure -libdir=/usr/local/lib
+      CURSES_CFLAGS="-I/usr/local/include/pdcurses -DPDC_WIDE=Y -DPDC_FORCE_UTF8=Y -L/usr/lib"\
+      ./configure -libdir=/usr/lib
     make
 
