@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/okbob/pspg.svg?branch=master)](https://travis-ci.org/okbob/pspg)
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://stand-with-ukraine.pp.ua)
 
 # pspg - Postgres Pager
 
