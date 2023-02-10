@@ -238,6 +238,7 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	while (printbuf->free < n)
 	{
 		printbuf->size += 10 * 1024;
+		printbuf->free = printbuf->size - printbuf->used;
 		need_realloc = true;
 	}
 
