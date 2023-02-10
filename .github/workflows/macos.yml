@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - run: brew install readline
+    - run: brew link --force readline
     - uses: actions/checkout@v3
     - name: configure
       run: ./configure
