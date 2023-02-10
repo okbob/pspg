@@ -178,6 +178,7 @@ pb_write_repeat(PrintbufType *printbuf, int n, const char *str, int size)
 	while (printbuf->free < (size * n))
 	{
 		printbuf->size += 10 * 1024;
+		printbuf->free = printbuf->size - printbuf->used;
 
 		need_realloc = true;
 	}
