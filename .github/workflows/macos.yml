@@ -12,10 +12,9 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - run: brew link --force readline
     - uses: actions/checkout@v3
     - name: configure
-      run: ./configure
+      run: LDFLAGS="-L/usr/local/opt/readline/lib" CPPFLAGS="-I/usr/local/opt/readline/include" ./configure
     - name: make
       run: make
 
