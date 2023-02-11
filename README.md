@@ -627,6 +627,11 @@ if development package for ncuresesw library is installed.
 
     # brew install pspg
 
+You can compile easily `pspg` without `brew`, but you need `gnu readline` library. MacOS uses
+by default readline emulated over libedit, but `pspg` requires full gnu readline library.
+
+    LDFLAGS="-L/usr/local/opt/readline/lib" CPPFLAGS="-I/usr/local/opt/readline/include" ./configure
+    LDFLAGS="-L/usr/local/opt/readline/lib" CPPFLAGS="-I/usr/local/opt/readline/include" make
 
 ## Debian
 
