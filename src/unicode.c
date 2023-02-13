@@ -317,7 +317,12 @@ utf_string_dsplen(const char *s, int bytes)
 }
 
 int
-utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bool first_only, long int *digits, long int *others)
+utf_string_dsplen_multiline(const char *s,
+							size_t max_bytes,
+							bool *multiline,
+							bool first_only,
+							long int *digits,
+							long int *others)
 {
 	int result = -1;
 	int		rowlen = 0;
@@ -369,7 +374,9 @@ utf_string_dsplen_multiline(const char *s, size_t max_bytes, bool *multiline, bo
 		max_bytes -= clen;
 	}
 
-	return result != -1 ? result : rowlen;
+	result = rowlen > result ? rowlen : result;
+
+	return result;
 }
 
 

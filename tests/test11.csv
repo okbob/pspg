@@ -1,0 +1,6 @@
+Name,Owner,Encoding,Collate,Ctype,ICU Locale,Locale Provider,Access privileges,Size,Tablespace,Description
+postgres,postgres,UTF8,cs_CZ.UTF-8,cs_CZ.UTF-8,,libc,,7693 kB,pg_default,default administrative connection database
+template0,postgres,UTF8,cs_CZ.UTF-8,cs_CZ.UTF-8,,libc,"=c/postgres
+postgres=CTc/postgres",7537 kB,pg_default,unmodifiable empty database
+template1,postgres,UTF8,cs_CZ.UTF-8,cs_CZ.UTF-8,,libc,"=c/postgres
+postgres=CTc/postgres",7765 kB,pg_default,default template for new databases
