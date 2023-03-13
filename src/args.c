@@ -480,7 +480,7 @@ readargs(char **argv,
 					fprintf(stdout, "\nWatch mode options:\n");
 					fprintf(stdout, "  -q, --query=QUERY        execute query\n");
 					fprintf(stdout, "  -w, --watch time         the query (or read file) is repeated every time (sec)\n");
-					fprintf(stdout, "\nConnection options\n");
+					fprintf(stdout, "\nConnection options:\n");
 					fprintf(stdout, "  -d, --dbname=DBNAME      database name\n");
 					fprintf(stdout, "  -h, --host=HOSTNAME      database server host (default: \"local socket\")\n");
 					fprintf(stdout, "  -p, --port=PORT          database server port (default: \"5432\")\n");
