@@ -1,3 +1,4 @@
+AC_PREREQ([2.70])
 AC_INIT([pspg],[0],[pavel.stehule@gmail.com],[pspg])
 
 AC_LANG([C])
