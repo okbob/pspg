@@ -132,7 +132,7 @@ This pager can be used from the following command line clients, too:
       -q, --query=QUERY        execute query
       -w, --watch time         the query (or read file) is repeated every time (sec)
 
-    Connection options
+    Connection options:
       -d, --dbname=DBNAME      database name
       -h, --host=HOSTNAME      database server host (default: "local socket")
       -p, --port=PORT          database server port (default: "5432")
