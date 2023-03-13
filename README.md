@@ -152,7 +152,7 @@ Options can be passed within the environment variable `PSPG`, too.
 
 | Name          | Usage                                     |
 |---------------|-------------------------------------------|
-|`PSPG`         | can holds same options like command line  |
+|`PSPG`         | can hold same options like command line   |
 |`PSPG_CONF`    | path to configuration file                |
 |`PSPG_HISTORY` | path to file pspg's readline history file |
 
@@ -222,7 +222,7 @@ command `\ctheme mc2`)):
     scrollbar_background = lightgray, white
     scrollbar_slider = white, gray
 
-Some keys can be marked by symobol `*`. Marked keys are used for odd records.
+Some keys can be marked by symbol `*`. Marked keys are used for odd records.
 
     data* = black, lightgray
     label* = black, lightgray, italic, bold
@@ -360,15 +360,15 @@ definitions are stored in log file.
 | `\theme N`                                                   | set theme number           |
 | `\copy [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text\|pipesep\|sqlvalues]` | copy data to clipboard     |
 | `\save [all\|selected] [nullstr "str"] [csv\|tsv\|insert\|text\|pipesep\|sqlvalues]` | copy data to clipboard     |
-| `\order [N\|colum name]`                                      | sort by colum              |
-| `\orderd [N\|colum name]`                                     | desc sort by column        |
-| `\sort [N\|colum name]`                                       | sort by colum              |
-| `\sortd [N\|colum name]`                                      | desc sort by column        |
-| `\dsort [N\|colum name]`                                      | desc sort by column (alias)|
-| `\rsort [N\|colum name]`                                      | desc sort by column (alias)|
-| `\asc [N\|colum name]`                                        | sort by colum (alias)      |
-| `\desc [N\|colum name]`                                       | desc sort by colum (alias) |
-| `\search [back] [selected] [colum name] [string\|"string"]`   | search string in data      |
+| `\order [N\|column name]`                                     | sort by column             |
+| `\orderd [N\|column name]`                                    | desc sort by column        |
+| `\sort [N\|column name]`                                      | sort by column             |
+| `\sortd [N\|column name]`                                     | desc sort by column        |
+| `\dsort [N\|column name]`                                     | desc sort by column (alias)|
+| `\rsort [N\|column name]`                                     | desc sort by column (alias)|
+| `\asc [N\|column name]`                                       | sort by column (alias)     |
+| `\desc [N\|column name]`                                      | desc sort by column (alias)|
+| `\search [back] [selected] [column name] [string\|"string"]`  | search string in data      |
 
 
 The output can be redirected to any command when the name starts with pipe symbol:
@@ -385,7 +385,7 @@ or <kbd>Esc</kbd> <kbd>Esc</kbd>.
 
 pspg supports a possibility to use a sequence of keys <kbd>Esc</kbd>, <kbd>key</kbd> instead an
 combination of <kbd>Alt</kbd>+<kbd>key</kbd>. The interval between pressing <kbd>Esc</kbd> and
-<kbd>key</kbd> is limmited by interval specified by option `esc-delay` or by configuration's
+<kbd>key</kbd> is limited by interval specified by option `esc-delay` or by configuration's
 option `esc_delay`. This is max delay time in ms. After this interval, the single pressing <kbd>Esc</kbd>
 is interpreted as `Escape`. -1 meas unlimited, 0 disables this feature.
 
@@ -407,14 +407,14 @@ by `\pset null ...`, then `psql` displays empty string instead NULL. `pspg` hasn
 detection (in export routines) for this case. You should to check and enable or disable menu
 item `Empty string is NULL`.
 
-`pspg` has automatic detection of clipboard application. Unfortunatelly, this detection should
+`pspg` has automatic detection of clipboard application. Unfortunately, this detection should
 not to work for same cases. You can specify the application by specify number (1,2,3) to
 `--clipboard-app` option.
 
 
 ## Status line description
 
-* `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char possitions from) .. (char possitions to)
+* `V: [d/d d..d]` - vertical cursor: (column number)/(columns) (char positions from) .. (char positions to)
 * `FC: d` - freezed columns length in chars
 * `C: d..d/d` - unfreezed visible data in chars (from .. to)/(total)
 * `L:[d + d  d/d]` - lines (number of first visible line) + (number of line of display), (current line)/(lines)
@@ -590,7 +590,7 @@ On my Fedora this terminal doesn't correctly display true color themes. The basi
 is in default `TERM` setting, that is `xterm-256color`. Unfortunately, the `konsole` terminal
 is not fully compatible with `xterm`, and doesn't allow color changing. You can force direct
 colors by using the option `--direct-color` or by setting `TERM=xterm-direct`. Second option
-is more corect setting of `TERM` variable to `konsole-256color`. In this case the `pspg` will
+is more correct setting of `TERM` variable to `konsole-256color`. In this case the `pspg` will
 map the true rgb colors to supported 256 colors.
 
 ## Note - compilation issue
@@ -620,7 +620,7 @@ see broken characters with incorrect locale setting too.
 
 You can check wide chars support by `pspg --version`. Row `ncurses with wide char support`
 is expected. Re-run `configure` with `--with-ncursesw` option. When this command fails check
-if development package for ncuresesw library is installed.
+if development package for ncursesw library is installed.
 
 
 ## Homebrew (for Linux & MacOS)
@@ -690,14 +690,14 @@ tested `pspg`, but although `pspg` was linked with ncursesw libraries, the utf8 
 didn't work fully correctly - probably due some issues in `libc` library. There are problems with
 chars encoded to 3bytes - unicode borders, .. Two bytes unicode chars should be displayed well.
 
-You can use `pspg` with usual accented chars, but unicode bordes should not be used. Replacement
+You can use `pspg` with usual accented chars, but unicode borders should not be used. Replacement
 ascii borders by special borders chars (by ncurses technology) works well - looks on `Options|Force unicode borders`
 option.
 
 * Solaris `make` doesn't support conditional statements - should be removed So, remove unsupported
   functionality from `Makefile` (`ifdef`,`endif`), replace `-include` by `include` first.
 
-* After running `configure` remove link on `termcap` library from `config.make`. It is garabage
+* After running `configure` remove link on `termcap` library from `config.make`. It is garbage
   produced by `readline` automake script. Combination with `ncurses` libraries makes some
   linking issues.
 
@@ -724,7 +724,7 @@ option.
   change order of columns, mark columns and export only selected columns (selected rows).
 
 * Replace printing document directly to ncurses window by some smarter structure. Internally
-  there are lot of checks and fixs to support complex dynamic layout. The possibly views should
+  there are lot of checks and fixes to support complex dynamic layout. The possibly views should
   to remember first row, last row, current row. Now, these data are in global variables or in
   DataDesc and ScrDesc structures.
 
