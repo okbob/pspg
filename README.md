@@ -475,6 +475,18 @@ processed, because `pspg` uses empty line as separator between tables.
 The query stream mode is an sequence of SQL statements separated by char GS (Group
 separator - 0x1D on separated line.
 
+<pre>
+pavel@localhost ~]$ cat < /dev/pts/3 > ~/pipe
+select 10
+^] 
+select 20
+^]
+select *
+from
+pg_class
+^]
+</pre>
+
 
 ## Recommended psql configuration
 
