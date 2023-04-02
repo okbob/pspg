@@ -1849,8 +1849,11 @@ multilines_detection(DataDesc *desc)
 		{
 			/*
 			 * This implementation doesn't support old-ascii format
+			 *
+			 * Note - processed string can be shorter than headline for last
+			 * column with pset border 1
 			 */
-			while (pos < desc->headline_char_size)
+			while (pos < desc->headline_char_size && *str != '\0')
 			{
 				if (border0)
 				{
