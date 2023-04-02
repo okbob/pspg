@@ -44,7 +44,7 @@ static char	pathname[MAXPATHLEN] = "";
 FILE   *f_tty = NULL;						/* ncurses input stream */
 FILE   *f_data = NULL;						/* content input */
 
-int		f_data_opts = 0;						/* describe properties of content input */
+unsigned int f_data_opts = 0;						/* describe properties of content input */
 
 int		f_data_fileno = -1;					/* content input used by poll */
 
@@ -68,7 +68,6 @@ static NCursesEventData saved_event;
 static bool saved_event_is_valid = false;
 
 static bool close_f_tty = false;
-static bool close_f_data = false;
 
 #ifdef PDCURSES
 
@@ -430,9 +429,11 @@ _get_pspg_event(NCursesEventData *nced,
 	if (!only_tty_events)
 	{
 		if (current_state->stream_mode &&
+			(f_data_opts & STREAM_IS_OPEN) &&
 			!(f_data_opts & STREAM_IS_FILE) &&
 			!(f_data_opts & STREAM_IS_CLOSED))
 		{
+log_row("SSSS: %d %d", f_data, f_data_opts);
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
 
@@ -871,7 +872,6 @@ open_data_stream(Options *opts)
 		 * in open time. But it doesn't look like robust solution.
 		 */
 		f_data = fopen(locpathname, mode);
-		f_data_opts = 0;
 		if (!f_data)
 		{
 			/* save errno, and prepare error message */
@@ -880,7 +880,7 @@ open_data_stream(Options *opts)
 			return false;
 		}
 
-		close_f_data = true;
+		f_data_opts = STREAM_IS_OPEN | STREAM_CAN_BE_CLOSED;
 	}
 	else
 	{
@@ -888,10 +888,10 @@ open_data_stream(Options *opts)
 		pathname[0] = '\0';
 
 		/* use stdin as input if query cannot be used as source */
-		if (!opts->query)
+		if (!opts->query && !opts->querystream)
 		{
 			f_data = stdin;
-			f_data_opts = STREAM_IS_PIPE;
+			f_data_opts = STREAM_IS_OPEN | STREAM_IS_PIPE;
 		}
 	}
 
@@ -1070,9 +1070,7 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
-//leave("close file");
-
-	if (close_f_data)
+	if (f_data_opts & STREAM_CAN_BE_CLOSED & STREAM_IS_OPEN)
 	{
 		fclose(f_data);
 
@@ -1088,7 +1086,8 @@ close_data_stream(void)
 
 #endif
 
-		close_f_data = false;
+		f_data_opts &= ~(STREAM_CAN_BE_CLOSED);
+		f_data_opts &= ~(STREAM_IS_OPEN);
 	}
 
 	/*

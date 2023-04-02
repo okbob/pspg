@@ -60,15 +60,17 @@ enum
 	STREAM_IS_FIFO					= 1,		/* can be FIFO or PIPE */
 	STREAM_IS_PIPE					= 1 << 2,
 	STREAM_IS_FILE					= 1 << 3,
-	STREAM_CAN_BE_REOPENED			= 1 << 4,
-	STREAM_IS_IN_NONBLOCKING_MODE	= 1 << 5,
-	STREAM_HAS_NOTIFY_SUPPORT		= 1 << 6,
-	STREAM_IS_CLOSED				= 1 << 7,
+	STREAM_CAN_BE_CLOSED			= 1 << 4,
+	STREAM_CAN_BE_REOPENED			= 1 << 5,
+	STREAM_IS_IN_NONBLOCKING_MODE	= 1 << 6,
+	STREAM_HAS_NOTIFY_SUPPORT		= 1 << 7,
+	STREAM_IS_OPEN					= 1 << 8,
+	STREAM_IS_CLOSED				= 1 << 9,
 };
 
 extern FILE	   *f_data;
 extern FILE	   *f_tty;
-extern int		f_data_opts;
+extern unsigned int f_data_opts;
 
 extern int		pspg_esc_delay;
 
