@@ -978,6 +978,9 @@ next_row:
 
 	log_row("read rows %d", nrows);
 
+	if (opts->querystream)
+		goto final;
+
 	if (initial_run)
 	{
 		/*
@@ -1040,6 +1043,8 @@ broken_format:
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
+
+final:
 
 #ifdef DEBUG_PIPE
 

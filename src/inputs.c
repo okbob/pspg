@@ -433,7 +433,6 @@ _get_pspg_event(NCursesEventData *nced,
 			!(f_data_opts & STREAM_IS_FILE) &&
 			!(f_data_opts & STREAM_IS_CLOSED))
 		{
-log_row("SSSS: %d %d", f_data, f_data_opts);
 			fds[1].fd = fileno(f_data);
 			fds[1].events = POLLIN;
 

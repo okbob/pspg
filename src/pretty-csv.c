@@ -1436,7 +1436,7 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	PrintConfigType	pconfig;
 	PrintbufType	printbuf;
 	PrintDataDesc	pdesc;
-	char	   *query = opts->query;
+	char	   *query = NULL;
 	char	   *name;
 
 	state->errstr = NULL;
@@ -1444,31 +1444,39 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 	if (opts->querystream)
 	{
-		SimpleLineBufferIter slbi, *_slbi;
-		char	   *str;
-		ExtStr		estr;
-
-		/* We need to make an query from stored lines */
-		_slbi = init_slbi_ddesc(&slbi, desc);
-		InitExtStr(&estr);
-
-		while (_slbi)
+		if (desc->total_rows > 0)
 		{
-			_slbi = slbi_get_line_next(_slbi, &str, NULL);
-			ExtStrAppendNewLine(&estr, str);
+			SimpleLineBufferIter slbi, *_slbi;
+			char	   *str;
+			ExtStr		estr;
+
+			/* We need to make an query from stored lines */
+			_slbi = init_slbi_ddesc(&slbi, desc);
+			InitExtStr(&estr);
+
+			while (_slbi)
+			{
+				_slbi = slbi_get_line_next(_slbi, &str, NULL);
+				ExtStrAppendNewLine(&estr, str);
+			}
+
+			if (estr.len > 0)
+			{
+				if (current_state->last_query)
+					free(current_state->last_query);
+
+				current_state->last_query = estr.data;
+			}
+			else
+				free(estr.data);
 		}
 
-		if (estr.len > 0)
-			query = estr.data;
-		else
-			free(estr.data);
-
-		lb_free(desc);
-
-		if (!query)
-			return false;
+		query = current_state->last_query;
 	}
+	else
+		query = opts->query;
 
+	lb_free(desc);
 	memset(desc, 0, sizeof(DataDesc));
 
 	name = (char *) get_input_file_basename();
@@ -1527,6 +1535,9 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	rowbuckets.nrows = 0;
 	rowbuckets.next_bucket = NULL;
 
+	if (opts->querystream && !query)
+		return false;
+
 	if (query)
 	{
 		if (!pg_exec_query(opts,
@@ -1536,9 +1547,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 						   &state->errstr))
 		{
 			log_row("pgclient error: %s\n", state->errstr);
-
-			if (query != opts->query)
-				free(query);
 
 			free(linebuf.buffer);
 

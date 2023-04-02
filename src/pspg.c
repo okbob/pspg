@@ -2707,6 +2707,7 @@ main(int argc, char *argv[])
 
 	state.theme_template = -1;
 	state.menu_template = -1;
+	state.last_query = NULL;
 
 	pspgenv = getenv("PSPG");
 	if (pspgenv)
@@ -2818,10 +2819,8 @@ main(int argc, char *argv[])
 		result = read_and_format(&opts, &desc, &state);
 	else if (opts.querystream)
 	{
-		result = readfile(&opts, &desc, &state);
-
-		if (result)
-			result = read_and_format(&opts, &desc, &state);
+		readfile(&opts, &desc, &state);
+		result = read_and_format(&opts, &desc, &state);
 	}
 	else
 		result = readfile(&opts, &desc, &state);
@@ -3569,9 +3568,8 @@ reinit_theme:
 								fresh_data = read_and_format(&opts, &desc2, &state);
 							else if (opts.querystream)
 							{
-								fresh_data = readfile(&opts, &desc2, &state);
-								if (fresh_data)
-									fresh_data = read_and_format(&opts, &desc2, &state);
+								readfile(&opts, &desc2, &state);
+								fresh_data = read_and_format(&opts, &desc2, &state);
 							}
 							else
 								fresh_data = readfile(&opts, &desc2, &state);
@@ -6918,6 +6916,8 @@ refresh:
 	free(opts.nullstr);
 
 	free(string_argument);
+
+	free(state.last_query);
 
 	close_data_stream();
 

@@ -290,6 +290,8 @@ typedef struct
 
 	int		theme_template;
 	int		menu_template;
+
+	char   *last_query;				/* last query in querystream mode */
 } StateData;
 
 
