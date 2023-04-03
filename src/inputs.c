@@ -51,6 +51,7 @@ int		f_data_fileno = -1;					/* content input used by poll */
 static struct pollfd fds[2];
 
 static long last_data_pos = -1;
+static int open_data_stream_prev_errno = 0;
 
 #if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 
@@ -875,6 +876,12 @@ open_data_stream(Options *opts)
 		{
 			/* save errno, and prepare error message */
 			current_state->_errno = errno;
+
+			/*
+			 * In watch mode, the file can be created in next cycle. In this case
+			 * we don't want skip current content, when stream mode is active.
+			 */
+			open_data_stream_prev_errno = errno;
 			format_error("cannot to open file \"%s\" (%s)", pathname, strerror(errno));
 			return false;
 		}
@@ -928,8 +935,15 @@ open_data_stream(Options *opts)
 
 #endif
 
-				fseek(f_data, 0L, SEEK_END);
+				/*
+				 * In stream mode skip current content if this file
+				 * is opened first time.
+				 */
+				fseek(f_data, 0L,
+					  open_data_stream_prev_errno == ENOENT ? SEEK_SET : SEEK_END);
+
 				last_data_pos = ftell(f_data);
+				open_data_stream_prev_errno = 0;
 			}
 			else
 			{
@@ -1190,6 +1204,11 @@ detect_file_truncation(void)
 	{
 		struct stat stats;
 
+		/*
+		 * This detection based on size is weak. It doesn't detect
+		 * case when old content is overwritten by new content with
+		 * same or bigger size.
+		 */
 		if (fstat(fileno(f_data), &stats) == 0)
 		{
 			if (stats.st_size < last_data_pos)
