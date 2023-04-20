@@ -1767,7 +1767,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 				mp = 1024l * 1024 * 1024 * 1024;
 
 			/* units used by nushell */
-			if (nstreq(first_nospace_nodigit, "B"))
+			else if (nstreq(first_nospace_nodigit, "B"))
 				mp = 1l;
 			else if (nstreq(first_nospace_nodigit, "KiB"))
 				mp = 1024l;
@@ -1780,7 +1780,10 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 
 				/* unknown unit */
 			else
+			{
+				log_row("unknown unit \"%s\"", first_nospace_nodigit);
 				return false;
+			}
 
 			*first_nospace_nodigit = '\0';
 		}
@@ -2055,9 +2058,15 @@ sort_by_string:
 		leave("unexpected processed rows after sort prepare");
 
 	if (detect_string_column)
+	{
+		log_row("string sort");
 		sort_column_text(sortbuf, sortbuf_pos, desc_sort);
+	}
 	else
+	{
+		log_row("numeric sort");
 		sort_column_num(sortbuf, sortbuf_pos, desc_sort);
+	}
 
 	lineno = desc->first_data_row;
 
