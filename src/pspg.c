@@ -2734,9 +2734,6 @@ main(int argc, char *argv[])
 			exit(EXIT_SUCCESS);
 	}
 
-	if (!args_are_consistent(&opts, &state))
-		leave(state.errstr ? state.errstr : "options are not valid");
-
 	/* open log file when user want it */
 	if (opts.log_pathname)
 	{
@@ -2750,6 +2747,12 @@ main(int argc, char *argv[])
 
 		setlinebuf(logfile);
 	}
+
+	if (!args_are_consistent(&opts, &state))
+		leave(state.errstr ? state.errstr : "options are not valid");
+
+	if (state.stream_mode && !isatty(STDOUT_FILENO))
+		leave("stream mode can be used only in interactive mode (tty is not available)");
 
 	if (opts.custom_theme_name)
 	{
@@ -2776,6 +2779,7 @@ main(int argc, char *argv[])
 
 	if (state.boot_wait > 0)
 		usleep(1000 * 1000 * state.boot_wait);
+
 
 	/*
 	 * don't use inotify, when user prefer periodic watch time, or when we
