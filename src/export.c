@@ -347,6 +347,8 @@ typedef struct
 	char	  **colnames;
 	ExtStr	   *lines;
 	char		linestyle;
+
+	int			nlines;			/* for debug purposes */
 } ExportState;
 
 /*
@@ -410,6 +412,8 @@ process_item(ExportState *expstate,
 
 		if (typ == 'N' && !is_colname && !has_continue_mark)
 		{
+			expstate->nlines += 1;
+
 			if (expstate->format == CLIPBOARD_FORMAT_INSERT)
 				fputs(");\n", expstate->fp);
 			else
@@ -577,7 +581,11 @@ process_item(ExportState *expstate,
 			fwrite(field, size, 1, expstate->fp);
 		}
 		else
+		{
 			fputc('\n', expstate->fp);
+			expstate->nlines += 1;
+		}
+
 	}
 
 	else if (expstate->format == CLIPBOARD_FORMAT_PIPE_SEPARATED)
@@ -606,7 +614,10 @@ process_item(ExportState *expstate,
 				}
 			}
 			else
+			{
 				fputc('\n', expstate->fp);
+				expstate->nlines += 1;
+			}
 		}
 	}
 
@@ -624,6 +635,8 @@ process_item(ExportState *expstate,
 		{
 			errno = 0;
 			fputc('\n', expstate->fp);
+			expstate->nlines += 1;
+
 		}
 		else
 		{
@@ -768,6 +781,7 @@ export_data(Options *opts,
 	expstate.columns = desc->columns;
 	expstate.copy_line_extended = (cmd == cmd_CopyLineExtended);
 	expstate.linestyle = desc->linestyle;
+	expstate.nlines = 0;
 
 	current_state->errstr = NULL;
 
@@ -1096,6 +1110,8 @@ exit_export:
 
 		free(expstate.lines);
 	}
+
+	log_row("exported %d rows with result %d", expstate.nlines, isok);
 
 	return isok;
 }
