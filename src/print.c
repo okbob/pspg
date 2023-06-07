@@ -146,53 +146,6 @@ flush_bytes(WINDOW *win,
 }
 
 static void
-get_column_data_dim(DataDesc *desc, int n,
-					int *x, int *width)
-{
-	CRange *col = &desc->cranges[n];
-
-	*width = col->xmax - col->xmin + 1;
-	*x = col->xmin;
-
-	if (desc->border_type == 0)
-	{
-		if (n == 0)
-		{
-			*width -= 1;
-			*x += 0;
-		}
-		else
-		{
-			*width -= 2;
-			*x += 1;
-		}
-	}
-	else if (desc->border_type == 1)
-	{
-		if (n == 0)
-		{
-			*width -= 3;
-			*x += 1;
-		}
-		else if (n + 1 == desc->columns)
-		{
-			*width -= 3;
-			*x += 2;
-		}
-		else
-		{
-			*width -= 4;
-			*x += 2;
-		}
-	}
-	else if (desc->border_type == 2)
-	{
-		*width -= 4;
-		*x += 2;
-	}
-}
-
-static void
 print_column_names(WINDOW *win,
 				   int srcx,						/* offset to displayed data */
 				   int vcursor_xmin,				/* xmin in display coordinates */
@@ -315,97 +268,116 @@ print_column_names(WINDOW *win,
 		char   *colname;
 		int		colname_size;
 		int		colname_width;
-
-		int		data_x, data_width;
-		int		act_xmin, act_xmax, act_width;
-		int		overlap_left = 0, overlap_right = 0;
-
+		int		col_val_xmin;
+		int		col_val_xmax;
+		int		visible_col_val_xmin;
+		int		visible_col_val_xmax;
+		int		visible_col_val_width;
+		int		border_width;
+		int		offset;
+		int		startx;
 		bool	is_cursor;
 		bool	is_in_range;
 
-		get_column_data_dim(desc, i, &data_x, &data_width);
-
-		if (data_x + data_width < srcx)
+		if (col->xmax <= srcx)
 			continue;
-		if (maxx + srcx < data_x)
+
+		if (srcx + maxx <= col->xmin)
 			continue;
 
 		colname = desc->namesline + col->name_offset;
 		colname_size = col->name_size;
 		colname_width = col->name_width;
 
-		act_xmin = data_x - srcx;
-		act_xmax = act_xmin + data_width - 1;
-
-		if (act_xmin < 0)
+		col_val_xmin = col->xmin;
+		if (desc->headline_transl[col_val_xmin] == 'I' ||
+			desc->headline_transl[col_val_xmin] == 'L')
 		{
-			overlap_left = - act_xmin;
-			act_xmin = 0;
+			col_val_xmin += 1;
 		}
 
-		if (act_xmax > maxx)
+		col_val_xmax = col->xmax;
+		if (desc->headline_transl[col_val_xmax] == 'R')
 		{
-			overlap_right = act_xmax - maxx;
-			act_xmax = maxx;
+			col_val_xmax -= 1;
 		}
 
-		act_width = act_xmax - act_xmin + 1;
+		visible_col_val_xmin = col_val_xmin < srcx ? srcx : col_val_xmin;
+		visible_col_val_xmax = col_val_xmax > srcx + maxx ? srcx + maxx : col_val_xmax;
+		visible_col_val_width = visible_col_val_xmax - visible_col_val_xmin + 1;
 
-		is_cursor = vcursor_xmin <= act_xmin && act_xmin <= vcursor_xmax;
+		border_width = desc->border_type != 0 ? 1 : 0;
+
+		if ((colname_width + 2 * border_width) <= visible_col_val_width)
+		{
+			/* When the label can be placed inside visible space in column */
+			offset = (visible_col_val_width - colname_width) / 2;
+			border_width = 0;
+		}
+		else
+		{
+			int		visible_colname_width = visible_col_val_width - border_width;
+			int		char_bytes;
+			int		char_width;
+
+			if (col_val_xmax < srcx + maxx)
+			{
+				/* when end of label is visible, skip n chars from begin */
+				while (*colname)
+				{
+					char_bytes = charlen(colname);
+					char_width = dsplen(colname);
+
+					if (colname_width < visible_colname_width)
+						break;
+
+					colname_width -= char_width;
+					colname += char_bytes;
+					colname_size -= char_bytes;
+				}
+
+				border_width = 0;
+			}
+			else
+			{
+				char   *str = colname;
+
+				colname_width = 0;
+				colname_size = 0;
+
+				/* only first n chars */
+				while (*str)
+				{
+					char_bytes = charlen(colname);
+					char_width = dsplen(colname);
+
+					if (colname_width + char_width > visible_colname_width)
+						break;
+
+					colname_width += char_width;
+					str += char_bytes;
+					colname_size += char_bytes;
+				}
+			}
+
+			offset = 0;
+		}
+
+		startx = visible_col_val_xmin - srcx;
+
+		is_cursor = vcursor_xmin <= startx && startx <= vcursor_xmax;
 		is_in_range = selected_xmin != INT_MIN &&
-						  act_xmin >= selected_xmin && act_xmin <= selected_xmax;
+						  startx >= selected_xmin && startx <= selected_xmax;
 
 		if (is_in_range)
 			new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
 		else
 			new_attr = is_cursor ? t->cursor_data_attr : t->data_attr;
 
-		if (colname_width <= act_width)
-		{
-			act_xmin = (act_width - colname_width - 1) / 2 + act_xmin;
-		}
-		else
-		{
-			if (overlap_right > 0 || overlap_right > overlap_left)
-			{
-				char    *str = colname;
-				int		width = 0;
-				colname_size = 0;
-
-				/* first n chars */
-				while (*str)
-				{
-					bytes = charlen(str);
-					chars = dsplen(str);
-
-					if (width + chars > act_width)
-						break;
-
-					width += chars;
-					str += bytes;
-					colname_size += bytes;
-				}
-			}
-			else
-			{
-				/* last n chars */
-				while (*colname)
-				{
-					bytes = charlen(colname);
-					chars = dsplen(colname);
-
-					if (colname_width <= act_width)
-						break;
-
-					colname_width -= chars;
-					colname += bytes;
-					colname_size -= bytes;
-				}
-			}
-		}
-
 		wattron(win, new_attr);
-		mvwaddnstr(win, cy, act_xmin, colname, colname_size);
+
+		mvwaddnstr(win, cy, visible_col_val_xmin - srcx + offset + border_width, colname, colname_size);
+
 		wattroff(win, new_attr);
 	}
 }

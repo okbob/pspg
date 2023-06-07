@@ -1346,8 +1346,7 @@ translate_headline(DataDesc *desc)
 		if (desc->border_type == 0 && last_black_char)
 		{
 			last_black_char[0] = 'd';
-			last_black_char[1] = 'R';
-			last_black_char[2] = '\0';
+			last_black_char[1] = '\0';
 		}
 
 		/* trim ending spaces */
