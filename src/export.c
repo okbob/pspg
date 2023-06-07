@@ -759,6 +759,9 @@ export_data(Options *opts,
 	bool	save_column_names = false;
 	bool	has_selection;
 
+	int		debug_read_rows = 0;
+	int		debug_processed_rows = 0;
+
 	int		min_row = desc->first_data_row;
 	int		max_row = desc->last_row;
 
@@ -958,6 +961,10 @@ export_data(Options *opts,
 		}
 	}
 
+	log_row("export: desc->first_data_row: %d, desc->last_data_row: %d",
+			desc->first_data_row, desc->last_data_row);
+	log_row("export: min_row: %d, max_row: %d", min_row, max_row);
+
 	init_lbi_ddesc(&lbi, desc, 0);
 
 	while (lbi_set_mark_next(&lbi, &lbm))
@@ -974,6 +981,8 @@ export_data(Options *opts,
 		bool	continuation_mark = false;
 
 		(void) lbm_get_line(&lbm, &rowstr, &linfo, &rn);
+
+		debug_read_rows += 1;
 
 		/* reduce rows from export */
 		if (rn >= desc->first_data_row && rn <= desc->last_data_row)
@@ -1026,6 +1035,8 @@ export_data(Options *opts,
 		/* for text format we have not concate lines of multiline field */
 		if (format != CLIPBOARD_FORMAT_TEXT)
 			continuation_mark = linfo && linfo->mask & LINEINFO_CONTINUATION;
+
+		debug_processed_rows += 1;
 
 		/*
 		 * line parser - separates fields on line
@@ -1087,6 +1098,8 @@ export_data(Options *opts,
 	}
 
 exit_export:
+
+	log_row("export: read rows: %d, procesed rows: %d", debug_read_rows, debug_processed_rows);
 
 	if (expstate.colnames)
 	{
