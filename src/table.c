@@ -705,6 +705,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		desc->border_bottom_row = -1;
 		desc->first_data_row = -1;
 		desc->last_data_row = -1;
+		desc->fallback_last_data_row = false;
 		desc->is_expanded_mode = false;
 		desc->headline_transl = NULL;
 		desc->cranges = NULL;
@@ -903,6 +904,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		{
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+			desc->fallback_last_data_row = false;
 			desc->load_data_rows = false;
 			log_row("next row will be desc row");
 
@@ -916,6 +918,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			/* Outer border is repeated in expanded mode, use last detected row */
 			desc->border_bottom_row = nrows;
 			desc->last_data_row = nrows - 1;
+			desc->fallback_last_data_row = false;
 			log_row("next row will be desc row");
 		}
 
@@ -1011,8 +1014,13 @@ next_row:
 		 * fallback, but can be fixed later, when border_type
 		 * will be known.
 		 */
-		if (desc->last_data_row == -1)
+		if (desc->last_data_row == -1 ||
+			(desc->last_data_row != -1 && desc->fallback_last_data_row))
+		{
 			desc->last_data_row = desc->last_row - 1;
+			desc->fallback_last_data_row = true;
+			log_row("set fallback_last_data_row to %d", desc->last_data_row);
+		}
 
 		if (desc->border_head_row >= 1)
 			desc->namesline = desc->rows.rows[desc->border_head_row - 1];
@@ -1040,6 +1048,7 @@ broken_format:
 
 		/* there are not a data set */
 		desc->last_data_row = desc->last_row;
+		desc->fallback_last_data_row = false;
 		desc->title_rows = 0;
 		desc->title[0] = '\0';
 	}
@@ -1059,7 +1068,6 @@ final:
 		clean_notify_poll();
 
 #endif
-
 
 	return true;
 }

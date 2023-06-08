@@ -2410,7 +2410,8 @@ finalize_tabular_data(DataDesc *desc)
 	{
 		if (desc->border_type != 2)
 		{
-			if (desc->border_bottom_row == -1 && desc->footer_row == -1)
+			if (desc->border_bottom_row == -1 &&
+				(desc->footer_row == -1 || (desc->footer_row != -1 && desc->fallback_last_data_row)))
 			{
 				/*
 				 * It is hard to detect end of table and start of footer
@@ -3443,6 +3444,9 @@ reinit_theme:
 						timeout = 10;
 						only_tty = true;
 
+						if (desc.headline_transl)
+								finalize_tabular_data(&desc);
+
 						/*
 						 * maybe layout should be recreated, if
 						 * before was calculated for too small
@@ -3593,6 +3597,8 @@ reinit_theme:
 
 							if (desc.headline_transl)
 								finalize_tabular_data(&desc);
+
+							trim_footer_rows(&desc);
 
 							if (desc.headline_transl != NULL && !desc.is_expanded_mode)
 							{

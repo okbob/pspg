@@ -136,6 +136,7 @@ typedef struct
 	int		columns;				/* number of columns */
 	int		first_data_row;			/* fist data row line (starts by zero) */
 	int		last_data_row;			/* last line of data row */
+	bool	fallback_last_data_row;	/* when last_data_row was set from last_row */
 	int		footer_row;				/* nrow of first footer row or -1 */
 	int		alt_footer_row;			/* alternative footer row (used when border = 1) */
 	int		footer_char_size;		/* width of footer */
