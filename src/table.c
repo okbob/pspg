@@ -1625,6 +1625,8 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 	bool		only_digits = false;
 	bool		only_digits_with_point = false;
 	bool		skip_initial_spaces = true;
+	bool		found_plus_sign = false;
+	bool		found_minus_sign = false;
 	int			x = 0;
 	long		mp = 1;
 
@@ -1647,6 +1649,18 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 				{
 					if (c == ' ')
 					{
+						x += 1;
+						str += 1;
+						continue;
+					}
+					else if ((c == '-' || c == '+') &&
+							  !(found_plus_sign || found_minus_sign))
+					{
+						if (c == '-')
+							found_minus_sign = true;
+						else
+							found_plus_sign = true;
+
 						x += 1;
 						str += 1;
 						continue;
@@ -1812,6 +1826,10 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 		if (errno == 0)
 		{
 			*d = *d * mp;
+
+			if (found_minus_sign)
+				*d *= -1;
+
 			return true;
 		}
 	}
