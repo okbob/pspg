@@ -445,7 +445,7 @@ readargs(char **argv,
 					fprintf(stdout, "  --force-uniborder        replace ascii borders by unicode borders\n");
 					fprintf(stdout, "  --hide-header-line       hides header line\n");
 					fprintf(stdout, "  --highlight-odd-rec      use special style for odd records\n");
-					fprintf(stdout, "  --ignore-bad-rows        rows with wrong column numbers are ignored\n");
+					fprintf(stdout, "  --ignore-short-rows      rows with wrong column numbers are ignored\n");
 					fprintf(stdout, "  --null=STRING            STRING used instead NULL\n");
 					fprintf(stdout, "\nSearching options\n");
 					fprintf(stdout, "  -g --hlite-search, -G --HILITE-SEARCH\n");
