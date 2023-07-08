@@ -35,6 +35,7 @@ cmd.handle = function (conn,ctx,cmd) {
 
       // Set this to a big value so that we do not get repeating headers
       ctx.putProperty("script.runner.setpagesize", 1000000);
+      sqlcl.setConn(conn);
       sqlcl.setStmt(sql);
       sqlcl.run();
 
