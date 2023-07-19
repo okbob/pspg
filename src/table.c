@@ -1628,7 +1628,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 	bool		found_plus_sign = false;
 	bool		found_minus_sign = false;
 	int			x = 0;
-	long		mp = 1;
+	long long	mp = 1;
 
 	*isnull = false;
 
