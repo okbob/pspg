@@ -40,7 +40,7 @@ const char *
 nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
-	int		f1 = 0, f2 = 0;
+	int			f1 = 0;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -48,6 +48,8 @@ nstrstr(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
+		int			f2;
+
 		if (*haystack_cur == '\0')
 			return NULL;
 

@@ -31,17 +31,14 @@ print_log_prefix(void)
 {
 	time_t		rawtime;
 	struct tm  *timeinfo;
-	const char *asct;
-	int		len;
+	char		outstr[200];
 
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 
-	asct = asctime(timeinfo);
-	len = strlen(asct);
+	strftime(outstr, sizeof(outstr),  "%a, %d %b %Y %T %z", timeinfo);
 
-	fprintf(logfile, "%.*s ", len - 1, asct);
-	fprintf(logfile, "[%ld] ", (long) getpid());
+	fprintf(logfile, "%s [%ld] ", outstr, (long) getpid());
 }
 
 void
@@ -402,11 +399,11 @@ ExtStrAppendLine(ExtStr *estr,
 		}
 		else
 		{
-			const char *u1 = "\342\206\265";	/* ↵ */
-			const char *u2 = "\342\200\246";	/* … */
 
 			if (size > 3)
 			{
+				const char *u1 = "\342\206\265";	/* ↵ */
+				const char *u2 = "\342\200\246";	/* … */
 				char	   *ptr = str + size - 3;
 
 				if (strncmp(ptr, u1, 3) == 0)
@@ -452,10 +449,10 @@ ExtStrAppendLine(ExtStr *estr,
 		}
 		else
 		{
-			const char *u1 = "\342\200\246";	/* … */
-
 			if (size > 3)
 			{
+				const char *u1 = "\342\200\246";	/* … */
+
 				if (strncmp(str, u1, 3) == 0)
 					cms = 3;
 			}

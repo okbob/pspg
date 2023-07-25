@@ -360,10 +360,10 @@ load_config(char *path, Options *opts)
 				is_valid = assign_bool(key, &opts->on_exit_sgr0, bool_val, res);
 			else if (strcmp(key, "direct_color") == 0)
 				is_valid = assign_bool(key, &opts->direct_color, bool_val, res);
-
-			if (!is_valid || res == -1)
-				break;
 		}
+
+		if (!is_valid || res == -1)
+			break;
 	}
 
 	free(line);

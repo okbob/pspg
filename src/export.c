@@ -457,13 +457,13 @@ process_item(ExportState *expstate,
 
 					if (expstate->colnames)
 					{
-						int		i;
-						bool	is_first = true;
-
 						fputc('(', expstate->fp);
 
 						if (expstate->format == CLIPBOARD_FORMAT_INSERT)
 						{
+							int		i;
+							bool	is_first = true;
+
 							for (i = 0; i < expstate->columns; i++)
 							{
 								if (expstate->colnames[i])
@@ -483,9 +483,10 @@ process_item(ExportState *expstate,
 						}
 						else
 						{
-							int		indent_spaces;
-							int		columns = 0;
-							int		loc_colno = 0;
+							int			indent_spaces;
+							int			columns = 0;
+							int			loc_colno = 0;
+							int			i;
 
 							if (use_utf8)
 								indent_spaces = utf_string_dsplen(expstate->table_name, INT_MAX) + 1 + 12;
@@ -932,7 +933,7 @@ export_data(Options *opts,
 			/* check min_row and max_row against multiline_map */
 			if (min_row != desc->first_data_row)
 			{
-				int		new_min_row = multiline_map[min_row];
+				int			new_min_row = multiline_map[min_row];
 
 				if (new_min_row != 0)
 				min_row = new_min_row;
@@ -940,11 +941,12 @@ export_data(Options *opts,
 
 			if (max_row != desc->last_row)
 			{
-				int		first_rn = multiline_map[max_row];
-				int		i;
+				int			first_rn = multiline_map[max_row];
 
 				if (first_rn !=0)
 				{
+					int			i;
+
 					for (i = max_row; i <= desc->last_row; i++)
 					{
 						if (multiline_map[i] == first_rn)
