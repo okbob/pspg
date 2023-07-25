@@ -322,10 +322,12 @@ utf_string_dsplen_multiline(const char *s,
 							bool *multiline,
 							bool first_only,
 							long int *digits,
-							long int *others)
+							long int *others,
+							int trim_rows)
 {
-	int result = -1;
+	int		result = -1;
 	int		rowlen = 0;
+	int		nrows = 0;
 	const char *ptr = s;
 
 	*multiline = false;
@@ -353,6 +355,9 @@ utf_string_dsplen_multiline(const char *s,
 			ptr += 1;
 
 			if (first_only)
+				break;
+
+			if (trim_rows > 0 && ++nrows == trim_rows)
 				break;
 
 			continue;

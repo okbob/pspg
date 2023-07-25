@@ -2635,6 +2635,9 @@ main(int argc, char *argv[])
 	opts.freezed_cols = -1;				/* default will be 1 if screen width will be enough */
 	opts.csv_separator = -1;			/* auto detection */
 	opts.csv_header = 'a';				/* auto detection */
+	opts.csv_trim_width = 0;
+	opts.csv_trim_rows = 0;
+
 	opts.border_type = 2;				/* outer border */
 
 #if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)

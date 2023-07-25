@@ -64,6 +64,8 @@ typedef struct
 	bool		double_header;
 	char		header_mode;
 	bool		ignore_short_rows;
+	int			trim_width;
+	int			trim_rows;
 } PrintConfigType;
 
 static void pb_putc_repeat(PrintbufType *printbuf, int n, int c);
@@ -443,6 +445,76 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 	return nextline;
 }
 
+static char *
+pb_put_line_trim_width(char *str, bool multiline, PrintbufType *printbuf, int width)
+{
+	char	   *ptr = str;
+	char	   *nextline = NULL;
+	int			str_width = 0;
+	int			str_size = 0;
+	int			charwidth;
+	int			charsize;
+
+	while (*ptr)
+	{
+		if (*ptr == '\n')
+		{
+			nextline = ptr + 1;
+			break;
+		}
+		else if (*ptr == '\t')
+		{
+			int aux_str_width = str_width;
+
+			do
+			{
+				aux_str_width++;
+			} while (aux_str_width % 8 != 0);
+
+			charsize = 1;
+			charwidth = aux_str_width - str_width;
+		}
+		else if (use_utf8)
+		{
+			charsize = charlen(ptr);
+			charwidth = utf_dsplen(ptr);
+		}
+		else
+		{
+			charsize = 1;
+			charwidth = 1;
+		}
+
+		if (str_width + charwidth <= width)
+		{
+			ptr += charsize;
+			str_size += charsize;
+			str_width += charwidth;
+		}
+		else
+			break;
+	}
+
+	pb_write(printbuf, str, str_size);
+
+	if (use_utf8)
+		pb_write(printbuf, "\342\200\245", 3); /* ‥ */
+
+	while (str_width++ < width)
+		pb_write(printbuf, " ", 1);
+
+	if (multiline)
+	{
+		while (*ptr && *ptr != '\n')
+			ptr += use_utf8 ? charlen(str) : 1;
+
+		if (*ptr == '\n')
+			nextline = ptr + 1;
+	}
+
+	return nextline;
+}
+
 /*
  * Print formatted data loaded inside RowBuckets
  */
@@ -490,7 +562,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 			if (pconfig->ignore_short_rows && rb->rows[i]->nfields != pdesc->nfields_all)
 				continue;
 
-			multiline_lineno = 0;
+			multiline_lineno = 1;
 			row = rb->rows[i];
 
 			while (more_lines)
@@ -529,7 +601,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 					if (pdesc->columns_map[j] < row->nfields)
 					{
-						if (multiline_lineno == 0)
+						if (multiline_lineno == 1)
 						{
 							field = row->fields[pdesc->columns_map[j]];
 							fields[j] = NULL;
@@ -554,7 +626,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 							{
 								if (*ptr == '\n')
 								{
-									more_lines = true;
+									_more_lines = true;
 									ptr += 1;
 									break;
 								}
@@ -578,40 +650,55 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 						else
 						{
 							if (multiline)
-							{
-								width = utf_string_dsplen_multiline(field, INT_MAX, &_more_lines, true, NULL, NULL);
-								more_lines |= _more_lines;
-							}
+								width = utf_string_dsplen_multiline(field, INT_MAX, &_more_lines, true, NULL, NULL, 0);
 							else
 								width = utf_string_dsplen(field, INT_MAX);
 						}
 
-						spaces = pdesc->widths[j] - width;
-
-						/*
-						 * The display width can be canculated badly when labels or
-						 * displayed string has some special or invisible chars. Here
-						 * is simple ugly fix - the number of spaces cannot be negative.
-						 */
-						if (spaces < 0)
-							spaces = 0;
-
-						/* left spaces */
-						if (isheader)
-							pb_putc_repeat(printbuf, spaces / 2, ' ');
-						else if (!left_align)
-							pb_putc_repeat(printbuf, spaces, ' ');
-
 						if (multiline)
-							fields[j] = pb_put_line(field, multiline, printbuf);
-						else
-							(void) pb_put_line(field, multiline, printbuf);
+						{
+							if (pconfig->trim_rows > 0 && multiline_lineno == pconfig->trim_rows)
+								_more_lines = false;
+							else
+								more_lines |= _more_lines;
+						}
 
-						/* right spaces */
-						if (isheader)
-							pb_putc_repeat(printbuf, spaces - (spaces / 2), ' ');
-						else if (left_align)
-							pb_putc_repeat(printbuf, spaces, ' ');
+						if (pconfig->trim_width > 0 && pconfig->trim_width < width)
+						{
+							if (multiline)
+								fields[j] = pb_put_line_trim_width(field, multiline, printbuf, pconfig->trim_width);
+							else
+								(void) pb_put_line_trim_width(field, multiline, printbuf, pconfig->trim_width);
+						}
+						else
+						{
+							spaces = pdesc->widths[j] - width;
+
+							/*
+							 * The display width can be canculated badly when labels or
+							 * displayed string has some special or invisible chars. Here
+							 * is simple ugly fix - the number of spaces cannot be negative.
+							 */
+							if (spaces < 0)
+								spaces = 0;
+
+							/* left spaces */
+							if (isheader)
+								pb_putc_repeat(printbuf, spaces / 2, ' ');
+							else if (!left_align)
+								pb_putc_repeat(printbuf, spaces, ' ');
+
+							if (multiline)
+								fields[j] = pb_put_line(field, multiline, printbuf);
+							else
+								(void) pb_put_line(field, multiline, printbuf);
+
+							/* right spaces */
+							if (isheader)
+								pb_putc_repeat(printbuf, spaces - (spaces / 2), ' ');
+							else if (left_align)
+								pb_putc_repeat(printbuf, spaces, ' ');
+						}
 					}
 					else
 						pb_putc_repeat(printbuf, pdesc->widths[j], ' ');
@@ -773,7 +860,9 @@ postprocess_fields(int nfields,
 				   LinebufType *linebuf,
 				   bool ignore_short_rows,
 				   bool reduced_sizes,			/* the doesn't calculate ending zero */
-				   bool *is_multiline_row)
+				   bool *is_multiline_row,
+				   int trim_width,
+				   int trim_rows)
 {
 	bool		malformed;
 	size_t		width;
@@ -840,7 +929,11 @@ postprocess_fields(int nfields,
 												&multiline,
 												false,
 												&digits,
-												&total);
+												&total,
+												trim_rows);
+
+		if (trim_width > 0 && width > trim_width)
+			width = use_utf8 ? trim_width + 1 : trim_width;
 
 		/* skip first possible header row */
 		if (linebuf->processed > 0)
@@ -1136,7 +1229,9 @@ read_tsv(RowBucketType *rb,
 								   linebuf,
 								   ignore_short_rows,
 								   false,
-								   &multiline);
+								   &multiline,
+								   opts->csv_trim_width,
+								   opts->csv_trim_rows);
 
 				rb->multilines[rb->nrows] = multiline;
 				rb->rows[rb->nrows++] = row;
@@ -1391,7 +1486,9 @@ read_csv(RowBucketType *rb,
 							   linebuf,
 							   ignore_short_rows,
 							   true,
-							   &multiline);
+							   &multiline,
+							   opts->csv_trim_width,
+							   opts->csv_trim_rows);
 
 			rb->multilines[rb->nrows] = multiline;
 			rb->rows[rb->nrows++] = row;
@@ -1528,6 +1625,9 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	pconfig.double_header = opts->double_header;
 	pconfig.header_mode = opts->csv_header;
 	pconfig.ignore_short_rows = opts->ignore_short_rows;
+
+	pconfig.trim_width = opts->csv_trim_width;
+	pconfig.trim_rows = opts->csv_trim_rows;
 
 	memset(&rowbuckets, 0, sizeof(RowBucketType));
 

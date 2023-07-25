@@ -120,6 +120,8 @@ This pager can be used from the following command line clients, too:
       --csv-header [on/off]    specify header line usage
       --skip-columns-like="SPACE SEPARATED STRING LIST"
                                columns with substr in name are ignored
+      --csv-trim-width=NUM     trim value after NUM chars
+      --csv-trim-rows=NUM      trim value after NUM rows
       --tsv                    input stream has tsv format
 
     On exit options:

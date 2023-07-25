@@ -65,6 +65,8 @@ typedef struct
 	bool	csv_format;
 	char	csv_separator;
 	char	csv_header;			/* a - auto, - off, + on */
+	unsigned int csv_trim_width;
+	unsigned int csv_trim_rows;
 	char   *nullstr;
 	char   *csv_skip_columns_like;
 	bool	ignore_short_rows;

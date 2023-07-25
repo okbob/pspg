@@ -13,6 +13,7 @@
 
 #include <ctype.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
@@ -122,6 +123,8 @@ static struct option long_options[] =
 	{"info", no_argument, 0, 56},
 	{"on-exit-sgr0", no_argument, 0, 57},
 	{"direct-color", no_argument, 0, 58},
+	{"csv-trim-width", required_argument, 0, 59},
+	{"csv-trim-rows", required_argument, 0, 60},
 	{0, 0, 0, 0}
 };
 
@@ -386,6 +389,7 @@ readargs(char **argv,
 {
 	int		opt;
 	int		option_index = 0;
+	int		lopt;
 
 	state->errstr = NULL;
 
@@ -471,6 +475,8 @@ readargs(char **argv,
 					fprintf(stdout, "  --csv-header [on/off]    specify header line usage\n");
 					fprintf(stdout, "  --skip-columns-like=\"SPACE SEPARATED STRING LIST\"\n");
 					fprintf(stdout, "                           columns with substr in name are ignored\n");
+					fprintf(stdout, "  --csv-trim-width=NUM     trim value after NUM chars\n");
+					fprintf(stdout, "  --csv-trim-rows=NUM      trim value after NUM rows\n");
 					fprintf(stdout, "  --tsv                    input stream has tsv format\n");
 					fprintf(stdout, "\nOn exit options:\n");
 					fprintf(stdout, "  --on-exit-reset          sends reset terminal sequence \"\\33c\"\n");
@@ -831,6 +837,27 @@ readargs(char **argv,
 
 				break;
 
+			case 59:
+				lopt = atol(optarg);
+				if (lopt < 0 || lopt > UINT_MAX)
+				{
+					state->errstr = "value for csv-trim-width is out of range (0 .. INT_MAX)";
+					return false;
+				}
+
+				opts->csv_trim_width = (unsigned int) lopt;
+				break;
+
+			case 60:
+				lopt = atol(optarg);
+				if (lopt < 0 || lopt > UINT_MAX)
+				{
+					state->errstr = "value for csv-trim-rows is out of range (0 .. INT_MAX)";
+					return false;
+				}
+
+				opts->csv_trim_rows = (unsigned int) lopt;
+				break;
 
 			default:
 				{
