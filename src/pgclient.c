@@ -126,7 +126,7 @@ field_info(char *str, bool *multiline)
 		return cw > width ? cw : width;
 	}
 	else
-		return utf_string_dsplen_multiline(str, strlen(str), multiline, false, &digits, &others);
+		return utf_string_dsplen_multiline(str, strlen(str), multiline, false, &digits, &others, 0);
 }
 
 /*

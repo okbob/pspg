@@ -1636,7 +1636,10 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	rowbuckets.next_bucket = NULL;
 
 	if (opts->querystream && !query)
+	{
+		free(linebuf.buffer);
 		return false;
+	}
 
 	if (query)
 	{
