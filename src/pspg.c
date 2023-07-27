@@ -384,9 +384,9 @@ print_duration(time_t start_sec, long start_ms, const char *label)
 const char *
 pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 {
-	bool	ignore_case = opts->ignore_case;
-	bool	ignore_lower_case = opts->ignore_lower_case;
-	bool	has_upperchr = scrdesc->has_upperchr;
+	bool		ignore_case = opts->ignore_case;
+	bool		ignore_lower_case = opts->ignore_lower_case;
+	bool		has_upperchr = scrdesc->has_upperchr;
 	const char *searchterm = scrdesc->searchterm;
 	const char *result;
 
@@ -415,7 +415,7 @@ trim_footer_rows(DataDesc *desc)
 	if (desc->headline_transl != NULL && desc->footer_row != -1)
 	{
 		LineBufferIter lbi;
-		char   *line;
+		char	   *line;
 
 		desc->footer_char_size = 0;
 
@@ -423,9 +423,9 @@ trim_footer_rows(DataDesc *desc)
 
 		while(lbi_get_line_next(&lbi, &line, NULL, NULL))
 		{
-			char   *ptr = line;
-			char   *last_nspc = NULL;
-			int		len;
+			char	   *ptr = line;
+			char	   *last_nspc = NULL;
+			int			len;
 
 			/* search last non space char */
 			while (*ptr)
@@ -455,7 +455,7 @@ set_scrollbar_dimensions(Options *opts, DataDesc *desc, ScrDesc *scrdesc)
 {
 	if (opts->show_scrollbar)
 	{
-		int		saved_slider_min_y = 0;
+		int			saved_slider_min_y = 0;
 
 		/*
 		 * The relayout can be invoked in scrollbar mode too (when we try
@@ -498,11 +498,7 @@ set_scrollbar_dimensions(Options *opts, DataDesc *desc, ScrDesc *scrdesc)
 					scrdesc->slider_size = 2;
 			}
 			else
-			{
-				scrdesc->slider_size = scrdesc->scrollbar_maxy - 4;
-				if (scrdesc->slider_size < 1)
-					scrdesc->slider_size = 1;
-			}
+				scrdesc->slider_size = 1;
 
 			scrdesc->slider_min_y = 1;
 		}
@@ -531,7 +527,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 
 	if (opts->show_rownum)
 	{
-		int startx = number_width(desc->maxy) + 2;
+		int			startx = number_width(desc->maxy) + 2;
 
 		scrdesc->main_start_x = startx;
 		scrdesc->main_maxx -= startx;
@@ -543,7 +539,7 @@ create_layout_dimensions(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 	/* search end of fixCol'th column */
 	if (desc->headline_transl != NULL && fixCols > 0)
 	{
-		char   *c = desc->headline_transl;
+		char	   *c = desc->headline_transl;
 
 		while (*c != 0)
 		{
@@ -599,7 +595,7 @@ create_layout(Options *opts,
 			  DataDesc *desc,
 			  int _first_data_row)
 {
-	int		i;
+	int			i;
 
 	for (i = 0; i < PSPG_WINDOW_COUNT; i++)
 	{
@@ -1299,19 +1295,19 @@ print_status(Options *opts,
 			 ScrDesc *scrdesc,
 			 DataDesc *desc)
 {
-	int		maxy, maxx;
-	int		smaxy, smaxx;
-	char	buffer[200];
-	WINDOW *top_bar = w_top_bar(scrdesc);
-	WINDOW *bottom_bar = w_bottom_bar(scrdesc);
-	Theme  *top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
-	Theme  *bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
+	char		buffer[200];
+	WINDOW	   *top_bar = w_top_bar(scrdesc);
+	WINDOW	   *bottom_bar = w_bottom_bar(scrdesc);
+	Theme	   *top_bar_theme = &scrdesc->themes[WINDOW_TOP_BAR];
+	Theme	   *bottom_bar_theme = &scrdesc->themes[WINDOW_BOTTOM_BAR];
 
-	double	percent;
 
 	/* do nothing when there are not top status bar */
 	if (scrdesc->top_bar_rows > 0)
 	{
+		int			maxy, maxx;
+		int			smaxy, smaxx;
+
 		getmaxyx(top_bar, maxy, maxx);
 		getmaxyx(stdscr, smaxy, smaxx);
 
@@ -1383,6 +1379,8 @@ print_status(Options *opts,
 			/* tabular doc */
 			if (opts->no_cursor)
 			{
+				double		percent;
+
 				percent = (first_row + scrdesc->main_maxy - 1 - desc->fixed_rows - desc->title_rows) /
 								((double) (desc->maxy + 1 - desc->fixed_rows - desc->title_rows)) * 100.0;
 				percent = percent > 100.0 ? 100.0 : percent;
@@ -1459,6 +1457,8 @@ print_status(Options *opts,
 			/* txt doc */
 			if (opts->no_cursor)
 			{
+				double		percent;
+
 				percent = ((first_row + scrdesc->main_maxy) / ((double) (desc->last_row + 1))) * 100.0;
 				percent = percent > 100.0 ? 100.0 : percent;
 
@@ -1641,8 +1641,11 @@ show_info_wait(const char *fmt,
 #define SEARCH_FORWARD			1
 #define SEARCH_BACKWARD			2
 
+/*
+ * Returns true when string contains upper char
+ */
 static bool
-has_upperchr(char *str)
+test_upperchr(char *str)
 {
 	if (use_utf8)
 	{
@@ -1697,8 +1700,8 @@ get_cursor_col_for_vertical_column(int _vertical_cursor_column,
 								   DataDesc *desc,
 								   ScrDesc *scrdesc)
 {
-	int		xmin = desc->cranges[_vertical_cursor_column - 1].xmin;
-	int		xmax = desc->cranges[_vertical_cursor_column - 1].xmax;
+	int			xmin = desc->cranges[_vertical_cursor_column - 1].xmin;
+	int			xmax = desc->cranges[_vertical_cursor_column - 1].xmax;
 
 	/* Do nothing if vertical cursor is visible already */
 	if (xmax < scrdesc->fix_cols_cols)
@@ -1707,9 +1710,8 @@ get_cursor_col_for_vertical_column(int _vertical_cursor_column,
 		return _cursor_col;
 	else
 	{
-		int		max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
-		int		column_center = (xmin + xmax) / 2;
-		int		cursor_fixed;
+		int			max_cursor_col = desc->headline_char_size - scrdesc->main_maxx;
+		int			column_center = (xmin + xmax) / 2;
 
 		_cursor_col = column_center - ((scrdesc->main_maxx - scrdesc->fix_cols_cols) / 2 + scrdesc->fix_cols_cols);
 		_cursor_col = _cursor_col < max_cursor_col ? _cursor_col : max_cursor_col;
@@ -1719,6 +1721,8 @@ get_cursor_col_for_vertical_column(int _vertical_cursor_column,
 		/* try to show starts chars when it is possible */
 		if (xmin < scrdesc->fix_cols_cols + _cursor_col)
 		{
+			int			cursor_fixed;
+
 			cursor_fixed = xmin - scrdesc->fix_cols_cols + 1;
 			if (column_center < scrdesc->main_maxx + cursor_fixed)
 				_cursor_col = cursor_fixed;
@@ -1924,17 +1928,16 @@ export_to_file(PspgCommand command,
 			  const char *pipecmd,
 			  bool *force_refresh)
 {
-	char	buffer[MAXPATHLEN + 1024];
-	char	number[100];
-	char	table_name[255];
-	FILE   *fp = NULL;
-	char   *path = NULL;
-	bool	isok = false;
-	int		fin = -1, fout = -1, ferr = -1;
-	pid_t	pid = -1;
-	bool	copy_to_file = false;
-	bool	use_pipe = false;
-	bool	use_pbcopy = false;
+	char		buffer[MAXPATHLEN + 1024];
+	char		table_name[255];
+	FILE	   *fp = NULL;
+	char	   *path = NULL;
+	bool		isok = false;
+	int			fin = -1, fout = -1, ferr = -1;
+	pid_t		pid = -1;
+	bool		copy_to_file = false;
+	bool		use_pipe = false;
+	bool		use_pbcopy = false;
 
 	*force_refresh = false;
 
@@ -2003,6 +2006,7 @@ export_to_file(PspgCommand command,
 	{
 		if (rows == 0 && percent == 0.0)
 		{
+			char		number[100];
 			char	   *endptr;
 
 			(void) get_string("rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
@@ -2071,8 +2075,6 @@ export_to_file(PspgCommand command,
 	}
 	else
 	{
-		char   *fmt;
-		char	cmdline_clipboard_app[1024];
 
 		check_clipboard_app(opts, force_refresh);
 		if (!clipboard_application_id)
@@ -2095,6 +2097,9 @@ export_to_file(PspgCommand command,
 		}
 		else
 		{
+			char	cmdline_clipboard_app[1024];
+			char	   *fmt;
+
 			if (format == CLIPBOARD_FORMAT_TEXT ||
 				INSERT_FORMAT_TYPE(format))
 			{
@@ -2411,7 +2416,7 @@ finalize_tabular_data(DataDesc *desc)
 		if (desc->border_type != 2)
 		{
 			if (desc->border_bottom_row == -1 &&
-				(desc->footer_row == -1 || (desc->footer_row != -1 && desc->fallback_last_data_row)))
+				(desc->footer_row == -1 || desc->fallback_last_data_row))
 			{
 				/*
 				 * It is hard to detect end of table and start of footer
@@ -3688,7 +3693,7 @@ reinit_theme:
 				{
 					ignore_mouse_release = false;
 					if (event_keycode == KEY_MOUSE &&
-							nced.mevent.bstate & nced.mevent.bstate & BUTTON1_RELEASED)
+						(nced.mevent.bstate & BUTTON1_RELEASED))
 						continue;
 				}
 			}
@@ -3844,7 +3849,7 @@ hide_menu:
 				 * is button1 press, then we would to ignore button1 release.
 				 * The behave is consistent for this mouse click (press, release).
 				 */
-				if (event_keycode == KEY_MOUSE && nced.mevent.bstate & nced.mevent.bstate & BUTTON1_PRESSED)
+				if (event_keycode == KEY_MOUSE && (nced.mevent.bstate & BUTTON1_PRESSED))
 					ignore_mouse_release = true;
 
 				goto refresh;
@@ -3975,7 +3980,7 @@ hide_menu:
 					if (last_nullstr[0] == '\0')
 					{
 						if (opts.nullstr)
-							strncpy(last_nullstr, opts.nullstr, sizeof(256));
+							strncpy(last_nullstr, opts.nullstr, sizeof(last_nullstr) - 1);
 					}
 
 					is_valid = get_string("nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
@@ -4973,7 +4978,7 @@ recheck_left:
 						move_left = step;
 
 						if (cursor_col == 0 && scrdesc.footer_rows > 0 &&
-							(!opts.vertical_cursor || (opts.vertical_cursor && vertical_cursor_column == 1)))
+							(!opts.vertical_cursor || (vertical_cursor_column == 1)))
 						{
 							_is_footer_cursor = true;
 							goto recheck_left;
@@ -5161,7 +5166,7 @@ recheck_right:
 							new_cursor_col = max_cursor_col;
 
 						if (new_cursor_col == cursor_col && scrdesc.footer_rows > 0 &&
-							(!opts.vertical_cursor || (opts.vertical_cursor && vertical_cursor_column == desc.columns)))
+							(!opts.vertical_cursor || (vertical_cursor_column == desc.columns)))
 						{
 							_is_footer_cursor = true;
 							goto recheck_right;
@@ -5703,7 +5708,7 @@ recheck_end:
 					if (locsearchterm[0] != '\0')
 					{
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.has_upperchr = test_upperchr(scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = use_utf8 ?  utf8len(scrdesc.searchterm) : (int) strlen(scrdesc.searchterm);
 
@@ -5857,7 +5862,7 @@ recheck_end:
 					{
 
 						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = has_upperchr(scrdesc.searchterm);
+						scrdesc.has_upperchr = test_upperchr(scrdesc.searchterm);
 						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
 						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
 
@@ -6019,11 +6024,7 @@ recheck_end:
 				{
 					if (desc.namesline)
 					{
-						char	locsearchterm[256];
-						int		startcolumn = 1;
-						int		colnum;
-						bool	found = false;
-						bool	search_from_start = false;
+						char		locsearchterm[256];
 
 						get_string("c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
 
@@ -6037,6 +6038,11 @@ recheck_end:
 
 						if (scrdesc.searchcolterm[0] != '\0')
 						{
+							bool		found = false;
+							int			startcolumn;
+							int			colnum;
+							bool		search_from_start = false;
+
 							/*
 							 * Where we should to start searching?
 							 * 1. after visible vertical cursor
@@ -6047,8 +6053,8 @@ recheck_end:
 								startcolumn = vertical_cursor_column + 1;
 							else if (cursor_col > 0)
 							{
-								int		first_x = scrdesc.fix_cols_cols + cursor_col;
-								int		i;
+								int			first_x = scrdesc.fix_cols_cols + cursor_col;
+								int			i;
 
 								/* fallback */
 								startcolumn = 1;
@@ -6387,7 +6393,6 @@ recheck_end:
 										}
 
 										scrdesc.scrollbar_mode = true;
-										scrdesc.scrollbar_mode = true;
 
 #if NCURSES_MOUSE_VERSION > 1
 
@@ -6567,13 +6572,14 @@ recheck_end:
 						{
 							int		xpoint = nced.mevent.x - scrdesc.main_start_x;
 							int		vertical_cursor_column_orig = vertical_cursor_column;
-							int		i;
 
 							if (xpoint > scrdesc.fix_cols_cols - 1)
 								xpoint += cursor_col;
 
 							if (xpoint >= 0)
 							{
+								int			i;
+
 								for (i = 0; i  < desc.columns; i++)
 								{
 									if (desc.cranges[i].xmin <= xpoint && desc.cranges[i].xmax >= xpoint)
@@ -6687,7 +6693,7 @@ recheck_end:
 				}
 			}
 
-			if (fresh_found && w_fix_cols(&scrdesc) != NULL)
+			if (w_fix_cols(&scrdesc) != NULL)
 			{
 				getmaxyx(w_fix_cols(&scrdesc), maxy_loc, maxx_loc);
 
@@ -6832,7 +6838,6 @@ refresh:
 
 #endif
 
-			refresh_scr = false;
 			current_state->refresh_scr = false;
 		}
 	}
@@ -7009,10 +7014,10 @@ print_memory_stats(bool enable_memory_debug)
 		fprintf(debug_pipe, "Topmost releasable block (keepcost):   %d\n", mi.keepcost);
 
 #endif
+#endif
 
 	}
 }
 
-#endif
 
 #endif

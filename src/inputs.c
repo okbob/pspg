@@ -406,13 +406,8 @@ _get_pspg_event(NCursesEventData *nced,
 			return PSPG_NCURSES_EVENT;
 		else if (sigint)
 		{
-			if (only_tty_events)
-			{
-				handle_sigint = true;
-				return PSPG_NOTHING_VALID_EVENT;
-			}
-
-			return PSPG_SIGINT_EVENT;
+			handle_sigint = true;
+			return PSPG_NOTHING_VALID_EVENT;
 		}
 		else if (sigwinch)
 		{
@@ -421,7 +416,6 @@ _get_pspg_event(NCursesEventData *nced,
 		else
 			return PSPG_NOTHING_VALID_EVENT;
 	}
-
 
 	fds[0].fd = fileno(f_tty);
 	fds[0].events = POLLIN;
@@ -780,10 +774,10 @@ get_pspg_event(NCursesEventData *nced,
 	fprintf(debug_pipe, "*** event no: %d = %s ***\n", eventno, event_name);
 	if (result == PSPG_NCURSES_EVENT)
 	{
-		char	buffer[20];
-
 		if (!nced->ignore_it)
 		{
+			char		buffer[20];
+
 			if (nced->keycode == KEY_MOUSE)
 				sprintf(buffer, ", bstate: %08lx", (unsigned long) nced->mevent.bstate);
 			else
@@ -1280,21 +1274,22 @@ clean_notify_poll(void)
 
 #if defined(HAVE_INOTIFY)
 
-	char buff[64];
-
 	if (notify_fd >= 0)
 	{
+		char		buff[64];
+
 		while (read(notify_fd, buff, sizeof(buff)) >= 0) {};
 	}
 
 #elif defined(HAVE_KQUEUE)
 
-	struct kevent kqev;
-	struct timespec tmout = {0, 0};
-	int		rc;
 
 	if  (notify_fd >= 0)
 	{
+		struct kevent kqev;
+		struct timespec tmout = {0, 0};
+		int			rc;
+
 		rc = kevent(notify_fd, NULL, 0, &kqev, 1, &tmout);
 		while (rc == 1)
 			rc = kevent(notify_fd, NULL, 0, &kqev, 1,  &tmout);

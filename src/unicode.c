@@ -13,10 +13,10 @@
 
 #include <ctype.h>
 #include <stdbool.h>
-#include "unicode.h"
-#include "string.h"
+#include <string.h>
 
 #include "pspg.h"
+#include "unicode.h"
 
 inline static wchar_t utf8_to_unicode(const unsigned char *c);
 
@@ -26,11 +26,12 @@ inline static wchar_t utf8_to_unicode(const unsigned char *c);
 inline int
 utf8len(const char *s)
 {
-	int len = 0;
+	int			len = 0;
 
 	for (; *s; ++s)
 		if ((*s & 0xC0) != 0x80)
 			++len;
+
 	return len;
 }
 
@@ -40,11 +41,12 @@ utf8len(const char *s)
 size_t
 utf8len_start_stop(const char *start, const char *stop)
 {
-	size_t len = 0;
+	size_t		len = 0;
 
 	for (; *start && start < stop ; ++start)
 		if ((*start & 0xC0) != 0x80)
 			++len;
+
 	return len;
 }
 
@@ -83,8 +85,8 @@ utf8charlen(const char ch)
 
 struct mbinterval
 {
-	int first;
-	int last;
+	int		first;
+	int		last;
 };
 
 /* auxiliary function for binary search in interval table */
@@ -92,12 +94,14 @@ inline static int
 mbbisearch(wchar_t ucs, const struct mbinterval *table, int max)
 {
 	int			min = 0;
-	int			mid;
 
 	if (ucs < table[0].first || ucs > table[max].last)
 		return 0;
+
 	while (max >= min)
 	{
+		int			mid;
+
 		mid = (min + max) / 2;
 		if (ucs > table[mid].last)
 			min = mid + 1;
@@ -278,7 +282,7 @@ _utf_dsplen(const char *s)
 int
 utf_string_dsplen(const char *s, int bytes)
 {
-	int result = 0;
+	int			result = 0;
 
 	while (bytes > 0)
 	{
@@ -325,9 +329,9 @@ utf_string_dsplen_multiline(const char *s,
 							long int *others,
 							int trim_rows)
 {
-	int		result = -1;
-	int		rowlen = 0;
-	int		nrows = 0;
+	int			result = -1;
+	int			rowlen = 0;
+	int			nrows = 0;
 	const char *ptr = s;
 
 	*multiline = false;
@@ -395,16 +399,16 @@ utf_string_dsplen_multiline(const char *s,
 int
 readline_utf_string_dsplen(const char *s, size_t max_bytes, size_t offset)
 {
-	int result = 0;
+	int		result = 0;
 	const char *ptr = s;
 
 	while (*ptr != '\0' && max_bytes > 0)
 	{
 		int		clen = utf8charlen(*ptr);
-		int		dsplen = utf_dsplen(ptr);
+		int		width = utf_dsplen(ptr);
 
-		if (dsplen > 0)
-			result += dsplen;
+		if (width > 0)
+			result += width;
 		else if (*ptr == '\t')
 			result = ((result + offset + 8) & ~7) - offset;
 
@@ -421,17 +425,17 @@ readline_utf_string_dsplen(const char *s, size_t max_bytes, size_t offset)
  */
 typedef struct conv_table
 {
-    wchar_t first;
-    wchar_t last;
-    int step;
-    int offset;
+	wchar_t		first;
+	wchar_t		last;
+	int			step;
+	int			offset;
 } conv_table;
 
 typedef struct range_table
 {
-    wchar_t first;
-    wchar_t last;
-    int step;
+	wchar_t first;
+	wchar_t last;
+	int step;
 } range_table;
 
 static int
@@ -565,8 +569,8 @@ utf8_nstrstr_with_sizes(const char *haystack,
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	const char *haystack_end, *needle_end;
-	int		f1 = 0, f2 = 0;
-	int		needle_char_len = 0; /* be compiler quiet */
+	int			f1 = 0;
+	int			needle_char_len = 0; /* be compiler quiet */
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -577,6 +581,8 @@ utf8_nstrstr_with_sizes(const char *haystack,
 
 	while (needle_cur < needle_end)
 	{
+		int			f2;
+
 		if (haystack_cur == haystack_end)
 			return NULL;
 
@@ -611,8 +617,8 @@ utf8_nstarts_with_with_sizes(const char *str,
 {
 	while (pattern_size > 0)
 	{
-		int		bytes_c;
-		int		bytes_p;
+		int			bytes_c;
+		int			bytes_p;
 
 		if (str_size <= 0)
 			return false;
@@ -646,8 +652,8 @@ const char *
 utf8_nstrstr(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
-	int		f1 = 0, f2 = 0;
-	int		needle_char_len = 0; /* be compiler quiet */
+	int			f1 = 0;
+	int			needle_char_len = 0; /* be compiler quiet */
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -655,6 +661,8 @@ utf8_nstrstr(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
+		int			f2;
+
 		if (*haystack_cur == '\0')
 			return NULL;
 
@@ -689,9 +697,9 @@ const char *
 utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
-	int		f1 = 0, f2 = 0;
-	int		needle_char_len = 0;
-	bool	needle_char_is_upper = false;
+	int			f1 = 0;
+	int			needle_char_len = 0;
+	bool		needle_char_is_upper = false;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -699,8 +707,8 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 
 	while (*needle_cur != '\0')
 	{
-		int		haystack_char_len;
-		bool	eq;
+		int			haystack_char_len;
+		bool		eq;
 
 		if (*haystack_cur == '\0')
 			return NULL;
@@ -725,6 +733,8 @@ utf8_nstrstr_ignore_lower_case(const char *haystack, const char *needle)
 		}
 		else
 		{
+			int			f2;
+
 			/* case insensitive */
 			f2 = utf8_tofold(haystack_cur);
 			eq = f1 == f2;

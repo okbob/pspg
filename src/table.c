@@ -49,7 +49,7 @@ print_duration(time_t start_sec, long start_ms, const char *label)
  * Returns true when char is left upper corner
  */
 static bool
-isTopLeftChar(char *str)
+isTopLeftChar(const char *str)
 {
 	if (str[0] == '+')
 		return true;
@@ -152,7 +152,7 @@ isHeadLeftChar(char *str, bool *is_unicode)
  * Returns true when char is bottom left corner
  */
 static bool
-isBottomLeftChar(char *str)
+isBottomLeftChar(const char *str)
 {
 	if (str[0] == '+')
 		return true;
@@ -247,8 +247,6 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 static bool
 is_line_continuation_char(char *str, DataDesc *desc)
 {
-	const char *u1 = "\342\206\265";	/* ↵ */
-	const char *u2 = "\342\200\246";	/* … */
 
 	if (desc->linestyle == 'a')
 	{
@@ -256,6 +254,9 @@ is_line_continuation_char(char *str, DataDesc *desc)
 	}
 	else
 	{
+		const char *u1 = "\342\206\265";	/* ↵ */
+		const char *u2 = "\342\200\246";	/* … */
+
 		/* desc->linestyle == 'u'; */
 		return strncmp(str, u1, 3) == 0 || strncmp(str, u2, 3) == 0;
 	}
@@ -548,18 +549,16 @@ strncpytrim(char *dest, const char *src,
 	endptr = src + nsrc - 1;
 
 	/* skip trailing spaces */
-	while (*src == ' ')
+	while (nsrc > 0 && *src == ' ')
 	{
-		if (nsrc-- <= 0)
-			break;
+		nsrc--;
 		src++;
 	}
 
 	/* skip ending spaces */
-	while (*endptr == ' ')
+	while (nsrc > 0 && *endptr == ' ')
 	{
-		if (nsrc-- <= 0)
-			break;
+		nsrc--;
 		endptr--;
 	}
 
@@ -615,8 +614,6 @@ remove_ansi_escape_seq(char *line, ssize_t bytes)
 	/* when there are not escape sequence, then returns original size */
 	if (not_processed == 0)
 		return bytes;
-
-	writeptr = ptr;
 
 	/*
 	 * there are ANSI escape sequences, and
@@ -1014,8 +1011,7 @@ next_row:
 		 * fallback, but can be fixed later, when border_type
 		 * will be known.
 		 */
-		if (desc->last_data_row == -1 ||
-			(desc->last_data_row != -1 && desc->fallback_last_data_row))
+		if (desc->last_data_row == -1 || desc->fallback_last_data_row)
 		{
 			desc->last_data_row = desc->last_row - 1;
 			desc->fallback_last_data_row = true;
@@ -1030,8 +1026,9 @@ next_row:
 		desc->headline = desc->rows.rows[desc->border_top_row];
 		desc->headline_size = strlen(desc->headline);
 	}
-	else if (desc->border_head_row == -1 && desc->border_top_row != -1)
+	else if (desc->border_top_row != -1)
 	{
+		/* note: desc->border_head_row should be always -1 */
 		desc->border_head_row = desc->border_top_row;
 		desc->headline = desc->rows.rows[desc->border_top_row];
 		desc->headline_size = strlen(desc->headline);
@@ -1505,12 +1502,11 @@ cut_text(char *str,
 		char	   *_str = NULL;
 		char	   *after_last_nospc = NULL;
 		int			pos = 0;
-		int			chrlen;
 		bool		skip_left_spaces = true;
 
 		while (*str)
 		{
-			chrlen = charlen(str);
+			int			chrlen = charlen(str);
 
 			if (pos > xmin || (border0 && pos >= xmin))
 			{
@@ -1545,7 +1541,6 @@ cut_text(char *str,
 			char	   *dynbuf = NULL;
 			char	   *cstr = NULL;
 			int			size;
-			int			dynbuf_size = 0;
 
 			cstr = strndup(_str, after_last_nospc - _str);
 			if (!cstr)
@@ -1568,6 +1563,8 @@ cut_text(char *str,
 
 			if (size > TEXT_STACK_BUFFER_SIZE - 1)
 			{
+				int			dynbuf_size = 0;
+
 				while (size > dynbuf_size)
 				{
 					if (dynbuf)
@@ -1621,19 +1618,21 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 	char	   *buffptr;
 	char	   *after_last_nospace = NULL;
 	char	   *first_nospace_nodigit = NULL;
-	char		decimal_point = '\0';
-	bool		only_digits = false;
-	bool		only_digits_with_point = false;
-	bool		skip_initial_spaces = true;
-	bool		found_plus_sign = false;
-	bool		found_minus_sign = false;
-	int			x = 0;
-	long long	mp = 1;
 
 	*isnull = false;
 
 	if (str)
 	{
+		bool		found_plus_sign = false;
+		bool		found_minus_sign = false;
+		bool		only_digits = false;
+		bool		only_digits_with_point = false;
+		bool		skip_initial_spaces = true;
+		int			x = 0;
+
+		char		decimal_point = '\0';
+		long long	mp = 1;
+
 		after_last_nospace = buffptr = buffer;
 		memset(buffer, 0, BUFFER_MAX_SIZE);
 
@@ -1862,7 +1861,6 @@ multilines_detection(DataDesc *desc)
 	{
 		char	   *str;
 		int			lineno;
-		int			pos = 0;
 		bool		found_continuation_symbol = false;
 		LineInfo   *linfo;
 
@@ -1880,6 +1878,8 @@ multilines_detection(DataDesc *desc)
 			!(linfo->mask & LINEINFO_CONTINUATION ||
 			  linfo->mask & LINEINFO_HASNOT_CONTINUATION))
 		{
+			int			pos = 0;
+
 			/*
 			 * This implementation doesn't support old-ascii format
 			 *
@@ -1950,7 +1950,7 @@ multilines_detection(DataDesc *desc)
 void
 update_order_map(ScrDesc *scrdesc, DataDesc *desc, int sbcn, bool desc_sort)
 {
-	LineBuffer	   *lnb = &desc->rows;
+	LineBuffer	   *lnb;
 	char		   *nullstr = NULL;
 	int				xmin, xmax;
 	int				lineno = 0;

@@ -143,11 +143,7 @@ consume_whitespace(const char **input)
 char **
 buildargv(const char *input, int *_argc, char *appname)
 {
-	char	   *arg;
 	char	   *copybuf;
-	bool		squote = false;
-	bool		dquote = false;
-	bool		bsquote = false;
 	int			argc = 1;
 	int			maxargc = 8;
 	char	  **argv;
@@ -166,6 +162,11 @@ buildargv(const char *input, int *_argc, char *appname)
 		 */
 		do
 		{
+			char	   *arg;
+			bool		squote = false;
+			bool		dquote = false;
+			bool		bsquote = false;
+
 			/* Pick off argv[argc] */
 			consume_whitespace(&input);
 

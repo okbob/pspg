@@ -279,8 +279,6 @@ static char *
 tablename_generator(const char *text, int state)
 {
 	static int list_index, len;
-	const char *name;
-	int		name_len;
 
 	if (!current_state->desc->namesline)
 		return NULL;
@@ -293,6 +291,9 @@ tablename_generator(const char *text, int state)
 
 	while (list_index < current_state->desc->columns)
 	{
+		const char *name;
+		int			name_len;
+
 		name = current_state->desc->namesline + current_state->desc->cranges[list_index].name_offset;
 		name_len = current_state->desc->cranges[list_index].name_size;
 
@@ -449,9 +450,8 @@ pspg_complete(const char *text, int start, int end)
 static void
 pspg_display_match(char **matches, int num_matches, int max_length)
 {
-	int		common_length;
-	int		pos = 1;
-	char	c = 0;
+	int			common_length;
+	int			pos = 1;
 
 	UNUSED(max_length);
 
@@ -464,6 +464,8 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 
 	while (1)
 	{
+		char		c = 0;
+
 		if (handle_sigint)
 			break;
 
@@ -518,7 +520,7 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 		}
 		else
 		{
-			if (c != 9 && c != -1)
+			if (c != -1)
 			{
 				char	   str[2];
 				str[0] = c;

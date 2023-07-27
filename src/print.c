@@ -609,7 +609,7 @@ is_in_searched_pattern(int pos,
 					   int positions[100][2],
 					   int npositions)
 {
-	if (linfo && linfo->mask & LINEINFO_FOUNDSTR_MULTI)
+	if (linfo->mask & LINEINFO_FOUNDSTR_MULTI)
 	{
 		int		i;
 
@@ -922,22 +922,17 @@ window_fill(int window_identifier,
 
 	while (row < maxy )
 	{
-		int			bytes;
-		char	   *ptr;
 		char	   *rowstr = NULL;
 		bool		line_is_valid = false;
 		LineInfo   *lineinfo = NULL;
 		bool		is_bookmark_row = false;
 		bool		is_cursor_row = false;
-		bool		is_found_row = false;
 		bool		is_pattern_row = false;
 		char		buffer[10];
 		int			positions[100][2];
 		int			npositions = 0;
-		int			is_in_range = false;
 		int			rowno = row + srcy_bak + 1 - desc->first_data_row;
 		int			lineno;
-		int			recno;
 
 		is_cursor_row = (!opts->no_cursor && row == cursor_row);
 
@@ -947,7 +942,7 @@ window_fill(int window_identifier,
 
 		if (odd_theme_identifier != -1 && lineinfo)
 		{
-			recno = lineno - lineinfo->recno_offset;
+			int			recno = lineno - lineinfo->recno_offset;
 
 			if (recno % 2 == 1)
 				t = &scrdesc->themes[odd_theme_identifier];
@@ -1066,18 +1061,23 @@ window_fill(int window_identifier,
 
 		if (rowstr != NULL)
 		{
-			int		i = 0;
-			int		effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
-			bool	fix_line_attr_style;
-			bool	is_expand_head;
-			int		ei_min, ei_max;
-			int		left_spaces;							/* aux left spaces */
-			int		saved_pos;
+			int			i = 0;
+			int			effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
+			bool		fix_line_attr_style;
+			bool		is_expand_head;
+			int			ei_min, ei_max;
+			int			left_spaces;							/* aux left spaces */
+			int			saved_pos;
 
-			bool	is_top_deco = false;
-			bool	is_head_deco = false;
-			bool	is_bottom_deco = false;
-			int		trailing_spaces = 0;
+			bool		is_top_deco = false;
+			bool		is_head_deco = false;
+			bool		is_bottom_deco = false;
+			int			trailing_spaces = 0;
+			bool		is_found_row = false;
+			bool		is_in_range = false;
+
+			int			bytes;
+			char	   *ptr;
 
 			if (is_text)
 				nspecwords = parse_line(rowstr, specwords, 30);
@@ -1185,10 +1185,9 @@ window_fill(int window_identifier,
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
-				bool	is_selected_rows;
-				bool	is_selected_row;
-				bool	is_selected_columns;
-				int		specword_typ;
+				bool		is_selected_rows;
+				bool		is_selected_row;
+				bool		is_selected_columns;
 
 				is_selected_rows = is_selectable && scrdesc->selected_first_row != -1;
 				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
@@ -1198,12 +1197,12 @@ window_fill(int window_identifier,
 
 				while (i < maxx)
 				{
-					bool	is_cursor;
-					bool	is_cross_cursor = false;
-					bool	is_vertical_cursor = false;
-					int		pos = (i != -1) ? srcx + i : -1;
-					bool	skip_char = false;
-					specword_typ = 0;
+					bool		is_cursor;
+					bool		is_cross_cursor = false;
+					bool		is_vertical_cursor = false;
+					int			pos = (i != -1) ? srcx + i : -1;
+					bool		skip_char = false;
+					int			specword_typ = 0;
 
 					if (nspecwords > 0)
 					{
@@ -1496,14 +1495,13 @@ window_fill(int window_identifier,
 			/* When we don't position of last char, we can (for cursor draw) use 0 */
 			i = i != -1 ? i : 0;
 
-			/* clean other chars on line */
-			if (i < maxx)
-				wclrtoeol(win);
-
 			/* draw cursor or bookmark line to screen end of line */
 			if (i < maxx)
 			{
 				attr_t		attr = 0;
+
+				/* clean other chars on line */
+				wclrtoeol(win);
 
 				if (is_in_range && is_cursor_row)
 					attr = t->selection_cursor_attr;
@@ -1610,8 +1608,6 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 	while (row < maxy)
 	{
-		int			bytes;
-		char	   *ptr;
 		char	   *rowstr = NULL;
 
 		(void) lbi_get_line_next(&lbi, &rowstr, NULL, NULL);
@@ -1623,13 +1619,15 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 		if (rowstr != NULL)
 		{
-			int		i;
-			int		effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
-			bool	fix_line_attr_style;
-			bool	is_expand_head;
-			int		ei_min, ei_max;
-			int		left_spaces;
-			char   *free_row;
+			int			i;
+			int			effective_row = row + srcy_bak - 1;		/* row was incremented before, should be reduced */
+			bool		fix_line_attr_style;
+			bool		is_expand_head;
+			int			ei_min, ei_max;
+			int			left_spaces;
+			char	   *free_row;
+			int			bytes;
+			char	   *ptr;
 
 			if (desc->is_expanded_mode)
 			{
@@ -1780,12 +1778,14 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 		  int footer_cursor_col, int fix_rows_offset)
 {
 	struct winsize size;
-	int		i;
 
 	if (ioctl(fileno(stdout), TIOCGWINSZ, (char *) &size) >= 0)
 	{
-		int		expected_rows = min_int(size.ws_row - 1 - scrdesc->top_bar_rows,
-										desc->last_row + 1);
+		int		i;
+		int			expected_rows;
+
+		expected_rows = min_int(size.ws_row - 1 - scrdesc->top_bar_rows,
+								desc->last_row + 1);
 
 		for (i = 0; i < expected_rows; i++)
 			printf("\033D");
@@ -1847,7 +1847,7 @@ draw_data(Options *opts, ScrDesc *scrdesc, DataDesc *desc,
 						  scrdesc->rows_rows, size.ws_col - scrdesc->fix_cols_cols,
 						  first_data_row + first_row - fix_rows_offset, scrdesc->fix_cols_cols + cursor_col,
 						  desc,
-						  opts->theme == 2 ? 0 | A_BOLD : 0,
+						  opts->theme == 2 ? A_BOLD : 0,
 						  opts->theme == 2 && (desc->headline_transl == NULL) ? A_BOLD : 0,
 						  COLOR_PAIR(8) | A_BOLD,
 						  true);

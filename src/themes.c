@@ -467,14 +467,6 @@ ncurses_theme_attr(PspgThemeElements idx)
 	return result;
 }
 
-typedef struct
-{
-	PspgThemeElements te;
-	PspgColor		fg;
-	PspgColor		bg;
-	int				attr;
-} PspgThemeElementDef;
-
 /*
  * Set theme definition
  */

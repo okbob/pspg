@@ -83,7 +83,7 @@ nstrstr_with_sizes(const char *haystack,
 {
 	const char *haystack_cur, *needle_cur, *needle_prev;
 	const char *haystack_end, *needle_end;
-	int		f1 = 0, f2 = 0;
+	int			f1 = 0;
 
 	needle_cur = needle;
 	needle_prev = NULL;
@@ -94,6 +94,8 @@ nstrstr_with_sizes(const char *haystack,
 
 	while (needle_cur < needle_end)
 	{
+		int		f2 = 0;
+
 		if (haystack_cur == haystack_end)
 			return NULL;
 

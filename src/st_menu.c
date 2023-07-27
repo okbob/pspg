@@ -1651,7 +1651,7 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 			 * escape should to close all opened objects, so we cannot to
 			 * returns true (processed) due we are in top object.
 			 */
-			return is_top ? true : false;
+			return false;
 		}
 
 		/*
@@ -1824,10 +1824,6 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 			&& c != KEY_UP && c != KEY_DOWN
 			&& c != KEY_LEFT && c != KEY_RIGHT)
 	{
-		char	buffer[20];
-		char   *pressed;
-		int		l_pressed;
-		int		i;
 
 		/*
 		 * accelerator can be alt accelerator for menuber or non alt, and
@@ -1836,6 +1832,11 @@ _st_menu_driver(struct ST_MENU *menu, int c, bool alt, MEVENT *mevent,
 		if ((!alt && !menu->active_submenu) ||
 				(alt && is_menubar))
 		{
+			char		buffer[20];
+			char	   *pressed;
+			int			i;
+			int			l_pressed;
+
 			l_pressed = wchar_to_utf8(config, buffer, 20, (wchar_t) c);
 			buffer[l_pressed] = '\0';
 
@@ -2470,10 +2471,10 @@ st_menu_new_menubar(ST_MENU_CONFIG *config, ST_MENU_ITEM *menu_items)
 static void
 _st_menu_free(struct ST_MENU *menu)
 {
-	int		i;
-
 	if (menu)
 	{
+		int		i;
+
 		if (menu->submenus)
 		{
 			for (i = 0; i < menu->nitems; i++)

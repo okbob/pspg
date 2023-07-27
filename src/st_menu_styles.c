@@ -181,10 +181,10 @@ set_rgb_color_pair(int *cp, attr_t *attr, int fg, int bg, const char *csrc, attr
 
 	if (direct_color)
 	{
+#ifdef  NCURSES_EXT_COLORS
+
 		fgcolor = csrc[0] == 'b' ? get_rgb(fg, false) : rgb_color_cache[fg];
 		bgcolor = csrc[1] == 'b' ? get_rgb(bg, false) : rgb_color_cache[bg];
-
-#ifdef  NCURSES_EXT_COLORS
 
 		init_extended_pair(current_cpn, fgcolor, bgcolor);
 
@@ -589,11 +589,6 @@ st_menu_load_style_rgb(ST_MENU_CONFIG *config, int style, int start_from_cpn, in
 			config->left_alligned_shortcuts = false;
 			config->wide_vborders = false;
 			config->wide_hborders = false;
-
-			config->shortcut_space = 4;
-			config->text_space = 2;
-			config->init_text_space = 1;
-			config->menu_bar_menu_offset = 1;
 			config->extra_inner_space = false;
 
 			config->shortcut_space = 4;

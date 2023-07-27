@@ -75,8 +75,6 @@ get_identifier(const char *instr,
 			   int *n,
 			   bool allow_colnum)
 {
-	char		ending_symbol = -1;
-
 	*ident = NULL;
 	*n = 0;
 
@@ -92,7 +90,7 @@ get_identifier(const char *instr,
 
 	if (*instr == '\'' || *instr == '"')
 	{
-		ending_symbol = *instr;
+		char		ending_symbol = *instr;
 		*ident = ++instr;
 
 		while (*instr)
@@ -138,15 +136,8 @@ parse_exported_spec(const char *instr,
 					ExportedSpec *spec,
 					bool *is_valid)
 {
-	bool	format_is_specified_already = false;
-	bool	format_specified = false;
-	bool	range_is_specified_already = false;
-	bool	range_specified = false;
-	bool	null_is_specified_already = false;
-
-	bool	next_token_shouldbe_number = false;
 	const char   *token;
-	int		n;
+	int			n;
 
 	spec->command = cmd_Copy;
 	spec->format = CLIPBOARD_FORMAT_TEXT;
@@ -159,13 +150,17 @@ parse_exported_spec(const char *instr,
 
 	if (instr)
 	{
+		bool		format_is_specified_already = false;
+		bool		range_is_specified_already = false;
+		bool		null_is_specified_already = false;
+
 		instr = get_token(instr, &token, &n);
 
 		while (token)
 		{
-			range_specified = false;
-			format_specified = false;
-			next_token_shouldbe_number = false;
+			bool		range_specified = false;
+			bool		format_specified = false;
+			bool		next_token_shouldbe_number = false;
 
 			if (n > 20)
 			{
@@ -412,10 +407,6 @@ parse_search_spec(DataDesc *desc,
 				  SearchSpec *spec,
 				  bool *is_valid)
 {
-	bool	direction_is_specified_already = false;
-	bool	range_is_specified_already = false;
-	bool	pattern_is_specified_already = false;
-
 	spec->backward = false;
 	spec->selected = false;
 	spec->colno = 0;
@@ -425,6 +416,10 @@ parse_search_spec(DataDesc *desc,
 
 	if (instr)
 	{
+		bool		direction_is_specified_already = false;
+		bool		range_is_specified_already = false;
+		bool		pattern_is_specified_already = false;
+
 		while (instr)
 		{
 			while (*instr == ' ')
@@ -511,11 +506,9 @@ parse_search_spec(DataDesc *desc,
 						instr = get_identifier(instr, &ident, &len, false);
 						if (len > 0)
 						{
-							int		count;
-
 							ident = trim_quoted_str(ident, &len);
 
-							if ((count = substr_column_name_search(desc, ident, len, 1, &spec->colno)) == 0)
+							if (substr_column_name_search(desc, ident, len, 1, &spec->colno) == 0)
 							{
 								show_info_wait(" Cannot to identify column",
 											   NULL, true, true, false, true);

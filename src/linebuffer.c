@@ -518,13 +518,13 @@ void
 lb_print_all_ddesc(DataDesc *desc, FILE *f)
 {
 	SimpleLineBufferIter slbi, *_slbi;
-	int		res;
 
 	_slbi = init_slbi_ddesc(&slbi, desc);
 
 	while (_slbi)
 	{
 		char	   *line;
+		int			res;
 
 		_slbi = slbi_get_line_next(_slbi, &line, NULL);
 

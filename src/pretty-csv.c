@@ -416,16 +416,17 @@ is_header(RowBucketType *rb)
 static char *
 pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 {
-	char   *nextline = NULL;
+	char	   *nextline = NULL;
 
 	if (multiline)
 	{
-		char   *ptr = str;
-		int		size = 0;
-		int		chrl;
+		char	   *ptr = str;
+		int			size = 0;
 
 		while (*ptr)
 		{
+			int			chrl;
+
 			if (*ptr == '\n')
 			{
 				nextline = ptr + 1;
@@ -525,12 +526,12 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 				   PrintDataDesc *pdesc,
 				   char *title)
 {
-	bool	is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
-	int		last_column_num = pdesc->nfields - 1;
-	int		printed_rows = 0;
-	char	linestyle = pconfig->linestyle;
-	int		border = pconfig->border;
-	char	buffer[20];
+	bool		is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
+	int			last_column_num = pdesc->nfields - 1;
+	int			printed_rows = 0;
+	char		linestyle = pconfig->linestyle;
+	int			border = pconfig->border;
+	char		buffer[20];
 
 	printbuf->printed_headline = false;
 	printbuf->flushed_rows = 0;
@@ -546,15 +547,14 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 	while (rb)
 	{
-		int		i;
+		int			i;
 
 		for (i = 0; i < rb->nrows; i++)
 		{
-			int		j;
-			bool	isheader = false;
+			int			j;
 			RowType	   *row;
-			bool	more_lines = true;
-			bool	multiline = rb->multilines[i];
+			bool		more_lines = true;
+			bool		multiline = rb->multilines[i];
 			char	   *fields[1024];
 			int			multiline_lineno;
 
@@ -567,6 +567,8 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 			while (more_lines)
 			{
+				bool		isheader = false;
+
 				more_lines = false;
 
 				if (border == 2)
@@ -583,10 +585,8 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 				for (j = 0; j < pdesc->nfields; j++)
 				{
-					int		width;
-					int		spaces;
-					char   *field;
-					bool	_more_lines = false;
+					char	   *field;
+					bool		_more_lines = false;
 
 					if (j > 0)
 					{
@@ -614,6 +614,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 
 					if (field && *field != '\0')
 					{
+						int			width;
 						bool	left_align = pdesc->types[j] != 'd';
 
 						if (!use_utf8)
@@ -627,7 +628,6 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 								if (*ptr == '\n')
 								{
 									_more_lines = true;
-									ptr += 1;
 									break;
 								}
 								else if (*ptr == '\t')
@@ -672,6 +672,8 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 						}
 						else
 						{
+							int			spaces;
+
 							spaces = pdesc->widths[j] - width;
 
 							/*
@@ -1196,13 +1198,13 @@ read_tsv(RowBucketType *rb,
 		}
 		else
 		{
-			int		i;
 
 			if (linebuf->used > 0)
 			{
-				char   *locbuf;
+				char	   *locbuf;
 				RowType	   *row;
-				bool	multiline = false;
+				bool		multiline = false;
+				int			i;
 
 				append_char(linebuf, '\0');
 				linebuf->sizes[nfields++] = size + 1;
@@ -1576,7 +1578,6 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 	lb_free(desc);
 	memset(desc, 0, sizeof(DataDesc));
 
-	name = (char *) get_input_file_basename();
 	if ((name = (char *) get_input_file_basename()))
 	{
 		strncpy(desc->filename, name, 64);

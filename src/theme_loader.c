@@ -88,7 +88,6 @@ ThemeLoaderGetToken(Tokenizer *tokenizer, Token *token)
 
 	if (c == '#')
 	{
-		c = *tokenizer->current;
 		token->str = tokenizer->current;
 		while (isxdigit(*tokenizer->current))
 			tokenizer->current++;
@@ -153,11 +152,12 @@ typedef struct
 static attr_t
 GetAttr(Tokenizer *tokenizer)
 {
-	Token token, *_token;
 	attr_t		result = 0;
 
 	while (1)
 	{
+		Token		token, *_token;
+
 		_token = ThemeLoaderGetToken(tokenizer, &token);
 		if (!_token)
 			return result;
@@ -204,10 +204,10 @@ GetKey(Tokenizer *tokenizer)
 {
 	static ThemeLoaderKey tlk;
 
-	Token token, *_token;
-
 	if (!tokenizer->is_error)
 	{
+		Token		token, *_token;
+
 		_token = ThemeLoaderGetToken(tokenizer, &token);
 		if (!_token)
 			return NULL;
