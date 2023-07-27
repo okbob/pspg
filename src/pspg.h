@@ -503,8 +503,6 @@ extern FILE *logfile;
 #define DEBUG_PIPE				"/home/pavel/debug"
  */
 
-#define DEBUG_PIPE				"/home/pavel/debug"
-
 #ifdef DEBUG_PIPE
 
 extern FILE *debug_pipe;
