@@ -15,6 +15,8 @@
 
 #ifdef PDCURSES
 /* Add some APIs that are part of ncurses but not pdcurses */
+#ifndef __PDCURSESMOD__
 #define wgetparent(win)     ((WINDOW*)win->_parent);
+#endif
 #endif
 
