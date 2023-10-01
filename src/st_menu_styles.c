@@ -45,6 +45,8 @@ slc(short id, short foreground, short background)
 	}
 }
 
+#ifdef  NCURSES_EXT_COLORS
+
 static unsigned int
 get_rgb(short c, bool light)
 {
@@ -100,6 +102,8 @@ get_rgb(short c, bool light)
 	/* fallback */
 	return -1;
 }
+
+#endif
 
 /*
  * This is taken from tmux
