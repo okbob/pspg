@@ -926,13 +926,20 @@ postprocess_fields(int nfields,
 			width = width > max_width ? width : max_width;
 		}
 		else
-			width = utf_string_dsplen_multiline(row->fields[i],
-												linebuf->sizes[i] - (reduced_sizes ? 0 : 1),
-												&multiline,
-												false,
-												&digits,
-												&total,
-												trim_rows);
+		{
+			int		_width;
+
+			_width = utf_string_dsplen_multiline(row->fields[i],
+												 linebuf->sizes[i] - (reduced_sizes ? 0 : 1),
+												 &multiline,
+												 false,
+												 &digits,
+												 &total,
+												 trim_rows);
+			if (_width < 0)
+				leave("input string is not valid utf8 string");
+			width = (size_t) _width;
+		}
 
 		if (trim_width > 0 && width > trim_width)
 			width = use_utf8 ? trim_width + 1 : trim_width;
