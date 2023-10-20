@@ -766,9 +766,6 @@ prepare_pdesc(RowBucketType *rb, LinebufType *linebuf, PrintDataDesc *pdesc, Pri
 	{
 		if (!linebuf->hidden[i])
 		{
-			if (linebuf->widths[i] < 0)
-				leave("broken format (maybe encoding error)");
-
 			pdesc->widths[pdesc->nfields] = linebuf->widths[i];
 			pdesc->multilines[pdesc->nfields] = linebuf->multilines[i];
 			pdesc->columns_map[pdesc->nfields++] = i;
