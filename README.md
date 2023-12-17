@@ -702,7 +702,7 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 implemented function `newterm` (`pdcurses` does this only on Unix platforms). It can work
 with WSL2 maybe (I didn't test it). An alternative can be using `less` pager, that is ported
 to some MS Win enviroments. `less` depends on `termcap`, and it is little bit more portable
-than `pspg` (`termcal` is low layer of ncurses). `less` supports wixed rows and with `--chop-long-lines`
+than `pspg` (`termcal` is low layer of ncurses). `less` supports fixed rows and with `--chop-long-lines`
 option or just `-S` can be used as pager for `pspg`. 
 
     export PSQL_PAGER="less --chop-long-lines --header 1"
