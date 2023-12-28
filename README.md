@@ -698,6 +698,35 @@ Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
 ## MS Windows
 
+`pspg` can be simply used on MS Windows by using wsl2. I tested it, and it is working without problems.
+
+* In terminal execute `wsl --install -d Ubuntu-22.04`
+
+* In terminal open Ubuntu session
+
+```
+sudo apt-get update
+sudo apt-get install pspg
+sudo apt-get install postgresql postgresql-contrib
+
+# set password for user postgres
+sudo passwd postgres
+su - postgres
+psql postgres
+>> create role pavel login;
+\q
+exit
+touch ~/.psqlrc
+mcedit .psqlrc
+\pset linestyle unicode
+\pset border 2
+\setenv PSQL_PAGER 'pspg -b -X'
+# press F2 and F10
+psql postgres
+```
+
+there is not any difference from installation and work on Ubuntu (Debian)
+
 `pspg` is not ported to MS Windows yet. There is the dependency on ncurses and correctly (fully)
 implemented function `newterm` (`pdcurses` does this only on Unix platforms). It can work
 with WSL2 maybe (I didn't test it). An alternative can be using `less` pager, that is ported
