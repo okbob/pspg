@@ -25,6 +25,23 @@ This pager can be used from the following command line clients, too:
 * mouse is supported and used
 * ability to copy a selected range to the clipboard
 
+## Installation and basic configuration
+
+The `pspg` can be simply installed from Debian (Ubuntu) repositories. RedHat (Fedora) repositories
+contains `pspg` too:
+
+    # Debian (Ubuntu)
+    sudo apt-get install pspg
+
+    # RedHat (Fedora)
+    sudo dnf install pspg
+
+Basic configuration is very simple - just set system environment variable `PSQL_PAGER`:
+
+    export PSQL_PAGER='pspg -X -b'
+
+Native installation on MS Windows is not supported, but `pspg` works well inside `wsl2`.
+Inside wsl2 environment, the installation is same like on used Linux system.
 
 ## Video presentation
 
@@ -624,7 +641,7 @@ I had to install `openssl-devel` package and I had to set
 
 On FreeBsd you should to use `gmake` instead `make`.
 
-## Note - Installation
+## Note - Installation details
 
 When you compile code from source, run ./configure first. Sometimes ./autogen.sh first
 
@@ -637,7 +654,7 @@ is expected. Re-run `configure` with `--with-ncursesw` option. When this command
 if development package for ncursesw library is installed.
 
 
-## Homebrew (for Linux & MacOS)
+### Homebrew (for Linux & MacOS)
 
     # brew install pspg
 
@@ -647,32 +664,32 @@ by default readline emulated over libedit, but `pspg` requires full gnu readline
     LDFLAGS="-L/usr/local/opt/readline/lib" CPPFLAGS="-I/usr/local/opt/readline/include" ./configure
     LDFLAGS="-L/usr/local/opt/readline/lib" CPPFLAGS="-I/usr/local/opt/readline/include" make
 
-## Debian
+### Debian
 
     # apt-cache search pspg
     # apt-get install pspg
 
 
-## Fedora (28 and later)
+### Fedora (28 and later)
 
     # dnf install pspg
     
 
-## RPM (CentOS/openSUSE/…)
+### RPM (CentOS/openSUSE/…)
 The pspg is available from community repository https://yum.postgresql.org/packages.php
 
 
-## Alpine Linux
+### Alpine Linux
 
     # apk add pspg
 
 
-## Gentoo
+### Gentoo
 
     # emerge -av dev-db/pspg
 
 
-## Arch Linux
+### Arch Linux
 
 The Arch User Repository contains two versions:
 
@@ -682,21 +699,21 @@ The Arch User Repository contains two versions:
 Use the AUR helper of your choice or git and `makepkg` to install pspg.
 
 
-## FreeBSD
+### FreeBSD
 
     # pkg install pspg
 
-## OpenBSD
+### OpenBSD
 
     # pkg_add pspg
 
 [More about it](https://fluca1978.github.io/2021/10/28/pspgOpenBSD.html)
 
-## Using MacPorts (MacOS only)
+### Using MacPorts (MacOS only)
 
     # port install pspg
 
-## MS Windows
+### MS Windows
 
 `pspg` can be simply used on MS Windows by using wsl2. I tested it, and it is working without problems.
 
@@ -736,7 +753,7 @@ option or just `-S` can be used as pager for `pspg`.
 
     export PSQL_PAGER="less --chop-long-lines --header 1"
 
-## Solaris
+### Solaris
 
 There are few issues requires manual code changes for successful compilation - we successfully
 tested `pspg`, but although `pspg` was linked with ncursesw libraries, the utf8 encoding support
@@ -755,14 +772,14 @@ option.
   linking issues.
 
 
-### builtin libraries
+#### builtin libraries
 
     export CURSES_CFLAGS="-I/usr/include/ncurses/"
     export PANEL_LIBS="-lpanelw"
     ./configure
 
 
-### OpenCSW development
+#### OpenCSW development
 
     export CFLAGS="-m64 -I/opt/csw/include"
     export LDFLAGS="-L/opt/csw/lib/64 -R/opt/csw/lib/64"
