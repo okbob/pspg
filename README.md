@@ -43,6 +43,8 @@ Basic configuration is very simple - just set system environment variable `PSQL_
 Native installation on MS Windows is not supported, but `pspg` works well inside `wsl2`.
 Inside wsl2 environment, the installation is same like on used Linux system.
 
+Installation on macOS/homebrew is simple by `brew install pspg`.
+
 ## Video presentation
 
 [![Video presentation](https://img.youtube.com/vi/JyxuEkoYDQk/0.jpg)](https://www.youtube.com/watch?v=JyxuEkoYDQk)
