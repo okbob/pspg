@@ -3,7 +3,7 @@
  * themes.h
  *	  themes initialization
  *
- * Portions Copyright (c) 2017-2023 Pavel Stehule
+ * Portions Copyright (c) 2017-2024 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/themes.h

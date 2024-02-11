@@ -3,7 +3,7 @@
  * inputs.h
  *	  generic processing of input
  *
- * Portions Copyright (c) 2017-2023 Pavel Stehule
+ * Portions Copyright (c) 2017-2024 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/inputs.h

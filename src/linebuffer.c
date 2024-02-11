@@ -3,7 +3,7 @@
  * linebuffer.c
  *	  a routines for iteration over stored lines
  *
- * Portions Copyright (c) 2017-2023 Pavel Stehule
+ * Portions Copyright (c) 2017-2024 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/linebuffer.c
