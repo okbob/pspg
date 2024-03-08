@@ -1013,6 +1013,8 @@ export_data(Options *opts,
 						  rn != desc->border_head_row &&
 						  rn <= desc->fixed_rows);
 
+			if (format != CLIPBOARD_FORMAT_TEXT && rn < desc->border_top_row)
+				continue;
 			if (!print_border &&
 				(rn == desc->border_top_row ||
 				 rn == desc->border_bottom_row))
