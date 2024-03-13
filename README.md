@@ -177,6 +177,50 @@ Options can be passed within the environment variable `PSPG`, too.
 |`PSPG_CONF`    | path to configuration file                |
 |`PSPG_HISTORY` | path to file pspg's readline history file |
 
+## Example of config file
+
+The fields names can be different than from related command line options:
+
+    ascii_menu = false
+    bold_labels = false
+    bold_cursor = false
+    ignore_case = false
+    ignore_lower_case = false
+    no_cursor = false
+    no_sound = false
+    no_mouse = false
+    less_status_bar = false
+    no_highlight_search = false
+    no_highlight_lines = false
+    force_uniborder = false
+    show_rownum = false
+    without_commandbar = false
+    without_topbar = false
+    vertical_cursor = false
+    on_sigint_exit = false
+    no_sigint_search_reset = false
+    double_header = false
+    quit_on_f3 = false
+    pgcli_fix = false
+    xterm_mouse_mode = true
+    show_scrollbar = true
+    menu_always = false
+    empty_string_is_null = true
+    last_row_search = true
+    progressive_load_mode = true
+    highlight_odd_rec = false
+    hide_header_line = false
+    on_exit_reset = false
+    on_exit_clean = false
+    on_exit_erase_line = false
+    on_exit_sgr0 = false
+    direct_color = false
+    theme = 16
+    border_type = 2
+    default_clipboard_format = 0
+    clipboard_app = 0
+    hist_size = 500
+    esc_delay = -1
 
 ## Themes
 
