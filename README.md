@@ -659,7 +659,7 @@ nushell configuration:
     $env.config.footer_mode = never
     $env.config.table.header_on_separator = false
     $env.config.ls.clickable_links = false
-   $env.config.table.mode = rounded 
+    $env.config.table.mode = rounded 
 
 ## Note - mouse
 
