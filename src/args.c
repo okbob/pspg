@@ -418,7 +418,7 @@ readargs(char **argv,
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
-					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)\n");
+					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3, 4)\n");
 					fprintf(stdout, "  --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )\n");
 					fprintf(stdout, "  --interactive            force interactive mode\n");
 					fprintf(stdout, "  --ignore_file_suffix     don't try to deduce format from file suffix\n");
@@ -685,9 +685,9 @@ readargs(char **argv,
 				break;
 			case 42:
 				opts->clipboard_app = atoi(optarg);
-				if (opts->clipboard_app < 1 || opts->clipboard_app > 3)
+				if (opts->clipboard_app < 1 || opts->clipboard_app > 4)
 				{
-					state->errstr = "value of clipboard_app should be 1, 2, or 3";
+					state->errstr = "value of clipboard_app should be 1, 2, 3 or 4";
 					return false;
 				}
 				break;

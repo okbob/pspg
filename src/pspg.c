@@ -1894,6 +1894,19 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 			}
 		}
 
+		errno = 0;
+		f = popen("clip.exe /? 2>&1", "r");
+		if (f)
+		{
+			/* first row of output is empty line, just ignore it */
+			status = pclose(f);
+			if (status == 0)
+			{
+				clipboard_application_id = 4;
+				return;
+			}
+		}
+
 		/*
 		 * pbcopy has not an argument for returning
 		 * version info, and without arguments, it
@@ -2131,6 +2144,8 @@ export_to_file(PspgCommand command,
 				snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
 			else if (clipboard_application_id == 2)
 				snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
+			else if (clipboard_application_id == 4)
+				snprintf(cmdline_clipboard_app, 1024, "clip.exe");
 
 			if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
 			{

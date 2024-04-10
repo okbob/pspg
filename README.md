@@ -78,7 +78,7 @@ Installation on macOS/homebrew is simple by `brew install pspg`.
       -f, --file=FILE          open file
       -F, --quit-if-one-screen
                                quit if content is one screen
-      --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+      --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3, 4)
       --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )
       --interactive            force interactive mode
       --ignore_file_suffix     don't try to deduce format from file suffix
@@ -465,7 +465,7 @@ some horizontal scrolling) or on first column. After last column searching start
 ## Export & Clipboard
 
 For clipboard support the clipboard application should be installed: 1. wl-clipboard (Wayland),
-2. xclip (xwindows) or 3. pbcopy (MacOS).
+2. xclip (xwindows), 3. pbcopy (MacOS) or 4. clip (WSL2).
 
 `pspg` try to translate unicode symbol '∅' to NULL every time. If you don't use special setting
 by `\pset null ...`, then `psql` displays empty string instead NULL. `pspg` hasn't any special
@@ -473,7 +473,7 @@ detection (in export routines) for this case. You should to check and enable or 
 item `Empty string is NULL`.
 
 `pspg` has automatic detection of clipboard application. Unfortunately, this detection should
-not to work for same cases. You can specify the application by specify number (1,2,3) to
+not to work for same cases. You can specify the application by specify number (1,2,3,4) to
 `--clipboard-app` option.
 
 
