@@ -654,6 +654,13 @@ The conversion to csv can be used too.
 
 Note: `footer_mode` should be disabled
 
+nushell configuration:
+
+    $env.config.footer_mode = never
+    $env.config.table.header_on_separator = false
+    $env.config.ls.clickable_links = false
+    $env.config.table.mode = rounded 
+
 ## Note - mouse
 
 pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique. If there
