@@ -2088,7 +2088,6 @@ export_to_file(PspgCommand command,
 	}
 	else
 	{
-
 		check_clipboard_app(opts, force_refresh);
 		if (!clipboard_application_id)
 		{
@@ -2107,6 +2106,16 @@ export_to_file(PspgCommand command,
 			 */
 			use_pbcopy = true;
 			fp = popen("pbcopy", "w");
+		}
+		else if (clipboard_application_id == 4)
+		{
+			/*
+			 * mechanism used and tested for wl-copy and xclip doesn't
+			 * work with pbcopy. So we can just to use popen instead
+			 * rwe_popen.
+			 */
+			use_pbcopy = true;
+			fp = popen("clip.exe", "w");
 		}
 		else
 		{
