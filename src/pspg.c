@@ -1872,6 +1872,19 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 		*force_refresh = true;
 
 		errno = 0;
+		f = popen("clip.exe /? 2>&1", "r");
+		if (f)
+		{
+			/* first row of output is empty line, just ignore it */
+			status = pclose(f);
+			if (status == 0)
+			{
+				clipboard_application_id = 4;
+				return;
+			}
+		}
+
+		errno = 0;
 		f = popen("xclip -version 2>&1", "r");
 		if (f)
 		{
@@ -1890,19 +1903,6 @@ check_clipboard_app(Options *opts, bool *force_refresh)
 			if (status == 0 && isokstr)
 			{
 				clipboard_application_id = 2;
-				return;
-			}
-		}
-
-		errno = 0;
-		f = popen("clip.exe /? 2>&1", "r");
-		if (f)
-		{
-			/* first row of output is empty line, just ignore it */
-			status = pclose(f);
-			if (status == 0)
-			{
-				clipboard_application_id = 4;
 				return;
 			}
 		}
