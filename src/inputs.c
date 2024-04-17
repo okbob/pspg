@@ -252,11 +252,7 @@ repeat:
 
 #endif
 
-#ifdef DEBUG_PIPE
-
-	fprintf(debug_pipe, "*** keycode: %d, err: %d\n", nced->keycode, errno);
-
-#endif
+	log_row("*** keycode: %d, err: %d", nced->keycode, errno);
 
 	if (errno == EINTR)
 	{
