@@ -275,10 +275,20 @@ repeat:
 	{
 		if (nced->keycode == ERR)
 		{
-				nced->keycode = PSPG_NOTASSIGNED_CODE;
+			nced->keycode = PSPG_NOTASSIGNED_CODE;
+
+			/*
+			 * workaround for macos and older ncurses. When ESC is pressed,
+			 * then first iteration returns ESC, and second ERR (insted
+			 * expected OK) due setting ESCDELAY to 1 ms.
+			 */
+
+			if (first_event)
+			{
 				nced->alt = false;
 				nced->ignore_it = true;
 				return true;
+			}
 		}
 
 		if (nced->keycode == KEY_MOUSE)
