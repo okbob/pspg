@@ -326,13 +326,6 @@ repeat:
 		}
 	}
 
-	/*
-	 * Workaround for issue #204. MacOS returns ERR when there are not
-	 * any other activity after ESC in ESCDELAY limit.
-	 */
-	if (nced->keycode == ERR && !first_event && errno == 0)
-		nced->keycode = PSPG_NOTASSIGNED_CODE;
-
 #if PDCURSES
 
 	nced->alt = is_alt(&nced->keycode);
