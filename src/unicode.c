@@ -146,7 +146,7 @@ mbbisearch(wchar_t ucs, const struct mbinterval *table, int max)
 static int
 ucs_wcwidth(wchar_t ucs)
 {
-#include "unicode_combining_table.h"
+#include "unicode_nonspacing_table.h"
 #include "unicode_east_asian_fw_table.h"
 
 	/* test for 8-bit control characters */
@@ -165,8 +165,8 @@ ucs_wcwidth(wchar_t ucs)
 	 * factor for display width leads to the correct behavior, so do that
 	 * search first.
 	 */
-	if (mbbisearch(ucs, combining,
-				   sizeof(combining) / sizeof(struct mbinterval) - 1))
+	if (mbbisearch(ucs, nonspacing,
+				   sizeof(nonspacing) / sizeof(struct mbinterval) - 1))
 		return 0;
 
 	/* binary search in table of wide characters */
