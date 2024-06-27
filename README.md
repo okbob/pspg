@@ -476,6 +476,10 @@ item `Empty string is NULL`.
 not to work for same cases. You can specify the application by specify number (1,2,3,4) to
 `--clipboard-app` option.
 
+Formats make a difference! pspg copies records in CSV format by default, which uses comma
+separators and **trims initial and trailing whitespace**. Use "formatted text" to copy query output
+exactly, or choose one of the other available options.
+
 
 ## Status line description
 
