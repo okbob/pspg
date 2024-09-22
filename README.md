@@ -166,8 +166,10 @@ Installation on macOS/homebrew is simple by `brew install pspg`.
 
 pspg shares a lot of key commands with the less pager or the vi editor.
 
-Options can be passed within the environment variable `PSPG`, too.
-
+Options can also be passed within the `PSPG` environment variable. Configuration
+file is processed first. Options from the `PSPG` variable are processed afterwards
+step and command line options are processed at the end. One option can
+be processed multiple times, the last value wins.
 
 ## Environment variables
 
