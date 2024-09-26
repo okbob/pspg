@@ -1,6 +1,6 @@
 .\" generated with Ronn-NG/v0.10.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.10.1
-.TH "PSPG" "1" "March 2024" "" "pspg manual"
+.TH "PSPG" "1" "September 2024" "" "pspg manual"
 .SH "NAME"
 \fBpspg\fR \- Postgres Pager
 .P
@@ -79,7 +79,7 @@ General options:
   \-f, \-\-file=FILE          open file
   \-F, \-\-quit\-if\-one\-screen
                            quit if content is one screen
-  \-\-clipboard\-app=NUM      specify app used by copy to clipboard (1, 2, 3)
+  \-\-clipboard\-app=NUM      specify app used by copy to clipboard (1, 2, 3, 4)
   \-\-esc\-delay=NUM          specify escape delay in ms (\-1 inf, 0 not used, )
   \-\-interactive            force interactive mode
   \-\-ignore_file_suffix     don't try to deduce format from file suffix
@@ -168,7 +168,7 @@ Debug options:
 .P
 pspg shares a lot of key commands with the less pager or the vi editor\.
 .P
-Options can be passed within the environment variable \fBPSPG\fR, too\.
+Options can also be passed within the \fBPSPG\fR environment variable\. Configuration file is processed first\. Options from the \fBPSPG\fR variable are processed afterwards step and command line options are processed at the end\. One option can be processed multiple times, the last value wins\.
 .SH "Environment variables"
 .TS
 allbox;
@@ -446,12 +446,14 @@ Column search is case insensitive every time\. Searched column is marked by vert
 .SH "Export & Clipboard"
 For clipboard support the clipboard application should be installed: 1\. wl\-clipboard (Wayland),
 .IP "1." 4
-xclip (xwindows) or 3\. pbcopy (MacOS)\.
+xclip (xwindows), 3\. pbcopy (MacOS) or 4\. clip\.exe (WSL2)\.
 .IP "" 0
 .P
 \fBpspg\fR try to translate unicode symbol '∅' to NULL every time\. If you don't use special setting by \fB\epset null \|\.\|\.\|\.\fR, then \fBpsql\fR displays empty string instead NULL\. \fBpspg\fR hasn't any special detection (in export routines) for this case\. You should to check and enable or disable menu item \fBEmpty string is NULL\fR\.
 .P
-\fBpspg\fR has automatic detection of clipboard application\. Unfortunately, this detection should not to work for same cases\. You can specify the application by specify number (1,2,3) to \fB\-\-clipboard\-app\fR option\.
+\fBpspg\fR has automatic detection of clipboard application\. Unfortunately, this detection should not to work for same cases\. You can specify the application by specify number (1,2,3,4) to \fB\-\-clipboard\-app\fR option\.
+.P
+Formats make a difference! pspg copies records in CSV format by default, which uses comma separators and \fBtrims initial and trailing whitespace\fR\. Use "formatted text" to copy query output exactly, or choose one of the other available options\.
 .SH "Status line description"
 .IP "\(bu" 4
 \fBV: [d/d d\.\.d]\fR \- vertical cursor: (column number)/(columns) (char positions from) \.\. (char positions to)
@@ -617,6 +619,16 @@ sys | get cpu | to csv | pspg \-\-csv
 .IP "" 0
 .P
 Note: \fBfooter_mode\fR should be disabled
+.P
+nushell configuration:
+.IP "" 4
+.nf
+$env\.config\.footer_mode = never
+$env\.config\.table\.header_on_separator = false
+$env\.config\.ls\.clickable_links = false
+$env\.config\.table\.mode = rounded
+.fi
+.IP "" 0
 .SH "Note \- mouse"
 pspg try to use xterm mouse mode 1002, when terminal and ncurses are not too antique\. If there are problems with usage \- unwanted visual artefacts when you move with mouse when some mouse button is pressed, then 1\. please, report issue (please, attach log file), 2\. use an option \fB\-\-no\-xterm\-mouse\-mode\fR and \fBpspg\fR will not try to activate this mode\.
 .SH "Note \- true color themes on KDE konsole terminal"
