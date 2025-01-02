@@ -3,7 +3,7 @@
  * events.c
  *	  handles all events - tty and content
  *
- * Portions Copyright (c) 2017-2024 Pavel Stehule
+ * Portions Copyright (c) 2017-2025 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/inputs.c

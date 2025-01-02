@@ -3,7 +3,7 @@
  * unicode.c
  *	  unicode and wide chars routines
  *
- * Portions Copyright (c) 2017-2024 Pavel Stehule
+ * Portions Copyright (c) 2017-2025 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/unicode.c
