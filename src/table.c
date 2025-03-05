@@ -1628,6 +1628,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 		bool		only_digits = false;
 		bool		only_digits_with_point = false;
 		bool		skip_initial_spaces = true;
+		bool		found_exponent = false;
 		int			x = 0;
 
 		char		decimal_point = '\0';
@@ -1748,6 +1749,23 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					}
 					else if (!isdigit(c))
 					{
+						if (c == 'e' && !found_exponent && chrlen == 1 && decimal_point != '\0')
+						{
+							/* try to skip e+n */
+							if (str[1] == '+' || str[1] == '-')
+							{
+								if (isdigit(str[2]))
+								{
+									found_exponent = true;
+									memcpy(buffptr, str, 3);
+									str += 3;
+									x += 3;
+									buffptr += 3;
+									continue;
+								}
+							}
+						}
+
 						only_digits = false;
 						only_digits_with_point = false;
 					}
@@ -1821,6 +1839,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 		}
 
 		errno = 0;
+
 		*d = strtod(buffer, NULL);
 		if (errno == 0)
 		{
