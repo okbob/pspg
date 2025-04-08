@@ -526,6 +526,10 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 				   PrintDataDesc *pdesc,
 				   char *title)
 {
+	if (pdesc->nfields == 0) {
+		/* Early return to avoid OOB access in the next line */
+		return;	
+	}	
 	bool		is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
 	int			last_column_num = pdesc->nfields - 1;
 	int			printed_rows = 0;
