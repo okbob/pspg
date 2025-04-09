@@ -526,12 +526,23 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 				   PrintDataDesc *pdesc,
 				   char *title)
 {
-	bool		is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
-	int			last_column_num = pdesc->nfields - 1;
+	bool		is_last_column_multiline;
+	int			last_column_num;
 	int			printed_rows = 0;
 	char		linestyle = pconfig->linestyle;
 	int			border = pconfig->border;
 	char		buffer[20];
+
+	if (pdesc->nfields > 0)
+	{
+		is_last_column_multiline = pdesc->multilines[pdesc->nfields - 1];
+		last_column_num = pdesc->nfields - 1;
+	}
+	else
+	{
+		is_last_column_multiline = false;
+		last_column_num = 0;
+	}
 
 	printbuf->printed_headline = false;
 	printbuf->flushed_rows = 0;
