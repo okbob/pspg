@@ -796,6 +796,12 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			read -= 1;
 		}
 
+		if (line && read > 0 && line[read - 1] == '\r')
+		{
+			line[read - 1] = '\0';
+			read -= 1;
+		}
+
 		/*
 		 * In streaming mode go out when you find empty row.
 		 *
