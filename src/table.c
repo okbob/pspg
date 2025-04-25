@@ -678,6 +678,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	bool		progressive_load_mode;
 	LineBuffer *rows;
 	int		clen = -1;
+	void	   *tabptr;
 
 #ifdef DEBUG_PIPE
 
@@ -831,6 +832,54 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		}
 
 		read = remove_ansi_escape_seq(line, read);
+		if ((tabptr = memchr(line, '\t', read)))
+		{
+			int		tabcount = 1;
+			void   *endptr = line + read - 1;
+			char   *newline, *writeptr, *readptr;
+			int		total_dl = 0;
+
+			while ((tabptr = memchr(tabptr + 1, '\t', endptr - tabptr)))
+			{
+				tabcount += 1;
+			}
+
+			/* allocate enough memory for new line */
+			writeptr = newline = smalloc(read + tabcount * 8 + 1);
+			readptr = line;
+
+			while (read > 0)
+			{
+				if (*readptr == '\t')
+				{
+					do
+					{
+						*writeptr++ = ' ';
+						total_dl += 1;
+					} while (total_dl % 8 != 0);
+
+					read -= 1;
+					readptr += 1;
+				}
+				else
+				{
+					int		cl = charlen(readptr);
+					int		dl = dsplen(readptr);
+
+					total_dl += dl;
+					memcpy(writeptr, readptr, cl);
+					writeptr += cl;
+					readptr += cl;
+					read -= cl;
+				}
+			}
+
+			*writeptr = '\0';
+
+			free(line);
+			line = newline;
+			read = writeptr - newline;
+		}
 
 		/* In query stream node exit when you find row with only GS - Group Separator */
 		if (opts->querystream && read == 1)
