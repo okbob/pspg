@@ -5092,7 +5092,12 @@ recheck_right:
 
 					if (_is_footer_cursor)
 					{
-						int max_footer_cursor_col = desc.footer_char_size - scrdesc.main_maxx;
+						int max_footer_cursor_col;
+
+						if (desc.footer_char_size > scrdesc.main_maxx)
+							max_footer_cursor_col = desc.footer_char_size - scrdesc.main_maxx;
+						else
+							max_footer_cursor_col = 0;
 
 						if (footer_cursor_col + 1 >= max_footer_cursor_col && scrdesc.rows_rows >= 0)
 						{
