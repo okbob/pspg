@@ -181,6 +181,8 @@ be processed multiple times, the last value wins.
 
 ## Example of config file
 
+The default path of config file is `~/.pspgconf`.
+
 The fields names can be different than from related command line options:
 
     ascii_menu = false
