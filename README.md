@@ -38,7 +38,13 @@ contains `pspg` too:
 
 Basic configuration is very simple - just set system environment variable `PSQL_PAGER`:
 
+    export PSQL_PAGER='pspg'
+
+or with some common options (`-b` means blackwhite theme, `-X` preserve content after exit):
+
     export PSQL_PAGER='pspg -X -b'
+
+Attention: options used in command line has higher priority than options specified in configuration file (`~/.pspgconf`).
 
 Native installation on MS Windows is not supported, but `pspg` works well inside `wsl2`.
 Inside wsl2 environment, the installation is same like on used Linux system.
