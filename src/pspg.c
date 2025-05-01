@@ -160,6 +160,7 @@ typedef enum
 	MARK_MODE_NONE,
 	MARK_MODE_ROWS,			/* activated by F3 */
 	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
+	MARK_MODE_COLUMNS,		/* activated by F15 ~ Shift F3, when row cursor is hidden */
 	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
 	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
 	MARK_MODE_MOUSE_COLUMNS,/* activated by CTRL + MOUSE on column headers */
@@ -1027,7 +1028,8 @@ redraw_screen(void)
 		if (mark_mode == MARK_MODE_MOUSE_BLOCK ||
 				mark_mode == MARK_MODE_MOUSE_COLUMNS)
 			ref_col = mouse_col;
-		else if (mark_mode == MARK_MODE_BLOCK)
+		else if (mark_mode == MARK_MODE_BLOCK ||
+				 mark_mode == MARK_MODE_COLUMNS)
 			ref_col = vertical_cursor_column;
 		else
 			ref_col = -1;
@@ -1211,7 +1213,8 @@ redraw_screen(void)
 			!opts->no_mouse &&
 			!(mark_mode == MARK_MODE_MOUSE ||
 			 mark_mode == MARK_MODE_MOUSE_BLOCK ||
-			 mark_mode == MARK_MODE_MOUSE_COLUMNS))
+			 mark_mode == MARK_MODE_MOUSE_COLUMNS ||
+			 mark_mode == MARK_MODE_COLUMNS))
 		{
 			long	td = time_diff(current_sec, current_ms,
 								   last_doupdate_sec, last_doupdate_ms);
@@ -4443,7 +4446,8 @@ reset_search:
 
 			case cmd_Mark:
 				if (mark_mode != MARK_MODE_ROWS &&
-					mark_mode != MARK_MODE_BLOCK)
+					mark_mode != MARK_MODE_BLOCK &&
+					mark_mode != MARK_MODE_COLUMNS)
 				{
 					throw_selection(&scrdesc, &desc, &mark_mode);
 
@@ -4460,13 +4464,21 @@ reset_search:
 													   vertical_cursor_column))
 						break;
 
-					if (mark_mode != MARK_MODE_BLOCK)
+					if (mark_mode != MARK_MODE_BLOCK || mark_mode != MARK_MODE_COLUMNS)
 					{
 						throw_selection(&scrdesc, &desc, &mark_mode);
 
-						mark_mode = MARK_MODE_BLOCK;
-						mark_mode_start_row = cursor_row;
-						mark_mode_start_col = vertical_cursor_column;
+						if (opts.no_cursor)
+						{
+							mark_mode = MARK_MODE_COLUMNS;
+							mark_mode_start_col = vertical_cursor_column;
+						}
+						else
+						{
+							mark_mode = MARK_MODE_BLOCK;
+							mark_mode_start_row = cursor_row;
+							mark_mode_start_col = vertical_cursor_column;
+						}
 					}
 					else
 						mark_mode = MARK_MODE_NONE;
@@ -4553,6 +4565,7 @@ reset_search:
 
 			case cmd_ShowCursor:
 				opts.no_cursor = !opts.no_cursor;
+				mark_mode = MARK_MODE_NONE;
 				refresh_scr = true;
 				break;
 
@@ -4627,6 +4640,7 @@ reset_search:
 						}
 					}
 
+					mark_mode = MARK_MODE_NONE;
 					refresh_scr = true;
 				}
 				break;
