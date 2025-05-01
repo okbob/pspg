@@ -1,6 +1,6 @@
 .\" generated with Ronn-NG/v0.10.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.10.1
-.TH "PSPG" "1" "September 2024" "" "pspg manual"
+.TH "PSPG" "1" "May 2025" "" "pspg manual"
 .SH "NAME"
 \fBpspg\fR \- Postgres Pager
 .P
@@ -51,9 +51,18 @@ sudo dnf install pspg
 Basic configuration is very simple \- just set system environment variable \fBPSQL_PAGER\fR:
 .IP "" 4
 .nf
+export PSQL_PAGER='pspg'
+.fi
+.IP "" 0
+.P
+or with some common options (\fB\-b\fR means blackwhite theme, \fB\-X\fR preserve content after exit):
+.IP "" 4
+.nf
 export PSQL_PAGER='pspg \-X \-b'
 .fi
 .IP "" 0
+.P
+Attention: options used in command line has higher priority than options specified in configuration file (\fB~/\.pspgconf\fR)\.
 .P
 Native installation on MS Windows is not supported, but \fBpspg\fR works well inside \fBwsl2\fR\. Inside wsl2 environment, the installation is same like on used Linux system\.
 .P
@@ -179,6 +188,8 @@ Name	Usage
 \fBPSPG_HISTORY\fR	path to file pspg's readline history file
 .TE
 .SH "Example of config file"
+The default path of config file is \fB~/\.pspgconf\fR\.
+.P
 The fields names can be different than from related command line options:
 .IP "" 4
 .nf
