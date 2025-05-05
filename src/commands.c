@@ -89,8 +89,8 @@ initialize_special_keycodes()
 	CTRL_SHIFT_END = get_code("kEND6", 532);
 	CTRL_RIGHT = get_code("kRIT5", 561);
 	CTRL_LEFT = get_code("kLFT5", 546);
-	CTRL_SHIFT_RIGHT = get_code("kRIT6", -1);
-	CTRL_SHIFT_LEFT = get_code("kLFT6", -1);
+	CTRL_SHIFT_RIGHT = get_code("kRIT6", 570);
+	CTRL_SHIFT_LEFT = get_code("kLFT6", 555);
 	SHIFT_RIGHT = get_code("kRIT2", 402);
 	SHIFT_LEFT = get_code("kLFT2", 393);
 
