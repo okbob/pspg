@@ -162,6 +162,7 @@ typedef enum
 	MARK_MODE_BLOCK,		/* activated by F15 ~ Shift F3 */
 	MARK_MODE_COLUMNS,		/* activated by F15 ~ Shift F3, when row cursor is hidden */
 	MARK_MODE_CURSOR,		/* activated by SHIFT + CURSOR */
+	MARK_MODE_CURSOR_COLUMNS, /* activated by SHIFT - vertical cursors */
 	MARK_MODE_MOUSE,		/* activated by CTRL + MOUSE */
 	MARK_MODE_MOUSE_COLUMNS,/* activated by CTRL + MOUSE on column headers */
 	MARK_MODE_MOUSE_BLOCK,	/* activated by ALT + MOUSE */
@@ -1029,7 +1030,8 @@ redraw_screen(void)
 				mark_mode == MARK_MODE_MOUSE_COLUMNS)
 			ref_col = mouse_col;
 		else if (mark_mode == MARK_MODE_BLOCK ||
-				 mark_mode == MARK_MODE_COLUMNS)
+				 mark_mode == MARK_MODE_COLUMNS ||
+				 mark_mode == MARK_MODE_CURSOR_COLUMNS)
 			ref_col = vertical_cursor_column;
 		else
 			ref_col = -1;
@@ -1213,8 +1215,7 @@ redraw_screen(void)
 			!opts->no_mouse &&
 			!(mark_mode == MARK_MODE_MOUSE ||
 			 mark_mode == MARK_MODE_MOUSE_BLOCK ||
-			 mark_mode == MARK_MODE_MOUSE_COLUMNS ||
-			 mark_mode == MARK_MODE_COLUMNS))
+			 mark_mode == MARK_MODE_MOUSE_COLUMNS))
 		{
 			long	td = time_diff(current_sec, current_ms,
 								   last_doupdate_sec, last_doupdate_ms);
@@ -2385,6 +2386,38 @@ throw_selection(ScrDesc *scrdesc, DataDesc *desc, MarkModeType *_mark_mode)
 }
 
 static bool
+is_horizontal_move(int c)
+{
+	switch (c)
+	{
+		case cmd_MoveColumnLeft:
+		case cmd_MoveColumnRight:
+		case cmd_ShowFirstCol:
+		case cmd_ShowLastCol:
+			return true;
+	}
+
+	return false;
+}
+
+static bool
+is_vertical_move(int c)
+{
+	switch (c)
+	{
+		case cmd_CursorUp:
+		case cmd_CursorDown:
+		case cmd_PageUp:
+		case cmd_PageDown:
+		case cmd_CursorFirstRow:
+		case cmd_CursorLastRow:
+			return true;
+	}
+
+	return false;
+}
+
+static bool
 check_visible_vertical_cursor(DataDesc *desc,
 							  Options *opts,
 							  int _vertical_cursor_column)
@@ -3533,13 +3566,9 @@ reinit_theme:
 				}
 
 				/* Disable mark cursor mode immediately */
-				if (mark_mode == MARK_MODE_CURSOR &&
-						!(event_keycode == KEY_SF ||
-						  event_keycode == KEY_SR ||
-						  event_keycode == KEY_SNEXT ||
-						  event_keycode == KEY_SPREVIOUS ||
-						  event_keycode == KEY_LEFT ||
-						  event_keycode == KEY_RIGHT ||
+				if ((mark_mode == MARK_MODE_CURSOR ||
+					 mark_mode == MARK_MODE_CURSOR_COLUMNS) &&
+						!(key_is_allowed_mark_mode_cursor(event_keycode) ||
 						  is_cmd_RowNumToggle(event_keycode, nced.alt)))
 					mark_mode = MARK_MODE_NONE;
 
@@ -4447,7 +4476,9 @@ reset_search:
 			case cmd_Mark:
 				if (mark_mode != MARK_MODE_ROWS &&
 					mark_mode != MARK_MODE_BLOCK &&
-					mark_mode != MARK_MODE_COLUMNS)
+					mark_mode != MARK_MODE_COLUMNS &&
+					mark_mode != MARK_MODE_CURSOR &&
+					mark_mode != MARK_MODE_CURSOR_COLUMNS)
 				{
 					throw_selection(&scrdesc, &desc, &mark_mode);
 
@@ -4487,14 +4518,54 @@ reset_search:
 				break;
 
 			case cmd_Mark_NestedCursorCommand:
-				if (mark_mode != MARK_MODE_CURSOR)
 				{
+					MarkModeType next_mark_mode = MARK_MODE_NONE;
+					int		next_mark_mode_start_col = -1;
+					int		next_mark_mode_start_row = -1;
+					bool	is_horizontal_mv;
+					bool	is_vertical_mv;
+
+					is_horizontal_mv = is_horizontal_move(nested_command);
+					is_vertical_mv = is_vertical_move(nested_command);
+
+					if (mark_mode == MARK_MODE_CURSOR && is_vertical_mv)
+					{
+						next_command = nested_command;
+						break;
+					}
+
+					if (mark_mode == MARK_MODE_CURSOR_COLUMNS && is_horizontal_mv)
+					{
+						next_command = nested_command;
+						break;
+					}
+
+					if (is_vertical_mv)
+					{
+						if (opts.no_cursor)
+							break;
+
+						next_mark_mode = MARK_MODE_CURSOR;
+						next_mark_mode_start_row = cursor_row;
+					}
+
+					if (is_horizontal_mv)
+					{
+						if (!opts.vertical_cursor)
+							break;
+
+						next_mark_mode = MARK_MODE_CURSOR_COLUMNS;
+						next_mark_mode_start_col = vertical_cursor_column;
+					}
+
 					throw_selection(&scrdesc, &desc, &mark_mode);
 
-					mark_mode = MARK_MODE_CURSOR;
-					mark_mode_start_row = cursor_row;
+					mark_mode = next_mark_mode;
+					mark_mode_start_row = next_mark_mode_start_row;
+					mark_mode_start_col = next_mark_mode_start_col;
+
+					next_command = nested_command;
 				}
-				next_command = nested_command;
 				break;
 
 			case cmd_Unmark:

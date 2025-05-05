@@ -416,7 +416,8 @@ definitions are stored in log file.
 | <kbd>Space</kbd>                                                         | stop/continue in watch mode                                         |
 | <kbd>R</kbd>                                                             | Repaint screen and refresh input file                               |
 | <kbd>Ins</kbd>                                                           | export row, column or cell to default target                        |
-| <kbd>shift</kbd>+<kbd>cursor...</kbd>                                    | define range                                                        |
+| <kbd>shift</kbd>+<kbd>cursor up, down</kbd>                              | define row range                                                    |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>cursor left, right</kbd>           | define column range                                                 |
 | <kbd>F3</kbd>                                                            | start/finish of selection rows                                      |
 | <kbd>Shift</kbd>+<kbd>F3</kbd>                                           | start/finish of selection block                                     |
 | <kbd>Ctrl</kbd>+<kbd>drag mouse</kbd>                                    | defines rows selection, on column header defines column selection   |

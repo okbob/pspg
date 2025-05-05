@@ -168,6 +168,8 @@ extern int translate_event(int c, bool alt, Options *opts, int *nested_command);
 extern bool require_complete_load(int cmd);
 
 extern bool is_cmd_RowNumToggle(int c, bool alt);
+extern bool key_is_allowed_mark_mode_cursor(int c);
+
 
 extern int cmd_get_theme(int cmd);
 extern int theme_get_cmd(int theme);

@@ -18,6 +18,8 @@ int		CTRL_HOME;
 int		CTRL_END;
 int		CTRL_SHIFT_HOME;
 int		CTRL_SHIFT_END;
+int		CTRL_SHIFT_LEFT;
+int		CTRL_SHIFT_RIGHT;
 int		CTRL_LEFT;
 int		CTRL_RIGHT;
 int		SHIFT_LEFT;
@@ -66,6 +68,8 @@ initialize_special_keycodes()
 	CTRL_END = CTL_END;
 	CTRL_SHIFT_HOME = -1;
 	CTRL_SHIFT_END = -1;
+	CTRL_SHIFT_LEFT = -1;
+	CTRL_SHIFT_RIGHT = -1;
 	CTRL_RIGHT = CTL_RIGHT;
 	CTRL_LEFT = CTL_LEFT;
 	SHIFT_RIGHT = KEY_SRIGHT;
@@ -85,11 +89,33 @@ initialize_special_keycodes()
 	CTRL_SHIFT_END = get_code("kEND6", 532);
 	CTRL_RIGHT = get_code("kRIT5", 561);
 	CTRL_LEFT = get_code("kLFT5", 546);
+	CTRL_SHIFT_RIGHT = get_code("kRIT6", -1);
+	CTRL_SHIFT_LEFT = get_code("kLFT6", -1);
 	SHIFT_RIGHT = get_code("kRIT2", 402);
 	SHIFT_LEFT = get_code("kLFT2", 393);
 
 #endif
 
+}
+
+bool
+key_is_allowed_mark_mode_cursor(int c)
+{
+	switch (c)
+	{
+		case KEY_SF:
+		case KEY_SR:
+		case KEY_SNEXT:
+		case KEY_SPREVIOUS:
+		case KEY_SLEFT:
+		case KEY_SEND:
+			return true;
+	}
+
+	if (c == CTRL_SHIFT_LEFT || c == CTRL_SHIFT_RIGHT)
+		return true;
+
+	return false;
 }
 
 /*
@@ -582,6 +608,12 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 			case KEY_SPREVIOUS:
 				*nested_command = cmd_PageUp;
 				return cmd_Mark_NestedCursorCommand;
+			case KEY_SHOME:
+				*nested_command = cmd_ShowFirstCol;
+				return cmd_Mark_NestedCursorCommand;
+			case KEY_SEND:
+				*nested_command = cmd_ShowLastCol;
+				return cmd_Mark_NestedCursorCommand;
 		}
 	}
 
@@ -607,6 +639,16 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 		return cmd_MoveColumnLeft;
 	else if (c == SHIFT_RIGHT)
 		return cmd_MoveColumnRight;
+	else if (c == CTRL_SHIFT_LEFT)
+	{
+		*nested_command = cmd_MoveColumnLeft;
+		return cmd_Mark_NestedCursorCommand;
+	}
+	else if (c == CTRL_SHIFT_RIGHT)
+	{
+		*nested_command = cmd_MoveColumnRight;
+		return cmd_Mark_NestedCursorCommand;
+	}
 
 	return cmd_Invalid;
 }
