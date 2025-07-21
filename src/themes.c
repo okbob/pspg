@@ -1673,6 +1673,55 @@ initialize_color_pairs(int theme, bool direct_color)
 			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0xeeeeee, 0x005f40, 0);
 			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x0087af, 0x005f40, 0);
 			break;
+
+		case 24:
+			/* Dracula theme */
+			deftheme_rgb(PspgTheme_background, 0xf8f8f2, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_data, 0xf8f8f2, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_border, 0x6272a4, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_label, 0x50fa7b, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_rownum, 0x6272a4, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_recnum, 0xff79c6, 0x282a36, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, 0xbd93f9, 0x282a36, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0x282a36, 0x50fa7b, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, 0x282a36, 0xff79c6, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, 0x282a36, 0xbd93f9, 0);
+
+			deftheme_rgb(PspgTheme_scrollbar_arrows, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_scrollbar_background, 0x6272a4, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_scrollbar_slider, 0xf8f8f2, 0x6272a4, 0);
+			deftheme_rgb(PspgTheme_scrollbar_active_slider, 0x282a36, 0xf8f8f2, 0);
+
+			deftheme_rgb(PspgTheme_title, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_status_bar, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_info_bar, 0x50fa7b, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_error_bar, 0xf8f8f2, 0xff5555, 0);
+			deftheme_rgb(PspgTheme_input_bar, 0x282a36, 0xf8f8f2, 0);
+
+			deftheme_rgb(PspgTheme_bookmark, 0x282a36, 0xffb86c, A_BOLD);
+			deftheme_rgb(PspgTheme_bookmark_border, 0x6272a4, 0xffb86c, A_BOLD);
+			deftheme_rgb(PspgTheme_cursor_bookmark, 0xffb86c, 0x282a36, A_BOLD | A_REVERSE);
+
+			deftheme_rgb(PspgTheme_cross_cursor, 0x282a36, 0x8be9fd, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, 0x6272a4, 0x8be9fd, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0x282a36, 0xf8f8f2, 0);
+
+			deftheme_rgb(PspgTheme_pattern, 0x282a36, 0xf1fa8c, A_BOLD | A_UNDERLINE);
+			deftheme_rgb(PspgTheme_pattern_nohl, 0x6272a4, 0x282a36, 0);
+			deftheme_rgb(PspgTheme_pattern_line, 0x282a36, 0xf1fa8c, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, 0x6272a4, 0xf1fa8c, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor, 0xf1fa8c, 0x282a36, A_BOLD);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0x282a36, 0xbd93f9, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x6272a4, 0xbd93f9, 0);
+			break;
 	}
 
 	current_themedef_bank = 1;
@@ -1791,6 +1840,23 @@ initialize_color_pairs(int theme, bool direct_color)
 
 			deftheme_rgb(PspgTheme_selection, 0x090909, 0xc0c0c0, 0);
 			deftheme_rgb(PspgTheme_cursor_selection, 0xeeeeee, 0x181717, 0);
+
+			has_odd_themedef = true;
+			break;
+
+		case 24:
+			/* Dracula theme */
+			deftheme_rgb(PspgTheme_data, 0xf8f8f2, 0x21222c, 0);
+			deftheme_rgb(PspgTheme_border, 0x6272a4, 0x21222c, 0);
+			deftheme_rgb(PspgTheme_label, 0x50fa7b, 0x21222c, 0);
+
+			deftheme_rgb(PspgTheme_cursor_data, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_border, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_label, 0x282a36, 0x50fa7b, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, 0x282a36, 0xf8f8f2, 0);
+
+			deftheme_rgb(PspgTheme_selection, 0xf8f8f2, 0x44475a, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, 0x282a36, 0xf8f8f2, 0);
 
 			has_odd_themedef = true;
 			break;
