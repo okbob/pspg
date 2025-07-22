@@ -70,6 +70,7 @@ typedef enum PspgCommand
 	cmd_SetTheme_Flatwhite,
 	cmd_SetTheme_RelationalPipes,
 	cmd_SetTheme_PaperColor,
+	cmd_SetTheme_Dracula,
 	cmd_SetTheme,
 	cmd_SetCustomTheme,
 	cmd_SaveSetup,

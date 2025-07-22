@@ -164,6 +164,7 @@ ST_MENU_ITEM _theme[] = {
 	{"_f_Flatwhite theme", cmd_SetTheme_Flatwhite, NULL, 0, 0, 0, NULL},
 	{"_a_Relational Pipes theme", cmd_SetTheme_RelationalPipes, NULL, 0, 0, 0, NULL},
 	{"_h_PaperColor theme", cmd_SetTheme_PaperColor, NULL, 0, 0, 0, NULL},
+	{"_k_Dracula theme", cmd_SetTheme_Dracula, NULL, 0, 0, 0, NULL},
 	{NULL},
 };
 

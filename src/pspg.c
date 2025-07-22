@@ -4308,6 +4308,7 @@ reset_search:
 			case cmd_SetTheme_Flatwhite:
 			case cmd_SetTheme_RelationalPipes:
 			case cmd_SetTheme_PaperColor:
+			case cmd_SetTheme_Dracula:
 				long_argument = cmd_get_theme(command);
 				long_argument_is_valid = true;
 				next_command = cmd_SetTheme;

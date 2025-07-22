@@ -222,6 +222,8 @@ cmd_string(int cmd)
 			return "SetThemeRelationalPipes";
 		case cmd_SetTheme_PaperColor:
 			return "SetTheme_PaperColor";
+		case cmd_SetTheme_Dracula:
+			return "SetTheme Dracula";
 		case cmd_SetTheme:
 			return "SetTheme";
 		case cmd_SetCustomTheme:
@@ -710,6 +712,8 @@ theme_get_cmd(int theme)
 			return cmd_SetTheme_RelationalPipes;
 		case 23:
 			return cmd_SetTheme_PaperColor;
+		case 24:
+			return cmd_SetTheme_Dracula;
 	};
 
 	return cmd_Invalid;
@@ -772,6 +776,8 @@ cmd_get_theme(int cmd)
 			return 22;
 		case cmd_SetTheme_PaperColor:
 			return 23;
+		case cmd_SetTheme_Dracula:
+			return 24;
 	};
 
 	return 1;
