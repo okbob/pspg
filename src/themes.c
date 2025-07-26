@@ -69,6 +69,58 @@ static PspgThemeElement themedef[THEMEDEF_SIZE][2];
 
 static int current_themedef_bank = 0;
 
+
+typedef enum {
+	paletteBackground,
+	paletteBackground2,
+	paletteCurrentLine,
+	paletteCurrentLine2,
+	paletteForeground,
+	paletteComment,
+	paletteComment2,
+	paletteCyan,
+	paletteGreen,
+	paletteOrange,
+	palettePink,
+	palettePurple,
+	paletteRed,
+	paletteYellow,
+	paletteGrey,
+	paletteMediumGrey,
+	paletteSilver,
+	paletteMediumBlue,
+	paletteWhite,
+	paletteBlueZodiac,
+	paletteDarkYellow,
+	paletteNone
+} rgbThemePaletteColor;
+
+static unsigned int rgbThemePalette[30];
+
+
+#define rgbtBackground		(rgbThemePalette[paletteBackground])
+#define rgbtBackground2		(rgbThemePalette[paletteBackground2])
+#define rgbtCurrentLine		(rgbThemePalette[paletteCurrentLine])
+#define rgbtCurrentLine2	(rgbThemePalette[paletteCurrentLine2])
+#define rgbtForeground		(rgbThemePalette[paletteForeground])
+#define rgbtComment			(rgbThemePalette[paletteComment])
+#define rgbtComment2		(rgbThemePalette[paletteComment2])
+#define rgbtCyan			(rgbThemePalette[paletteCyan])
+#define rgbtGreen			(rgbThemePalette[paletteGreen])
+#define rgbtOrange			(rgbThemePalette[paletteOrange])
+#define rgbtPink			(rgbThemePalette[palettePink])
+#define rgbtPurple			(rgbThemePalette[palettePurple])
+#define rgbtRed				(rgbThemePalette[paletteRed])
+#define rgbtYellow			(rgbThemePalette[paletteYellow])
+#define rgbtGrey			(rgbThemePalette[paletteGrey])
+#define rgbtMediumGrey		(rgbThemePalette[paletteMediumGrey])
+#define rgbtSilver			(rgbThemePalette[paletteSilver])
+#define rgbtMediumBlue		(rgbThemePalette[paletteMediumBlue])
+#define rgbtWhite			(rgbThemePalette[paletteWhite])
+#define rgbtBlueZodiac		(rgbThemePalette[paletteBlueZodiac])
+#define rgbtDarkYellow		(rgbThemePalette[paletteDarkYellow])
+
+
 static PspgStyleDependency
 styledep(PspgThemeElements el)
 {
@@ -1676,51 +1728,73 @@ initialize_color_pairs(int theme, bool direct_color)
 
 		case 24:
 			/* Dracula theme */
-			deftheme_rgb(PspgTheme_background, 0xf8f8f2, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_data, 0xf8f8f2, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_border, 0x6272a4, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_label, 0x50fa7b, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_rownum, 0x6272a4, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_recnum, 0xff79c6, 0x282a36, A_BOLD);
-			deftheme_rgb(PspgTheme_footer, 0xbd93f9, 0x282a36, 0);
+			rgbtBackground = 0x282a36;
+			rgbtCurrentLine = 0x44475a;
+			rgbtForeground = 0xf8f8f2;
+			rgbtComment = 0x6272a4;
+			rgbtCyan = 0x8be9fd;
+			rgbtOrange = 0xffb86c;
+			rgbtPink = 0xff79c6;
+			rgbtPurple = 0xbd93f9;
+			rgbtRed = 0xff5555;
+			rgbtYellow = 0xf1fa8c;
+			rgbtGrey = 0x4e525a;
+			rgbtMediumGrey = 0x9b999c;
+			rgbtSilver = 0xbdbac5;
+			rgbtMediumBlue = 0x4b8fa9;
+			rgbtWhite = 0xffffff;
+			rgbtBlueZodiac = 0x696c7b;
+			rgbtDarkYellow = 0xc0c870;
 
-			deftheme_rgb(PspgTheme_cursor_data, 0x282a36, 0xf8f8f2, 0);
-			deftheme_rgb(PspgTheme_cursor_border, 0x282a36, 0xf8f8f2, 0);
-			deftheme_rgb(PspgTheme_cursor_label, 0x282a36, 0x50fa7b, 0);
-			deftheme_rgb(PspgTheme_cursor_rownum, 0x282a36, 0xf8f8f2, 0);
-			deftheme_rgb(PspgTheme_cursor_recnum, 0x282a36, 0xff79c6, 0);
-			deftheme_rgb(PspgTheme_cursor_footer, 0x282a36, 0xbd93f9, 0);
+			rgbtBackground2 = 0x21222c;
+			rgbtCurrentLine2 = 0x363948;
+			rgbtComment2 = 0x586693;
 
-			deftheme_rgb(PspgTheme_scrollbar_arrows, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_scrollbar_background, 0x6272a4, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_scrollbar_slider, 0xf8f8f2, 0x6272a4, 0);
-			deftheme_rgb(PspgTheme_scrollbar_active_slider, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_background, rgbtForeground, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_data, rgbtForeground, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_border, rgbtMediumGrey, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_label, rgbtSilver, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_rownum, rgbtMediumGrey, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_recnum, rgbtSilver, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_footer, rgbtMediumGrey, rgbtBackground, 0);
 
-			deftheme_rgb(PspgTheme_title, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_status_bar, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_prompt_bar, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_info_bar, 0x50fa7b, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_error_bar, 0xf8f8f2, 0xff5555, 0);
-			deftheme_rgb(PspgTheme_input_bar, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_data, rgbtForeground, rgbtCurrentLine, 0);
+			deftheme_rgb(PspgTheme_cursor_border, rgbtMediumGrey, rgbtCurrentLine, 0);
+			deftheme_rgb(PspgTheme_cursor_label, rgbtForeground, rgbtCurrentLine, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, rgbtForeground, rgbtCurrentLine, 0);
+			deftheme_rgb(PspgTheme_cursor_recnum, rgbtForeground, rgbtCurrentLine, 0);
+			deftheme_rgb(PspgTheme_cursor_footer, rgbtForeground, rgbtCurrentLine, 0);
 
-			deftheme_rgb(PspgTheme_bookmark, 0x282a36, 0xffb86c, A_BOLD);
-			deftheme_rgb(PspgTheme_bookmark_border, 0x6272a4, 0xffb86c, A_BOLD);
-			deftheme_rgb(PspgTheme_cursor_bookmark, 0xffb86c, 0x282a36, A_BOLD | A_REVERSE);
+			deftheme_rgb(PspgTheme_scrollbar_arrows, rgbtSilver, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_scrollbar_background, rgbtBackground, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_scrollbar_slider, rgbtSilver, rgbtSilver, 0);
+			deftheme_rgb(PspgTheme_scrollbar_active_slider, rgbtSilver, rgbtSilver, 0);
 
-			deftheme_rgb(PspgTheme_cross_cursor, 0x282a36, 0x8be9fd, 0);
-			deftheme_rgb(PspgTheme_cross_cursor_border, 0x6272a4, 0x8be9fd, 0);
+			deftheme_rgb(PspgTheme_title, rgbtForeground, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_status_bar, rgbtForeground, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_prompt_bar, rgbtForeground, rgbtBackground, 0);
+			deftheme_rgb(PspgTheme_info_bar, rgbtForeground, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_error_bar, rgbtRed, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_input_bar, rgbtBackground, rgbtForeground, 0);
 
-			deftheme_rgb(PspgTheme_selection, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_cursor_selection, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_bookmark, rgbtBackground, rgbtOrange, A_BOLD);
+			deftheme_rgb(PspgTheme_bookmark_border, rgbtMediumGrey, rgbtOrange, A_BOLD);
+			deftheme_rgb(PspgTheme_cursor_bookmark, rgbtOrange, rgbtCurrentLine, A_BOLD);
 
-			deftheme_rgb(PspgTheme_pattern, 0x282a36, 0xf1fa8c, A_BOLD | A_UNDERLINE);
-			deftheme_rgb(PspgTheme_pattern_nohl, 0x6272a4, 0x282a36, 0);
-			deftheme_rgb(PspgTheme_pattern_line, 0x282a36, 0xf1fa8c, 0);
-			deftheme_rgb(PspgTheme_pattern_line_border, 0x6272a4, 0xf1fa8c, 0);
-			deftheme_rgb(PspgTheme_pattern_cursor, 0xf1fa8c, 0x282a36, A_BOLD);
+			deftheme_rgb(PspgTheme_cross_cursor, rgbtWhite, rgbtBlueZodiac, 0);
+			deftheme_rgb(PspgTheme_cross_cursor_border, rgbtMediumGrey, rgbtBlueZodiac, 0);
 
-			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, 0x282a36, 0xbd93f9, 0);
-			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, 0x6272a4, 0xbd93f9, 0);
+			deftheme_rgb(PspgTheme_selection, rgbtForeground, rgbtComment, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, rgbtForeground, rgbtComment, A_REVERSE);
+
+			deftheme_rgb(PspgTheme_pattern, rgbtBackground, rgbtYellow, A_BOLD);
+			deftheme_rgb(PspgTheme_pattern_nohl, rgbtBackground, rgbtYellow, A_BOLD);
+			deftheme_rgb(PspgTheme_pattern_line, rgbtCurrentLine, rgbtYellow, 0);
+			deftheme_rgb(PspgTheme_pattern_line_border, rgbtMediumGrey, rgbtYellow, 0);
+			deftheme_rgb(PspgTheme_pattern_cursor, rgbtWhite, rgbtCurrentLine, A_BOLD);
+
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor, rgbtBackground, rgbtDarkYellow, 0);
+			deftheme_rgb(PspgTheme_pattern_line_vertical_cursor_border, rgbtMediumGrey, rgbtDarkYellow, 0);
 			break;
 	}
 
@@ -1846,17 +1920,17 @@ initialize_color_pairs(int theme, bool direct_color)
 
 		case 24:
 			/* Dracula theme */
-			deftheme_rgb(PspgTheme_data, 0xf8f8f2, 0x21222c, 0);
-			deftheme_rgb(PspgTheme_border, 0x6272a4, 0x21222c, 0);
-			deftheme_rgb(PspgTheme_label, 0x50fa7b, 0x21222c, 0);
+			deftheme_rgb(PspgTheme_data, rgbtForeground, rgbtBackground2, 0);
+			deftheme_rgb(PspgTheme_border, rgbtMediumGrey, rgbtBackground2, 0);
+			deftheme_rgb(PspgTheme_label, rgbtSilver, rgbtBackground2, A_BOLD);
 
-			deftheme_rgb(PspgTheme_cursor_data, 0x282a36, 0xf8f8f2, 0);
-			deftheme_rgb(PspgTheme_cursor_border, 0x282a36, 0xf8f8f2, 0);
-			deftheme_rgb(PspgTheme_cursor_label, 0x282a36, 0x50fa7b, 0);
-			deftheme_rgb(PspgTheme_cursor_rownum, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_cursor_data, rgbtForeground, rgbtCurrentLine2, 0);
+			deftheme_rgb(PspgTheme_cursor_border, rgbtMediumGrey, rgbtCurrentLine2, 0);
+			deftheme_rgb(PspgTheme_cursor_label, rgbtForeground, rgbtCurrentLine2, 0);
+			deftheme_rgb(PspgTheme_cursor_rownum, rgbtForeground, rgbtCurrentLine2, 0);
 
-			deftheme_rgb(PspgTheme_selection, 0xf8f8f2, 0x44475a, 0);
-			deftheme_rgb(PspgTheme_cursor_selection, 0x282a36, 0xf8f8f2, 0);
+			deftheme_rgb(PspgTheme_selection, rgbtForeground, rgbtComment2, 0);
+			deftheme_rgb(PspgTheme_cursor_selection, rgbtForeground, rgbtComment2, A_REVERSE);
 
 			has_odd_themedef = true;
 			break;

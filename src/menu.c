@@ -268,6 +268,8 @@ get_menu_style(int main_theme)
 			return ST_MENU_STYLE_DBASE;
 		case 23:
 			return ST_MENU_STYLE_PERFECT;
+		case 24:
+			return ST_MENU_STYLE_DBASE;
 		default:
 			return ST_MENU_STYLE_VISION;
 	}
