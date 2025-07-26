@@ -69,56 +69,26 @@ static PspgThemeElement themedef[THEMEDEF_SIZE][2];
 
 static int current_themedef_bank = 0;
 
-
-typedef enum {
-	paletteBackground,
-	paletteBackground2,
-	paletteCurrentLine,
-	paletteCurrentLine2,
-	paletteForeground,
-	paletteComment,
-	paletteComment2,
-	paletteCyan,
-	paletteGreen,
-	paletteOrange,
-	palettePink,
-	palettePurple,
-	paletteRed,
-	paletteYellow,
-	paletteGrey,
-	paletteMediumGrey,
-	paletteSilver,
-	paletteMediumBlue,
-	paletteWhite,
-	paletteBlueZodiac,
-	paletteDarkYellow,
-	paletteNone
-} rgbThemePaletteColor;
-
-static unsigned int rgbThemePalette[30];
-
-
-#define rgbtBackground		(rgbThemePalette[paletteBackground])
-#define rgbtBackground2		(rgbThemePalette[paletteBackground2])
-#define rgbtCurrentLine		(rgbThemePalette[paletteCurrentLine])
-#define rgbtCurrentLine2	(rgbThemePalette[paletteCurrentLine2])
-#define rgbtForeground		(rgbThemePalette[paletteForeground])
-#define rgbtComment			(rgbThemePalette[paletteComment])
-#define rgbtComment2		(rgbThemePalette[paletteComment2])
-#define rgbtCyan			(rgbThemePalette[paletteCyan])
-#define rgbtGreen			(rgbThemePalette[paletteGreen])
-#define rgbtOrange			(rgbThemePalette[paletteOrange])
-#define rgbtPink			(rgbThemePalette[palettePink])
-#define rgbtPurple			(rgbThemePalette[palettePurple])
-#define rgbtRed				(rgbThemePalette[paletteRed])
-#define rgbtYellow			(rgbThemePalette[paletteYellow])
-#define rgbtGrey			(rgbThemePalette[paletteGrey])
-#define rgbtMediumGrey		(rgbThemePalette[paletteMediumGrey])
-#define rgbtSilver			(rgbThemePalette[paletteSilver])
-#define rgbtMediumBlue		(rgbThemePalette[paletteMediumBlue])
-#define rgbtWhite			(rgbThemePalette[paletteWhite])
-#define rgbtBlueZodiac		(rgbThemePalette[paletteBlueZodiac])
-#define rgbtDarkYellow		(rgbThemePalette[paletteDarkYellow])
+static unsigned int rgbtBackground = 0x0;
+static unsigned int rgbtBackground2 = 0x0;
+static unsigned int rgbtCurrentLine = 0x0;
+static unsigned int rgbtCurrentLine2 = 0x0;
+static unsigned int rgbtForeground = 0x0;
+static unsigned int rgbtComment = 0x0;
+static unsigned int rgbtComment2 = 0x0;
+static unsigned int rgbtCyan = 0x0;
+static unsigned int rgbtOrange = 0x0;
+static unsigned int rgbtPink = 0x0;
+static unsigned int rgbtPurple = 0x0;
+static unsigned int rgbtRed = 0x0;
+static unsigned int rgbtYellow = 0x0;
+static unsigned int rgbtGrey = 0x0;
+static unsigned int rgbtMediumGrey = 0x0;
+static unsigned int rgbtSilver = 0x0;
+static unsigned int rgbtMediumBlue = 0x0;
+static unsigned int rgbtWhite = 0x0;
+static unsigned int rgbtBlueZodiac = 0x0;
+static unsigned int rgbtDarkYellow = 0x0;
 
 
 static PspgStyleDependency
