@@ -1723,9 +1723,9 @@ initialize_color_pairs(int theme, bool direct_color)
 			deftheme_rgb(PspgTheme_background, rgbtForeground, rgbtBackground, 0);
 			deftheme_rgb(PspgTheme_data, rgbtForeground, rgbtBackground, 0);
 			deftheme_rgb(PspgTheme_border, rgbtMediumGrey, rgbtBackground, 0);
-			deftheme_rgb(PspgTheme_label, rgbtSilver, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_label, rgbtPurple, rgbtBackground, A_BOLD);
 			deftheme_rgb(PspgTheme_rownum, rgbtMediumGrey, rgbtBackground, 0);
-			deftheme_rgb(PspgTheme_recnum, rgbtSilver, rgbtBackground, A_BOLD);
+			deftheme_rgb(PspgTheme_recnum, rgbtPurple, rgbtBackground, A_BOLD);
 			deftheme_rgb(PspgTheme_footer, rgbtMediumGrey, rgbtBackground, 0);
 
 			deftheme_rgb(PspgTheme_cursor_data, rgbtForeground, rgbtCurrentLine, 0);
@@ -1892,7 +1892,7 @@ initialize_color_pairs(int theme, bool direct_color)
 			/* Dracula theme */
 			deftheme_rgb(PspgTheme_data, rgbtForeground, rgbtBackground2, 0);
 			deftheme_rgb(PspgTheme_border, rgbtMediumGrey, rgbtBackground2, 0);
-			deftheme_rgb(PspgTheme_label, rgbtSilver, rgbtBackground2, A_BOLD);
+			deftheme_rgb(PspgTheme_label, rgbtPurple, rgbtBackground2, A_BOLD);
 
 			deftheme_rgb(PspgTheme_cursor_data, rgbtForeground, rgbtCurrentLine2, 0);
 			deftheme_rgb(PspgTheme_cursor_border, rgbtMediumGrey, rgbtCurrentLine2, 0);
