@@ -258,7 +258,7 @@ color_index_rgb(unsigned int rgb)
 
 #define RGB(r, g, b)		((((int)(r / 1000.0 * 255.0)) << 16) + (((int)(g / 1000.0 * 255.0)) << 8) + ((int)(b / 1000.0 * 255.0)))
 
-void
+static void
 deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
 {
 	memcpy(&themedef[idx][current_themedef_bank].fg, &fg, sizeof(PspgColor));
@@ -266,7 +266,7 @@ deftheme(PspgThemeElements idx, PspgColor fg, PspgColor bg, int attr)
 	themedef[idx][current_themedef_bank].attr = attr;
 }
 
-void
+static void
 deftheme_rgb(PspgThemeElements idx, unsigned int fg, unsigned int bg, int attr)
 {
 	PspgThemeElement *te = &themedef[idx][current_themedef_bank];

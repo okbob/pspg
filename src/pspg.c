@@ -251,7 +251,7 @@ SigtermHandler(int sig_num)
 }
 
 /* Custom SIGSEGV handler. */
-void
+static void
 SigsegvHandler (int sig)
 {
 	exit_handler();
@@ -299,7 +299,7 @@ max_int(int a, int b)
  * The argument "b" should be >= "a" or it should be ignored
  * and "a" is used instead "b".
  */
-int
+static int
 trim_to_range(int v, int a, int b)
 {
 	/*
@@ -2157,8 +2157,6 @@ export_to_file(PspgCommand command,
 				snprintf(cmdline_clipboard_app, 1024, "wl-copy -t %s", fmt);
 			else if (clipboard_application_id == 2)
 				snprintf(cmdline_clipboard_app, 1024, "xclip -sel clip");
-			else if (clipboard_application_id == 4)
-				snprintf(cmdline_clipboard_app, 1024, "clip.exe");
 
 			if ((pid = rwe_popen(cmdline_clipboard_app, &fin, &fout, &ferr)) == -1)
 			{
@@ -4496,7 +4494,7 @@ reset_search:
 													   vertical_cursor_column))
 						break;
 
-					if (mark_mode != MARK_MODE_BLOCK || mark_mode != MARK_MODE_COLUMNS)
+					if (mark_mode != MARK_MODE_BLOCK && mark_mode != MARK_MODE_COLUMNS)
 					{
 						throw_selection(&scrdesc, &desc, &mark_mode);
 

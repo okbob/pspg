@@ -839,7 +839,7 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 			char   *newline, *writeptr, *readptr;
 			int		total_dl = 0;
 
-			while ((tabptr = memchr(tabptr + 1, '\t', endptr - tabptr)))
+			while ((tabptr = memchr(((char *) tabptr) + 1, '\t', endptr - tabptr)))
 			{
 				tabcount += 1;
 			}

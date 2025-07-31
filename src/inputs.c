@@ -354,7 +354,7 @@ repeat:
  * content - new data, inotify event, .. These events are saved, but for this moment ignored.
  * Timeout -1 (timeout is infinity), 0 (no any wait), else timeout in ms.
  */
-int
+static int
 _get_pspg_event(NCursesEventData *nced,
 			    bool only_tty_events,
 			    int timeout)
