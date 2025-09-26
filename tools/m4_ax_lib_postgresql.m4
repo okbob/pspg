@@ -117,7 +117,7 @@ AC_DEFUN([_AX_LIB_POSTGRESQL_PKG_CONFIG],
 	  [PKG_CHECK_EXISTS([libpq],[found_postgresql_pkg_config=yes],[found_postgresql=no])],
 	  [PKG_CHECK_EXISTS([libpq >= "$postgresql_version_req"],
 			   [found_postgresql=yes],[found_postgresql=no])])
-    AS_IF([test "X$found_postgresql" = "no"],[break])
+    AS_IF([test "X$found_postgresql" = "Xno"],[break])
 
     AC_CACHE_CHECK([for the PostgreSQL libraries CPPFLAGS],[ac_cv_POSTGRESQL_CPPFLAGS],
 		   [ac_cv_POSTGRESQL_CPPFLAGS="`$PKG_CONFIG libpq --cflags-only-I`" || _AX_LIB_POSTGRESQL_PKG_CONFIG_fail=yes])

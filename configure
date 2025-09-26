@@ -6672,7 +6672,7 @@ else
 fi ;;
 esac
 fi
-    if test "X$found_postgresql" = "no"
+    if test "X$found_postgresql" = "Xno"
 then :
   break
 fi

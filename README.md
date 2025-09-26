@@ -707,8 +707,6 @@ If you want to use `pspg` as Postgres client, then you need run
 I had to install `openssl-devel` package and I had to set
 `export PKG_CONFIG_PATH="/usr/local/pgsql/master/lib/pkgconfig/"`.
 
-Note: the compilation based on usage of `pg_config` is broken.
-
 On FreeBsd you should to use `gmake` instead `make`.
 
 ## Note - Installation details
