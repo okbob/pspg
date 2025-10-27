@@ -8,6 +8,8 @@ Possible ToDo
 =============
 * fast scrolling - vertical scrolling based on table's rows
 * support fetched data - columns width can be different
+* using separate threads for data loading (parsing) and browsing
+* parse loaded data before storing - now loaded data are stored as formatted text
 
 Similar projects
 ================
