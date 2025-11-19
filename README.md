@@ -253,13 +253,14 @@ The fields names can be different than from related command line options:
 | 14 | dBase IV retro style (Magenta labels) |
 | 15 | Red white theme                       |
 | 16 | Simple theme                          |
-| 17 | Solarized dark theme                  | 
+| 17 | Solarized dark theme                  |
 | 18 | Solarized light theme                 |
 | 19 | Gruvbox light theme                   |
 | 20 | Tao Light theme                       |
 | 21 | FlatWhite theme                       |
 | 22 | Relational pipes theme                |
 | 23 | Paper Color theme                     |
+| 24 | Dracula theme                         |
 
 see http://okbob.blogspot.cz/2017/07/i-hope-so-every-who-uses-psql-uses-less.html
 
@@ -558,7 +559,7 @@ separator - 0x1D on separated line.
 <pre>
 pavel@localhost ~]$ cat < /dev/pts/3 > ~/pipe
 select 10
-^] 
+^]
 select 20
 ^]
 select *
@@ -674,7 +675,7 @@ nushell configuration:
     $env.config.footer_mode = never
     $env.config.table.header_on_separator = false
     $env.config.ls.clickable_links = false
-    $env.config.table.mode = rounded 
+    $env.config.table.mode = rounded
 
 ## Note - mouse
 
@@ -696,7 +697,7 @@ map the true rgb colors to supported 256 colors.
 
 Some linker issues can be fixed by:
 <pre>
-I changed 
+I changed
 gcc -lncursesw pager.c -o pspg -ggdb
 to
 gcc pager.c -o pspg -ggdb -lncursesw
@@ -741,7 +742,7 @@ by default readline emulated over libedit, but `pspg` requires full gnu readline
 ### Fedora (28 and later)
 
     # dnf install pspg
-    
+
 
 ### RPM (CentOS/openSUSE/…)
 The pspg is available from community repository https://yum.postgresql.org/packages.php
@@ -817,7 +818,7 @@ implemented function `newterm` (`pdcurses` does this only on Unix platforms). It
 with WSL2 maybe (I didn't test it). An alternative can be using `less` pager, that is ported
 to some MS Win enviroments. `less` depends on `termcap`, and it is little bit more portable
 than `pspg` (`termcal` is low layer of ncurses). `less` supports fixed rows and with `--chop-long-lines`
-option or just `-S` can be used as pager for `pspg`. 
+option or just `-S` can be used as pager for `pspg`.
 
     export PSQL_PAGER="less --chop-long-lines --header 1"
 
