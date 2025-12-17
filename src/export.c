@@ -309,20 +309,31 @@ next_char(FmtLineIter *iter,
 {
 	char   *result = iter->row;
 
-	if (!iter->row || !iter->headline)
+	if (!iter->row)
 		return NULL;
 
-	if (*iter->row == '\0' || *iter->headline == '\n')
+	if (*result == '\0')
 		return NULL;
 
-	*typ = *(iter->headline);
-	*xpos = iter->xpos;
+	if (iter->headline && *iter->headline == '\n')
+		return NULL;
 
 	*size = charlen(result);
 	*width = dsplen(result);
+	*xpos = iter->xpos;
+
+	if (iter->headline)
+	{
+		*typ = *(iter->headline);
+		iter->headline += *width;
+	}
+	else
+	{
+		/* content of plain text can be only of data format */
+		*typ = 'd';
+	}
 
 	iter->row += *size;
-	iter->headline += *width;
 	iter->xpos += *width;
 
 	return result;
