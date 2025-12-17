@@ -371,8 +371,8 @@ extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 extern void init_menu_config(Options *opts);
 extern struct ST_MENU *init_menu(struct ST_MENU *current_menu, Options *opts);
 extern struct ST_CMDBAR *init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts);
-extern void post_menu(Options *opts, struct ST_MENU *current_menu);
-extern void refresh_clipboard_options(Options *opts, struct ST_MENU *menu);
+extern void post_menu(Options *opts, struct ST_MENU *current_menu, bool is_text);
+extern void refresh_clipboard_options(Options *opts, struct ST_MENU *menu, bool is_text);
 extern void refresh_copy_target_options(Options *opts, struct ST_MENU *menu);
 
 /* from sort.c */

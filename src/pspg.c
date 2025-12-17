@@ -3992,7 +3992,7 @@ hide_menu:
 					}
 
 					st_menu_set_focus(menu, ST_MENU_FOCUS_FULL);
-					post_menu(&opts, menu);
+					post_menu(&opts, menu, !desc.headline_transl);
 
 					menu_is_active = true;
 					continue;
@@ -4105,7 +4105,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4116,7 +4116,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4127,7 +4127,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4138,7 +4138,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4149,7 +4149,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4160,7 +4160,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 
@@ -4171,7 +4171,7 @@ hide_menu:
 
 #ifdef COMPILE_MENU
 
-				refresh_clipboard_options(&opts, menu);
+				refresh_clipboard_options(&opts, menu, !desc.headline_transl);
 
 #endif
 

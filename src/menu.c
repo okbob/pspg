@@ -375,7 +375,7 @@ init_cmdbar(struct ST_CMDBAR *current_cmdbar, Options *opts)
 }
 
 void
-post_menu(Options *opts, struct ST_MENU *menu)
+post_menu(Options *opts, struct ST_MENU *menu, bool is_text)
 {
 	st_menu_set_option(menu, cmd_ReleaseCols, ST_MENU_OPTION_MARKED, opts->freezed_cols == 0);
 	st_menu_set_option(menu, cmd_FreezeOneCol, ST_MENU_OPTION_MARKED,
@@ -415,7 +415,7 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	st_menu_enable_option(menu, theme_get_cmd(opts->theme), ST_MENU_OPTION_MARKED);
 
 	refresh_copy_target_options(opts, menu);
-	refresh_clipboard_options(opts, menu);
+	refresh_clipboard_options(opts, menu, is_text);
 
 	st_menu_set_option(menu, cmd_TogleEmptyStringIsNULL, ST_MENU_OPTION_MARKED, opts->empty_string_is_null);
 
@@ -425,20 +425,28 @@ post_menu(Options *opts, struct ST_MENU *menu)
 	st_menu_set_option(menu, cmd_ToggleHighlightOddRec, ST_MENU_OPTION_MARKED, opts->highlight_odd_rec);
 	st_menu_set_option(menu, cmd_ToggleHideHeaderLine, ST_MENU_OPTION_MARKED, opts->hide_header_line);
 
+	st_menu_set_option(menu, cmd_SaveAsCSV, ST_MENU_OPTION_DISABLED, is_text);
 }
 
 void
-refresh_clipboard_options(Options *opts, struct ST_MENU *menu)
+refresh_clipboard_options(Options *opts, struct ST_MENU *menu,  bool is_text)
 {
-	st_menu_set_option(menu, cmd_UseClipboard_CSV, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_CSV);
-	st_menu_set_option(menu, cmd_UseClipboard_TSVC, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_TSVC);
-	st_menu_set_option(menu, cmd_UseClipboard_text, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_TEXT);
-	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_INSERT);
+	st_menu_set_option(menu, cmd_UseClipboard_CSV, ST_MENU_OPTION_MARKED, !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_CSV);
+	st_menu_set_option(menu, cmd_UseClipboard_TSVC, ST_MENU_OPTION_MARKED, !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_TSVC);
+	st_menu_set_option(menu, cmd_UseClipboard_text, ST_MENU_OPTION_MARKED, is_text || opts->clipboard_format == CLIPBOARD_FORMAT_TEXT);
+	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_MARKED, !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_INSERT);
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_MARKED,
-					   opts->clipboard_format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
+					   !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
 
-	st_menu_set_option(menu, cmd_UseClipboard_SQL_values, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_SQL_VALUES);
-	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_MARKED, opts->clipboard_format == CLIPBOARD_FORMAT_PIPE_SEPARATED);
+	st_menu_set_option(menu, cmd_UseClipboard_SQL_values, ST_MENU_OPTION_MARKED, !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_SQL_VALUES);
+	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_MARKED, !is_text && opts->clipboard_format == CLIPBOARD_FORMAT_PIPE_SEPARATED);
+
+	st_menu_set_option(menu, cmd_UseClipboard_CSV, ST_MENU_OPTION_DISABLED, is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_TSVC, ST_MENU_OPTION_DISABLED, is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_DISABLED, is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_DISABLED, is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_SQL_values, ST_MENU_OPTION_DISABLED, is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_DISABLED, !is_text);
 }
 
 void
