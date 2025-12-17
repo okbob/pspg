@@ -1078,6 +1078,10 @@ window_fill(int window_identifier,
 
 			int			bytes;
 			char	   *ptr;
+			bool		is_selected_rows;
+			bool		is_selected_row;
+			bool		is_selected_columns;
+			bool		is_empty_row = *rowstr == '\0';
 
 			if (is_text)
 				nspecwords = parse_line(rowstr, specwords, 30);
@@ -1182,18 +1186,21 @@ window_fill(int window_identifier,
 			i = 0;
 			saved_pos = srcx;
 
+			is_selected_rows = is_selectable && scrdesc->selected_first_row != -1;
+			is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
+							  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
+
+			is_selected_columns = is_selectable && selected_xmin != INT_MIN;
+
+			/*
+			 * workaround for empty rows in text mode - because row is
+			 * empty, the is_in_range is not initialized correcty.
+			 */
+			is_in_range = is_text && is_empty_row && is_selected_row;
+
 			/* find length of maxx characters */
 			if (*ptr != '\0')
 			{
-				bool		is_selected_rows;
-				bool		is_selected_row;
-				bool		is_selected_columns;
-
-				is_selected_rows = is_selectable && scrdesc->selected_first_row != -1;
-				is_selected_row = rowno >= scrdesc->selected_first_row + 1 &&
-								  rowno < scrdesc->selected_first_row + 1 + scrdesc->selected_rows;
-
-				is_selected_columns = is_selectable && selected_xmin != INT_MIN;
 
 				while (i < maxx)
 				{
