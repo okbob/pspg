@@ -1059,6 +1059,9 @@ next_row:
 		if (desc->border_head_row == 0 && !desc->is_expanded_mode)
 			goto broken_format;
 
+		if (desc->border_head_row >= LINEBUFFER_LINES)
+			goto broken_format;
+
 		desc->headline = desc->rows.rows[desc->border_head_row];
 		desc->headline_size = strlen(desc->headline);
 
