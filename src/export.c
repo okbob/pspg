@@ -783,6 +783,10 @@ export_data(Options *opts,
 
 	ExportState expstate;
 
+	/* force export type CLIPBOARD_FORMAT_TEXT for non tabular data */
+	if (!desc->headline_transl)
+		format = CLIPBOARD_FORMAT_TEXT;
+
 	expstate.format = format;
 	expstate.fp = fp;
 	expstate.empty_string_is_null = opts->empty_string_is_null;
