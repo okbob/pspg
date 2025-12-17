@@ -446,7 +446,7 @@ refresh_clipboard_options(Options *opts, struct ST_MENU *menu,  bool is_text)
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT, ST_MENU_OPTION_DISABLED, is_text);
 	st_menu_set_option(menu, cmd_UseClipboard_INSERT_with_comments, ST_MENU_OPTION_DISABLED, is_text);
 	st_menu_set_option(menu, cmd_UseClipboard_SQL_values, ST_MENU_OPTION_DISABLED, is_text);
-	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_DISABLED, !is_text);
+	st_menu_set_option(menu, cmd_UseClipboard_pipe_separated, ST_MENU_OPTION_DISABLED, is_text);
 }
 
 void
