@@ -3,7 +3,7 @@
  * sort.c
  *	  sort of data inside columns
  *
- * Portions Copyright (c) 2017-2025 Pavel Stehule
+ * Portions Copyright (c) 2017-2026 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/sort.c

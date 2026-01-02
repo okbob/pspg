@@ -3,7 +3,7 @@
  * command.h
  *	  a list of commands and translations between keys and commands
  *
- * Portions Copyright (c) 2017-2025 Pavel Stehule
+ * Portions Copyright (c) 2017-2026 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/commands.h

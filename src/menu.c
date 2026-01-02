@@ -3,7 +3,7 @@
  * menu.c
  *	 holds menu related code
  *
- * Portions Copyright (c) 2017-2025 Pavel Stehule
+ * Portions Copyright (c) 2017-2026 Pavel Stehule
  *
  * IDENTIFICATION
  *	  src/menu.c
