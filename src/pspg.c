@@ -2647,6 +2647,11 @@ main(int argc, char *argv[])
 	bool		size_is_valid = false;
 	int			ioctl_result;
 
+	char	pspg_conf_path[MAXPATHLEN];
+	char	pspg_history_path[MAXPATHLEN];
+	const char *XDG_CONFIG_HOME;
+	const char *XDG_CACHE_HOME;
+
 #if NCURSES_MOUSE_VERSION > 1
 
 	int		scrollbar_mode_initial_slider_mouse_offset_y = -1;
@@ -2736,18 +2741,46 @@ main(int argc, char *argv[])
 	umask(022);
 
 	PSPG_CONF = getenv("PSPG_CONF");
-	if (!PSPG_CONF)
-		PSPG_CONF = "~/.pspgconf";
+	if (PSPG_CONF)
+	{
+		snprintf(pspg_conf_path, MAXPATHLEN, "%s", PSPG_CONF);
+	}
+	else
+	{
+		XDG_CONFIG_HOME = getenv("XDG_CONFIG_HOME");
+		if (XDG_CONFIG_HOME)
+		{
+			snprintf(pspg_conf_path, MAXPATHLEN, "%s/pspg.conf", XDG_CONFIG_HOME);
+		}
+		else
+		{
+			snprintf(pspg_conf_path, MAXPATHLEN, "%s", "~/.pspgconf");
+		}
+	}
 
-	load_config(tilde(NULL, PSPG_CONF), &opts);
-	if (errno && strcmp(PSPG_CONF, "~/.pspgconf") != 0)
+	load_config(tilde(NULL, pspg_conf_path), &opts);
+	if (PSPG_CONF && errno)
 		fprintf(stderr, "cannot to read from config file \"%s\" specified by PSPG_CONF (%s), ignored\n",
 				PSPG_CONF,
 				strerror(errno));
 
 	PSPG_HISTORY = getenv("PSPG_HISTORY");
-	if (!PSPG_HISTORY)
-		PSPG_HISTORY = "~/.pspg_history";
+	if (PSPG_HISTORY)
+	{
+		snprintf(pspg_history_path, MAXPATHLEN, "%s", PSPG_HISTORY);
+	}
+	else
+	{
+		XDG_CACHE_HOME = getenv("XDG_CACHE_HOME");
+		if (XDG_CACHE_HOME)
+		{
+			snprintf(pspg_history_path, MAXPATHLEN, "%s/pspg_history", XDG_CACHE_HOME);
+		}
+		else
+		{
+			snprintf(pspg_history_path, MAXPATHLEN, "%s", "~/.pspg_history");
+		}
+	}
 
 	memset(&desc, 0, sizeof(desc));
 	memset(&scrdesc, 0, sizeof(scrdesc));
@@ -3356,7 +3389,7 @@ reinit_theme:
 	last_nullstr[0] = '\0';
 
 	/* initialize readline if it is active */
-	pspg_init_readline(PSPG_HISTORY);
+	pspg_init_readline(pspg_history_path);
 
 #ifdef COMPILE_MENU
 
@@ -4262,23 +4295,23 @@ reset_search:
 				break;
 
 			case cmd_SaveSetup:
-				if (!save_config(tilde(NULL, PSPG_CONF), &opts))
+				if (!save_config(tilde(NULL, pspg_conf_path), &opts))
 				{
 					if (errno != 0)
 					{
 						char	buffer1[1000];
 
 						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s)",
-								PSPG_CONF, strerror(errno));
+								pspg_conf_path, strerror(errno));
 
 						show_info_wait(buffer1, strerror(errno), true, true, false, true);
 					}
 					else
-						show_info_wait(" Cannot write to \"%s\"", PSPG_CONF,
+						show_info_wait(" Cannot write to \"%s\"", pspg_conf_path,
 									   true, true, false, true);
 				}
 				else
-					show_info_wait(" Setup saved to \"%s\"", PSPG_CONF,
+					show_info_wait(" Setup saved to \"%s\"", pspg_conf_path,
 								   true, true, true, false);
 				break;
 
@@ -7030,7 +7063,7 @@ refresh:
 
 	close_tty_stream();
 
-	pspg_save_history(PSPG_HISTORY, &opts);
+	pspg_save_history(pspg_history_path, &opts);
 
 	/*
 	 * Try to release all allocated memory, although this has not
