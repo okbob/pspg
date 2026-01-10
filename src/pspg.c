@@ -2650,7 +2650,7 @@ main(int argc, char *argv[])
 	char	pspg_conf_path[MAXPATHLEN];
 	char	pspg_history_path[MAXPATHLEN];
 	const char *XDG_CONFIG_HOME;
-	const char *XDG_CACHE_HOME;
+	const char *XDG_STATE_HOME;
 
 #if NCURSES_MOUSE_VERSION > 1
 
@@ -2771,10 +2771,10 @@ main(int argc, char *argv[])
 	}
 	else
 	{
-		XDG_CACHE_HOME = getenv("XDG_CACHE_HOME");
-		if (XDG_CACHE_HOME)
+		XDG_STATE_HOME = getenv("XDG_STATE_HOME");
+		if (XDG_STATE_HOME)
 		{
-			snprintf(pspg_history_path, MAXPATHLEN, "%s/pspg_history", XDG_CACHE_HOME);
+			snprintf(pspg_history_path, MAXPATHLEN, "%s/pspg_history", XDG_STATE_HOME);
 		}
 		else
 		{
