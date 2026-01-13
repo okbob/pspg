@@ -135,7 +135,7 @@ pspg_save_history(const char *histfile, Options *opts)
 		if (opts->hist_size >= 0)
 			stifle_history(opts->hist_size);
 
-		write_history(tilde(NULL, histfile));
+		write_history(histfile);
 
 #if RL_READLINE_VERSION >= 0x0603
 

@@ -104,7 +104,7 @@ do { \
 } while (0)
 
 bool
-save_config(char *path, Options *opts)
+save_config(const char *path, Options *opts)
 {
 	FILE	   *f;
 	int			result;
@@ -116,7 +116,11 @@ save_config(char *path, Options *opts)
 
 	if (chmod(path, 0644) != 0)
 	{
+		int		_errno = errno;
+
 		fclose(f);
+		errno = _errno;
+
 		return false;
 	}
 
@@ -253,18 +257,12 @@ assign_str(char *key, char **target, char *value, int type)
  * not significant.
  */
 bool
-load_config(char *path, Options *opts)
+load_config(FILE *f, Options *opts)
 {
-	FILE *f;
 	char 		*line = NULL;
 	ssize_t		read;
 	size_t		len;
 	bool		is_valid = true;
-
-	errno = 0;
-	f = fopen(path, "r");
-	if (f == NULL)
-		return false;
 
 	while ((read = getline(&line, &len, f)) != -1)
 	{
@@ -367,8 +365,6 @@ load_config(char *path, Options *opts)
 	}
 
 	free(line);
-
-	fclose(f);
 
 	return is_valid;
 }

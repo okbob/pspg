@@ -107,7 +107,7 @@ typedef struct
 	bool	direct_color;
 } Options;
 
-extern bool save_config(char *path, Options *opts);
-extern bool load_config(char *path, Options *opts);
+extern bool save_config(const char *path, Options *opts);
+extern bool load_config(FILE *cf, Options *opts);
 
 #endif

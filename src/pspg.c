@@ -2647,10 +2647,7 @@ main(int argc, char *argv[])
 	bool		size_is_valid = false;
 	int			ioctl_result;
 
-	char	pspg_conf_path[MAXPATHLEN];
-	char	pspg_history_path[MAXPATHLEN];
-	const char *XDG_CONFIG_HOME;
-	const char *XDG_STATE_HOME;
+	FILE   *cf = NULL;
 
 #if NCURSES_MOUSE_VERSION > 1
 
@@ -2743,42 +2740,91 @@ main(int argc, char *argv[])
 	PSPG_CONF = getenv("PSPG_CONF");
 	if (PSPG_CONF)
 	{
-		snprintf(pspg_conf_path, MAXPATHLEN, "%s", PSPG_CONF);
+		tilde(state.pspg_conf_path, PSPG_CONF);
+
+		errno = 0;
+		cf = fopen(state.pspg_conf_path, "r");
+		if (cf == NULL)
+			fprintf(stderr, "cannot to open from config file \"%s\" specified by PSPG_CONF (%s), ignored\n",
+				PSPG_CONF,
+				strerror(errno));
 	}
 	else
 	{
-		XDG_CONFIG_HOME = getenv("XDG_CONFIG_HOME");
-		if (XDG_CONFIG_HOME)
+		tilde(state.pspg_conf_path, "~/.pspgconf");
+
+		errno = 0;
+		cf = fopen(state.pspg_conf_path, "r");
+
+		/*
+		 * when config is not on old path, try to use XDG specification,
+		 * but only when oldconfig doesn't exists.
+		 */
+		if (cf == NULL && errno == ENOENT)
 		{
-			snprintf(pspg_conf_path, MAXPATHLEN, "%s/pspg.conf", XDG_CONFIG_HOME);
-		}
-		else
-		{
-			snprintf(pspg_conf_path, MAXPATHLEN, "%s", "~/.pspgconf");
+			const char *XDG_CONFIG_HOME;
+			const char *untilded;
+			struct stat sb;
+
+			XDG_CONFIG_HOME = getenv("XDG_CONFIG_HOME");
+			if (!XDG_CONFIG_HOME)
+				XDG_CONFIG_HOME = "~/.config";
+
+			untilded = tilde(NULL, XDG_CONFIG_HOME);
+
+			/* untilded must be a directory, else use old config path */
+			if (stat(untilded, &sb) == 0 && S_ISDIR(sb.st_mode))
+			{
+				snprintf(state.pspg_conf_path, MAXPATHLEN, "%s/pspg.conf", untilded);
+
+				cf = fopen(state.pspg_conf_path, "r");
+
+			}
 		}
 	}
 
-	load_config(tilde(NULL, pspg_conf_path), &opts);
-	if (PSPG_CONF && errno)
-		fprintf(stderr, "cannot to read from config file \"%s\" specified by PSPG_CONF (%s), ignored\n",
-				PSPG_CONF,
-				strerror(errno));
+	if (cf)
+	{
+		/*
+		 * in this moment, the log file is not initialized,
+		 * use strerr instead.
+		 */
+		logfile = stderr;
+
+		if (!load_config(cf, &opts))
+			fprintf(stderr, "warning: found errors while reading of config file");
+
+		logfile = NULL;
+
+		fclose(cf);
+		cf = NULL;
+	}
 
 	PSPG_HISTORY = getenv("PSPG_HISTORY");
 	if (PSPG_HISTORY)
 	{
-		snprintf(pspg_history_path, MAXPATHLEN, "%s", PSPG_HISTORY);
+		tilde(state.pspg_hist_path, PSPG_HISTORY);
 	}
 	else
 	{
-		XDG_STATE_HOME = getenv("XDG_STATE_HOME");
-		if (XDG_STATE_HOME)
+		struct stat sb;
+		const char *untilded;
+
+		tilde(state.pspg_hist_path, "~/.pspg_history");
+
+		if (stat(state.pspg_hist_path, &sb) != 0 || !S_ISREG(sb.st_mode))
 		{
-			snprintf(pspg_history_path, MAXPATHLEN, "%s/pspg_history", XDG_STATE_HOME);
-		}
-		else
-		{
-			snprintf(pspg_history_path, MAXPATHLEN, "%s", "~/.pspg_history");
+			const char *XDG_STATE_HOME;
+
+			XDG_STATE_HOME = getenv("XDG_STATE_HOME");
+			if (!XDG_STATE_HOME)
+				XDG_STATE_HOME = "~/.local/state/";
+
+			/* the directory should to exists, or use old path */
+			untilded = tilde(NULL, XDG_STATE_HOME);
+
+			if (stat(untilded, &sb) == 0 && S_ISDIR(sb.st_mode))
+				snprintf(state.pspg_hist_path, MAXPATHLEN, "%s/pspg_history", untilded);
 		}
 	}
 
@@ -3389,7 +3435,7 @@ reinit_theme:
 	last_nullstr[0] = '\0';
 
 	/* initialize readline if it is active */
-	pspg_init_readline(pspg_history_path);
+	pspg_init_readline(state.pspg_hist_path);
 
 #ifdef COMPILE_MENU
 
@@ -4295,23 +4341,23 @@ reset_search:
 				break;
 
 			case cmd_SaveSetup:
-				if (!save_config(tilde(NULL, pspg_conf_path), &opts))
+				if (!save_config(state.pspg_conf_path, &opts))
 				{
 					if (errno != 0)
 					{
-						char	buffer1[1000];
+						char     buffer1[1000];
 
 						snprintf(buffer1, 1000, "Cannot write to \"%.800s\" (%s)",
-								pspg_conf_path, strerror(errno));
+								 state.pspg_conf_path, strerror(errno));
 
 						show_info_wait(buffer1, strerror(errno), true, true, false, true);
 					}
 					else
-						show_info_wait(" Cannot write to \"%s\"", pspg_conf_path,
+						show_info_wait(" Cannot write to \"%s\"", state.pspg_conf_path,
 									   true, true, false, true);
 				}
 				else
-					show_info_wait(" Setup saved to \"%s\"", pspg_conf_path,
+					show_info_wait(" Setup saved to \"%s\"", state.pspg_conf_path,
 								   true, true, true, false);
 				break;
 
@@ -7063,7 +7109,7 @@ refresh:
 
 	close_tty_stream();
 
-	pspg_save_history(pspg_history_path, &opts);
+	pspg_save_history(state.pspg_hist_path, &opts);
 
 	/*
 	 * Try to release all allocated memory, although this has not

@@ -293,6 +293,9 @@ typedef struct
 	int		menu_template;
 
 	char   *last_query;				/* last query in querystream mode */
+
+	char pspg_conf_path[MAXPATHLEN];
+	char pspg_hist_path[MAXPATHLEN];
 } StateData;
 
 
