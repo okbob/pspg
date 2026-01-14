@@ -10,6 +10,7 @@ Possible ToDo
 * support fetched data - columns width can be different
 * using separate threads for data loading (parsing) and browsing
 * parse loaded data before storing - now loaded data are stored as formatted text
+* folding multilines rows
 
 Similar projects
 ================
