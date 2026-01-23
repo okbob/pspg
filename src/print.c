@@ -1069,9 +1069,10 @@ window_fill(int window_identifier,
 			int			left_spaces;							/* aux left spaces */
 			int			saved_pos;
 
-			bool		is_top_deco = false;
-			bool		is_head_deco = false;
-			bool		is_bottom_deco = false;
+			bool		is_top_deco;
+			bool		is_head_deco;
+			bool		is_bottom_deco;
+
 			int			trailing_spaces = 0;
 			bool		is_found_row = false;
 			bool		is_in_range = false;
@@ -1084,13 +1085,27 @@ window_fill(int window_identifier,
 			bool		is_empty_row = *rowstr == '\0';
 
 			if (is_text)
+			{
 				nspecwords = parse_line(rowstr, specwords, 30);
+
+				/*
+				 * When input document is non tabular format, then border_top_row,
+				 * border_head_row, bottom_row can be badly identified, and these
+				 * variables can hold some garbage values ( `--` SQL comments
+				 * can be identified as border etc)
+				 */
+				is_top_deco = false;
+				is_head_deco = false;
+				is_bottom_deco = false;
+			}
 			else
+			{
 				nspecwords = 0;
 
-			is_top_deco = effective_row == desc->border_top_row;
-			is_head_deco = effective_row == desc->border_head_row;
-			is_bottom_deco = effective_row == desc->border_bottom_row;
+				is_top_deco = effective_row == desc->border_top_row;
+				is_head_deco = effective_row == desc->border_head_row;
+				is_bottom_deco = effective_row == desc->border_bottom_row;
+			}
 
 			is_found_row = scrdesc->found && scrdesc->found_row == effective_row;
 

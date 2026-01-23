@@ -1537,6 +1537,7 @@ translate_headline(DataDesc *desc)
 		return true;
 	}
 
+	log_row("headline is not in expected format");
 	free(desc->headline_transl);
 	desc->headline_transl = NULL;
 
