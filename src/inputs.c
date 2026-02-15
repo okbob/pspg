@@ -834,6 +834,8 @@ open_data_stream(Options *opts)
 	current_state->_errno = 0;
 	current_state->errstr = NULL;
 
+	log_row("opening data stream");
+
 	if (opts->pathname)
 	{
 		char	   *locpathname = tilde(pathname, opts->pathname);
@@ -880,6 +882,7 @@ open_data_stream(Options *opts)
 		}
 
 		f_data_opts = STREAM_IS_OPEN | STREAM_CAN_BE_CLOSED;
+		log_row("stream is opened");
 	}
 	else
 	{
@@ -1076,8 +1079,11 @@ open_data_stream(Options *opts)
 void
 close_data_stream(void)
 {
-	if (f_data_opts & STREAM_CAN_BE_CLOSED & STREAM_IS_OPEN)
+	log_row("closing data stream");
+
+	if ((f_data_opts & STREAM_CAN_BE_CLOSED) && (f_data_opts & STREAM_IS_OPEN))
 	{
+		log_row("stream is closed");
 		fclose(f_data);
 
 		f_data = NULL;
