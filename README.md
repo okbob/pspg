@@ -6,6 +6,8 @@ Everybody who uses `psql` also uses the `less` pager. Which, while it works well
 support for tabular data. I found a few projects, but none was good enough for this purpose.
 Thus I decided to write a small specialized pager to use as a `psql` pager.
 
+![Screenshot](screenshots/pspg-4.3.0-mc-export-111x34.png)
+
 This pager can be used from the following command line clients, too:
 
 - `mysql`
@@ -58,7 +60,6 @@ Installation on macOS/homebrew is simple by `brew install pspg`.
 
 ## Screenshots
 
-![Screenshot](screenshots/pspg-4.3.0-mc-export-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-mc-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-foxpro-111x34.png)
 ![Screenshot](screenshots/pspg-4.3.0-tao-111x34.png)
