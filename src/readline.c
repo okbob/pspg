@@ -796,8 +796,11 @@ pspg_init_readline(const char *histfile)
 
 	rl_catch_signals = 0;
 	rl_catch_sigwinch = 0;
+#ifndef _MSC_VER
+	/* readline-win32 does not check for NULL but has safe defaults */
 	rl_deprep_term_function = NULL;
 	rl_prep_term_function = NULL;
+#endif
 
 #if RL_READLINE_VERSION > 0x0603
 
