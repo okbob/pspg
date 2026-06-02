@@ -1,4 +1,4 @@
-name: Ubuntu Linux
+name: macOS
 
 on:
   push:
@@ -9,21 +9,22 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v6
     - name: Install dependencies
-      run: >-
-        sudo apt-get install -qq -y -o=Dpkg::Use-Pty=0
-        gcc
-        meson-1.7
-        ninja-build
-        libpq-dev
-        libncurses-dev
-        libreadline-dev
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: 1
+      run: |
+        brew install meson
+      #  libpq
+      #  readline
+      # ncurses
     - name: Configure Meson
-      run: meson setup build --backend ninja --buildtype release
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/opt/readline/lib/pkgconfig:/opt/homebrew/opt/libpq/lib/pkgconfig
+      run: meson setup build --backend ninja
     - name: Build
       run: meson compile -C build
     - name: Test
