@@ -155,6 +155,7 @@ if not pg.found()
 endif
 if pg.found()
   build_args += '-DHAVE_POSTGRESQL'
+  project_deps += cc.find_library('bsd', required: host_machine.system() == 'haiku') # getpass
 endif
 
 sources = [
