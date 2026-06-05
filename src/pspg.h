@@ -17,8 +17,6 @@
 #include <sys/types.h>
 #include <stdio.h>
 
-#include "platform/platform.h"  /* Cross-platform compatibility */
-
 #include "commands.h"
 #include "config.h"
 #include "themes.h"
@@ -352,6 +350,9 @@ extern int max_int(int a, int b);
 
 #define time_diff(s1, ms1, s2, ms2)		((s1 - s2) * 1000 + ms1 - ms2)
 
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
+
 /* from print.c */
 extern void window_fill(int window_identifier, int srcy, int srcx, int cursor_row, int vcursor_xmin, int vcursor_xmax,
 	int selected_xmin, int selected_xmax, DataDesc *desc, ScrDesc *scrdesc, Options *opts);
@@ -394,7 +395,7 @@ extern bool args_are_consistent(Options *opts, StateData *state);
 
 /* from infra.c */
 extern void log_row(const char *fmt, ...);
-extern PSPG_NORETURN void leave(const char *fmt, ...);
+extern void leave(const char *fmt, ...)  __attribute__ ((noreturn));
 extern void format_error(const char *fmt, ...);
 
 extern void *smalloc(int size);

@@ -302,11 +302,7 @@ print_info(void)
 
 #endif
 
-#if defined(__SIZEOF_WCHAR_T__) && defined(__WCHAR_MAX__)
 	fprintf(stdout, "wchar_t width: %d, max: %d\n", __SIZEOF_WCHAR_T__, __WCHAR_MAX__);
-#else
-	fprintf(stdout, "wchar_t width: %zu, max: %u\n", sizeof(wchar_t), WCHAR_MAX);
-#endif
 
 #if NCURSES_EXT_FUNCS
 

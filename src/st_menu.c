@@ -857,7 +857,7 @@ pulldownmenu_ajust_position(struct ST_MENU *menu, int maxy, int maxx)
 	 */
 	if (rows != menu->rows || cols != menu->cols)
 	{
-		int		new_rows = y + menu->rows <= maxy ? menu->rows : maxy - y;
+		int		new_rows = y + menu->rows <= maxy ? menu->rows : maxy - y + 1;
 		int		new_cols = x + menu->cols <= maxx ? menu->cols : maxx - x + 1;
 
 		if (new_rows != rows || new_cols != cols)
