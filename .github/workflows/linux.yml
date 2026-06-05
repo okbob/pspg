@@ -1,10 +1,10 @@
-name: Ubuntu Linux
+name: build Linux
 
 on:
   push:
-    branches:
-      - '**'
+    branches: [ "master" ]
   pull_request:
+    branches: [ "master" ]
 
 jobs:
   build:
@@ -12,25 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
-    - name: Install dependencies
-      run: >-
-        sudo apt-get install -qq -y -o=Dpkg::Use-Pty=0
-        gcc
-        meson-1.7
-        ninja-build
-        libpq-dev
-        libncurses-dev
-        libreadline-dev
-    - name: Configure Meson
-      run: meson setup build --backend ninja --buildtype release
-    - name: Build
-      run: meson compile -C build
-    - name: Test
-      run: build/pspg --info
-    - name: Upload Meson log
-      uses: actions/upload-artifact@v7
-      if: ${{ failure() }}
-      with:
-        name: Meson log
-        path: build/meson-logs/meson-log.txt
+    - uses: actions/checkout@v3
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make
+
