@@ -56,3 +56,6 @@ pspg
 /config.log
 /config.status
 /config.make
+
+/build
+/vcpkg_installed

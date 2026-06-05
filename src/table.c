@@ -397,20 +397,20 @@ is_cmdtag(char *str)
 static size_t
 _getline(char **lineptr, size_t *n, FILE *fp, bool is_nonblocking, bool wait_on_data)
 {
-	int			_errno;
+	int			saved_errno;
 	ssize_t		result;
 
 	if (!is_nonblocking)
 	{
 		result = getline(lineptr, n, fp);
-		_errno = errno;
+		saved_errno = errno;
 
 		if (result < 0)
 		{
 			free(*lineptr);
 			*lineptr = NULL;
 
-			errno = _errno;
+			errno = saved_errno;
 		}
 
 		return result;
@@ -430,7 +430,7 @@ _getline(char **lineptr, size_t *n, FILE *fp, bool is_nonblocking, bool wait_on_
 
 			errno = 0;
 			str = fgets(statbuf, STATBUF_SIZE, fp);
-			_errno = errno;
+			saved_errno = errno;
 
 			if (str)
 			{
@@ -483,7 +483,7 @@ endline_exit:
 					fetched_chars += len;
 				}
 
-				errno = _errno;
+				errno = saved_errno;
 			}
 
 			if (errno || feof(fp))
@@ -835,11 +835,11 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		if ((tabptr = memchr(line, '\t', read)))
 		{
 			int		tabcount = 1;
-			void   *endptr = line + read - 1;
+			char   *endptr = line + read - 1;
 			char   *newline, *writeptr, *readptr;
 			int		total_dl = 0;
 
-			while ((tabptr = memchr(((char *) tabptr) + 1, '\t', endptr - tabptr)))
+			while ((tabptr = memchr(((char *) tabptr) + 1, '\t', endptr - ((char *) tabptr))))
 			{
 				tabcount += 1;
 			}

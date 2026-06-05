@@ -51,9 +51,7 @@
 #endif
 
 #ifdef PDCURSES
-
 #include <term.h>
-
 #endif
 
 #include <time.h>
@@ -5415,7 +5413,7 @@ recheck_right:
 						if (cursor_row < 0)
 							cursor_row = 0;
 					}
-						else
+					else
 						make_beep();
 				}
 				break;

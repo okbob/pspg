@@ -19,6 +19,22 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+
+/*
+ * Windows doesn't have S_ISFIFO (no FIFOs) and uses _S_IFREG
+ */
+#ifndef S_ISFIFO
+#define S_ISFIFO(m) 0
+#endif
+
+#ifndef S_ISREG
+#define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+#endif
+
+#endif
+
 #include <termios.h>
 #include <unistd.h>
 
@@ -331,9 +347,31 @@ repeat:
 			if (first_event)
 			{
 				first_event = false;
+
+#ifdef PDCURSES
+				/*
+				 * On PDCurses/Windows, use short timeout to detect Alt sequences.
+				 * 100ms timeout allows detection of Alt+key combinations.
+				 */
+				timeout(100);
+#endif
 				goto repeat;
 			}
+#ifdef PDCURSES
+			else
+			{
+				/* Second iteration - restore no timeout mode */
+				timeout(-1);
+			}
+#endif
 		}
+#ifdef PDCURSES
+		else if (!first_event)
+		{
+			/* If we got here on second iteration, restore no timeout */
+			timeout(-1);
+		}
+#endif
 	}
 
 #if PDCURSES
@@ -1131,12 +1169,21 @@ close_data_stream(void)
 bool
 open_tty_stream(void)
 {
-
-#ifndef __APPLE__
-
-	f_tty = fopen("/dev/tty", "r+");
-
+#ifdef _WIN32
+	/*
+	 * Windows console access via CONIN$ (Console Input device).
+	 * This is the Windows equivalent of /dev/tty for reading.
+	 */
+	#define ttyname(fd) "CONIN$"
+#ifdef _MSC_VER /* cl.exe and ClangCL */
+	/* Otherwise, I get this: Redirection is not supported. */
+	f_tty = freopen(ttyname(fileno(stdin)), "r+", stdin);
+#else /* No problem here with msys2/MinGW */
+	f_tty = fopen(ttyname(fileno(stdin)), "r+");
 #endif
+#elif !defined(__APPLE__)
+	f_tty = fopen("/dev/tty", "r+");
+#endif /* !_WIN32 && !__APPLE__ */
 
 	if (!f_tty)
 	{

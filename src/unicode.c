@@ -177,6 +177,7 @@ ucs_wcwidth(wchar_t ucs)
 	return 1;
 }
 
+#ifndef MSVC_STATIC_POSTGRESQL
 /*
  * Map a Unicode code point to UTF-8.  utf8string must have 4 bytes of
  * space allocated.
@@ -218,6 +219,7 @@ unicode_to_utf8(wchar_t c, unsigned char *utf8string, int *size)
 
 	return utf8string;
 }
+#endif /* MSVC_STATIC_POSTGRESQL */
 
 
 
