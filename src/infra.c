@@ -617,15 +617,6 @@ tilde(char *dest, const char *path)
 		{
 			char *home = getenv("HOME");
 
-#ifdef _WIN32
-			/*
-			 * On Windows, fall back to USERPROFILE if HOME is not set.
-			 * Windows uses %USERPROFILE% instead of Unix $HOME.
-			 */
-			if (home == NULL)
-				home = getenv("USERPROFILE");
-#endif
-
 			if (home == NULL)
 				leave("HOME directory is not defined");
 

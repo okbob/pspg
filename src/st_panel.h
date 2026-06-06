@@ -4,8 +4,6 @@
 #include <ncurses/panel.h>
 #elif defined HAVE_PANEL_H
 #include <panel.h>
-#elif defined PDCURSES
-#include <panel.h>
 #else
 /* fallback */
 #include <ncurses/panel.h>

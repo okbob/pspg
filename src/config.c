@@ -116,10 +116,10 @@ save_config(const char *path, Options *opts)
 
 	if (chmod(path, 0644) != 0)
 	{
-		int		__errno = errno;
+		int		_errno = errno;
 
 		fclose(f);
-		errno = __errno;
+		errno = _errno;
 
 		return false;
 	}
