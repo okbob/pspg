@@ -264,7 +264,7 @@ trim_str(const char *str, int *size)
 
 	if (bytes > 0)
 	{
-		char *after_nspc_chr = str;
+		const char *after_nspc_chr = str;
 
 		result = (char *) str;
 
