@@ -2974,16 +2974,22 @@ st_cmdbar_new(ST_MENU_CONFIG *config, ST_CMDBAR_ITEM *cmdbar_items)
 	{
 		int		width = maxx / 10;
 		double	extra_width = (maxx % 10) / 10.0;
-		double	extra_width_sum = 0;
+		double	extra_width_sum = 0.0;
 
 		if (width < 7)
 		{
 			/* when terminal is too thin, don't show all fields */
 			cmdbar->nitems = maxx / 7;
-
-			width = maxx / cmdbar->nitems;
-			extra_width = (maxx % cmdbar->nitems) / (cmdbar->nitems * 1.0);
-			extra_width_sum = 0;
+			if (cmdbar->nitems > 0)
+			{
+				width = maxx / cmdbar->nitems;
+				extra_width = (maxx % cmdbar->nitems) / (cmdbar->nitems * 1.0);
+			}
+			else
+			{
+				width = 0;
+				extra_width = 0.0;
+			}
 		}
 
 		for (i = 0; i < cmdbar->nitems; i++)
