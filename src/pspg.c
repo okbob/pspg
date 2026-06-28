@@ -3061,6 +3061,7 @@ main(int argc, char *argv[])
 	{
 		const char *pagerprog;
 		FILE	   *fout = NULL;
+		const char *RECURSION_GUARD;
 
 		pagerprog = getenv("PSPG_PAGER");
 		if (!pagerprog)
@@ -3069,6 +3070,15 @@ main(int argc, char *argv[])
 			pagerprog = "more";
 		else
 		{
+			RECURSION_GUARD = getenv("PSPG_RECURSION_GUARD");
+			if (RECURSION_GUARD)
+			{
+				log_row("detected PSPG recursion guard");
+				leave("pspg detected recursive execution, check PAGER, PSQL_PAGER, PSPG_PAGER");
+			}
+			else
+				putenv("PSPG_RECURSION_GUARD=yes");
+
 			/* if PAGER is empty or all-white-space, don't use pager */
 			if (strspn(pagerprog, " \t\r\n") == strlen(pagerprog))
 				fout = stdout;
