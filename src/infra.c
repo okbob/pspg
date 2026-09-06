@@ -236,15 +236,136 @@ sstrndup(const char *str, int bytes)
  * Returns byte size of first char of string
  */
 inline int
-charlen(const char *str)
+charlen_with_len(const char *str, int limit)
 {
-	return use_utf8 ? utf8charlen(*str) : 1;
+	int			length;
+
+	if (limit < 1)
+		leave("internal error");
+
+	if (!use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+	if (length > limit)
+		return limit;
+
+	/*
+	 * this routine should be fast as possible, so we don't do
+	 * another check of validity.
+	 */
+	return length;
+}
+
+/*
+ * Returns byte size of first char of string
+ */
+inline int
+charlen_range(const char *str, const char *end)
+{
+	int			length;
+
+	if (end <= str)
+		leave("internal error");
+
+	if (!use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+	if (str + length > end)
+		return end - str;
+
+	/*
+	 * this routine should be fast as possible, so we don't do
+	 * another check of validity.
+	 */
+	return length;
 }
 
 inline int
-dsplen(const char *str)
+charlen_cstr(const char *str)
 {
-	return *str == ' ' ? 1 : (use_utf8 ? utf_dsplen(str) : 1);
+	int			length;
+
+	if (!*str)
+		leave("internal error");
+
+	if (!use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+
+	for (int i = 1; i < length; i++)
+	{
+		if (str[i] == 0)
+			return i;
+	}
+
+	/*
+	 * this routine should be fast as possible, so we don't do
+	 * another check of validity.
+	 */
+	return length;
+}
+
+inline int
+dsplen_with_len(const char *str, int limit)
+{
+	int			length;
+
+	if (limit < 1)
+		leave("internal error");
+
+	if (*str == ' ' || !use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+	if (length > limit)
+		return 0;
+
+	return utf_dsplen(str);
+}
+
+inline int
+dsplen_range(const char *str, const char *end)
+{
+	int			length;
+
+	if (end <= str)
+		leave("internal error");
+
+	if (*str == ' ' || !use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+	if (str + length > end)
+		return 0;
+
+	return utf_dsplen(str);
+}
+
+inline int
+dsplen_cstr(const char *str)
+{
+	int			length;
+
+	length = use_utf8 ? utf8charlen(*str) : 1;
+
+	if (!*str)
+		leave("internal error");
+
+	if (*str == ' ' || !use_utf8)
+		return 1;
+
+	length = utf8charlen(*str);
+
+	for (int i = 1; i < length; i++)
+	{
+		if (str[i] == 0)
+			return 0;
+	}
+
+	return utf_dsplen(str);
 }
 
 /*
@@ -270,7 +391,7 @@ trim_str(const char *str, int *size)
 
 		while (bytes > 0)
 		{
-			int		chrlen = charlen(str);
+			int		chrlen = charlen_with_len(str, bytes);
 
 			if (*str != ' ')
 				after_nspc_chr = str + chrlen;
@@ -486,9 +607,11 @@ int
 ExtStrTrimEnd(ExtStr *estr, bool replace_nl)
 {
 	char	   *ptr;
+	char	   *end;
 	char	   *last_nonwhite = NULL;
 
 	ptr = estr->data;
+	end = estr->data + estr->len;
 
 	while (*ptr)
 	{
@@ -498,7 +621,7 @@ ExtStrTrimEnd(ExtStr *estr, bool replace_nl)
 		if (*ptr == '\n' && replace_nl)
 			*ptr = ' ';
 
-		ptr += charlen(ptr);
+		ptr += charlen_range(ptr, end);
 	}
 
 	if (last_nonwhite)

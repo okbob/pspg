@@ -72,7 +72,7 @@ csv_format(char *str, int *slen,
 			break;
 		}
 
-		size = charlen(ptr);
+		size = charlen_with_len(ptr, _slen);
 
 		ptr += size;
 		_slen -= size;
@@ -90,7 +90,7 @@ csv_format(char *str, int *slen,
 	*slen = 1;
 	while (_slen > 0)
 	{
-		int		size = charlen(str);
+		int		size = charlen_with_len(str, _slen);
 
 		if (*str == '"')
 		{
@@ -138,7 +138,7 @@ quote_sql_identifier(char *str, int *slen)
 
 		while (*ptr && _slen > 0)
 		{
-			int		size = charlen(ptr);
+			int		size = charlen_with_len(ptr, _slen);
 
 			if (!((*ptr >= 'a' && *ptr <= 'z') ||
 				(*ptr >= '0' && *ptr <= '9') ||
@@ -166,7 +166,7 @@ quote_sql_identifier(char *str, int *slen)
 
 	while (_slen > 0)
 	{
-		int		size = charlen(str);
+		int		size = charlen_with_len(str, _slen);
 
 		if (*str == '"')
 		{
@@ -239,7 +239,7 @@ quote_sql_literal(char *str,
 
 	while (*ptr && _slen > 0)
 	{
-		int		size = charlen(ptr);
+		int		size = charlen_with_len(ptr, _slen);
 
 		if (*ptr == '.')
 		{
@@ -274,7 +274,7 @@ quote_sql_literal(char *str,
 
 	while (_slen > 0)
 	{
-		int		size = charlen(str);
+		int		size = charlen_with_len(str, _slen);
 
 		if (*str == '\'')
 		{
@@ -324,8 +324,8 @@ next_char(FmtLineIter *iter,
 	if (iter->headline && *iter->headline == '\n')
 		return NULL;
 
-	*size = charlen(result);
-	*width = dsplen(result);
+	*size = charlen_cstr(result);
+	*width = dsplen_cstr(result);
 	*xpos = iter->xpos;
 
 	if (iter->headline)

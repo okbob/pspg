@@ -1509,7 +1509,7 @@ print_status(Options *opts,
 
 		while (bytes > 0 && *str != '\0')
 		{
-			size_t		sz = charlen(str);
+			size_t		sz = charlen_cstr(str);
 
 			if (sz > bytes)
 				break;
@@ -2465,7 +2465,7 @@ finalize_tabular_data(DataDesc *desc)
 					break;
 				}
 				pos += 1;
-				str += charlen(str);
+				str += charlen_cstr(str);
 			}
 		}
 	}
@@ -5977,7 +5977,7 @@ recheck_end:
 
 								if (pos < scrdesc.search_first_column)
 								{
-									pttrn += charlen(pttrn);
+									pttrn += charlen_cstr(pttrn);
 									pttrn = pspg_search(&opts, &scrdesc, pttrn);
 
 									continue;
@@ -6151,7 +6151,7 @@ recheck_end:
 
 									if (pos < scrdesc.search_first_column)
 									{
-										ptr += charlen(ptr);
+										ptr += charlen_cstr(ptr);
 										continue;
 									}
 

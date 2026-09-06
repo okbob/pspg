@@ -228,7 +228,7 @@ is_expanded_header(char *str, int *ei_minx, int *ei_maxx)
 	while (*str != ']' && *str != '\0')
 	{
 		pos += 1;
-		str += charlen(str);
+		str += charlen_cstr(str);
 	}
 
 	if (strncmp(str - 1, " ]", 2) != 0)
@@ -569,7 +569,7 @@ strncpytrim(char *dest, const char *src,
 		if (*src == '\0')
 			break;
 
-		clen = (size_t) charlen(src);
+		clen = (size_t) charlen_with_len(src, nsrc);
 		if (clen <= ndest && clen <= nsrc)
 		{
 			size_t		i;
@@ -863,8 +863,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 				}
 				else
 				{
-					int		cl = charlen(readptr);
-					int		dl = dsplen(readptr);
+					int		cl = charlen_with_len(readptr, read);
+					int		dl = dsplen_with_len(readptr, read);
 
 					total_dl += dl;
 					memcpy(writeptr, readptr, cl);
@@ -1180,7 +1180,7 @@ translate_headline(DataDesc *desc)
 			desc->expanded_info_minx = processed_chars;
 
 			*destptr++ = 'd';
-			srcptr += charlen(srcptr);
+			srcptr += charlen_cstr(srcptr);
 		}
 		else if (is_expanded_info)
 		{
@@ -1189,7 +1189,7 @@ translate_headline(DataDesc *desc)
 				is_expanded_info = false;
 			}
 			*destptr++ = 'd';
-			srcptr += charlen(srcptr);
+			srcptr += charlen_cstr(srcptr);
 		}
 		else if (strncmp(srcptr, "\342\224\214", 3) == 0 || /* ┌ */
 				 strncmp(srcptr, "\342\225\224", 3) == 0 || /* ╔ */
@@ -1452,8 +1452,8 @@ translate_headline(DataDesc *desc)
 				}
 				else
 				{
-					nextchar = namesline + charlen(namesline);
-					display_width = dsplen(namesline);
+					nextchar = namesline + charlen_cstr(namesline);
+					display_width = dsplen_cstr(namesline);
 				}
 			}
 			else
@@ -1565,7 +1565,7 @@ cut_text(char *str,
 
 		while (*str)
 		{
-			int			chrlen = charlen(str);
+			int			chrlen = charlen_cstr(str);
 
 			if (pos > xmin || (border0 && pos >= xmin))
 			{
@@ -1698,7 +1698,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 
 		while (*str)
 		{
-			int		chrlen = charlen(str);
+			int		chrlen = charlen_cstr(str);
 
 			if (x > xmin || (border0 && x >= xmin))
 			{
@@ -1743,14 +1743,14 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 							if (*str != ' ')
 								after_last_nospace = str + chrlen;
 
-							x += dsplen(str);
+							x += dsplen_cstr(str);
 							str += chrlen;
 
 							if (x >= xmax)
 								break;
 
 							if (*str)
-								chrlen = charlen(str);
+								chrlen = charlen_cstr(str);
 						}
 
 						len = after_last_nospace - saved_str;
@@ -1839,7 +1839,7 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 				buffptr += chrlen;
 			}
 
-			x += dsplen(str);
+			x += dsplen_cstr(str);
 			str += chrlen;
 
 			if (x >= xmax)
@@ -1972,7 +1972,7 @@ multilines_detection(DataDesc *desc)
 					{
 						char	*sym;
 
-						sym = str + charlen(str);
+						sym = str + charlen_cstr(str);
 						if (*sym != '\0')
 							found_continuation_symbol = is_line_continuation_char(sym, desc);
 					}
@@ -1999,8 +1999,8 @@ multilines_detection(DataDesc *desc)
 					break;
 				}
 
-				pos += dsplen(str);
-				str += charlen(str);
+				pos += dsplen_cstr(str);
+				str += charlen_cstr(str);
 			}
 
 			if (!found_continuation_symbol)

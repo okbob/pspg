@@ -431,7 +431,7 @@ pb_put_line(char *str, bool multiline, PrintbufType *printbuf)
 				break;
 			}
 
-			chrl = charlen(ptr);
+			chrl = charlen_cstr(ptr);
 			size += chrl;
 			ptr += chrl;
 		}
@@ -475,8 +475,8 @@ pb_put_line_trim_width(char *str, bool multiline, PrintbufType *printbuf, int wi
 		}
 		else if (use_utf8)
 		{
-			charsize = charlen(ptr);
-			charwidth = utf_dsplen(ptr);
+			charsize = charlen_cstr(ptr);
+			charwidth = dsplen_cstr(ptr);
 		}
 		else
 		{
@@ -505,7 +505,7 @@ pb_put_line_trim_width(char *str, bool multiline, PrintbufType *printbuf, int wi
 	if (multiline)
 	{
 		while (*ptr && *ptr != '\n')
-			ptr += use_utf8 ? charlen(str) : 1;
+			ptr += charlen_cstr(str);
 
 		if (*ptr == '\n')
 			nextline = ptr + 1;

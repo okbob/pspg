@@ -405,8 +405,14 @@ extern char *sstrdup(const char *str);
 extern char *sstrdup2(const char *str, char *debugstr);
 extern char *sstrndup(const char *str, int bytes);
 
-extern int charlen(const char *str);
-extern int dsplen(const char *str);
+extern int charlen_with_len(const char *str, int limit);
+extern int charlen_range(const char *str, const char *end);
+extern int charlen_cstr(const char *str);
+
+extern int dsplen_with_len(const char *str, int limit);
+extern int dsplen_range(const char *str, const char *end);
+extern int dsplen_cstr(const char *str);
+
 extern char *trim_str(const char *str, int *size);
 extern char *trim_quoted_str(const char *str, int *size);
 extern void InitExtStr(ExtStr *estr);

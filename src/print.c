@@ -127,10 +127,10 @@ flush_bytes(WINDOW *win,
 			}
 			else
 			{
-				int len = charlen(rowstr);
+				int len = charlen_with_len(rowstr, bytes);
 
 				waddnstr(win, rowstr, len);
-				offsetx += utf_dsplen(rowstr);
+				offsetx += dsplen_with_len(rowstr, bytes);
 				rowstr +=len;
 				bytes -= len;
 			}
@@ -179,8 +179,8 @@ print_column_names(WINDOW *win,
 	/* skip left invisible chars */
 	while (pos < srcx)
 	{
-		bytes = charlen(ptr);
-		chars = dsplen(ptr);
+		bytes = charlen_cstr(ptr);
+		chars = dsplen_cstr(ptr);
 
 		if (pos + chars > srcx)
 		{
@@ -220,8 +220,8 @@ print_column_names(WINDOW *win,
 		is_in_range = selected_xmin != INT_MIN && pos != -1 &&
 						  pos >= selected_xmin && pos <= selected_xmax;
 
-		bytes = charlen(ptr);
-		chars = dsplen(ptr);
+		bytes = charlen_cstr(ptr);
+		chars = dsplen_cstr(ptr);
 
 		if (is_in_range)
 			new_attr = is_cursor ? t->selection_cursor_attr : t->selection_attr;
@@ -325,8 +325,8 @@ print_column_names(WINDOW *win,
 				/* when end of label is visible, skip n chars from begin */
 				while (*colname)
 				{
-					char_bytes = charlen(colname);
-					char_width = dsplen(colname);
+					char_bytes = charlen_cstr(colname);
+					char_width = dsplen_cstr(colname);
 
 					if (colname_width < visible_colname_width)
 						break;
@@ -348,8 +348,8 @@ print_column_names(WINDOW *win,
 				/* only first n chars */
 				while (*str)
 				{
-					char_bytes = charlen(colname);
-					char_width = dsplen(colname);
+					char_bytes = charlen_cstr(colname);
+					char_width = dsplen_cstr(colname);
 
 					if (colname_width + char_width > visible_colname_width)
 						break;
@@ -462,7 +462,7 @@ set_line_info(Options *opts,
 
 					if (pos < scrdesc->search_first_column)
 					{
-						str += charlen(str);
+						str += charlen_cstr(str);
 						continue;
 					}
 
@@ -693,8 +693,8 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 
 		while (*line != '\0' && *line != ':')
 		{
-			pos += dsplen(line);
-			line += charlen(line);
+			pos += dsplen_cstr(line);
+			line += charlen_cstr(line);
 		}
 
 		if (!is_upper_char(aux_line + 1))
@@ -727,8 +727,8 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 
 			while (*line != ' ' && *line != '\0')
 			{
-				pos += dsplen(line);
-				line += charlen(line);
+				pos += dsplen_cstr(line);
+				line += charlen_cstr(line);
 			}
 		}
 		/* psql's shell options */
@@ -813,8 +813,8 @@ parse_line(char *line, SpecialWord *words, int maxwords)
 		}
 		else
 		{
-			pos += dsplen(line);
-			line += charlen(line);
+			pos += dsplen_cstr(line);
+			line += charlen_cstr(line);
 			first_nonspace = false;
 			continue;
 		}
@@ -984,7 +984,7 @@ window_fill(int window_identifier,
 					{
 						if (position < scrdesc->search_first_column)
 						{
-							str += charlen(str);
+							str += charlen_cstr(str);
 							continue;
 						}
 
@@ -1168,8 +1168,8 @@ window_fill(int window_identifier,
 			{
 				if (*rowstr != '\0' && *rowstr != '\n')
 				{
-					i -= dsplen(rowstr);
-					rowstr += charlen(rowstr);
+					i -= dsplen_cstr(rowstr);
+					rowstr += charlen_cstr(rowstr);
 					if (i < 0)
 						left_spaces = -i;
 				}
@@ -1467,8 +1467,8 @@ window_fill(int window_identifier,
 
 					if (*ptr != '\0')
 					{
-						int dlen = dsplen(ptr);
-						int len  = charlen(ptr);
+						int dlen = dsplen_cstr(ptr);
+						int len  = charlen_cstr(ptr);
 
 						i = (dlen != -1 && i != -1) ? i + dlen : -1;
 						ptr += len;
@@ -1675,8 +1675,8 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 			{
 				if (*rowstr != '\0' && *rowstr != '\n')
 				{
-					i -= dsplen(rowstr);
-					rowstr += charlen(rowstr);
+					i -= dsplen_cstr(rowstr);
+					rowstr += charlen_cstr(rowstr);
 					if (i < 0)
 						left_spaces = -i;
 				}
@@ -1764,9 +1764,9 @@ draw_rectange(int offsety, int offsetx,			/* y, x offset on screen */
 
 					if (*ptr != '\0' && *ptr != '\n')
 					{
-						int len  = charlen(ptr);
+						int len  = charlen_cstr(ptr);
 
-						i += dsplen(ptr);
+						i += dsplen_cstr(ptr);
 						ptr += len;
 						bytes += len;
 					}
