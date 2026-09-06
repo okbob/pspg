@@ -90,7 +90,7 @@ csv_format(char *str, int *slen,
 	*slen = 1;
 	while (_slen > 0)
 	{
-		int		size = charlen(ptr);
+		int		size = charlen(str);
 
 		if (*str == '"')
 		{
@@ -166,7 +166,7 @@ quote_sql_identifier(char *str, int *slen)
 
 	while (_slen > 0)
 	{
-		int		size = charlen(ptr);
+		int		size = charlen(str);
 
 		if (*str == '"')
 		{
@@ -274,7 +274,7 @@ quote_sql_literal(char *str,
 
 	while (_slen > 0)
 	{
-		int		size = charlen(ptr);
+		int		size = charlen(str);
 
 		if (*str == '\'')
 		{
