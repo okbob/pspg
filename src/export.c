@@ -169,7 +169,10 @@ quote_sql_identifier(char *str, int *slen)
 		int		size = charlen(ptr);
 
 		if (*str == '"')
+		{
 			*ptr++ = '"';
+			*slen += 1;
+		}
 
 		_slen -= size;
 		*slen += size;
@@ -274,7 +277,10 @@ quote_sql_literal(char *str,
 		int		size = charlen(ptr);
 
 		if (*str == '\'')
+		{
 			*ptr++ = '\'';
+			*slen += 1;
+		}
 
 		_slen -= size;
 		*slen += size;

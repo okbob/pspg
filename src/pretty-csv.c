@@ -255,8 +255,6 @@ pb_putc_repeat(PrintbufType *printbuf, int n, int c)
 	memset(printbuf->buffer + printbuf->used, c, n);
 	printbuf->used += n;
 	printbuf->free -= n;
-
-	printbuf->free -= n;
 }
 
 static void

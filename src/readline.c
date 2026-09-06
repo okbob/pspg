@@ -868,7 +868,7 @@ get_string(char *prompt,
 		bytes = strlen(buffer);
 		tstr = trim_quoted_str(buffer, &bytes);
 
-		memcpy(buffer, tstr, bytes);
+		memmove(buffer, tstr, bytes);
 		buffer[bytes] = '\0';
 	}
 

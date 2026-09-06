@@ -256,7 +256,7 @@ trim_str(const char *str, int *size)
 	char   *result = NULL;
 	int		bytes = *size;
 
-	while (*str == ' ' && bytes > 0)
+	while (bytes > 0 && *str == ' ')
 	{
 		str += 1;
 		bytes -= 1;
