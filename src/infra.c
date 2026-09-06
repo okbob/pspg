@@ -419,7 +419,7 @@ trim_quoted_str(const char *str, int *size)
 	result = trim_str(str, size);
 
 	/* check first and last char */
-	if (*size > 0)
+	if (*size > 1)
 	{
 		if (*result == '"' || *result == '\'')
 		{
