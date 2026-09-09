@@ -647,7 +647,8 @@ readargs(char **argv,
 						return false;
 					}
 					else
-						opts->nullstr = sstrndup(nullstr, size);
+						/* trim_quoted_str returns NULL for empty/whitespace-only */
+						opts->nullstr = nullstr ? sstrndup(nullstr, size) : sstrdup("");
 
 					break;
 				}
