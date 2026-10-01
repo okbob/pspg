@@ -308,6 +308,8 @@ cmd_string(int cmd)
 			return "SearchPrev";
 		case cmd_SearchColumn:
 			return "SearchColumn";
+		case cmd_Filter:
+			return "Filter";
 		case cmd_ShowTopBar:
 			return "ShowTopBar";
 		case cmd_ShowBottomBar:
@@ -567,6 +569,8 @@ translate_event(int c, bool alt, Options *opts, int *nested_command)
 				return cmd_SaveData;
 			case '/':
 				return cmd_ForwardSearch;
+			case '&':
+				return cmd_Filter;
 			case '?':
 				return cmd_BackwardSearch;
 			case 'n':
@@ -800,6 +804,7 @@ require_complete_load(int cmd)
 		case cmd_Copy:
 		case cmd_GotoLine:
 		case cmd_ForwardSearch:
+		case cmd_Filter:
 			return true;
 
 		default:

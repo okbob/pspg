@@ -95,6 +95,7 @@ ST_MENU_ITEM _search[] = {
 	{"Search back in selection", cmd_BackwardSearchInSelection, "M-?", 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"Search ~c~olumn", cmd_SearchColumn, "c", 0, 0, 0, NULL},
+	{"Fi~l~ter rows", cmd_Filter, "&", 0, 0, 0, NULL},
 	{"--", 0, NULL, 0, 0, 0, NULL},
 	{"~T~oggle bookmark", cmd_ToggleBookmark, "M-k", 0, 0, 0, NULL},
 	{"~P~rev bookmark", cmd_PrevBookmark, "M-i", 0, 0, 0, NULL},

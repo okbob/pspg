@@ -409,6 +409,52 @@ pspg_search(Options *opts, ScrDesc *scrdesc, const char *str)
 }
 
 /*
+ * Case-insensitive (or case-sensitive based on configuration) substring
+ * match used by the client-side row filtering feature.
+ */
+bool
+filter_pattern_match(Options *opts, ScrDesc *scrdesc, const char *str)
+{
+	const char *filter = scrdesc->filter;
+
+	if (opts->ignore_case)
+		return (use_utf8 ? utf8_nstrstr(str, filter) : nstrstr(str, filter)) != NULL;
+	else
+		return strstr(str, filter) != NULL;
+}
+
+/*
+ * Find previous or next data row matching the active filter. The row
+ * argument and result are expressed as data row indexes relative to
+ * desc->first_data_row (same space as the global cursor_row variable).
+ * Returns -1 when no matching row exists in the requested direction.
+ */
+static int
+filter_find_row(DataDesc *desc, ScrDesc *scrdesc, Options *opts, int from_row, bool forward)
+{
+	int		lineno;
+	int		step = forward ? 1 : -1;
+	int		start = from_row + desc->first_data_row;
+
+	if (*scrdesc->filter == '\0')
+		return -1;
+
+	lineno = start;
+
+	while (lineno >= desc->first_data_row && lineno <= desc->last_data_row)
+	{
+		const char *line = getline_ddesc(desc, lineno);
+
+		if (line != NULL && filter_pattern_match(opts, scrdesc, line))
+			return lineno - desc->first_data_row;
+
+		lineno += step;
+	}
+
+	return -1;
+}
+
+/*
  * Trim footer rows - We should to trim footer rows and calculate footer_char_size
  */
 static void
@@ -1795,6 +1841,9 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 
 	memcpy(new->searchcolterm, old->searchcolterm, 255);
 	new->searchcolterm_size = old->searchcolterm_size;
+
+	memcpy(new->filter, old->filter, 255);
+	new->filter_size = old->filter_size;
 
 	new->has_upperchr = old->has_upperchr;
 	new->found = old->found;
@@ -4967,15 +5016,37 @@ show_first_col:
 				goto show_first_col;
 
 			case cmd_CursorFirstRow:
-				cursor_row = 0;
+				if (scrdesc.filter[0] != '\0')
+				{
+					int		match_row = filter_find_row(&desc, &scrdesc, &opts, 0, true);
+
+					if (match_row != -1)
+						cursor_row = match_row;
+				}
+				else
+					cursor_row = 0;
 				first_row = 0;
 				break;
 
 			case cmd_CursorLastRow:
-				cursor_row = MAX_CURSOR_ROW;
-				first_row = MAX_FIRST_ROW;
-				if (first_row < 0)
-					first_row = 0;
+				if (scrdesc.filter[0] != '\0')
+				{
+					int		last_data_row = desc.last_data_row - desc.first_data_row;
+					int		match_row = filter_find_row(&desc, &scrdesc, &opts, last_data_row, false);
+
+					if (match_row != -1)
+					{
+						cursor_row = match_row;
+						first_row = adjust_first_row(cursor_row, &desc, &scrdesc);
+					}
+				}
+				else
+				{
+					cursor_row = MAX_CURSOR_ROW;
+					first_row = MAX_FIRST_ROW;
+					if (first_row < 0)
+						first_row = 0;
+				}
 				break;
 
 			case cmd_CursorUp:
@@ -4986,7 +5057,19 @@ show_first_col:
 						break;
 					}
 
-					if (cursor_row > 0)
+					if (scrdesc.filter[0] != '\0')
+					{
+						int		match_row = filter_find_row(&desc, &scrdesc, &opts, cursor_row - 1, false);
+
+						if (match_row != -1)
+							cursor_row = match_row;
+						else
+							make_beep();
+
+						if (cursor_row + fix_rows_offset < first_row)
+							first_row = cursor_row + fix_rows_offset;
+					}
+					else if (cursor_row > 0)
 					{
 						/*
 						 * When we are on data position, and we are going up, and a
@@ -5024,7 +5107,28 @@ show_first_col:
 
 					max_cursor_row = MAX_CURSOR_ROW;
 
-					if (++cursor_row > max_cursor_row)
+					if (scrdesc.filter[0] != '\0')
+					{
+						int		match_row = filter_find_row(&desc, &scrdesc, &opts, cursor_row + 1, true);
+
+						if (match_row != -1)
+						{
+							cursor_row = match_row;
+
+							/*
+							 * Keep the cursor visible: when the match is below
+							 * the visible area, scroll the viewport so the
+							 * cursor lands on the last visible data row.
+							 */
+							if (cursor_row - first_row + 1 > VISIBLE_DATA_ROWS)
+								first_row = cursor_row - VISIBLE_DATA_ROWS + 1;
+
+							first_row = adjust_first_row(first_row, &desc, &scrdesc);
+						}
+						else
+							make_beep();
+					}
+					else if (++cursor_row > max_cursor_row)
 					{
 						cursor_row = max_cursor_row;
 						make_beep();
@@ -5870,6 +5974,45 @@ recheck_end:
 								   &refresh_clear);
 					break;
 				}
+
+			case cmd_Filter:
+				{
+					char	locfilter[256];
+					bool	is_valid;
+					int		match_row;
+
+					strncpy(locfilter, scrdesc.filter, sizeof(locfilter) - 1);
+					locfilter[sizeof(locfilter) - 1] = '\0';
+
+					is_valid = get_string("&", locfilter, sizeof(locfilter) - 1,
+										  (locfilter[0] != '\0' ? locfilter : NULL), 'u');
+
+					if (is_valid)
+					{
+						if (locfilter[0] != '\0')
+						{
+							strncpy(scrdesc.filter, locfilter, sizeof(scrdesc.filter) - 1);
+							scrdesc.filter[sizeof(scrdesc.filter) - 1] = '\0';
+							scrdesc.filter_size = strlen(scrdesc.filter);
+
+							match_row = filter_find_row(&desc, &scrdesc, &opts, 0, true);
+
+							if (match_row != -1)
+							{
+								cursor_row = match_row;
+								first_row = adjust_first_row(cursor_row, &desc, &scrdesc);
+							}
+							else
+								show_info_wait(" Pattern not found", NULL, true, true, false, false);
+						}
+						else
+						{
+							scrdesc.filter[0] = '\0';
+							scrdesc.filter_size = 0;
+						}
+					}
+				}
+				break;
 
 			case cmd_ForwardSearch:
 				{

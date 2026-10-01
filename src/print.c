@@ -934,11 +934,31 @@ window_fill(int window_identifier,
 		int			rowno = row + srcy_bak + 1 - desc->first_data_row;
 		int			lineno;
 
-		is_cursor_row = (!opts->no_cursor && row == cursor_row);
-
 		(void) lbi_set_mark_next(&lbi, &lbm);
 
 		line_is_valid = lbm_get_line(&lbm, &rowstr, &lineinfo, &lineno);
+
+		/*
+		 * When a row filter is active, only matching data rows are drawn.
+		 * Header (LUC/fixed rows), footer and corner windows stay complete.
+		 */
+		if (line_is_valid && *scrdesc->filter != '\0' &&
+				(window_identifier == WINDOW_ROWS ||
+				 window_identifier == WINDOW_FIX_COLS ||
+				 window_identifier == WINDOW_ROWNUM) &&
+				!filter_pattern_match(opts, scrdesc, rowstr))
+			continue;
+
+		/*
+		 * Derive row number and cursor position from the real line number
+		 * instead of the on-screen row, so filtering (which skips lines)
+		 * keeps rownum and cursor in sync with the drawn rows.
+		 */
+		if (line_is_valid)
+			rowno = lineno - desc->first_data_row + 1;
+
+		is_cursor_row = (!opts->no_cursor && line_is_valid &&
+						 lineno == srcy_bak + cursor_row);
 
 		if (odd_theme_identifier != -1 && lineinfo)
 		{

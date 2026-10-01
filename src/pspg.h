@@ -197,6 +197,9 @@ typedef struct
 	char	searchcolterm[256];		/* last searched column patterm */
 	int		searchcolterm_size;		/* length of searched column pattern in bytes */
 
+	char	filter[256];			/* active row filter pattern */
+	int		filter_size;			/* size of filter in bytes */
+
 	int		scrollbar_maxy;			/* max y of horisontal scrollbar */
 	int		scrollbar_start_y;		/* start y dim of horisontal scrollbar */
 	int		scrollbar_x;			/* x position of horisontal scrollbar */
@@ -369,6 +372,7 @@ extern const char *nstrstr_ignore_lower_case(const char *haystack, const char *n
 extern bool nstreq(const char *str1, const char *str2);
 
 extern const char *pspg_search(Options *opts, ScrDesc *scrdesc, const char *str);
+extern bool filter_pattern_match(Options *opts, ScrDesc *scrdesc, const char *str);
 
 /* from menu.c */
 extern void init_menu_config(Options *opts);

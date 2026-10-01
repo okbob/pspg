@@ -113,6 +113,7 @@ typedef enum PspgCommand
 	cmd_SearchNext,
 	cmd_SearchPrev,
 	cmd_SearchColumn,
+	cmd_Filter,
 	cmd_ShowTopBar,
 	cmd_ShowBottomBar,
 	cmd_RowNumToggle,
