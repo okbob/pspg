@@ -2732,6 +2732,7 @@ main(int argc, char *argv[])
 	opts.on_exit_clean = false;
 	opts.on_exit_erase_line = false;
 	opts.on_exit_sgr0 = false;
+	opts.raw_input_on_quit_if_one_screen = false;
 
 	setup_sigsegv_handler();
 
@@ -2926,7 +2927,6 @@ main(int argc, char *argv[])
 	if (state.boot_wait > 0)
 		usleep(1000 * 1000 * state.boot_wait);
 
-
 	/*
 	 * don't use inotify, when user prefer periodic watch time, or when we
 	 * have not file for watching
@@ -2958,6 +2958,46 @@ main(int argc, char *argv[])
 	 * work too.
 	 */
 	use_utf8 = strcmp(nl_langinfo(CODESET), "UTF-8") == 0;
+
+	/*
+	 * When parent application doesn't handle SIGWINCH signal, then the
+	 * environment variables COLUMNS and LINES should not be up to date.
+	 * ncurses uses these variables for initial sizing stdstr. This issue
+	 * can be fixed by reread terminal (device) parameters. The overhead
+	 * is neglecting. See issue #75
+	 *
+	 * Possible ToDo (cleaning). On modern ncurses we can ensure correct
+	 * terminal size by setting use_env(FALSE); use_tioctl(TRUE); On second
+	 * hand, these functions should not be suppported on other implementations
+	 * on ncurses.
+	 */
+	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
+	{
+
+#ifndef PDCURSES
+
+		resize_term(size.ws_row, size.ws_col);
+
+#endif
+
+		size_is_valid = true;
+		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
+	}
+	else
+		log_row("cannot to detect terminal size via TIOCGWINSZ (%s)", strerror(errno));
+
+	if (size_is_valid && opts.raw_input_on_quit_if_one_screen)
+	{
+		state.terminal_rows = size.ws_row;
+		InitExtStr(&state.raw_rows_buffer);
+		state.buffered_raw_rows = 0;
+	}
+	else
+	{
+		state.terminal_rows = 0;
+		state.raw_rows_buffer.data = NULL;
+		state.buffered_raw_rows = 0;
+	}
 
 	log_row("started");
 	log_row("%s utf8 support", use_utf8 ? "with" : "without");
@@ -3011,32 +3051,6 @@ main(int argc, char *argv[])
 	if (detected_format && desc.freeze_two_cols)
 		default_freezed_cols = 2;
 
-	/*
-	 * When parent application doesn't handle SIGWINCH signal, then the
-	 * environment variables COLUMNS and LINES should not be up to date.
-	 * ncurses uses these variables for initial sizing stdstr. This issue
-	 * can be fixed by reread terminal (device) parameters. The overhead
-	 * is neglecting. See issue #75
-	 *
-	 * Possible ToDo (cleaning). On modern ncurses we can ensure correct
-	 * terminal size by setting use_env(FALSE); use_tioctl(TRUE); On second
-	 * hand, these functions should not be suppported on other implementations
-	 * on ncurses.
-	 */
-	if ((ioctl_result = ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *) &size)) >= 0)
-	{
-
-#ifndef PDCURSES
-
-		resize_term(size.ws_row, size.ws_col);
-
-#endif
-
-		size_is_valid = true;
-		log_row("terminal size by TIOCGWINSZ rows: %d, cols: %d", size.ws_row, size.ws_col);
-	}
-	else
-		log_row("cannot to detect terminal size via TIOCGWINSZ (%s)", strerror(errno));
 
 	/* Only when we are sure about terminal dimensions */
 	if (size_is_valid && state.quit_if_one_screen)
@@ -3049,13 +3063,20 @@ main(int argc, char *argv[])
 		/* the content can be displayed in one screen */
 		if (available_rows >= desc.last_row && size.ws_col > desc.maxx)
 		{
-			lb_print_all_ddesc(&desc, stdout);
+			if (state.buffered_raw_rows > 0)
+				fprintf(stdout, "%s", state.raw_rows_buffer.data);
+			else
+				lb_print_all_ddesc(&desc, stdout);
 
 			log_row("quit due quit_if_one_screen option without ncurses init");
 
 			return 0;
 		}
 	}
+
+	/* we don't need raw rows buffer anymore */
+	if (state.raw_rows_buffer.data)
+		DeinitExtStr(&state.raw_rows_buffer);
 
 	if (!detected_format && state.only_for_tables)
 	{

@@ -258,6 +258,13 @@ typedef struct
 	int		columns_map[1024];		/* column numbers - used when some column is hidden */
 } PrintDataDesc;
 
+typedef struct
+{
+	int		len;
+	int		maxlen;
+	char   *data;
+} ExtStr;
+
 /*
  * holds pager state data
  */
@@ -296,6 +303,10 @@ typedef struct
 
 	char pspg_conf_path[MAXPATHLEN];
 	char pspg_hist_path[MAXPATHLEN];
+
+	int		terminal_rows;			/* used for quit_if_one_screen buffer */
+	ExtStr	raw_rows_buffer;				/* holds original input data */
+	int		buffered_raw_rows;
 } StateData;
 
 
@@ -322,13 +333,6 @@ typedef struct
 	LineBuffer	   *lb;
 	int				lb_rowno;
 } SimpleLineBufferIter;
-
-typedef struct
-{
-	int		len;
-	int		maxlen;
-	char   *data;
-} ExtStr;
 
 /* from pspg.c */
 extern void exit_handler(void);
@@ -416,8 +420,10 @@ extern int dsplen_cstr(const char *str);
 extern char *trim_str(const char *str, int *size);
 extern char *trim_quoted_str(const char *str, int *size);
 extern void InitExtStr(ExtStr *estr);
+extern void DeinitExtStr(ExtStr *estr);
 extern void ResetExtStr(ExtStr *estr);
 extern void ExtStrAppendNewLine(ExtStr *estr, char *str);
+extern void ExtStrAppendBytes(ExtStr *estr, char *str, int size);
 extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, bool continuation_mark, bool continuation_mark2);
 extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 

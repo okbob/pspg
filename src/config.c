@@ -158,6 +158,7 @@ save_config(const char *path, Options *opts)
 	SAFE_SAVE_BOOL_OPTION("on_exit_erase_line", opts->on_exit_erase_line);
 	SAFE_SAVE_BOOL_OPTION("on_exit_sgr0", opts->on_exit_sgr0);
 	SAFE_SAVE_BOOL_OPTION("direct_color", opts->direct_color);
+	SAFE_SAVE_BOOL_OPTION("raw_input_on_quit_if_one_screen", opts->raw_input_on_quit_if_one_screen);
 
 	result = fprintf(f, "theme = %d\n", opts->theme);
 	if (result < 0)
@@ -358,6 +359,8 @@ load_config(FILE *f, Options *opts)
 				is_valid = assign_bool(key, &opts->on_exit_sgr0, bool_val, res);
 			else if (strcmp(key, "direct_color") == 0)
 				is_valid = assign_bool(key, &opts->direct_color, bool_val, res);
+			else if (strcmp(key, "raw_input_on_quit_if_one_screen") == 0)
+				is_valid = assign_bool(key, &opts->raw_input_on_quit_if_one_screen, bool_val, res);
 		}
 
 		if (!is_valid || res == -1)

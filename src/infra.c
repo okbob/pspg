@@ -447,6 +447,15 @@ InitExtStr(ExtStr *estr)
 }
 
 void
+DeinitExtStr(ExtStr *estr)
+{
+	if (estr->data)
+		free(estr->data);
+	estr->len = 0;
+	estr->maxlen = 0;
+}
+
+void
 ResetExtStr(ExtStr *estr)
 {
 	estr->len = 0;
@@ -476,6 +485,25 @@ ExtStrAppendNewLine(ExtStr *estr, char *str)
 
 	strncpy(&estr->data[estr->len], str, size + 1);
 	estr->len += size;
+}
+
+/*
+ * Append string specified by length
+ */
+void
+ExtStrAppendBytes(ExtStr *estr, char *str, int size)
+{
+	if (estr->len + size + 1 > estr->maxlen)
+	{
+		while (estr->len + size + 1 > estr->maxlen)
+			estr->maxlen += 1024;
+
+		estr->data = srealloc(estr->data, estr->maxlen);
+	}
+
+	strncpy(&estr->data[estr->len], str, size);
+	estr->len += size;
+	estr->data[estr->len] = '\0';
 }
 
 /*

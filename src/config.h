@@ -105,6 +105,7 @@ typedef struct
 	bool	on_exit_erase_line;
 	bool	on_exit_sgr0;
 	bool	direct_color;
+	bool	raw_input_on_quit_if_one_screen;
 } Options;
 
 extern bool save_config(const char *path, Options *opts);

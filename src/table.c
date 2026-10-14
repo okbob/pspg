@@ -662,6 +662,16 @@ finish_deescape:
 	return writeptr - line;
 }
 
+static void
+add_to_raw_buffer(StateData *state, char *line, int bytes)
+{
+	if (state->buffered_raw_rows < state->terminal_rows)
+	{
+		ExtStrAppendBytes(&state->raw_rows_buffer, line, bytes);
+		state->buffered_raw_rows += 1;
+	}
+}
+
 /*
  * Read data from file and fill DataDesc.
  */
@@ -786,6 +796,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 	read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, false);
 	if (read == -1)
 		return false;
+
+	add_to_raw_buffer(state, line, read);
 
 	do
 	{
@@ -1015,6 +1027,10 @@ next_row:
 		}
 
 		read = _getline(&line, &len, f_data, f_data_opts & STREAM_IS_IN_NONBLOCKING_MODE, true);
+
+		if (read != -1)
+			add_to_raw_buffer(state, line, read);
+
 	} while (read != -1);
 
 	desc->total_rows = nrows;

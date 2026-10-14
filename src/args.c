@@ -125,6 +125,7 @@ static struct option long_options[] =
 	{"direct-color", no_argument, 0, 58},
 	{"csv-trim-width", required_argument, 0, 59},
 	{"csv-trim-rows", required_argument, 0, 60},
+	{"raw-input-on-quit-if-one-screen", no_argument, 0, 61},
 	{0, 0, 0, 0}
 };
 
@@ -418,6 +419,8 @@ readargs(char **argv,
 					fprintf(stdout, "  -f, --file=FILE          open file\n");
 					fprintf(stdout, "  -F, --quit-if-one-screen\n");
 					fprintf(stdout, "                           quit if content is one screen\n");
+					fprintf(stdout, "  --raw-input-on-quit-if-one-screen\n");
+					fprintf(stdout, "                           print original input when content is one screen\n");
 					fprintf(stdout, "  --clipboard-app=NUM      specify app used by copy to clipboard (1, 2, 3, 4)\n");
 					fprintf(stdout, "  --esc-delay=NUM          specify escape delay in ms (-1 inf, 0 not used, )\n");
 					fprintf(stdout, "  --interactive            force interactive mode\n");
@@ -858,6 +861,10 @@ readargs(char **argv,
 				}
 
 				opts->csv_trim_rows = (unsigned int) lopt;
+				break;
+
+			case 61:
+				opts->raw_input_on_quit_if_one_screen = true;
 				break;
 
 			default:
