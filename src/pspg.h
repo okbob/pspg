@@ -427,6 +427,9 @@ extern void ExtStrAppendBytes(ExtStr *estr, char *str, int size);
 extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, bool continuation_mark, bool continuation_mark2);
 extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 
+extern bool is_empty_str(char *str);
+extern int strlen_chars_limit(const char *str, int limit, int *nchars);
+
 extern int rwe_popen(char *command, int *fin, int *fout, int *ferr);
 
 extern char *tilde(char *dest, const char *path);

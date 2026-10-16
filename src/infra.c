@@ -369,6 +369,70 @@ dsplen_cstr(const char *str)
 }
 
 /*
+ * returns true, when string doesn't contains any valid char
+ * or valid utf8 sequence.
+ */
+bool
+is_empty_str(char *str)
+{
+	if (*str == '\0')
+		return true;
+
+	if (use_utf8)
+	{
+		/* is there any valid utf8 sequence */
+		if (strlen(str) <= utf8charlen(*str))
+			return true;
+		else
+			return false;
+	}
+	else
+		return false;
+}
+
+/*
+ * Returns safe length of string. For utf8 strings
+ * can be less than original string size, because
+ * last utf8 sequence can be incomplete.
+ */
+int
+strlen_chars_limit(const char *str, int limit, int *nchars)
+{
+	int			l = strlen(str);
+
+	if (use_utf8)
+	{
+		const char *endstr = str + l;
+		int			result = 0;
+
+		*nchars = 0;
+
+		while (*str)
+		{
+			int			chrl = utf8charlen(*str);
+
+			if (str + chrl <= endstr && result + chrl <= limit)
+			{
+				result += chrl;
+				str += chrl;
+
+				(*nchars)++;
+			}
+			else
+				break;
+		}
+
+		return result;
+	}
+	else
+	{
+		*nchars = l;
+
+		return l;
+	}
+}
+
+/*
  * truncate spaces from both ends
  */
 char *

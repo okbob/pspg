@@ -1647,6 +1647,9 @@ show_info_wait(const char *fmt,
 
 /*
  * Returns true when string contains upper char
+ *
+ * It should be used only on string with validated
+ * content (all utf8 sequences should be complete).
  */
 static bool
 test_upperchr(char *str)
@@ -1806,6 +1809,23 @@ MergeScrDesc(ScrDesc *new, ScrDesc *old)
 	new->selected_rows = old->selected_rows;
 	new->selected_first_column = old->selected_first_column;
 	new->selected_columns = old->selected_columns;
+}
+
+/*
+ * Set searchterm - ensure only validated content
+ */
+static void
+Set_searchterm(ScrDesc *sdesc, char *str)
+{
+	sdesc->searchterm_size = strlen_chars_limit(str,
+												sizeof(sdesc->searchterm) - 1,
+												&sdesc->searchterm_char_size);
+
+	memcpy(sdesc->searchterm, str, sdesc->searchterm_size);
+	sdesc->searchterm[sdesc->searchterm_size] = '\0';
+
+	/* searchterm has only one bytes chars or complete utf8 sequences */
+	sdesc->has_upperchr = test_upperchr(sdesc->searchterm);
 }
 
 /*
@@ -5928,12 +5948,9 @@ recheck_end:
 							memcpy(locsearchterm, last_row_search, sizeof(last_row_search));
 					}
 
-					if (locsearchterm[0] != '\0')
+					if (!is_empty_str(locsearchterm))
 					{
-						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = test_upperchr(scrdesc.searchterm);
-						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
-						scrdesc.searchterm_char_size = use_utf8 ?  utf8len(scrdesc.searchterm) : (int) strlen(scrdesc.searchterm);
+						Set_searchterm(&scrdesc, locsearchterm);
 
 						search_direction = SEARCH_FORWARD;
 
@@ -6081,13 +6098,9 @@ recheck_end:
 							memcpy(locsearchterm, last_row_search, sizeof(last_row_search));
 					}
 
-					if (locsearchterm[0] != '\0')
+					if (!is_empty_str(locsearchterm))
 					{
-
-						strncpy(scrdesc.searchterm, locsearchterm, sizeof(scrdesc.searchterm));
-						scrdesc.has_upperchr = test_upperchr(scrdesc.searchterm);
-						scrdesc.searchterm_size = strlen(scrdesc.searchterm);
-						scrdesc.searchterm_char_size = utf8len(scrdesc.searchterm);
+						Set_searchterm(&scrdesc, locsearchterm);
 
 						reset_searching_lineinfo(&desc);
 
