@@ -1414,7 +1414,7 @@ read_csv(RowBucketType *rb,
 					c = fgetc(ifile);
 					if (c == EOF)
 					{
-						log_row("unexpected quit, broken unicode char");
+						leave("unexpected end of input data, broken unicode char");
 						break;
 					}
 
