@@ -115,7 +115,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 		int		charsize, bytes;
 		bool	tabsubst = false;
 
-		charsize = use_utf8 ? utf8charlen(*str) : 1;
+		charsize = charlen_limit(str, size);
 
 		if (charsize == 1 && *str == '\t')
 		{
@@ -130,7 +130,7 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 		}
 		else if (use_utf8)
 		{
-			curr_dspl_width += utf_dsplen(str);
+			curr_dspl_width += dsplen_limit(str, size);
 			bytes = charsize;
 		}
 		else

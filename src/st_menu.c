@@ -252,6 +252,10 @@ char_width(ST_MENU_CONFIG *config, char *c)
 
 #else
 
+		/*
+		 * in this case, the content is compiled and should be
+		 * valid always.
+		 */
 		return utf_dsplen((const char *) c);
 
 #endif

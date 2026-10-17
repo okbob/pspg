@@ -127,10 +127,10 @@ flush_bytes(WINDOW *win,
 			}
 			else
 			{
-				int len = charlen_with_len(rowstr, bytes);
+				int len = charlen_limit(rowstr, bytes);
 
 				waddnstr(win, rowstr, len);
-				offsetx += dsplen_with_len(rowstr, bytes);
+				offsetx += dsplen_limit(rowstr, bytes);
 				rowstr +=len;
 				bytes -= len;
 			}

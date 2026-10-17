@@ -269,8 +269,8 @@ utf_dsplen(const char *s)
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
 
-inline static int
-_utf_dsplen(const char *s)
+inline int
+utf_dsplen_noascii(const char *s)
 {
 	return ucs_wcwidth(utf8_to_unicode((const unsigned char *) s));
 }
@@ -308,7 +308,13 @@ utf_string_dsplen(const char *s, int bytes)
 		{
 			int clen  = utf8charlen(c);
 
-			result += _utf_dsplen(s);
+			if (bytes >= clen)
+			{
+				int			dsp = utf_dsplen_noascii(s);
+
+				if (dsp > 0)
+					result += dsp;
+			}
 
 			s += clen;
 			bytes -= clen;

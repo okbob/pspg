@@ -569,7 +569,7 @@ strncpytrim(char *dest, const char *src,
 		if (*src == '\0')
 			break;
 
-		clen = (size_t) charlen_with_len(src, nsrc);
+		clen = (size_t) charlen_limit(src, nsrc);
 		if (clen <= ndest && clen <= nsrc)
 		{
 			size_t		i;
@@ -875,8 +875,8 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 				}
 				else
 				{
-					int		cl = charlen_with_len(readptr, read);
-					int		dl = dsplen_with_len(readptr, read);
+					int		cl = charlen_limit(readptr, read);
+					int		dl = dsplen_limit(readptr, read);
 
 					total_dl += dl;
 					memcpy(writeptr, readptr, cl);
@@ -1576,12 +1576,13 @@ cut_text(char *str,
 	{
 		char	   *_str = NULL;
 		char	   *after_last_nospc = NULL;
+		char	   *end = str + strlen(str);
 		int			pos = 0;
 		bool		skip_left_spaces = true;
 
 		while (*str)
 		{
-			int			chrlen = charlen_cstr(str);
+			int			chrlen = charlen_range(str, end);
 
 			if (pos > xmin || (border0 && pos >= xmin))
 			{
@@ -1603,7 +1604,7 @@ cut_text(char *str,
 			if (*str != ' ')
 				after_last_nospc = str + chrlen;
 
-			pos += utf_dsplen(str);
+			pos += dsplen_range(str, end);
 			str += chrlen;
 
 			if (pos >= xmax)

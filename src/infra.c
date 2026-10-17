@@ -236,7 +236,7 @@ sstrndup(const char *str, int bytes)
  * Returns byte size of first char of string
  */
 inline int
-charlen_with_len(const char *str, int limit)
+charlen_limit(const char *str, int limit)
 {
 	int			length;
 
@@ -309,21 +309,21 @@ charlen_cstr(const char *str)
 }
 
 inline int
-dsplen_with_len(const char *str, int limit)
+dsplen_limit(const char *str, int limit)
 {
 	int			length;
 
 	if (limit < 1)
 		leave("internal error");
 
-	if (*str == ' ' || !use_utf8)
+	if ((*str >= 0x20 && *str < 0x7f) || !use_utf8)
 		return 1;
 
 	length = utf8charlen(*str);
 	if (length > limit)
 		return 0;
 
-	return utf_dsplen(str);
+	return utf_dsplen_noascii(str);
 }
 
 inline int
@@ -334,14 +334,14 @@ dsplen_range(const char *str, const char *end)
 	if (end <= str)
 		leave("internal error");
 
-	if (*str == ' ' || !use_utf8)
+	if ((*str >= 0x20 && *str < 0x7f) || !use_utf8)
 		return 1;
 
 	length = utf8charlen(*str);
 	if (str + length > end)
 		return 0;
 
-	return utf_dsplen(str);
+	return utf_dsplen_noascii(str);
 }
 
 inline int
@@ -354,7 +354,7 @@ dsplen_cstr(const char *str)
 	if (!*str)
 		leave("internal error");
 
-	if (*str == ' ' || !use_utf8)
+	if ((*str >= 0x20 && *str < 0x7f) || !use_utf8)
 		return 1;
 
 	length = utf8charlen(*str);
@@ -365,7 +365,7 @@ dsplen_cstr(const char *str)
 			return 0;
 	}
 
-	return utf_dsplen(str);
+	return utf_dsplen_noascii(str);
 }
 
 /*
@@ -455,7 +455,7 @@ trim_str(const char *str, int *size)
 
 		while (bytes > 0)
 		{
-			int		chrlen = charlen_with_len(str, bytes);
+			int		chrlen = charlen_limit(str, bytes);
 
 			if (*str != ' ')
 				after_nspc_chr = str + chrlen;
