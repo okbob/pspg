@@ -110,14 +110,14 @@ pb_write(PrintbufType *printbuf, const char *str, int size)
 {
 	int		curr_dspl_width = 0;
 
-	while (size)
+	while (size > 0)
 	{
 		int		charsize, bytes;
 		bool	tabsubst = false;
 
 		charsize = charlen_limit(str, size);
 
-		if (charsize == 1 && *str == '\t')
+		if (*str == '\t')
 		{
 			bytes = 0;
 			tabsubst = true;
