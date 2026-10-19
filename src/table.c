@@ -1797,8 +1797,6 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					only_digits = true;
 				}
 
-				memcpy(buffptr, str, chrlen);
-
 				/* trim from right */
 				if (c != ' ')
 				{
@@ -1806,11 +1804,14 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					bool	only_digits_with_point_prev = only_digits_with_point;
 
 					after_last_nospace = buffptr + chrlen;
-					if (after_last_nospace - buffer > (BUFFER_MAX_SIZE - 1))
+
+					if (buffptr + chrlen - buffer > (BUFFER_MAX_SIZE - 1))
 					{
 						/* too long string - should not be translated to number */
 						return false;
 					}
+
+					memcpy(buffptr, str, chrlen);
 
 					if (c == '.' || c == ',')
 					{
@@ -1832,6 +1833,10 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 							{
 								if (isdigit(str[2]))
 								{
+									/* too long string - should not be translated to number */
+									if (buffptr + 3 - buffer > (BUFFER_MAX_SIZE - 1))
+										return false;
+
 									found_exponent = true;
 									memcpy(buffptr, str, 3);
 									str += 3;
@@ -1852,8 +1857,9 @@ cut_numeric_value(char *str, int xmin, int xmax, double *d, bool border0, bool *
 					{
 						first_nospace_nodigit = buffptr;
 					}
+
+					buffptr += chrlen;
 				}
-				buffptr += chrlen;
 			}
 
 			x += dsplen_cstr(str);
