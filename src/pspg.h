@@ -489,7 +489,7 @@ extern const char *parse_and_eval_bscommand(const char *cmdline, Options *opts, 
 /* from readline.c */
 extern void pspg_init_readline(const char *histfile);
 extern void pspg_save_history(const char *histfile, Options *opts);
-extern bool get_string(char *prompt, char *buffer, int maxsize, char *defstr, char tabcomplete_mode);
+extern bool get_string(char *prompt, char *buffer, int buffer_size, char *defstr, int defstr_size, char tabcomplete_mode);
 
 /*
  * Global constants

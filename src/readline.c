@@ -542,14 +542,18 @@ pspg_display_match(char **matches, int num_matches, int max_length)
 bool
 get_string(char *prompt,
 		   char *buffer,
-		   int maxsize,
+		   int buffer_size,
 		   char *defstr,
+		   int defstr_size,
 		   char _tabcomplete_mode)
 {
 	bool	result_is_ok = true;
 	int		c, prev_c = 0;
 	mmask_t		prev_mousemask = 0;
 	bool	prev_xterm_mouse_mode;
+
+	if (defstr && buffer_size != defstr_size)
+		leave("input string buffers are not sized corectly");
 
 #ifdef HAVE_READLINE_HISTORY
 
@@ -733,14 +737,14 @@ finish_read:
 			bytes = strlen(readline_buffer);
 			tstr = trim_quoted_str(readline_buffer, &bytes);
 
-			bytes = bytes < (maxsize - 1) ? bytes : (maxsize - 1);
+			bytes = bytes < (buffer_size - 1) ? bytes : (buffer_size - 1);
 			memcpy(buffer, tstr, bytes);
 			buffer[bytes] = '\0';
 		}
 		else
 		{
-			strncpy(buffer, readline_buffer, maxsize - 1);
-			buffer[maxsize] = '\0';
+			strncpy(buffer, readline_buffer, buffer_size - 2);
+			buffer[buffer_size - 1] = '\0';
 		}
 
 #ifdef HAVE_READLINE_HISTORY
@@ -840,12 +844,16 @@ pspg_save_history(const char *histfile, Options *opts)
 bool
 get_string(char *prompt,
 		   char *buffer,
-		   int maxsize,
+		   int buffer_size,
 		   char *defstr,
+		   int defstr_size,
 		   char _tabcomplete_mode)
 {
 	mmask_t		prev_mousemask = 0;
 	bool	prev_xterm_mouse_mode;
+
+	if (defstr && buffer_size != defstr_size)
+		leave("input string buffers are not sized corectly");
 
 	log_row("input string prompt - \"%s\"", prompt);
 
@@ -858,7 +866,7 @@ get_string(char *prompt,
 	mousemask(0, &prev_mousemask);
 	prev_xterm_mouse_mode = disable_xterm_mouse_mode();
 
-	wgetnstr(prompt_window, buffer, maxsize);
+	wgetnstr(prompt_window, buffer, buffer_size - 1);
 
 	if (_tabcomplete_mode == 'f')
 	{

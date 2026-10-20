@@ -96,11 +96,13 @@
 static char		last_row_search[256];
 static char		last_col_search[256];
 static char		last_line[256];
-static char		last_path[1025];
+static char		last_path[MAXPATHLEN + 1024];
 static char		last_rows_number[256];
 static char		last_table_name[256];
 static char		last_nullstr[256];
 static char		cmdline[1024];
+static char		last_theme_num_str[256];
+static char		last_theme_name_str[256];
 static const char *cmdline_ptr = 0;
 
 int		clipboard_application_id = 0;
@@ -1966,7 +1968,7 @@ export_to_file(PspgCommand command,
 			  bool *force_refresh)
 {
 	char		buffer[MAXPATHLEN + 1024];
-	char		table_name[255];
+	char		table_name[256];
 	FILE	   *fp = NULL;
 	char	   *path = NULL;
 	bool		isok = false;
@@ -2017,7 +2019,7 @@ export_to_file(PspgCommand command,
 		else
 			prompt = "save to file: ";
 
-		(void) get_string(prompt, buffer, sizeof(buffer) - 1, last_path, 'f');
+		(void) get_string(prompt, buffer, sizeof(buffer), last_path, sizeof(last_path), 'f');
 		if (buffer[0] == '\0')
 			return;
 
@@ -2033,7 +2035,7 @@ export_to_file(PspgCommand command,
 
 	if (INSERT_FORMAT_TYPE(format))
 	{
-		(void) get_string("target table name: ", table_name, sizeof(table_name) - 1, last_table_name, 'u');
+		(void) get_string("target table name: ", table_name, sizeof(table_name), last_table_name, sizeof(last_table_name), 'u');
 		if (table_name[0] == '\0')
 			return;
 	}
@@ -2043,10 +2045,10 @@ export_to_file(PspgCommand command,
 	{
 		if (rows == 0 && percent == 0.0)
 		{
-			char		number[100];
+			char		number[256];
 			char	   *endptr;
 
-			(void) get_string("rows: ", number, sizeof(number) - 1, last_rows_number, 'u');
+			(void) get_string("rows: ", number, sizeof(number), last_rows_number, sizeof(last_rows_number), 'u');
 			if (number[0] == '\0')
 				return;
 
@@ -3484,6 +3486,8 @@ reinit_theme:
 	last_path[0] = '\0';
 	last_rows_number[0] = '\0';
 	last_nullstr[0] = '\0';
+	last_theme_num_str[0] = '\0';
+	last_theme_name_str[0] = '\0';
 
 	/* initialize readline if it is active */
 	pspg_init_readline(state.pspg_hist_path);
@@ -4167,7 +4171,7 @@ hide_menu:
 							strncpy(last_nullstr, opts.nullstr, sizeof(last_nullstr) - 1);
 					}
 
-					is_valid = get_string("nullstr: ", nullstr, sizeof(nullstr) - 1, last_nullstr, 'u');
+					is_valid = get_string("nullstr: ", nullstr, sizeof(nullstr), last_nullstr, sizeof(last_nullstr), 'u');
 					if (nullstr[0] != '\0')
 					{
 						free(opts.nullstr);
@@ -4455,7 +4459,7 @@ reset_search:
 					{
 						char	theme_num_str[256];
 
-						get_string("theme number: ", theme_num_str, sizeof(theme_num_str) - 1, last_line, 'u');
+						get_string("theme number: ", theme_num_str, sizeof(theme_num_str), last_theme_num_str, sizeof(last_theme_num_str), 'u');
 						if (theme_num_str[0] != '\0')
 						{
 							char   *endptr;
@@ -4517,7 +4521,7 @@ reset_search:
 					}
 					else
 					{
-						get_string("custom theme name: ", theme_name_str, sizeof(theme_name_str) - 1, last_line, 'u');
+						get_string("custom theme name: ", theme_name_str, sizeof(theme_name_str), last_theme_name_str, sizeof(last_theme_name_str), 'u');
 						if (theme_name_str[0] != '\0')
 						{
 							int		len = strlen(theme_name_str);
@@ -5623,7 +5627,7 @@ recheck_end:
 					{
 						char	linenotxt[256];
 
-						get_string("line: ", linenotxt, sizeof(linenotxt) - 1, last_line, 'u');
+						get_string("line: ", linenotxt, sizeof(linenotxt), last_line, sizeof(last_line), 'u');
 						if (linenotxt[0] != '\0')
 						{
 							char   *endptr;
@@ -5936,8 +5940,9 @@ recheck_end:
 					}
 					else
 						get_string(isSelSearch ? "^/" : "/",
-								   locsearchterm, sizeof(locsearchterm) - 1,
+								   locsearchterm, sizeof(locsearchterm),
 								   (opts.last_row_search ? last_row_search : NULL),
+								   sizeof(last_row_search),
 								   'u');
 
 					/*
@@ -6084,8 +6089,9 @@ recheck_end:
 					}
 					else
 						get_string(isSelSearch ? "^?" : "?",
-								   locsearchterm, sizeof(locsearchterm) - 1,
+								   locsearchterm, sizeof(locsearchterm),
 								   (opts.last_row_search ? last_row_search : NULL),
+								   sizeof(last_row_search),
 								   'u');
 
 					reset_searching_lineinfo(&desc);
@@ -6266,7 +6272,7 @@ recheck_end:
 					{
 						char		locsearchterm[256];
 
-						get_string("c:", locsearchterm, sizeof(locsearchterm) - 1, last_col_search, 'u');
+						get_string("c:", locsearchterm, sizeof(locsearchterm), last_col_search, sizeof(last_col_search), 'u');
 
 						if (locsearchterm[0] != '\0')
 						{
@@ -6397,7 +6403,7 @@ recheck_end:
 						/*
 						 * When previous command batch is processed, read new
 						 */
-						get_string("", cmdline, sizeof(cmdline) - 1, NULL, 'c');
+						get_string("", cmdline, sizeof(cmdline), NULL, 0, 'c');
 						cmdline_ptr = cmdline;
 					}
 
