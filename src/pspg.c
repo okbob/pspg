@@ -5755,15 +5755,19 @@ recheck_end:
 						char	column_name[65];
 						bool	have_name = false;
 
-						if (desc.cranges)
+						if (desc.cranges && desc.namesline)
 						{
-							char	   *name = desc.namesline + desc.cranges[sortedby_colno - 1].name_offset;
 							int			label_size = desc.cranges[sortedby_colno - 1].name_size;
 
 							if (label_size > 0)
 							{
-								memset(column_name, 0, sizeof(column_name));
+								char	   *name = desc.namesline + desc.cranges[sortedby_colno - 1].name_offset;
+
+								label_size = strnlen_limit(name, label_size, sizeof(column_name) - 1);
+
 								strncpy(column_name, name, min_int(64, label_size));
+								column_name[label_size] = '\0';
+
 								have_name = true;
 							}
 						}

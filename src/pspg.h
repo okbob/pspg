@@ -428,6 +428,7 @@ extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, 
 extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
 
 extern bool is_empty_str(char *str);
+extern int strnlen_limit(const char *str, int maxlen, int limit);
 extern int strlen_chars_limit(const char *str, int limit, int *nchars);
 
 extern int rwe_popen(char *command, int *fin, int *fout, int *ferr);

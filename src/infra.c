@@ -233,6 +233,43 @@ sstrndup(const char *str, int bytes)
 }
 
 /*
+ * returns length of string that is not higher than
+ * maxlen. When utf8 the length is correctly set to
+ * end of utf8 sequence. Returned value cannot be
+ * higher than less value from maxlen and limit.
+ */
+int
+strnlen_limit(const char *str, int maxlen, int limit)
+{
+	int			result = 0;
+	int			bytes =  maxlen < limit ? maxlen : limit;
+
+	if (use_utf8)
+	{
+		while (*str && bytes > 0)
+		{
+			int			length = utf8charlen(*str);
+
+			if (length > bytes)
+				break;
+
+			result += length;
+			str += length;
+			bytes -= length;
+		}
+	}
+	else
+	{
+		while (*str++ && bytes-- > 0)
+		{
+			result += 1;
+		}
+	}
+
+	return result;
+}
+
+/*
  * Returns byte size of first char of string
  */
 inline int
