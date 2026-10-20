@@ -1419,6 +1419,7 @@ translate_headline(DataDesc *desc)
 		char	   *first_char = NULL;				/* first non space char of column name */
 		int			offset;
 		char	   *ptr;
+		char	   *ptrend;
 		int			i;
 
 		/* Move right corner more right */
@@ -1439,6 +1440,13 @@ translate_headline(DataDesc *desc)
 		desc->columns = 1;
 
 		ptr = desc->headline_transl;
+
+		/* headline_transl contains only ascii chars */
+		ptrend = desc->headline_transl + desc->headline_char_size;
+
+		/*
+		 * count number of column separator as a number of columns
+		 */
 		while (*ptr)
 		{
 			if (*ptr++ == 'I')
@@ -1453,10 +1461,20 @@ translate_headline(DataDesc *desc)
 		desc->cranges[0].name_offset = -1;
 		desc->cranges[0].name_size = -1;
 
-		while (*ptr)
+		/*
+		 * headline_transl holds one byte per display column, and it is read
+		 * in lockstep with namesline, which is read per character. Because a
+		 * character can be wider (or narrower) than one display column, the
+		 * step used for ptr comes from namesline. Such a step is not trusted
+		 * data, so the scan is explicitly limited by ptrend, and the step is
+		 * never allowed to be negative. Without these limits a broken (or
+		 * hostile) namesline can move ptr before headline_transl, or over its
+		 * ending '\0' into unrelated heap memory.
+		 */
+		while (ptr < ptrend && *ptr)
 		{
 			char	   *nextchar = NULL;
-			int			display_width;
+			int			display_width = 1;
 
 			if (namesline)
 			{
@@ -1468,19 +1486,30 @@ translate_headline(DataDesc *desc)
 				}
 				else
 				{
-					nextchar = namesline + charlen_cstr(namesline);
-					display_width = dsplen_cstr(namesline);
+					nextchar = namesline + charlen_range(namesline, ptrend);
+					display_width = dsplen_range(namesline, ptrend);
+
+					/*
+					 * dsplen returns -1 for control and invalid characters.
+					 * Such characters consume no display column here, so
+					 * clamp the step to zero. namesline still advances, so
+					 * the loop makes progress.
+					 */
+					if (display_width < 0)
+						display_width = 0;
 				}
 			}
-			else
-				display_width = 1;
 
 			if (*ptr == 'I')
 			{
-				desc->cranges[i++].xmax = offset;
-				desc->cranges[i].xmin = offset;
-				desc->cranges[i].name_offset = -1;
-				desc->cranges[i].name_size = -1;
+				/* safe guard for the case when names contains only bad chars */
+				if (i + 1 < desc->columns)
+				{
+					desc->cranges[i++].xmax = offset;
+					desc->cranges[i].xmin = offset;
+					desc->cranges[i].name_offset = -1;
+					desc->cranges[i].name_size = -1;
+				}
 			}
 			else if (*ptr == 'd')
 			{
