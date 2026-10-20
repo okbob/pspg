@@ -1515,7 +1515,19 @@ translate_headline(DataDesc *desc)
 		desc->cranges[i].xmax = offset - 1;
 
 		if (!namesline)
+		{
+			/*
+			 * When namesline is invalidated, then ensure so all
+			 * references to namesline are invalidated too.
+			 */
 			desc->namesline = NULL;
+
+			for (i = 0; i < desc->columns; i++)
+			{
+				desc->cranges[i].name_offset = -1;
+				desc->cranges[i].name_size = -1;
+			}
+		}
 
 		/*
 		 * New PostgreSQL system tables contains visible oid columns. I would to

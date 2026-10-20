@@ -371,29 +371,36 @@ substr_column_name_search(DataDesc *desc,
 
 	*colno = -1;
 
+	if (!desc->namesline)
+		return 0;
+
 	for (i = first_colno; i <= desc->columns; i++)
 	{
-		char	   *name = desc->namesline + desc->cranges[i - 1].name_offset;
-		int			size = desc->cranges[i - 1].name_size;
+		int			name_size = desc->cranges[i - 1].name_size;
 
-		if (use_utf8)
+		if (name_size > 0)
 		{
-			if (utf8_nstrstr_with_sizes(name, size, pattern, len))
-			{
-				if (*colno == -1)
-					*colno = i;
+			char	   *name = desc->namesline + desc->cranges[i - 1].name_offset;
 
-				count += 1;
+			if (use_utf8)
+			{
+				if (utf8_nstrstr_with_sizes(name, name_size, pattern, len))
+				{
+					if (*colno == -1)
+						*colno = i;
+
+					count += 1;
+				}
 			}
-		}
-		else
-		{
-			if (nstrstr_with_sizes(name, size, pattern, len))
+			else
 			{
-				if (*colno == -1)
-					*colno = i;
+				if (nstrstr_with_sizes(name, name_size, pattern, len))
+				{
+					if (*colno == -1)
+						*colno = i;
 
-				count += 1;
+					count += 1;
+				}
 			}
 		}
 	}
