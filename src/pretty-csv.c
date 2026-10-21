@@ -1709,6 +1709,8 @@ read_and_format(Options *opts, DataDesc *desc, StateData *state)
 
 		prepare_pdesc(&rowbuckets, &linebuf, &pdesc, &pconfig);
 	}
+	else
+		leave("missing input data specification");
 
 	/* reuse allocated memory */
 	printbuf.buffer = linebuf.buffer;

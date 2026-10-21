@@ -2755,6 +2755,8 @@ main(int argc, char *argv[])
 	opts.on_exit_erase_line = false;
 	opts.on_exit_sgr0 = false;
 	opts.raw_input_on_quit_if_one_screen = false;
+	opts.tsv_format = false;
+	opts.csv_format = false;
 
 	setup_sigsegv_handler();
 
