@@ -2758,9 +2758,23 @@ main(int argc, char *argv[])
 	opts.tsv_format = false;
 	opts.csv_format = false;
 
+#ifdef DEBUG_PIPE
+
+	debug_pipe = fopen(DEBUG_PIPE, "w");
+	setlinebuf(debug_pipe);
+	fprintf(debug_pipe, "application start\n");
+
+	current_time(&start_app_sec, &start_app_ms);
+
+#endif
+
 	setup_sigsegv_handler();
 
 	umask(022);
+
+	memset(&state, 0, sizeof(state));
+	memset(&desc, 0, sizeof(desc));
+	memset(&scrdesc, 0, sizeof(scrdesc));
 
 	PSPG_CONF = getenv("PSPG_CONF");
 	if (PSPG_CONF)
@@ -2803,7 +2817,6 @@ main(int argc, char *argv[])
 				snprintf(state.pspg_conf_path, MAXPATHLEN, "%s/pspg.conf", untilded);
 
 				cf = fopen(state.pspg_conf_path, "r");
-
 			}
 		}
 	}
@@ -2853,20 +2866,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-	memset(&desc, 0, sizeof(desc));
-	memset(&scrdesc, 0, sizeof(scrdesc));
-
-#ifdef DEBUG_PIPE
-
-	debug_pipe = fopen(DEBUG_PIPE, "w");
-	setlinebuf(debug_pipe);
-	fprintf(debug_pipe, "application start\n");
-
-	current_time(&start_app_sec, &start_app_ms);
-
-#endif
-
-	memset(&state, 0, sizeof(state));
 
 	state.reserved_rows = -1;					/* dbcli has significant number of self reserved lines */
 	state.file_format_from_suffix = FILE_UNDEF;	/* input file is not defined */
