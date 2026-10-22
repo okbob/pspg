@@ -1,4 +1,7 @@
 name: build Linux
+permissions:
+  contents: read
+  pull-requests: write
 
 on:
   push:
