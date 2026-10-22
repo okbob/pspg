@@ -114,7 +114,7 @@ save_config(const char *path, Options *opts)
 	if (f == NULL)
 		return false;
 
-	if (chmod(path, 0644) != 0)
+	if (fchmod(fileno(f), 0644) != 0)
 	{
 		int		_errno = errno;
 
