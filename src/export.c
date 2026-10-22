@@ -122,12 +122,13 @@ quote_sql_identifier(char *str, int *slen)
 	char   *ptr, *result;
 	int		_slen;
 
+	if (!str || *slen == 0 || *str == '\0')
+		return str;
+
 	/* it is quoted already? */
 	if (*str == '"')
 		return str;
 
-	if (!str || *str == '\0' || *slen == 0)
-		return str;
 
 	if (*str != ' ' && (*str < 'a' || *str > 'z'))
 		needs_quoting = true;
