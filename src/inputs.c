@@ -532,7 +532,7 @@ repeat_reading:
 
 #endif
 
-			log_row("poll error (%s) %d", strerror(errno));
+			log_row("poll error (%s) %d", strerror(errno), errno);
 		}
 		else if (poll_num > 0)
 		{
