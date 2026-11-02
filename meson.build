@@ -1,4 +1,4 @@
-project('pspg', ['c'], version: '5.9.0')
+project('pspg', ['c'], version: '5.9.1')
 
 build_args = [
   '-DPROJECT_NAME=' + meson.project_name(),
