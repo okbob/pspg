@@ -426,6 +426,7 @@ extern void ExtStrAppendNewLine(ExtStr *estr, char *str);
 extern void ExtStrAppendBytes(ExtStr *estr, char *str, int size);
 extern void ExtStrAppendLine(ExtStr *estr, char *str, int size, char linestyle, bool continuation_mark, bool continuation_mark2);
 extern int ExtStrTrimEnd(ExtStr *estr, bool replace_nl);
+extern void ExtStrAppendChar(ExtStr *estr, char c);
 
 extern bool is_empty_str(char *str);
 extern int strnlen_limit(const char *str, int maxlen, int limit);

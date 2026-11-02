@@ -608,6 +608,19 @@ ExtStrAppendBytes(ExtStr *estr, char *str, int size)
 }
 
 /*
+ * Append one char
+ */
+void
+ExtStrAppendChar(ExtStr *estr, char c)
+{
+	if (estr->maxlen < 2)
+		estr->maxlen += 1024;
+
+	estr->data[estr->len++] = c;
+	estr->data[estr->len] = '\0';
+}
+
+/*
  * continuation_mark is related to new line symbol in text.
  * continuation_mark is related to line break created by
  * wrapped mode. continuation_mark2 is equal to previous

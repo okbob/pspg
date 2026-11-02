@@ -589,6 +589,85 @@ strncpytrim(char *dest, const char *src,
 }
 
 /*
+ * replace broken ending unicode by spaces
+ */
+static char *
+check_and_fix_utf8(char *line, ssize_t *bytes)
+{
+	ssize_t		_bytes = *bytes;
+	char	   *endptr;
+	ExtStr	   estr;
+
+	if (_bytes == 0)
+		return line;
+
+	endptr = memchr(line, '\0', _bytes);
+
+	if (!endptr)
+		return line;
+
+	if (endptr == line + _bytes - 1)
+		return line;
+
+	InitExtStr(&estr);
+
+	while (_bytes > 0)
+	{
+		char		c = *line;
+		int			chl;
+
+		if (c & 0x80)
+		{
+			if (c != '\0')
+				ExtStrAppendChar(&estr, c);
+			else
+				log_row("skip zero inside string");
+
+			_bytes--;
+			line++;
+			continue;
+		}
+
+		chl = utf8charlen(*line);
+		if (chl > _bytes)
+		{
+			log_row("truncated utf8 sequnce found");
+			ExtStrAppendBytes(&estr, "\342\215\260", 3);
+			break;
+		}
+		else
+		{
+			int		i;
+			bool	is_broken = false;
+
+			for (i = 1; i < chl; i++)
+			{
+				if (line[i] == '\0')
+				{
+					is_broken = true;
+					break;
+				}
+			}
+
+			if (is_broken)
+			{
+				log_row("broken utf8 sequnce found");
+				ExtStrAppendBytes(&estr, "\342\215\260", 3);
+			}
+			else
+				ExtStrAppendBytes(&estr, line, chl);
+
+			line += chl;
+			_bytes -= chl;
+		}
+	}
+
+	*bytes = estr.len;
+
+	return estr.data;
+}
+
+/*
  * Remove ANSI escape sequences from input line
  */
 static ssize_t
@@ -844,6 +923,19 @@ readfile(Options *opts, DataDesc *desc, StateData *state)
 		}
 
 		read = remove_ansi_escape_seq(line, read);
+
+		if (use_utf8)
+		{
+			char	   *fixedline;
+
+			fixedline = check_and_fix_utf8(line, &read);
+			if (fixedline != line)
+			{
+				free(line);
+				line = fixedline;
+			}
+		}
+
 		if ((tabptr = memchr(line, '\t', read)))
 		{
 			int		tabcount = 1;
