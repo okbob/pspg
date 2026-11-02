@@ -1508,11 +1508,17 @@ translate_headline(DataDesc *desc)
 	if (!broken_format)
 	{
 		char	   *namesline = desc->namesline;
+		char	   *namesline_end = NULL;
 		char	   *first_char = NULL;				/* first non space char of column name */
 		int			offset;
 		char	   *ptr;
 		char	   *ptrend;
 		int			i;
+
+		if (namesline)
+		{
+			namesline_end = namesline + strlen(namesline);
+		}
 
 		/* Move right corner more right */
 		if (desc->border_type == 0 && last_black_char)
@@ -1578,8 +1584,8 @@ translate_headline(DataDesc *desc)
 				}
 				else
 				{
-					nextchar = namesline + charlen_range(namesline, ptrend);
-					display_width = dsplen_range(namesline, ptrend);
+					nextchar = namesline + charlen_range(namesline, namesline_end);
+					display_width = dsplen_range(namesline, namesline_end);
 
 					/*
 					 * dsplen returns -1 for control and invalid characters.
