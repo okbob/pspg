@@ -110,14 +110,14 @@ AC_DEFUN([_AX_LIB_POSTGRESQL_PKG_CONFIG],
 
   while true; do
     PKG_PROG_PKG_CONFIG
-    AS_IF([test X$PKG_CONFIG = X],[break])
+    AS_IF([test "X$PKG_CONFIG" = "X"],[break])
 
     _AX_LIB_POSTGRESQL_PKG_CONFIG_fail=no;
     AS_IF([test "X$postgresql_version_req" = "X"],
-	  [PKG_CHECK_EXISTS([libpq],[found_postgresql_pkg_config=yes],[found_postgresql=no])],
+	  [PKG_CHECK_EXISTS([libpq],[found_postgresql_pkg_config=yes],[found_postgresql_pkg_config=no])],
 	  [PKG_CHECK_EXISTS([libpq >= "$postgresql_version_req"],
-			   [found_postgresql=yes],[found_postgresql=no])])
-    AS_IF([test "X$found_postgresql" = "Xno"],[break])
+			   [found_postgresql_pkg_config=yes],[found_postgresql_pkg_config=no])])
+    AS_IF([test "X$found_postgresql_pkg_config" = "Xno"],[break])
 
     AC_CACHE_CHECK([for the PostgreSQL libraries CPPFLAGS],[ac_cv_POSTGRESQL_CPPFLAGS],
 		   [ac_cv_POSTGRESQL_CPPFLAGS="`$PKG_CONFIG libpq --cflags-only-I`" || _AX_LIB_POSTGRESQL_PKG_CONFIG_fail=yes])
@@ -132,7 +132,7 @@ AC_DEFUN([_AX_LIB_POSTGRESQL_PKG_CONFIG],
 
 
     AC_CACHE_CHECK([for the PostgreSQL libraries LIBS],[ac_cv_POSTGRESQL_LIBS],
-		   [ac_cv_POSTGRESQL_LIBS="`$PKG_CONFIG libpq --libs-only-l`" || _AX_LIB_POSTGRESQL_PKG_CONFIG_fail=ye])
+		   [ac_cv_POSTGRESQL_LIBS="`$PKG_CONFIG libpq --libs-only-l`" || _AX_LIB_POSTGRESQL_PKG_CONFIG_fail=yes])
     AS_IF([test "X$_AX_LIB_POSTGRESQL_PKG_CONFIG_fail" = "Xyes"],[break])
     POSTGRESQL_LIBS="$ac_cv_POSTGRESQL_LIBS"
 
