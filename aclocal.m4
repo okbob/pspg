@@ -364,9 +364,9 @@ AS_IF([test "$AS_TR_SH([with_]m4_tolower([$1]))" = "yes"],
 ])dnl PKG_HAVE_DEFINE_WITH_MODULES
 
 m4_include([tools/ax_debug_cflags.m4])
+m4_include([tools/ax_lib_postgresql.m4])
 m4_include([tools/ax_lib_readline.m4])
 m4_include([tools/ax_require_defined.m4])
 m4_include([tools/ax_with_curses.m4])
 m4_include([tools/m4_ax_compare_version.m4])
-m4_include([tools/m4_ax_lib_postgresql.m4])
 m4_include([tools/m4_ax_with_curses_extra.m4])

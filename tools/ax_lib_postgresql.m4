@@ -50,7 +50,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 22
+#serial 25
 
 AC_DEFUN([_AX_LIB_POSTGRESQL_OLD],[
 	found_postgresql="no"
@@ -96,7 +96,7 @@ AC_DEFUN([_AX_LIB_POSTGRESQL_OLD],[
 				[found_postgresql_req_version=yes],[found_postgresql_req_version=no])
 	     AC_MSG_RESULT([$found_postgresql_req_version])
 	  ])
-	  AS_IF([test "Xfound_postgresql_req_version" = "Xno"],[break])
+	  AS_IF([test "X$found_postgresql_req_version" = "Xno"],[break])
 
 	  found_postgresql="yes"
 	  break

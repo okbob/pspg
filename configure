@@ -7140,7 +7140,7 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
 printf '%s\n' "$found_postgresql_req_version" >&6; }
 
 fi
-	  if test "Xfound_postgresql_req_version" = "Xno"
+	  if test "X$found_postgresql_req_version" = "Xno"
 then :
   break
 fi
