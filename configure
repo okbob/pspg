@@ -633,11 +633,10 @@ COMPILE_MENU
 COVERAGE_LDFLAGS
 COVERAGE_CFLAGS
 enable_debug
-POSTGRESQL_LIBS
 POSTGRESQL_VERSION
 AWK
 POSTGRESQL_LDFLAGS
-POSTGRESQL_LIBFLAGS
+POSTGRESQL_LIBS
 POSTGRESQL_CPPFLAGS
 PANEL_LIBS
 PKG_CONFIG_LIBDIR
@@ -719,7 +718,7 @@ PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 PANEL_LIBS
 POSTGRESQL_CPPFLAGS
-POSTGRESQL_LIBFLAGS
+POSTGRESQL_LIBS
 POSTGRESQL_LDFLAGS'
 
 
@@ -1371,8 +1370,8 @@ Some influential environment variables:
   PANEL_LIBS  linker library for Curses Panel, e.g. -lpanel
   POSTGRESQL_CPPFLAGS
               cpp flags for PostgreSQL overriding detected flags
-  POSTGRESQL_LIBFLAGS
-              libs for PostgreSQL overriding detected flags
+  POSTGRESQL_LIBS
+              libs for PostgreSQL overriding detected libs
   POSTGRESQL_LDFLAGS
               linker flags for PostgreSQL overriding detected flags
 
@@ -6671,6 +6670,8 @@ fi
 done
 
 
+	ax_skip_pkg_config="no"
+
 
 # Check whether --with-postgresql was given.
 if test ${with_postgresql+y}
@@ -6678,49 +6679,77 @@ then :
   withval=$with_postgresql;
 	case $withval in #(
   [nN][oO]) :
-    want_postgresql="no" ;; #(
+    ax_want_postgresql="no" ;; #(
   [yY][eE][sS]) :
-    want_postgresql="yes" ;; #(
+    ax_want_postgresql="yes" ;; #(
   *) :
 
-			want_postgresql="yes"
+			ax_want_postgresql="yes"
+			ax_skip_pkg_config="yes"
 			PG_CONFIG="$withval"
 		 ;;
 esac
 
 else case e in #(
-  e) want_postgresql="yes"
-     ;;
+  e) ax_want_postgresql="yes"
+	 ;;
 esac
 fi
 
 
+	if test "X$ac_cv_path_PG_CONFIG" != "X$PG_CONFIG"
+then :
+
+	  { ac_cv_path_PG_CONFIG=; unset ac_cv_path_PG_CONFIG;}
+	  { ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG=; unset ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG;}
+	  { ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG=; unset ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG;}
+	  { ac_cv_POSTGRESQL_LIBS_PG_CONFIG=; unset ac_cv_POSTGRESQL_LIBS_PG_CONFIG;}
+	  { ac_cv_POSTGRESQL_VERSION_PG_CONFIG=; unset ac_cv_POSTGRESQL_VERSION_PG_CONFIG;}
+	  { ac_cv_postgresql_found_PG_CONFIG=; unset ac_cv_postgresql_found_PG_CONFIG;}
+
+fi
 
 
 
 
-    # populate cache
-    if test "X$POSTGRESQL_CPPFLAGS" != X
+
+	# populate cache
+	if test "X$POSTGRESQL_CPPFLAGS" != X
 then :
   ac_cv_POSTGRESQL_CPPFLAGS="$POSTGRESQL_CPPFLAGS"
 fi
-    if test "X$POSTGRESQL_LDFLAGS" != X
+	if test "X$POSTGRESQL_LDFLAGS" != X
 then :
   ac_cv_POSTGRESQL_LDFLAGS="$POSTGRESQL_LDFLAGS"
 fi
-    if test "X$POSTGRESQL_LIBS" != X
+	if test "X$POSTGRESQL_LIBS" != X
 then :
   ac_cv_POSTGRESQL_LIBS="$POSTGRESQL_LIBS"
 fi
 
-    ax_postgresql_version_req=
-    ax_found_postgresql="no"
+	if test "X$POSTGRESQL_CPPFLAGS" != X
+then :
+  ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG="$POSTGRESQL_CPPFLAGS"
+fi
+	if test "X$POSTGRESQL_LDFLAGS" != X
+then :
+  ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG="$POSTGRESQL_LDFLAGS"
+fi
+	if test "X$POSTGRESQL_LIBS" != X
+then :
+  ac_cv_POSTGRESQL_LIBS_PG_CONFIG="$POSTGRESQL_LIBS"
+fi
 
-    POSTGRESQL_VERSION=""
+	ax_postgresql_version_req=
+	ax_found_postgresql="no"
 
-                if test X"$want_postgresql" = "Xyes"
+	POSTGRESQL_VERSION=""
+
+				if test X"$ax_want_postgresql" = "Xyes"
 then :
 
+	  if test x"$skip_pkg_config" = "Xno"
+then :
 
 
   ax_found_postgresql=no
@@ -6875,9 +6904,9 @@ then :
   ac_status=$?
   printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  found_postgresql_pkg_config=yes
+  ax_found_postgresql_pkg_config=yes
 else
-  found_postgresql_pkg_config=no
+  ax_found_postgresql_pkg_config=no
 fi
 else case e in #(
   e) if test -n "$PKG_CONFIG" && \
@@ -6886,13 +6915,13 @@ else case e in #(
   ac_status=$?
   printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  found_postgresql_pkg_config=yes
+  ax_found_postgresql_pkg_config=yes
 else
-  found_postgresql_pkg_config=no
+  ax_found_postgresql_pkg_config=no
 fi ;;
 esac
 fi
-    if test "X$found_postgresql_pkg_config" = "Xno"
+    if test "X$ax_found_postgresql_pkg_config" = "Xno"
 then :
   break
 fi
@@ -6968,17 +6997,19 @@ fi
     POSTGRESQL_VERSION="$ac_cv_POSTGRESQL_VERSION"
 
     ax_found_postgresql=yes
+    ax_lib_postgresql_method=PKG_CONFIG
     break;
   done
 
 
+fi
 
-
-      if test X"$ax_found_postgresql" = "Xno"
+	  if test X"$ax_found_postgresql" = "Xno"
 then :
 
 	ax_found_postgresql="no"
-	_AX_LIB_POSTGRESQL_OLD_fail="no"
+	ax_found_postgresql_req_version="yes"
+
 	while true; do
 	  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the pg_config program" >&5
 printf %s "checking for the pg_config program... " >&6; }
@@ -7027,72 +7058,73 @@ then :
   break
 fi
 
+	  _AX_LIB_POSTGRESQL_PG_CONFIG_fail="no"
 	  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL libraries CPPFLAGS" >&5
 printf %s "checking for the PostgreSQL libraries CPPFLAGS... " >&6; }
-if test ${ac_cv_POSTGRESQL_CPPFLAGS_OLD+y}
+if test ${ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) ac_cv_POSTGRESQL_CPPFLAGS_OLD="-I`$PG_CONFIG --includedir`" || _AX_LIB_POSTGRESQL_OLD_fail=yes ;;
+  e) ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG="-I`$PG_CONFIG --includedir`" || _AX_LIB_POSTGRESQL_PG_CONFIG_fail=yes ;;
 esac
 fi
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_CPPFLAGS_OLD" >&5
-printf '%s\n' "$ac_cv_POSTGRESQL_CPPFLAGS_OLD" >&6; }
-	  if test "X$_AX_LIB_POSTGRESQL_OLD_fail" = "Xyes"
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG" >&5
+printf '%s\n' "$ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG" >&6; }
+	  if test "X$_AX_LIB_POSTGRESQL_PG_CONFIG_fail" = "Xyes"
 then :
   break
 fi
-	  POSTGRESQL_CPPFLAGS="$ac_cv_POSTGRESQL_CPPFLAGS_OLD"
+	  POSTGRESQL_CPPFLAGS="$ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG"
 
 	  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL libraries LDFLAGS" >&5
 printf %s "checking for the PostgreSQL libraries LDFLAGS... " >&6; }
-if test ${ac_cv_POSTGRESQL_LDFLAGS_OLD+y}
+if test ${ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) ac_cv_POSTGRESQL_LDFLAGS_OLD="-L`$PG_CONFIG --libdir`" || _AX_LIB_POSTGRESQL_OLD_fail=yes ;;
+  e) ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG="-L`$PG_CONFIG --libdir`" || _AX_LIB_POSTGRESQL_PG_CONFIG_fail=yes ;;
 esac
 fi
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_LDFLAGS_OLD" >&5
-printf '%s\n' "$ac_cv_POSTGRESQL_LDFLAGS_OLD" >&6; }
-	  if test "X$_AX_LIB_POSTGRESQL_OLD_fail" = "Xyes"
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG" >&5
+printf '%s\n' "$ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG" >&6; }
+	  if test "X$_AX_LIB_POSTGRESQL_PG_CONFIG_fail" = "Xyes"
 then :
   break
 fi
-	  POSTGRESQL_LDFLAGS="$ac_cv_POSTGRESQL_LDFLAGS_OLD"
+	  POSTGRESQL_LDFLAGS="$ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG"
 
 	  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL libraries LIBS" >&5
 printf %s "checking for the PostgreSQL libraries LIBS... " >&6; }
-if test ${ac_cv_POSTGRESQL_LIBS_OLD+y}
+if test ${ac_cv_POSTGRESQL_LIBS_PG_CONFIG+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) ac_cv_POSTGRESQL_LIBS_OLD="-lpq" ;;
+  e) ac_cv_POSTGRESQL_LIBS_PG_CONFIG="-lpq" ;;
 esac
 fi
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_LIBS_OLD" >&5
-printf '%s\n' "$ac_cv_POSTGRESQL_LIBS_OLD" >&6; }
-	  POSTGRESQL_LIBS="$ac_cv_POSTGRESQL_LIBS_OLD"
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_LIBS_PG_CONFIG" >&5
+printf '%s\n' "$ac_cv_POSTGRESQL_LIBS_PG_CONFIG" >&6; }
+	  POSTGRESQL_LIBS="$ac_cv_POSTGRESQL_LIBS_PG_CONFIG"
 
 	  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL version" >&5
 printf %s "checking for the PostgreSQL version... " >&6; }
-if test ${ac_cv_POSTGRESQL_VERSION+y}
+if test ${ac_cv_POSTGRESQL_VERSION_PG_CONFIG+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
   e)
-			ac_cv_POSTGRESQL_VERSION=`$PG_CONFIG --version | sed "s/^PostgreSQL[[:space:]][[:space:]]*\([0-9.][0-9.]*\).*/\1/"` \
-			      || _AX_LIB_POSTGRESQL_OLD_fail=yes
+			ac_cv_POSTGRESQL_VERSION_PG_CONFIG=`$PG_CONFIG --version | sed "s/^PostgreSQL[[:space:]][[:space:]]*\([0-9.][0-9.]*\).*/\1/"` \
+			      || _AX_LIB_POSTGRESQL_PG_CONFIG_fail=yes
 		        ;;
 esac
 fi
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_VERSION" >&5
-printf '%s\n' "$ac_cv_POSTGRESQL_VERSION" >&6; }
-	  if test "X$_AX_LIB_POSTGRESQL_OLD_fail" = "Xyes"
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_POSTGRESQL_VERSION_PG_CONFIG" >&5
+printf '%s\n' "$ac_cv_POSTGRESQL_VERSION_PG_CONFIG" >&6; }
+	  if test "X$_AX_LIB_POSTGRESQL_PG_CONFIG_fail" = "Xyes"
 then :
   break
 fi
-	  POSTGRESQL_VERSION="$ac_cv_POSTGRESQL_VERSION"
+	  POSTGRESQL_VERSION="$ac_cv_POSTGRESQL_VERSION_PG_CONFIG"
 
 
 	  	  	  	  if test X"$ax_postgresql_version_req" != "X"
@@ -7146,6 +7178,7 @@ then :
 fi
 
 	  ax_found_postgresql="yes"
+	  ax_lib_postgresql_method=PG_CONFIG
 	  break
 	done
 
@@ -7174,9 +7207,11 @@ fi
 then :
   break
 fi
-	    	    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL library linking is working" >&5
+	    	    as_ax_lib_postgresql_Link=`printf '%s\n' "ac_cv_postgresql_link_$ax_lib_postgresql_method" | sed "$as_sed_sh"`
+
+	    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for the PostgreSQL library linking is working" >&5
 printf %s "checking for the PostgreSQL library linking is working... " >&6; }
-if test ${ac_cv_postgresql_found+y}
+if eval test \${$as_ax_lib_postgresql_Link+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
@@ -7203,9 +7238,9 @@ main (void)
 _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_postgresql_found=yes
+  eval "$as_ax_lib_postgresql_Link=yes"
 else case e in #(
-  e) ac_cv_postgresql_found=no ;;
+  e) eval "$as_ax_lib_postgresql_Link=no" ;;
 esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
@@ -7213,9 +7248,11 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 	      ;;
 esac
 fi
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_postgresql_found" >&5
-printf '%s\n' "$ac_cv_postgresql_found" >&6; }
-	    ax_found_postgresql="$ac_cv_postgresql_found"
+eval ac_res=\$$as_ax_lib_postgresql_Link
+	       { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf '%s\n' "$ac_res" >&6; }
+	    eval ax_found_postgresql=\$$as_ax_lib_postgresql_Link
+
 	    if test "X$ax_found_postgresql" = "Xno"
 then :
   break
@@ -7228,8 +7265,7 @@ fi
 
 fi
 
-
-      if test "x$ax_found_postgresql" = "xyes"
+	if test "x$ax_found_postgresql" = "xyes"
 then :
 
 
@@ -7244,7 +7280,7 @@ fi
 
 
 
-    if test "x$ax_found_postgresql" = "xyes"
+	if test "x$ax_found_postgresql" = "xyes"
 then :
   :
 else case e in #(
@@ -7252,7 +7288,6 @@ else case e in #(
 printf '%s\n' "$as_me: PostgreSQL library not found" >&6;} ;;
 esac
 fi
-
 
 
 case "$ax_cv_ncurses" in "no")
