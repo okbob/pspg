@@ -6697,7 +6697,7 @@ esac
 fi
 
 
-	if test "X$ac_cv_path_PG_CONFIG" != "X$PG_CONFIG"
+	if test -n "$PG_CONFIG" && test "X$ac_cv_path_PG_CONFIG" != "X$PG_CONFIG"
 then :
 
 	  { ac_cv_path_PG_CONFIG=; unset ac_cv_path_PG_CONFIG;}
@@ -6705,7 +6705,7 @@ then :
 	  { ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG=; unset ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG;}
 	  { ac_cv_POSTGRESQL_LIBS_PG_CONFIG=; unset ac_cv_POSTGRESQL_LIBS_PG_CONFIG;}
 	  { ac_cv_POSTGRESQL_VERSION_PG_CONFIG=; unset ac_cv_POSTGRESQL_VERSION_PG_CONFIG;}
-	  { ac_cv_postgresql_found_PG_CONFIG=; unset ac_cv_postgresql_found_PG_CONFIG;}
+	  { ac_cv_postgresql_link_PG_CONFIG=; unset ac_cv_postgresql_link_PG_CONFIG;}
 
 fi
 
@@ -6748,7 +6748,8 @@ fi
 				if test X"$ax_want_postgresql" = "Xyes"
 then :
 
-	  if test x"$skip_pkg_config" = "Xno"
+
+	  if test X"$ax_skip_pkg_config" = "Xno"
 then :
 
 

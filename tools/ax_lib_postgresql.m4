@@ -175,13 +175,13 @@ AC_DEFUN([AX_LIB_POSTGRESQL],
 	[ax_want_postgresql="yes"]
 	)
 
-	AS_IF([test "X$ac_cv_path_PG_CONFIG" != "X$PG_CONFIG"], [
+	AS_IF([test -n "$PG_CONFIG" && test "X$ac_cv_path_PG_CONFIG" != "X$PG_CONFIG"], [
 	  AS_UNSET([ac_cv_path_PG_CONFIG])
 	  AS_UNSET([ac_cv_POSTGRESQL_CPPFLAGS_PG_CONFIG])
 	  AS_UNSET([ac_cv_POSTGRESQL_LDFLAGS_PG_CONFIG])
 	  AS_UNSET([ac_cv_POSTGRESQL_LIBS_PG_CONFIG])
 	  AS_UNSET([ac_cv_POSTGRESQL_VERSION_PG_CONFIG])
-	  AS_UNSET([ac_cv_postgresql_found_PG_CONFIG])
+	  AS_UNSET([ac_cv_postgresql_link_PG_CONFIG])
 	])
 
 	AC_ARG_VAR([POSTGRESQL_CPPFLAGS],[cpp flags for PostgreSQL overriding detected flags])
@@ -206,7 +206,8 @@ AC_DEFUN([AX_LIB_POSTGRESQL],
 	dnl Check PostgreSQL libraries (libpq)
 	dnl
 	AS_IF([test X"$ax_want_postgresql" = "Xyes"],[
-	  AS_IF([test x"$skip_pkg_config" = "Xno"],
+
+	  AS_IF([test X"$ax_skip_pkg_config" = "Xno"],
 		[_AX_LIB_POSTGRESQL_PKG_CONFIG])
 
 	  AS_IF([test X"$ax_found_postgresql" = "Xno"],
