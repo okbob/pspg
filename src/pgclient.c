@@ -130,7 +130,7 @@ field_info(char *str, bool *multiline)
 }
 
 /*
- * Returns true, when some column should be hidden.
+ * Returns number of visible columns
  */
 static int
 mark_hidden_columns(PGresult *result,
@@ -299,11 +299,19 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 
 	pdesc->nfields = mark_hidden_columns(result, nfields, opts, hidden);
 
+	/* in this case all rows must to have same number of fields */
+	pdesc->nfields_all = pdesc->nfields;
+
 	pdesc->has_header = true;
 	n = 0;
 	for (i = 0; i < nfields; i++)
+	{
 		if (!hidden[i])
+		{
+			pdesc->columns_map[n] = n;
 			pdesc->types[n++] = column_type_class(PQftype(result, i));
+		}
+	}
 
 	/* calculate necessary size of header data */
 	size = 0;
@@ -320,7 +328,7 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 	if (!row)
 		EXIT_OUT_OF_MEMORY();
 
-	row->nfields = nfields;
+	row->nfields = pdesc->nfields;
 
 	multiline_row = false;
 	n = 0;
@@ -384,7 +392,6 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 			pdesc->multilines[n] |= multiline_col;
 			multiline_row |= multiline_col;
 
-			pdesc->columns_map[n] = n;
 			n += 1;
 		}
 
