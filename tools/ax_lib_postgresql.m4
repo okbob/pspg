@@ -50,7 +50,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 42
+#serial 43
 
 AC_DEFUN([_AX_LIB_POSTGRESQL_PG_CONFIG],[
 	ax_found_postgresql="no"
