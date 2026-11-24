@@ -418,7 +418,7 @@ is_empty_str(char *str)
 	if (use_utf8)
 	{
 		/* is there any valid utf8 sequence */
-		if (strlen(str) <= utf8charlen(*str))
+		if (strlen(str) < utf8charlen(*str))
 			return true;
 		else
 			return false;
