@@ -228,7 +228,7 @@ assign_int(char *key, int *target, int value, int type, int min, int max)
 		return false;
 	}
 
-	if (value < min && value > max)
+	if (value < min || value > max)
 	{
 		log_row("value of key \"%s\" is out of range [%d, %d]", key, min, max);
 		return false;
