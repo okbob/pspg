@@ -324,7 +324,7 @@ load_config(FILE *f, Options *opts)
 			else if (strcmp(key, "default_clipboard_format") == 0)
 				is_valid = assign_int(key, (int *) &opts->clipboard_format, int_val, res, 0, CLIPBOARD_FORMAT_INSERT_WITH_COMMENTS);
 			else if (strcmp(key, "clipboard_app") == 0)
-				is_valid = assign_int(key, &opts->clipboard_app, int_val, res, 0, 3);
+				is_valid = assign_int(key, &opts->clipboard_app, int_val, res, 0, 4);
 			else if (strcmp(key, "xterm_mouse_mode") == 0)
 				is_valid = assign_bool(key, &opts->xterm_mouse_mode, bool_val, res);
 			else if (strcmp(key, "show_scrollbar") == 0)
