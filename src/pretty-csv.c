@@ -1445,6 +1445,9 @@ read_csv(RowBucketType *rb,
 					ungetc(c, ifile);
 			}
 
+			if (nfields >= MAX_COLUMNS)
+				leave("too much columns");
+
 			if (!skip_initial && (last_nw - first_nw > 0 || found_string || nullstr_size == 0))
 			{
 				linebuf->sizes[nfields] = last_nw - first_nw;
