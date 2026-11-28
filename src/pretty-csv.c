@@ -1195,6 +1195,9 @@ read_tsv(RowBucketType *rb,
 			{
 				if (c == '\t' && !translated)
 				{
+					if (nfields >= MAX_COLUMNS)
+						leave("too much columns");
+
 					append_char(linebuf, '\0');
 					linebuf->sizes[nfields++] = size + 1;
 					size = 0;
@@ -1214,13 +1217,15 @@ read_tsv(RowBucketType *rb,
 		}
 		else
 		{
-
 			if (linebuf->used > 0)
 			{
 				char	   *locbuf;
 				RowType	   *row;
 				bool		multiline = false;
 				int			i;
+
+				if (nfields >= MAX_COLUMNS)
+					leave("too much columns");
 
 				append_char(linebuf, '\0');
 				linebuf->sizes[nfields++] = size + 1;
