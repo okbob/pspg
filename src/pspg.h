@@ -51,6 +51,8 @@ typedef struct LineInfo
 
 #define	LINEBUFFER_LINES		1000
 
+#define MAX_COLUMNS				1024
+
 typedef struct LineBuffer
 {
 	int		first_row;
@@ -252,10 +254,10 @@ typedef struct
 	int		nfields;
 	int		nfields_all;
 	bool	has_header;
-	char	types[1024];			/* a or d .. content in column */
-	int		widths[1024];			/* column's display width */
-	bool	multilines[1024];		/* true if column has multiline row */
-	int		columns_map[1024];		/* column numbers - used when some column is hidden */
+	char	types[MAX_COLUMNS];			/* a or d .. content in column */
+	int		widths[MAX_COLUMNS];			/* column's display width */
+	bool	multilines[MAX_COLUMNS];		/* true if column has multiline row */
+	int		columns_map[MAX_COLUMNS];		/* column numbers - used when some column is hidden */
 } PrintDataDesc;
 
 typedef struct

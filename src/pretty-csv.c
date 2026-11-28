@@ -35,14 +35,14 @@ typedef struct
 	int			used;
 	int			size;
 	int			maxfields;
-	int			starts[1024];		/* start of first char of column (in bytes) */
-	int			sizes[1024];		/* lenght of chars of column (in bytes) */
-	long int	digits[1024];		/* number of digits, used for format detection */
-	long int	tsizes[1024];		/* size of column in bytes, used for format detection */
-	int			firstdigit[1024];	/* rows where first char is digit */
-	size_t		widths[1024];			/* column's display width */
-	bool		multilines[1024];		/* true if column has multiline row */
-	bool		hidden[1024];
+	int			starts[MAX_COLUMNS];		/* start of first char of column (in bytes) */
+	int			sizes[MAX_COLUMNS];		/* lenght of chars of column (in bytes) */
+	long int	digits[MAX_COLUMNS];		/* number of digits, used for format detection */
+	long int	tsizes[MAX_COLUMNS];		/* size of column in bytes, used for format detection */
+	int			firstdigit[MAX_COLUMNS];	/* rows where first char is digit */
+	size_t		widths[MAX_COLUMNS];			/* column's display width */
+	bool		multilines[MAX_COLUMNS];		/* true if column has multiline row */
+	bool		hidden[MAX_COLUMNS];
 } LinebufType;
 
 typedef struct
@@ -564,7 +564,7 @@ pb_print_rowbuckets(PrintbufType *printbuf,
 			RowType	   *row;
 			bool		more_lines = true;
 			bool		multiline = rb->multilines[i];
-			char	   *fields[1024];
+			char	   *fields[MAX_COLUMNS];
 			int			multiline_lineno;
 
 			/* skip broken rows */
@@ -1373,7 +1373,7 @@ read_csv(RowBucketType *rb,
 
 			if (sep != -1 && c == sep && !instr)
 			{
-				if (nfields >= 1024)
+				if (nfields >= MAX_COLUMNS)
 					leave("too much columns");
 
 				if (skip_initial)

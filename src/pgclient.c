@@ -292,10 +292,10 @@ pg_exec_query(Options *opts, char *query, RowBucketType *rb, PrintDataDesc *pdes
 		RELEASE_AND_LEAVE(errmsg);
 	}
 
-	if ((nfields = PQnfields(result)) > 1024)
+	if ((nfields = PQnfields(result)) > MAX_COLUMNS)
 		RELEASE_AND_EXIT("too much columns");
 
-	hidden = smalloc(1024 * sizeof(bool));
+	hidden = smalloc(MAX_COLUMNS * sizeof(bool));
 
 	pdesc->nfields = mark_hidden_columns(result, nfields, opts, hidden);
 

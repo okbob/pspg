@@ -856,6 +856,11 @@ option.
     export PKG_CONFIG_PATH="/opt/csw/lib/64/pkgconfig"
     ./configure
 
+### ASAN build
+
+    export CFLAGS="-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer" LDFLAGS="-fsanitize=address,undefined"
+    ./configure --enable-debug
+
 
 ## Possible ToDo
 
