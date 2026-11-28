@@ -2264,21 +2264,25 @@ export_to_file(PspgCommand command,
 			int		errsz;
 			int		status;
 
-			memset(buffer, 0, sizeof(err_buffer));
+			memset(err_buffer, 0, sizeof(err_buffer));
 
 			fclose(fp);
 			fp = NULL;
 
 			waitpid(pid, &status, 0);
-			errsz = read(ferr, err_buffer, 1000);
+			errsz = read(ferr, err_buffer, sizeof(err_buffer) - 1);
 
 			close(fin);
 			close(fout);
 			close(ferr);
 
-			if (errsz != -1)
+			if (errsz > 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
 			{
-				format_error("%s", err_buffer);
+				if (errsz > 0)
+					format_error("%s", err_buffer);
+				else
+					format_error("clipboard application failed (status %d)", status);
+
 				log_row("write error (%s)", current_state->errstr);
 
 				show_info_wait(" Cannot write to clipboard (%s)",
@@ -2825,12 +2829,12 @@ main(int argc, char *argv[])
 	{
 		/*
 		 * in this moment, the log file is not initialized,
-		 * use strerr instead.
+		 * use stderr instead.
 		 */
 		logfile = stderr;
 
 		if (!load_config(cf, &opts))
-			fprintf(stderr, "warning: found errors while reading of config file");
+			fprintf(stderr, "warning: found errors while reading of config file\n");
 
 		logfile = NULL;
 
